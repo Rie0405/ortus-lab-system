@@ -113,6 +113,7 @@ function ensure_inventory_items_base_schema(PDO $pdo): void {
         ['entry_mode', "ALTER TABLE inventory_items ADD COLUMN entry_mode VARCHAR(20) NOT NULL DEFAULT 'automatic' AFTER stock_type"],
         ['stock_status', "ALTER TABLE inventory_items ADD COLUMN stock_status VARCHAR(20) NOT NULL DEFAULT 'good' AFTER entry_mode"],
         ['notes', 'ALTER TABLE inventory_items ADD COLUMN notes TEXT NULL AFTER stock_status'],
+        ['category_type', "ALTER TABLE inventory_items ADD COLUMN category_type VARCHAR(40) NOT NULL DEFAULT 'main' AFTER category_name"],
     ];
     foreach ($checks as $pair) {
         $chk = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE '" . $pair[0] . "'");
@@ -192,6 +193,18 @@ function normalize_inventory_notes($notes): string
         return mb_substr($value, 0, 500);
     }
     return substr($value, 0, 500);
+}
+
+function inventory_category_types(): array
+{
+    return ['main', 'ice', 'sauce', 'chocolate', 'syrup', 'powder', 'sinkers', 'toppings', 'packaging', 'cashier_area'];
+}
+
+function normalize_inventory_category_type($type): string
+{
+    $t = strtolower(trim((string)$type));
+    $t = str_replace(['-', ' '], '_', $t);
+    return in_array($t, inventory_category_types(), true) ? $t : 'main';
 }
 
 function is_non_consumable_inventory_row(array $row): bool
@@ -1375,4 +1388,250 @@ function apply_order_inventory_deduction(PDO $pdo, int $orderId): void {
 
     $pdo->prepare('UPDATE orders SET inventory_deducted = 1 WHERE id = :id')
         ->execute([':id' => $orderId]);
+}
+
+/**
+ * Aggregate recipe ingredient usage for one order into $usageByInvId.
+ *
+ * @param array<int, array<string, mixed>> $usageByInvId
+ */
+function aggregate_recipe_usage_for_order(PDO $pdo, int $orderId, array &$usageByInvId): void
+{
+    ensure_recipe_schema_shared($pdo);
+
+    $rows = $pdo->prepare(
+        'SELECT oi.menu_item_id, oi.quantity, oi.notes
+         FROM order_items oi
+         WHERE oi.order_id = :oid'
+    );
+    $rows->execute([':oid' => $orderId]);
+
+    $menuDescStmt = $pdo->prepare('SELECT description FROM menu_items WHERE id = :id LIMIT 1');
+    $recipeStmt = $pdo->prepare(
+        'SELECT id
+         FROM recipes
+         WHERE menu_item_id = :menu_id
+           AND variant_signature = :variant_signature
+         LIMIT 1'
+    );
+    $recipeFallbackStmt = $pdo->prepare(
+        'SELECT id
+         FROM recipes
+         WHERE menu_item_id = :menu_id
+           AND variant_signature = ""
+         LIMIT 1'
+    );
+    $ingredientStmt = $pdo->prepare(
+        'SELECT inventory_item_id, ingredient_name, quantity
+         FROM recipe_ingredients
+         WHERE recipe_id = :recipe_id
+         ORDER BY sort_order ASC, id ASC'
+    );
+
+    foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $menuId = (int)($row['menu_item_id'] ?? 0);
+        if ($menuId <= 0) {
+            continue;
+        }
+        $orderQty = max(1, (int)($row['quantity'] ?? 1));
+        $notes = (string)($row['notes'] ?? '');
+
+        $menuDescStmt->execute([':id' => $menuId]);
+        $menuRow = $menuDescStmt->fetch(PDO::FETCH_ASSOC);
+        $description = (string)($menuRow['description'] ?? '');
+        $variantSignature = resolve_variant_signature_from_notes($description, $notes);
+
+        $recipeStmt->execute([
+            ':menu_id' => $menuId,
+            ':variant_signature' => $variantSignature,
+        ]);
+        $recipe = $recipeStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$recipe && $variantSignature !== '') {
+            $recipeFallbackStmt->execute([':menu_id' => $menuId]);
+            $recipe = $recipeFallbackStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        if (!$recipe) {
+            continue;
+        }
+
+        $ingredientStmt->execute([':recipe_id' => (int)$recipe['id']]);
+        $ingredients = $ingredientStmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$ingredients) {
+            continue;
+        }
+
+        foreach ($ingredients as $ing) {
+            $invId = resolve_inventory_item_id(
+                $pdo,
+                isset($ing['inventory_item_id']) ? (int)$ing['inventory_item_id'] : null,
+                (string)($ing['ingredient_name'] ?? '')
+            );
+            if (!$invId) {
+                continue;
+            }
+
+            $recipeQty = max(0, (float)($ing['quantity'] ?? 1));
+            $deductQty = (float)$orderQty * $recipeQty;
+            if ($deductQty <= 0) {
+                continue;
+            }
+
+            if (!isset($usageByInvId[$invId])) {
+                $usageByInvId[$invId] = [
+                    'qty_used' => 0.0,
+                    'qty_received' => 0.0,
+                    'qty_wasted' => 0.0,
+                ];
+            }
+            $usageByInvId[$invId]['qty_used'] += $deductQty;
+        }
+    }
+}
+
+/**
+ * @return list<array{
+ *   id:int,
+ *   name:string,
+ *   category_name:string,
+ *   category_type:string,
+ *   category_type_label:string,
+ *   qty_used:float,
+ *   qty_received:float,
+ *   qty_wasted:float,
+ *   qty_movement:float
+ * }>
+ */
+function fetch_inventory_movement_for_date(PDO $pdo, string $date): array
+{
+    ensure_inventory_items_base_schema($pdo);
+    ensure_recipe_schema_shared($pdo);
+
+    $date = trim($date);
+    if ($date === '') {
+        $date = date('Y-m-d');
+    }
+
+    $catalog = [];
+    $catalogStmt = $pdo->query(
+        'SELECT id, item_name, category_name, category_type, stock_type
+         FROM inventory_items
+         WHERE is_active = 1'
+    );
+    foreach ($catalogStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $id = (int)$row['id'];
+        $catalog[$id] = [
+            'id' => $id,
+            'name' => (string)$row['item_name'],
+            'category_name' => (string)$row['category_name'],
+            'category_type' => normalize_inventory_category_type($row['category_type'] ?? 'main'),
+            'stock_type' => normalize_inventory_stock_type($row['stock_type'] ?? 'consumable'),
+            'qty_used' => 0.0,
+            'qty_received' => 0.0,
+            'qty_wasted' => 0.0,
+        ];
+    }
+
+    $usageScratch = [];
+    $orderStmt = $pdo->prepare(
+        'SELECT id
+         FROM orders
+         WHERE status IN ("confirmed","served")
+           AND DATE(created_at) = :d'
+    );
+    $orderStmt->execute([':d' => $date]);
+    foreach ($orderStmt->fetchAll(PDO::FETCH_COLUMN) as $orderId) {
+        aggregate_recipe_usage_for_order($pdo, (int)$orderId, $usageScratch);
+    }
+    foreach ($usageScratch as $invId => $totals) {
+        if (!isset($catalog[$invId])) {
+            continue;
+        }
+        $catalog[$invId]['qty_used'] += (float)($totals['qty_used'] ?? 0);
+    }
+
+    try {
+        $receiptStmt = $pdo->prepare(
+            'SELECT rl.ItemName, rl.LineType, SUM(rl.Quantity) AS qty_in
+             FROM ReceiptLines rl
+             INNER JOIN Receipts r ON r.ReceiptID = rl.ReceiptID
+             WHERE DATE(r.`Date`) = :d
+             GROUP BY rl.ItemName, rl.LineType'
+        );
+        $receiptStmt->execute([':d' => $date]);
+        $findInvStmt = $pdo->prepare(
+            'SELECT id
+             FROM inventory_items
+             WHERE is_active = 1
+               AND LOWER(TRIM(item_name)) = LOWER(TRIM(:item_name))
+               AND category_name = :category_name
+             LIMIT 1'
+        );
+        foreach ($receiptStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $findInvStmt->execute([
+                ':item_name' => (string)$row['ItemName'],
+                ':category_name' => (string)$row['LineType'],
+            ]);
+            $invId = (int)$findInvStmt->fetchColumn();
+            if ($invId <= 0 || !isset($catalog[$invId])) {
+                continue;
+            }
+            $catalog[$invId]['qty_received'] += (float)($row['qty_in'] ?? 0);
+        }
+    } catch (Throwable $e) {
+        // Receipt tables may not exist on older installs.
+    }
+
+    try {
+        $wasteStmt = $pdo->prepare(
+            'SELECT inventory_item_id, SUM(quantity) AS qty_wasted
+             FROM waste_log
+             WHERE inventory_item_id IS NOT NULL
+               AND DATE(logged_at) = :d
+             GROUP BY inventory_item_id'
+        );
+        $wasteStmt->execute([':d' => $date]);
+        foreach ($wasteStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $invId = (int)($row['inventory_item_id'] ?? 0);
+            if ($invId <= 0 || !isset($catalog[$invId])) {
+                continue;
+            }
+            $catalog[$invId]['qty_wasted'] += (float)($row['qty_wasted'] ?? 0);
+        }
+    } catch (Throwable $e) {
+        // waste_log may not exist on older installs.
+    }
+
+    $out = [];
+    foreach ($catalog as $item) {
+        $qtyUsed = round((float)$item['qty_used'], 2);
+        $qtyReceived = round((float)$item['qty_received'], 2);
+        $qtyWasted = round((float)$item['qty_wasted'], 2);
+        $qtyMovement = $qtyUsed + $qtyReceived + $qtyWasted;
+        if ($qtyMovement <= 0) {
+            continue;
+        }
+        $type = (string)$item['category_type'];
+        $out[] = [
+            'id' => (int)$item['id'],
+            'name' => (string)$item['name'],
+            'category_name' => (string)$item['category_name'],
+            'category_type' => $type,
+            'category_type_label' => ucwords(str_replace('_', ' ', $type)),
+            'stock_type' => (string)$item['stock_type'],
+            'qty_used' => $qtyUsed,
+            'qty_received' => $qtyReceived,
+            'qty_wasted' => $qtyWasted,
+            'qty_movement' => $qtyMovement,
+        ];
+    }
+
+    usort($out, static function ($a, $b) {
+        $cmp = ($b['qty_movement'] <=> $a['qty_movement']);
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        return strcmp((string)$a['name'], (string)$b['name']);
+    });
+
+    return $out;
 }

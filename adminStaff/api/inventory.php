@@ -138,6 +138,14 @@ function ensure_inventory_schema(PDO $pdo): void {
             // Ignore migration issues on environments with restricted ALTER privileges.
         }
     }
+    $chkCategoryType = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE 'category_type'");
+    if (!$chkCategoryType || !$chkCategoryType->fetch()) {
+        try {
+            $pdo->exec("ALTER TABLE inventory_items ADD COLUMN category_type VARCHAR(40) NOT NULL DEFAULT 'main' AFTER category_name");
+        } catch (Throwable $e) {
+            // Ignore migration issues on environments with restricted ALTER privileges.
+        }
+    }
 }
 
 function ensure_inventory_settings_schema(PDO $pdo): void {
@@ -416,6 +424,10 @@ if ($method === 'PUT') {
     if (array_key_exists('category_name', $b)) {
         $fields[] = 'category_name = :category_name';
         $params[':category_name'] = trim((string)$b['category_name']);
+    }
+    if (array_key_exists('category_type', $b)) {
+        $fields[] = 'category_type = :category_type';
+        $params[':category_type'] = normalize_inventory_category_type($b['category_type']);
     }
     if (array_key_exists('supplier', $b)) {
         $fields[] = 'supplier = :supplier';
@@ -723,6 +735,17 @@ if ($method !== 'GET') {
     fail('Method not allowed.', 405);
 }
 
+$movementDate = trim((string)($_GET['movement_date'] ?? ''));
+if ($movementDate === '') {
+    $movementDate = date('Y-m-d');
+}
+if (isset($_GET['movement']) && strtolower(trim((string)$_GET['movement'])) === 'today') {
+  ok([
+      'movement_date' => $movementDate,
+      'items' => fetch_inventory_movement_for_date($pdo, $movementDate),
+  ]);
+}
+
 ensure_open_box_when_stock_available($pdo);
 ensure_batch_open_when_stock_available($pdo);
 
@@ -732,6 +755,7 @@ $stmt = $pdo->query(
         i.menu_item_id,
         i.item_name,
         i.category_name,
+        i.category_type,
         i.supplier,
         i.stock_units,
         i.average_daily_usage,
@@ -853,6 +877,7 @@ foreach ($rows as $row) {
         'menu_item_id'  => $row['menu_item_id'] !== null ? (int)$row['menu_item_id'] : null,
         'name'          => $row['item_name'],
         'category_name' => $row['category_name'],
+        'category_type' => normalize_inventory_category_type($row['category_type'] ?? 'main'),
         'supplier'      => $row['supplier'] ?: 'Unassigned',
         'unit_cost'     => (float)$row['unit_cost'],
         'stock_units'   => $stockUnits,

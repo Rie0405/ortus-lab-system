@@ -55,24 +55,24 @@
                 </div>
                 <div class="staff-brief__grid" id="staff-brief-grid">
                     <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Orders</span>
-                        <strong class="staff-brief-card__value" data-brief-key="orders">--</strong>
+                        <span class="staff-brief-card__label">Expenses</span>
+                        <strong class="staff-brief-card__value" data-brief-key="expenses">--</strong>
                     </article>
                     <article class="staff-brief-card">
                         <span class="staff-brief-card__label">Today Sales</span>
                         <strong class="staff-brief-card__value" data-brief-key="today-sales">--</strong>
                     </article>
                     <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Cash Revenue</span>
-                        <strong class="staff-brief-card__value" data-brief-key="cash-revenue">--</strong>
-                    </article>
-                    <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Coffee Cups</span>
-                        <strong class="staff-brief-card__value" data-brief-key="coffee-cups">--</strong>
-                    </article>
-                    <article class="staff-brief-card">
                         <span class="staff-brief-card__label">Expected</span>
                         <strong class="staff-brief-card__value" data-brief-key="expected" id="staff-brief-expected-val" role="button" tabindex="0" aria-label="Show Cash and GCash sales logs">--</strong>
+                    </article>
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Short</span>
+                        <strong class="staff-brief-card__value" data-brief-key="short">--</strong>
+                    </article>
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Over</span>
+                        <strong class="staff-brief-card__value" data-brief-key="over">--</strong>
                     </article>
                     <article class="staff-brief-card">
                         <span class="staff-brief-card__label">Shift Total Loss</span>
@@ -351,18 +351,18 @@
 
         function renderStaffBrief(data) {
             if (!staffBriefText) return;
-            var orders = data && data.total_orders != null ? data.total_orders : null;
             var totalRevenue = data && data.total_revenue != null ? data.total_revenue : null;
-            var cashRevenue = data && data.cash_revenue != null ? data.cash_revenue : null;
-            var coffeeCups = data && data.coffee_sold_cups != null ? data.coffee_sold_cups : null;
+            var expensesTotal = data && data.expenses_total != null ? data.expenses_total : null;
+            var overAmount = data && data.over_amount != null ? data.over_amount : null;
+            var shortAmount = data && data.short_amount != null ? data.short_amount : null;
             var expectedRevenue = data && data.expected_revenue != null ? data.expected_revenue : null;
             var wasteTotal = data && data.waste_total_est != null ? data.waste_total_est : null;
 
             var valueMap = {
-                'orders': (orders != null ? String(orders) : '--'),
+                'expenses': (expensesTotal != null ? peso(expensesTotal) : '--'),
                 'today-sales': (totalRevenue != null ? peso(totalRevenue) : '--'),
-                'cash-revenue': (cashRevenue != null ? peso(cashRevenue) : '--'),
-                'coffee-cups': (coffeeCups != null ? (coffeeCups + (coffeeCups === 1 ? ' cup' : ' cups')) : '--'),
+                'over': (overAmount != null ? peso(overAmount) : '--'),
+                'short': (shortAmount != null ? peso(shortAmount) : '--'),
                 'expected': (expectedRevenue != null ? peso(expectedRevenue) : '--'),
                 'shift-loss': (wasteTotal != null ? ('-' + peso(wasteTotal)) : '--')
             };
@@ -376,10 +376,10 @@
             }
 
             var hasAny =
-                orders != null ||
                 totalRevenue != null ||
-                cashRevenue != null ||
-                coffeeCups != null ||
+                expensesTotal != null ||
+                overAmount != null ||
+                shortAmount != null ||
                 expectedRevenue != null ||
                 wasteTotal != null;
             staffBriefText.textContent = hasAny ? 'Updated just now from staff report.' : 'No staff sales report available yet.';
@@ -467,25 +467,20 @@
                 var allOrdersRes = results[4];
 
                 var out = {
-                    total_orders: null,
                     total_revenue: null,
-                    cash_revenue: null,
-                    coffee_sold_cups: null,
+                    expenses_total: null,
+                    short_amount: 0,
+                    over_amount: 0,
                     expected_revenue: null,
                     waste_total_est: null
                 };
 
                 if (summaryRes && summaryRes.success && summaryRes.summary) {
-                    out.total_orders = summaryRes.summary.total_orders || 0;
                     out.total_revenue = summaryRes.summary.total_revenue || 0;
                     var cash = parseFloat(summaryRes.summary.cash_revenue || 0);
                     var gcash = parseFloat(summaryRes.summary.digital_revenue || 0);
                     out.expected_revenue = cash + gcash;
-                }
-                if (weeklySalesRes && weeklySalesRes.success && weeklySalesRes.summary) {
-                    out.cash_revenue = weeklySalesRes.summary.total_revenue || 0;
-                } else {
-                    out.cash_revenue = 0;
+                    out.expenses_total = parseFloat(summaryRes.summary.receipt_expense_total || 0) || 0;
                 }
                 if (wasteRes && wasteRes.success) {
                     var today = new Date().toISOString().slice(0, 10);
@@ -495,8 +490,25 @@
                         return sum + parseFloat(entry.estimated_value || 0);
                     }, 0);
                     out.waste_total_est = wasteTotal;
+                    out.expenses_total = (parseFloat(out.expenses_total || 0) || 0) + wasteTotal;
                 }
-                var menuItems = (menuRes && menuRes.success && menuRes.items) ? menuRes.items : [];
+
+                try {
+                    var rawAcc = localStorage.getItem(getAccuracyStorageKey());
+                    if (rawAcc) {
+                        var acc = JSON.parse(rawAcc);
+                        var mode = String(acc && acc.mode || '').toLowerCase();
+                        var amount = toMoney(acc && acc.over_under);
+                        if (mode === 'over') {
+                            out.over_amount = amount;
+                        } else if (mode === 'under') {
+                            out.short_amount = amount;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore malformed local accuracy state.
+                }
+
                 var allOrders = (allOrdersRes && allOrdersRes.success && allOrdersRes.orders) ? allOrdersRes.orders : [];
                 var today = localYmd(new Date());
                 todayGcashOrders = allOrders.filter(function (o) {
@@ -515,8 +527,6 @@
                     var st = String(o.status || '').toLowerCase();
                     return st === 'served' || st === 'confirmed';
                 });
-                out.coffee_sold_cups = computeTodayCoffeeSold(allOrders, menuItems);
-
                 renderStaffBrief(out);
                 renderGcashLogs();
             }).catch(function (e) {

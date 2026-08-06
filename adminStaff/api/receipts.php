@@ -385,6 +385,7 @@ foreach ($linesRaw as $line) {
         'stock_type' => normalize_inventory_stock_type($line['stock_type'] ?? 'consumable'),
         'entry_mode' => normalize_inventory_entry_mode($line['entry_mode'] ?? 'automatic'),
         'stock_status' => normalize_inventory_stock_status($line['stock_status'] ?? 'good'),
+        'category_type' => normalize_inventory_category_type($line['category_type'] ?? 'main'),
     ];
 }
 
@@ -436,14 +437,15 @@ try {
          SET stock_type = :stock_type,
              entry_mode = :entry_mode,
              stock_status = :stock_status,
+             category_type = :category_type,
              supplier = :supplier
          WHERE id = :id'
     );
     $createInventoryStmt = $pdo->prepare(
         'INSERT INTO inventory_items
-            (menu_item_id, item_name, category_name, supplier, stock_units, units_in_use, open_items_count, per_stock_amount, per_stock_unit, reorder_level, unit_cost, stock_type, entry_mode, stock_status, is_active)
+            (menu_item_id, item_name, category_name, category_type, supplier, stock_units, units_in_use, open_items_count, per_stock_amount, per_stock_unit, reorder_level, unit_cost, stock_type, entry_mode, stock_status, is_active)
          VALUES
-            (NULL, :item_name, :category_name, :supplier, :stock_units, :units_in_use, :open_items_count, :per_stock_amount, :per_stock_unit, 10, :unit_cost, :stock_type, :entry_mode, :stock_status, 1)'
+            (NULL, :item_name, :category_name, :category_type, :supplier, :stock_units, :units_in_use, :open_items_count, :per_stock_amount, :per_stock_unit, 10, :unit_cost, :stock_type, :entry_mode, :stock_status, 1)'
     );
 
     foreach ($lines as $line) {
@@ -475,6 +477,7 @@ try {
                     ':stock_type' => $line['stock_type'],
                     ':entry_mode' => $line['entry_mode'],
                     ':stock_status' => $line['stock_status'],
+                    ':category_type' => $line['category_type'],
                     ':supplier' => $supplier,
                     ':id' => (int)$existingInventory['id'],
                 ]);
@@ -548,6 +551,7 @@ try {
         $createInventoryStmt->execute([
             ':item_name' => $line['item_name'],
             ':category_name' => $line['line_type'],
+            ':category_type' => $line['category_type'],
             ':supplier' => $supplier,
             ':stock_units' => $counts['stock_units'],
             ':units_in_use' => $counts['units_in_use'],

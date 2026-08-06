@@ -271,6 +271,10 @@
             </section>
 
             <section class="inv-view-panel" id="inventory-movement-panel" data-inv-view="movement">
+            <section class="stock-movement-source-tabs" id="stock-movement-source-tabs" aria-label="Stock movement source">
+                <button type="button" class="stock-movement-source-tab stock-movement-source-tab--active" data-movement-source="menu">Menu Sales</button>
+                <button type="button" class="stock-movement-source-tab" data-movement-source="inventory">Inventory Items</button>
+            </section>
             <section class="chips-row" id="stock-movement-chip-row"></section>
             <section class="stock-movement" id="inventory-stock-movement">
                 <div class="stock-movement__head">
@@ -447,6 +451,7 @@
                         <div class="receipt-lines__table">
                             <div class="receipt-lines__row receipt-lines__row--head" id="receipt-lines-row-head">
                                 <span>Main Category</span>
+                                <span>Category Type</span>
                                 <span>Item</span>
                                 <span>Stock Type</span>
                                 <span>Mode</span>
@@ -525,6 +530,7 @@
         var stockMovementList = document.getElementById('stock-movement-list');
         var stockMovementPeriod = document.getElementById('stock-movement-period');
         var movementChipRow = document.getElementById('stock-movement-chip-row');
+        var movementSourceTabs = document.getElementById('stock-movement-source-tabs');
         var lowTitle  = document.getElementById('inventory-low-stock-title');
         var searchIn  = document.querySelector('.search-wrap input');
         var addBtn    = document.getElementById('btn-add-stock');
@@ -615,6 +621,19 @@
         var receiptDetailDone = document.getElementById('receipt-detail-done');
         var receiptDetailBody = document.getElementById('receipt-detail-body');
         var receiptModalMode = 'register';
+        var REGISTER_CATEGORY_TYPES = [
+            { value: 'main', label: 'Main' },
+            { value: 'ice', label: 'Ice' },
+            { value: 'sauce', label: 'Sauce' },
+            { value: 'chocolate', label: 'Chocolate' },
+            { value: 'syrup', label: 'Syrup' },
+            { value: 'powder', label: 'Powder' },
+            { value: 'sinkers', label: 'Sinkers' },
+            { value: 'toppings', label: 'Toppings' },
+            { value: 'packaging', label: 'Packaging' },
+            { value: 'cashier_area', label: 'Cashier Area' }
+        ];
+        var REGISTER_LINE_GRID_REGISTER = 'minmax(90px, 0.95fr) minmax(110px, 1fr) minmax(130px, 1.35fr) minmax(110px, 1fr) minmax(100px, 0.95fr)';
 
         if (!alertGrid || !tableWrap) return;
 
@@ -625,7 +644,9 @@
             categories: { Bar: true, Kitchen: true }
         };
         var selectedMovementCategory = 'All';
+        var selectedMovementSource = 'menu';
         var allMovementItems = [];
+        var allInventoryMovementItems = [];
         var mainCategories = ['Bar', 'Kitchen'];
         var searchText = '';
         var editingId = null;
@@ -981,6 +1002,50 @@
             return '<select class="receipt-line-type">' + buildMainCategoryOptionsHtml(mainCategories[0] || 'Kitchen') + '</select>';
         }
 
+        function buildRegisterCategoryTypeOptionsHtml(selected) {
+            var current = String(selected || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            return REGISTER_CATEGORY_TYPES.map(function (opt) {
+                var sel = opt.value === current ? ' selected' : '';
+                return '<option value="' + escAttr(opt.value) + '"' + sel + '>' + esc(opt.label) + '</option>';
+            }).join('');
+        }
+
+        function receiptCategoryTypeFieldHtml(selected) {
+            return '<select class="receipt-category-type">' + buildRegisterCategoryTypeOptionsHtml(selected || 'main') + '</select>';
+        }
+
+        function formatCategoryTypeLabel(type) {
+            var key = String(type || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            var match = REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.value === key; });
+            return match ? match.label : 'Main';
+        }
+
+        function normalizeCategoryType(item) {
+            var key = String(item && item.category_type || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            var match = REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.value === key; });
+            return match ? match.value : 'main';
+        }
+
+        function groupItemsByCategoryType(items) {
+            var groups = [];
+            REGISTER_CATEGORY_TYPES.forEach(function (opt) {
+                var matches = (items || []).filter(function (item) {
+                    return normalizeCategoryType(item) === opt.value;
+                });
+                if (matches.length) {
+                    groups.push({ type: opt.value, label: opt.label, items: matches });
+                }
+            });
+            return groups;
+        }
+
+        function appendCategoryLabelRow(tableEl, label) {
+            var row = document.createElement('div');
+            row.className = 'table-row table-row--category-label';
+            row.innerHTML = '<div class="inv-category-label">' + esc(String(label || '').toUpperCase()) + '</div>';
+            tableEl.appendChild(row);
+        }
+
         function refreshAllReceiptCategorySelects() {
             if (!receiptLinesBody) return;
             receiptLinesBody.querySelectorAll('.receipt-lines__row').forEach(function (row) {
@@ -1020,6 +1085,7 @@
             }
             row.innerHTML =
                 receiptMainCategoryFieldHtml() +
+                receiptCategoryTypeFieldHtml('main') +
                 '<input type="text" class="receipt-item-name" placeholder="Enter item name">' +
                 '<select class="receipt-stock-type">' +
                     '<option value="consumable">Consumable</option>' +
@@ -1076,7 +1142,7 @@
             var row = createReceiptLineRow(receiptModalMode);
             row.style.gridTemplateColumns = receiptModalMode === 'add_receipt'
                 ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
-                : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr) minmax(110px, 1fr)';
+                : REGISTER_LINE_GRID_REGISTER;
             receiptLinesBody.appendChild(row);
             fillReceiptItemOptions(row);
         }
@@ -1091,10 +1157,10 @@
             if (receiptLinesRowHead) {
                 receiptLinesRowHead.innerHTML = isAddReceiptMode
                     ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>open (+)</span><span></span>'
-                    : '<span>Main Category</span><span>Item</span><span>Stock Type</span><span>Mode</span>';
+                    : '<span>Main Category</span><span>Category Type</span><span>Item</span><span>Stock Type</span><span>Mode</span>';
                 receiptLinesRowHead.style.gridTemplateColumns = isAddReceiptMode
                     ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
-                    : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr) minmax(110px, 1fr)';
+                    : REGISTER_LINE_GRID_REGISTER;
             }
         }
 
@@ -1146,6 +1212,7 @@
                 var inUseEl = row.querySelector('.receipt-in-use');
                 var stockTypeEl = row.querySelector('.receipt-stock-type');
                 var entryModeEl = row.querySelector('.receipt-entry-mode');
+                var categoryTypeEl = row.querySelector('.receipt-category-type');
                 var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
                 var inUseVal = parseFloat((inUseEl && inUseEl.value) || '0');
                 var line = {
@@ -1155,6 +1222,7 @@
                     in_use: inUseVal,
                     stock_type: (stockTypeEl && stockTypeEl.value) || 'consumable',
                     entry_mode: (entryModeEl && entryModeEl.value) || 'automatic',
+                    category_type: (categoryTypeEl && categoryTypeEl.value) || 'main',
                     stock_status: 'good',
                     per_stock_amount: 1,
                     unit: 'pcs',
@@ -1190,6 +1258,10 @@
 
             var hasMissingCategory = payload.lines.some(function (line) { return !line.line_type; });
             if (hasMissingCategory) return setReceiptError('Category is required for all lines.');
+            if (isRegisterMode) {
+                var hasMissingCategoryType = payload.lines.some(function (line) { return !line.category_type; });
+                if (hasMissingCategoryType) return setReceiptError('Category type is required for all lines.');
+            }
 
             var hasInvalid = payload.lines.some(function (line) {
                 if (!line.line_type || !line.item_name) return true;
@@ -2087,31 +2159,77 @@
             manualTableWrap.querySelectorAll('.table-row').forEach(function (row) { row.remove(); });
 
             var filtered = getFilteredItems('manual');
-            filtered.forEach(function (item) {
-                var stockStatus = getManualStockStatus(item);
-                var status = manualStockStatusMeta(stockStatus);
-                var stockType = getStockType(item);
-                var row = document.createElement('div');
-                row.className = 'table-row';
-                row.innerHTML =
-                    '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
-                    '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
-                    '<div>' + buildStockStatusChecklistHtml(item.id, stockStatus) + '</div>' +
-                    '<div class="inv-manual-cell-center"><span class="pill ' + status.pill + '">' + status.label + '</span></div>' +
-                    '<div class="inv-manual-notes-cell">' +
-                        '<input type="text" class="inv-manual-notes-input" data-notes-id="' + item.id + '" value="' + escAttr(getManualNotes(item)) + '" placeholder="Add notes..." maxlength="500" aria-label="Notes for ' + escAttr(item.name) + '">' +
-                        '<button type="button" class="inv-manual-notes-save" data-save-notes-id="' + item.id + '">Save</button>' +
-                    '</div>' +
-                    '<div class="actions inv-manual-actions"><button class="link-btn" title="Archive" data-delete-id="' + item.id + '">Delete</button></div>';
-                manualTableWrap.appendChild(row);
-            });
-
-            if (!filtered.length) {
+            var groups = groupItemsByCategoryType(filtered);
+            if (!groups.length) {
                 var empty = document.createElement('div');
                 empty.className = 'table-row';
                 empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No manual inventory items found.</div>';
                 manualTableWrap.appendChild(empty);
+                return;
             }
+
+            groups.forEach(function (group) {
+                appendCategoryLabelRow(manualTableWrap, group.label);
+                group.items.forEach(function (item) {
+                    var stockStatus = getManualStockStatus(item);
+                    var status = manualStockStatusMeta(stockStatus);
+                    var stockType = getStockType(item);
+                    var row = document.createElement('div');
+                    row.className = 'table-row';
+                    row.innerHTML =
+                        '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
+                        '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                        '<div>' + buildStockStatusChecklistHtml(item.id, stockStatus) + '</div>' +
+                        '<div class="inv-manual-cell-center"><span class="pill ' + status.pill + '">' + status.label + '</span></div>' +
+                        '<div class="inv-manual-notes-cell">' +
+                            '<input type="text" class="inv-manual-notes-input" data-notes-id="' + item.id + '" value="' + escAttr(getManualNotes(item)) + '" placeholder="Add notes..." maxlength="500" aria-label="Notes for ' + escAttr(item.name) + '">' +
+                            '<button type="button" class="inv-manual-notes-save" data-save-notes-id="' + item.id + '">Save</button>' +
+                        '</div>' +
+                        '<div class="actions inv-manual-actions"><button class="link-btn" title="Archive" data-delete-id="' + item.id + '">Delete</button></div>';
+                    manualTableWrap.appendChild(row);
+                });
+            });
+        }
+
+        function buildAutomaticRowHtml(item) {
+            var meta = statusMeta(item.status);
+            var nonConsumable = isNonConsumable(item);
+            var batchDisplay = usesBatchStockDisplay(item);
+            var ordersLeft = getDisplayOrdersLeft(item);
+            var ordersPerBox = getOrdersPerBox(item);
+            var capacityConfigured = isItemCapacityConfigured(item);
+            var batchSize = getBatchSize(item);
+            var usedWidth = batchDisplay
+                ? stockUsedBarWidthOrders(ordersLeft, batchSize)
+                : (capacityConfigured ? stockUsedBarWidthOrders(ordersLeft, ordersPerBox) : 0);
+            var usedColor = batchDisplay
+                ? (ordersLeft > 0 ? getStockLevelColor(item) : 'rgba(148, 163, 184, 0.35)')
+                : (capacityConfigured ? getStockLevelColor(item) : 'rgba(148, 163, 184, 0.35)');
+            var capacityLabel = nonConsumable ? '—' : boxCapacityButtonLabel(item);
+            var capacityTitle = nonConsumable
+                ? 'Not used for non-consumable items'
+                : boxCapacityButtonTitle(item);
+            var batchLabel = nonConsumable ? String(batchSize) : '—';
+            var batchTitle = nonConsumable
+                ? ('Batch size for this non-consumable item. Current setting: ' + batchSize)
+                : 'Not used for consumable items';
+            var stockType = getStockType(item);
+            return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
+                '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
+                '<div><strong>' + formatStockLevel(item.stock_units) + '</strong></div>' +
+                '<div class="inv-box-capacity-cell">' +
+                    (nonConsumable
+                        ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'
+                        : '<button type="button" class="btn-box-capacity"' + (capacityConfigured ? ' data-configured="1"' : '') + ' data-orders-box-id="' + item.id + '" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</button>') +
+                '</div>' +
+                '<div class="inv-box-capacity-cell">' +
+                    (nonConsumable
+                        ? '<button type="button" class="btn-box-capacity btn-batch-size" data-configured="1" data-batch-size-id="' + item.id + '" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</button>'
+                        : '<span class="inv-box-capacity-na" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</span>') +
+                '</div>' +
+                '<div><span class="pill ' + meta.pill + '">' + meta.label + '</span></div>' +
+                '<div class="actions"><button class="link-btn" title="Archive" data-delete-id="' + item.id + '">Delete</button></div>';
         }
 
         function renderRows() {
@@ -2119,56 +2237,23 @@
 
             var filtered = getFilteredItems('automatic');
             var visible = filtered.slice(0, INVENTORY_TABLE_MAX_ROWS);
-            visible.forEach(function (item) {
-                var meta = statusMeta(item.status);
-                var nonConsumable = isNonConsumable(item);
-                var batchDisplay = usesBatchStockDisplay(item);
-                var ordersLeft = getDisplayOrdersLeft(item);
-                var ordersPerBox = getOrdersPerBox(item);
-                var capacityConfigured = isItemCapacityConfigured(item);
-                var batchSize = getBatchSize(item);
-                var usedWidth = batchDisplay
-                    ? stockUsedBarWidthOrders(ordersLeft, batchSize)
-                    : (capacityConfigured ? stockUsedBarWidthOrders(ordersLeft, ordersPerBox) : 0);
-                var usedColor = batchDisplay
-                    ? (ordersLeft > 0 ? getStockLevelColor(item) : 'rgba(148, 163, 184, 0.35)')
-                    : (capacityConfigured ? getStockLevelColor(item) : 'rgba(148, 163, 184, 0.35)');
-                var capacityLabel = nonConsumable ? '—' : boxCapacityButtonLabel(item);
-                var capacityTitle = nonConsumable
-                    ? 'Not used for non-consumable items'
-                    : boxCapacityButtonTitle(item);
-                var batchLabel = nonConsumable ? String(batchSize) : '—';
-                var batchTitle = nonConsumable
-                    ? ('Batch size for this non-consumable item. Current setting: ' + batchSize)
-                    : 'Not used for consumable items';
-                var stockType = getStockType(item);
-                var row = document.createElement('div');
-                row.className = 'table-row';
-                row.innerHTML =
-                    '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
-                    '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
-                    '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
-                    '<div><strong>' + formatStockLevel(item.stock_units) + '</strong></div>' +
-                    '<div class="inv-box-capacity-cell">' +
-                        (nonConsumable
-                            ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'
-                            : '<button type="button" class="btn-box-capacity"' + (capacityConfigured ? ' data-configured="1"' : '') + ' data-orders-box-id="' + item.id + '" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</button>') +
-                    '</div>' +
-                    '<div class="inv-box-capacity-cell">' +
-                        (nonConsumable
-                            ? '<button type="button" class="btn-box-capacity btn-batch-size" data-configured="1" data-batch-size-id="' + item.id + '" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</button>'
-                            : '<span class="inv-box-capacity-na" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</span>') +
-                    '</div>' +
-                    '<div><span class="pill ' + meta.pill + '">' + meta.label + '</span></div>' +
-                    '<div class="actions"><button class="link-btn" title="Archive" data-delete-id="' + item.id + '">Delete</button></div>';
-                tableWrap.appendChild(row);
-            });
+            var groups = groupItemsByCategoryType(visible);
 
-            if (!visible.length) {
+            if (!groups.length) {
                 var empty = document.createElement('div');
                 empty.className = 'table-row';
                 empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No inventory items found.</div>';
                 tableWrap.appendChild(empty);
+            } else {
+                groups.forEach(function (group) {
+                    appendCategoryLabelRow(tableWrap, group.label);
+                    group.items.forEach(function (item) {
+                        var row = document.createElement('div');
+                        row.className = 'table-row';
+                        row.innerHTML = buildAutomaticRowHtml(item);
+                        tableWrap.appendChild(row);
+                    });
+                });
             }
 
             if (tableFoot) {
@@ -2296,6 +2381,25 @@
             return isBarMenuCategory(categoryName) ? 'Bar' : 'Kitchen';
         }
 
+        function normalizeMovementItemName(name) {
+            return String(name || '').trim().toLowerCase();
+        }
+
+        function extractOzLabel(text) {
+            var raw = String(text || '');
+            var m = raw.match(/(\d{1,2})\s*oz\b/i);
+            if (!m) return '';
+            return m[1] + 'oz';
+        }
+
+        function movementDisplayName(name, ozLabel) {
+            var base = String(name || '').trim();
+            if (!base) return '';
+            if (!ozLabel) return base;
+            if (/\(\s*\d{1,2}\s*oz\s*\)/i.test(base) || /\b\d{1,2}\s*oz\b/i.test(base)) return base;
+            return base + ' (' + ozLabel + ')';
+        }
+
         function renderMovementChips() {
             if (!movementChipRow) return;
             movementChipRow.innerHTML = '';
@@ -2322,7 +2426,24 @@
             });
         }
 
+        function formatMovementQty(n) {
+            var num = Number(n || 0);
+            if (!Number.isFinite(num)) num = 0;
+            if (Math.abs(num - Math.round(num)) < 0.001) {
+                return String(Math.round(num));
+            }
+            return num.toFixed(2);
+        }
+
         function getFilteredMovementItems() {
+            if (selectedMovementSource === 'inventory') {
+                return allInventoryMovementItems.filter(function (item) {
+                    if (selectedMovementCategory !== 'All' && item.category_name !== selectedMovementCategory) {
+                        return false;
+                    }
+                    return parseFloat(item.qty_movement || 0) > 0;
+                });
+            }
             return allMovementItems.filter(function (item) {
                 var qty = parseInt(item.qty_sold || 0, 10);
                 if (qty <= 0) return false;
@@ -2330,20 +2451,56 @@
             });
         }
 
+        function buildInventoryMovementQtyLabel(item) {
+            var used = parseFloat(item.qty_used || 0);
+            var received = parseFloat(item.qty_received || 0);
+            var wasted = parseFloat(item.qty_wasted || 0);
+            var parts = [];
+            if (used > 0) parts.push(formatMovementQty(used) + ' used');
+            if (received > 0) parts.push(formatMovementQty(received) + ' in');
+            if (wasted > 0) parts.push(formatMovementQty(wasted) + ' wasted');
+            return parts.length ? parts.join(' · ') : '0 moved';
+        }
+
         function renderStockMovement() {
             if (!stockMovementList) return;
+            var isInventorySource = selectedMovementSource === 'inventory';
             var items = getFilteredMovementItems();
             if (!items.length) {
-                var emptyMsg = 'No sales today yet.';
+                var emptyMsg = isInventorySource ? 'No non-consumable inventory movement today yet.' : 'No sales today yet.';
                 if (selectedMovementCategory !== 'All') {
-                    emptyMsg = 'No sales today for ' + selectedMovementCategory + '.';
+                    emptyMsg = isInventorySource
+                        ? 'No non-consumable inventory movement today for ' + selectedMovementCategory + '.'
+                        : 'No sales today for ' + selectedMovementCategory + '.';
                 }
                 stockMovementList.innerHTML = '<p class="stock-movement__empty">' + emptyMsg + '</p>';
+                if (stockMovementPeriod) {
+                    stockMovementPeriod.textContent = isInventorySource
+                        ? 'Today\'s non-consumable inventory stock movement'
+                        : 'Today\'s sold menu items';
+                }
                 return;
             }
 
             var html = '';
             items.forEach(function (it) {
+                if (isInventorySource) {
+                    var productName = esc(it.name || 'Unknown item');
+                    var meta = esc(it.category_name || '');
+                    if (it.category_type_label) {
+                        meta = meta ? meta + ' · ' + esc(it.category_type_label) : esc(it.category_type_label);
+                    }
+                    html +=
+                        '<article class="stock-movement__item">' +
+                            '<div class="stock-movement__meta">' +
+                                '<strong>' + productName + '</strong>' +
+                                '<small>' + meta + '</small>' +
+                            '</div>' +
+                            '<span class="stock-movement__qty">' + esc(buildInventoryMovementQtyLabel(it)) + '</span>' +
+                        '</article>';
+                    return;
+                }
+
                 var qty = parseInt(it.qty_sold || 0, 10);
                 var productName = esc(it.name || 'Unknown item');
                 html +=
@@ -2358,10 +2515,69 @@
             stockMovementList.innerHTML = html;
 
             if (stockMovementPeriod) {
-                var label = selectedMovementCategory === 'All'
-                    ? 'Today\'s sales'
-                    : 'Today\'s ' + selectedMovementCategory + ' sales';
-                stockMovementPeriod.textContent = label + ' (processed orders only)';
+                if (isInventorySource) {
+                    var invLabel = selectedMovementCategory === 'All'
+                        ? 'Today\'s non-consumable inventory movement'
+                        : 'Today\'s ' + selectedMovementCategory + ' non-consumable inventory movement';
+                    stockMovementPeriod.textContent = invLabel + ' (used, received, wasted)';
+                } else {
+                    var label = selectedMovementCategory === 'All'
+                        ? 'Today\'s sales'
+                        : 'Today\'s ' + selectedMovementCategory + ' sales';
+                    stockMovementPeriod.textContent = label + ' (processed orders only)';
+                }
+            }
+        }
+
+        function loadInventoryStockMovement() {
+            var cacheBust = Date.now();
+            fetch('api/inventory.php?movement=today&movement_date=' + encodeURIComponent(getTodayIsoDate()) + '&_=' + cacheBust, { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        allInventoryMovementItems = [];
+                        renderStockMovement();
+                        return;
+                    }
+                    allInventoryMovementItems = (d.items || []).map(function (it) {
+                        return {
+                            id: parseInt(it.id, 10) || 0,
+                            name: String(it.name || '').trim(),
+                            category_name: String(it.category_name || '').trim(),
+                            category_type: String(it.category_type || 'main').trim(),
+                            category_type_label: String(it.category_type_label || '').trim(),
+                            stock_type: String(it.stock_type || 'consumable').trim(),
+                            qty_used: parseFloat(it.qty_used || 0) || 0,
+                            qty_received: parseFloat(it.qty_received || 0) || 0,
+                            qty_wasted: parseFloat(it.qty_wasted || 0) || 0,
+                            qty_movement: parseFloat(it.qty_movement || 0) || 0
+                        };
+                    }).filter(function (it) {
+                        return it.name && it.stock_type === 'non_consumable' && it.qty_movement > 0;
+                    });
+                    renderStockMovement();
+                })
+                .catch(function () {
+                    allInventoryMovementItems = [];
+                    renderStockMovement();
+                });
+        }
+
+        function setMovementSource(source) {
+            selectedMovementSource = source === 'inventory' ? 'inventory' : 'menu';
+            if (movementSourceTabs) {
+                movementSourceTabs.querySelectorAll('[data-movement-source]').forEach(function (btn) {
+                    btn.classList.toggle(
+                        'stock-movement-source-tab--active',
+                        btn.getAttribute('data-movement-source') === selectedMovementSource
+                    );
+                });
+            }
+            renderMovementChips();
+            if (selectedMovementSource === 'inventory' && !allInventoryMovementItems.length) {
+                loadInventoryStockMovement();
+            } else {
+                renderStockMovement();
             }
         }
 
@@ -2369,11 +2585,13 @@
             var cacheBust = Date.now();
             Promise.all([
                 fetch('api/dashboard.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
+                fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
             ])
                 .then(function (res) {
                     var dashRes = res[0];
                     var menuRes = res[1];
+                    var ordersRes = res[2];
                     if (!dashRes || !dashRes.success) {
                         allMovementItems = [];
                         renderMovementChips();
@@ -2392,20 +2610,64 @@
                         });
                     }
 
-                    allMovementItems = (dashRes.top_items_today || []).map(function (it) {
-                        var nm = String(it.name || '').trim();
-                        var key = nm.toLowerCase();
-                        var catName = String(it.category || it.category_name || '').trim();
-                        var stockGroup = mainCatMap[key] || menuItemStockGroup(catName);
-                        return {
-                            name: nm,
-                            category_name: catName,
-                            stock_group: stockGroup,
-                            qty_sold: parseInt(it.qty_sold || 0, 10) || 0
-                        };
-                    }).filter(function (it) {
-                        return it.name && it.qty_sold > 0;
-                    });
+                    var todayKey = getTodayIsoDate();
+                    var movementByKey = {};
+                    var usedOrdersApi = false;
+                    if (ordersRes && ordersRes.success && Array.isArray(ordersRes.orders)) {
+                        usedOrdersApi = true;
+                        ordersRes.orders.forEach(function (order) {
+                            if (!order || !order.created_at) return;
+                            var st = String(order.status || '').toLowerCase();
+                            if (st !== 'confirmed' && st !== 'served') return;
+                            if (String(order.created_at).slice(0, 10) !== todayKey) return;
+
+                            (order.items || []).forEach(function (line) {
+                                var baseName = String(line && line.name || '').trim();
+                                if (!baseName) return;
+                                var qty = Math.max(0, parseInt(line && line.quantity, 10) || 0);
+                                if (!qty) return;
+
+                                var notesText = String(
+                                    (line && (line.notes || line.item_notes || line.variant_notes || line.description)) || ''
+                                );
+                                var oz = extractOzLabel(baseName) || extractOzLabel(notesText);
+                                var displayName = movementDisplayName(baseName, oz);
+                                var catName = String(line && (line.category_name || line.category) || '').trim();
+                                if (!catName) catName = 'Uncategorized';
+                                var stockGroup = mainCatMap[normalizeMovementItemName(baseName)] || menuItemStockGroup(catName);
+                                var k = normalizeMovementItemName(displayName) + '|' + stockGroup;
+
+                                if (!movementByKey[k]) {
+                                    movementByKey[k] = {
+                                        name: displayName,
+                                        category_name: catName,
+                                        stock_group: stockGroup,
+                                        qty_sold: 0
+                                    };
+                                }
+                                movementByKey[k].qty_sold += qty;
+                            });
+                        });
+                    }
+
+                    if (usedOrdersApi) {
+                        allMovementItems = Object.keys(movementByKey).map(function (k) { return movementByKey[k]; });
+                    } else {
+                        allMovementItems = (dashRes.top_items_today || []).map(function (it) {
+                            var nm = String(it.name || '').trim();
+                            var key = nm.toLowerCase();
+                            var catName = String(it.category || it.category_name || '').trim();
+                            var stockGroup = mainCatMap[key] || menuItemStockGroup(catName);
+                            return {
+                                name: nm,
+                                category_name: catName,
+                                stock_group: stockGroup,
+                                qty_sold: parseInt(it.qty_sold || 0, 10) || 0
+                            };
+                        }).filter(function (it) {
+                            return it.name && it.qty_sold > 0;
+                        });
+                    }
 
                     allMovementItems.sort(function (a, b) {
                         var aq = parseInt(a.qty_sold || 0, 10);
@@ -2678,6 +2940,13 @@
 
         loadInventory();
         loadStockMovement();
+        if (movementSourceTabs) {
+            movementSourceTabs.addEventListener('click', function (e) {
+                var btn = e.target && e.target.closest ? e.target.closest('[data-movement-source]') : null;
+                if (!btn) return;
+                setMovementSource(btn.getAttribute('data-movement-source'));
+            });
+        }
     })();
     </script>
 </body>

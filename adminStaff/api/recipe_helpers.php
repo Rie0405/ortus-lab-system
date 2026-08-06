@@ -110,6 +110,9 @@ function ensure_inventory_items_base_schema(PDO $pdo): void {
         ['orders_per_box', 'ALTER TABLE inventory_items ADD COLUMN orders_per_box INT NOT NULL DEFAULT 0 AFTER per_stock_unit'],
         ['open_items_count', 'ALTER TABLE inventory_items ADD COLUMN open_items_count INT NOT NULL DEFAULT 0 AFTER orders_per_box'],
         ['stock_type', "ALTER TABLE inventory_items ADD COLUMN stock_type VARCHAR(20) NOT NULL DEFAULT 'consumable' AFTER open_items_count"],
+        ['entry_mode', "ALTER TABLE inventory_items ADD COLUMN entry_mode VARCHAR(20) NOT NULL DEFAULT 'automatic' AFTER stock_type"],
+        ['stock_status', "ALTER TABLE inventory_items ADD COLUMN stock_status VARCHAR(20) NOT NULL DEFAULT 'good' AFTER entry_mode"],
+        ['notes', 'ALTER TABLE inventory_items ADD COLUMN notes TEXT NULL AFTER stock_status'],
     ];
     foreach ($checks as $pair) {
         $chk = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE '" . $pair[0] . "'");
@@ -165,6 +168,30 @@ function normalize_inventory_stock_type($type): string
         return 'non_consumable';
     }
     return 'consumable';
+}
+
+function normalize_inventory_entry_mode($mode): string
+{
+    $m = strtolower(trim((string)$mode));
+    return $m === 'manual' ? 'manual' : 'automatic';
+}
+
+function normalize_inventory_stock_status($status): string
+{
+    $s = strtolower(trim((string)$status));
+    return in_array($s, ['good', 'low', 'critical'], true) ? $s : 'good';
+}
+
+function normalize_inventory_notes($notes): string
+{
+    $value = trim((string)$notes);
+    if ($value === '') {
+        return '';
+    }
+    if (function_exists('mb_substr')) {
+        return mb_substr($value, 0, 500);
+    }
+    return substr($value, 0, 500);
 }
 
 function is_non_consumable_inventory_row(array $row): bool

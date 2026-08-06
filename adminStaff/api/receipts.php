@@ -330,14 +330,19 @@ if (method() !== 'POST') {
 }
 
 $b = body();
+$registerMode = strtolower(trim((string)($b['mode'] ?? ''))) === 'register';
 $date = trim((string)($b['date'] ?? ''));
 $orderedDate = trim((string)($b['ordered_date'] ?? ''));
 $expectedReceiveDate = trim((string)($b['expected_receive_date'] ?? ''));
 $supplier = trim((string)($b['supplier'] ?? ''));
 $linesRaw = $b['lines'] ?? [];
 
-if ($date === '') fail('Date ordered is required.');
-if ($expectedReceiveDate === '') fail('Date received is required.');
+if ($date === '') {
+    $date = date('Y-m-d');
+}
+if ($expectedReceiveDate === '') {
+    $expectedReceiveDate = $date;
+}
 if ($supplier === '') {
     $supplier = 'Unassigned';
 }
@@ -378,6 +383,8 @@ foreach ($linesRaw as $line) {
         'unit_cost' => $unitCost,
         'total_cost' => $totalCost,
         'stock_type' => normalize_inventory_stock_type($line['stock_type'] ?? 'consumable'),
+        'entry_mode' => normalize_inventory_entry_mode($line['entry_mode'] ?? 'automatic'),
+        'stock_status' => normalize_inventory_stock_status($line['stock_status'] ?? 'good'),
     ];
 }
 
@@ -424,11 +431,19 @@ try {
              unit_cost = :unit_cost
          WHERE id = :id'
     );
+    $updateRegisterInventoryStmt = $pdo->prepare(
+        'UPDATE inventory_items
+         SET stock_type = :stock_type,
+             entry_mode = :entry_mode,
+             stock_status = :stock_status,
+             supplier = :supplier
+         WHERE id = :id'
+    );
     $createInventoryStmt = $pdo->prepare(
         'INSERT INTO inventory_items
-            (menu_item_id, item_name, category_name, supplier, stock_units, units_in_use, open_items_count, per_stock_amount, per_stock_unit, reorder_level, unit_cost, stock_type, is_active)
+            (menu_item_id, item_name, category_name, supplier, stock_units, units_in_use, open_items_count, per_stock_amount, per_stock_unit, reorder_level, unit_cost, stock_type, entry_mode, stock_status, is_active)
          VALUES
-            (NULL, :item_name, :category_name, :supplier, :stock_units, :units_in_use, :open_items_count, :per_stock_amount, :per_stock_unit, 10, :unit_cost, :stock_type, 1)'
+            (NULL, :item_name, :category_name, :supplier, :stock_units, :units_in_use, :open_items_count, :per_stock_amount, :per_stock_unit, 10, :unit_cost, :stock_type, :entry_mode, :stock_status, 1)'
     );
 
     foreach ($lines as $line) {
@@ -455,6 +470,17 @@ try {
         $existingInventory = $findInventoryStmt->fetch();
 
         if ($existingInventory) {
+            if ($registerMode) {
+                $updateRegisterInventoryStmt->execute([
+                    ':stock_type' => $line['stock_type'],
+                    ':entry_mode' => $line['entry_mode'],
+                    ':stock_status' => $line['stock_status'],
+                    ':supplier' => $supplier,
+                    ':id' => (int)$existingInventory['id'],
+                ]);
+                continue;
+            }
+
             $usesBatch = inventory_uses_batch_logic($existingInventory);
             if ($usesBatch) {
                 $batchSize = batch_size_for_inventory_row($existingInventory);
@@ -530,6 +556,8 @@ try {
             ':per_stock_unit' => $line['unit'],
             ':unit_cost' => $line['unit_cost'],
             ':stock_type' => $line['stock_type'],
+            ':entry_mode' => $line['entry_mode'],
+            ':stock_status' => $line['stock_status'],
         ]);
         $newInvId = (int)$pdo->lastInsertId();
         if ((int)$counts['open_items_count'] <= 0 && !$usesBatch) {

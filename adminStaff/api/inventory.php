@@ -114,6 +114,30 @@ function ensure_inventory_schema(PDO $pdo): void {
             // Ignore migration issues on environments with restricted ALTER privileges.
         }
     }
+    $chkEntryMode = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE 'entry_mode'");
+    if (!$chkEntryMode || !$chkEntryMode->fetch()) {
+        try {
+            $pdo->exec("ALTER TABLE inventory_items ADD COLUMN entry_mode VARCHAR(20) NOT NULL DEFAULT 'automatic' AFTER stock_type");
+        } catch (Throwable $e) {
+            // Ignore migration issues on environments with restricted ALTER privileges.
+        }
+    }
+    $chkStockStatus = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE 'stock_status'");
+    if (!$chkStockStatus || !$chkStockStatus->fetch()) {
+        try {
+            $pdo->exec("ALTER TABLE inventory_items ADD COLUMN stock_status VARCHAR(20) NOT NULL DEFAULT 'good' AFTER entry_mode");
+        } catch (Throwable $e) {
+            // Ignore migration issues on environments with restricted ALTER privileges.
+        }
+    }
+    $chkNotes = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE 'notes'");
+    if (!$chkNotes || !$chkNotes->fetch()) {
+        try {
+            $pdo->exec('ALTER TABLE inventory_items ADD COLUMN notes TEXT NULL AFTER stock_status');
+        } catch (Throwable $e) {
+            // Ignore migration issues on environments with restricted ALTER privileges.
+        }
+    }
 }
 
 function ensure_inventory_settings_schema(PDO $pdo): void {
@@ -401,6 +425,19 @@ if ($method === 'PUT') {
     if (array_key_exists('stock_type', $b)) {
         $fields[] = 'stock_type = :stock_type';
         $params[':stock_type'] = normalize_inventory_stock_type($b['stock_type']);
+    }
+    if (array_key_exists('entry_mode', $b)) {
+        $fields[] = 'entry_mode = :entry_mode';
+        $params[':entry_mode'] = normalize_inventory_entry_mode($b['entry_mode']);
+    }
+    if (array_key_exists('stock_status', $b)) {
+        $fields[] = 'stock_status = :stock_status';
+        $params[':stock_status'] = normalize_inventory_stock_status($b['stock_status']);
+    }
+    if (array_key_exists('notes', $b)) {
+        $fields[] = 'notes = :notes';
+        $normalizedNotes = normalize_inventory_notes($b['notes']);
+        $params[':notes'] = $normalizedNotes !== '' ? $normalizedNotes : null;
     }
     if (array_key_exists('stock_units', $b)) {
         $fields[] = 'stock_units = :stock_units';
@@ -707,6 +744,9 @@ $stmt = $pdo->query(
         i.orders_per_box,
         i.open_items_count,
         i.stock_type,
+        i.entry_mode,
+        i.stock_status,
+        i.notes,
         i.reorder_level,
         i.unit_cost,
         i.is_active,
@@ -822,6 +862,9 @@ foreach ($rows as $row) {
         'item_capacity_configured' => $ordersPerBoxRaw > 0 ? 1 : 0,
         'open_items_count' => $openItemsCount,
         'stock_type' => normalize_inventory_stock_type($row['stock_type'] ?? 'consumable'),
+        'entry_mode' => normalize_inventory_entry_mode($row['entry_mode'] ?? 'automatic'),
+        'stock_status' => normalize_inventory_stock_status($row['stock_status'] ?? 'good'),
+        'notes' => (string)($row['notes'] ?? ''),
         'average_daily_usage' => $averageDailyUsage,
         'lead_time_days' => $leadTimeDays,
         'safety_stock' => $safetyStock,

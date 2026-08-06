@@ -140,6 +140,10 @@
                 </div>
             </div>
 
+            <section class="inv-table-section" id="inventory-automatic-section" aria-label="Automatic inventory table">
+                <div class="inv-table-section__head">
+                    <span class="inv-table-section__label">Automatic</span>
+                </div>
             <section class="table-wrap" id="inventory-table-wrap">
                 <div class="table-head">
                     <span>ITEM DETAILS</span>
@@ -244,6 +248,26 @@
             </section>
 
             <p class="table-foot" id="inventory-table-foot">Showing 0 items</p>
+            </section>
+
+            <section class="inv-table-section inv-table-partition" id="inventory-secondary-table-partition" aria-label="Manual inventory table">
+                <div class="inv-table-section__head">
+                    <span class="inv-table-section__label">Manual</span>
+                </div>
+                <div class="table-wrap inv-table-partition__body" id="inventory-secondary-table-wrap">
+                    <div class="table-head">
+                        <span>ITEM DETAILS</span>
+                        <span>CATEGORY</span>
+                        <div class="table-head--stacked">
+                            <span>STOCK STATUS</span>
+                            <span class="table-head-sub">good / low / critical</span>
+                        </div>
+                        <span>STATUS</span>
+                        <span>NOTES</span>
+                        <span>ACTIONS</span>
+                    </div>
+                </div>
+            </section>
             </section>
 
             <section class="inv-view-panel" id="inventory-movement-panel" data-inv-view="movement">
@@ -424,6 +448,8 @@
                             <div class="receipt-lines__row receipt-lines__row--head" id="receipt-lines-row-head">
                                 <span>Main Category</span>
                                 <span>Item</span>
+                                <span>Stock Type</span>
+                                <span>Mode</span>
                             </div>
                             <div id="receipt-lines-body"></div>
                         </div>
@@ -494,6 +520,7 @@
         var filterCatBar = document.getElementById('filter-cat-bar');
         var filterCatKitchen = document.getElementById('filter-cat-kitchen');
         var tableWrap = document.getElementById('inventory-table-wrap');
+        var manualTableWrap = document.getElementById('inventory-secondary-table-wrap');
         var tableFoot = document.getElementById('inventory-table-foot');
         var stockMovementList = document.getElementById('stock-movement-list');
         var stockMovementPeriod = document.getElementById('stock-movement-period');
@@ -619,6 +646,48 @@
             if (status === 'out_of_stock') return { pill: 'out', label: 'OUT OF STOCK' };
             if (status === 'low_stock') return { pill: 'low', label: 'LOW STOCK' };
             return { pill: 'ok', label: 'IN STOCK' };
+        }
+
+        function getEntryMode(item) {
+            var mode = String(item && item.entry_mode || 'automatic').trim().toLowerCase();
+            return mode === 'manual' ? 'manual' : 'automatic';
+        }
+
+        function getManualStockStatus(item) {
+            var status = String(item && item.stock_status || 'good').trim().toLowerCase();
+            if (status === 'low' || status === 'critical') return status;
+            return 'good';
+        }
+
+        function getManualNotes(item) {
+            return String(item && item.notes || '').trim();
+        }
+
+        function manualStockStatusMeta(status) {
+            if (status === 'critical') return { pill: 'out', label: 'CRITICAL' };
+            if (status === 'low') return { pill: 'low', label: 'LOW' };
+            return { pill: 'ok', label: 'GOOD' };
+        }
+
+        function buildStockStatusChecklistHtml(itemId, selected) {
+            var current = String(selected || 'good').trim().toLowerCase();
+            if (current !== 'low' && current !== 'critical') current = 'good';
+            var options = [
+                { value: 'good', label: 'Good' },
+                { value: 'low', label: 'Low' },
+                { value: 'critical', label: 'Critical' }
+            ];
+            var groupName = 'stock-status-' + itemId;
+            return '<div class="inv-stock-status-check" role="radiogroup" aria-label="Stock status">' +
+                options.map(function (opt) {
+                    var checked = opt.value === current ? ' checked' : '';
+                    return '<label class="inv-stock-status-check__opt inv-stock-status-check__opt--' + opt.value + '">' +
+                        '<input type="radio" name="' + groupName + '" value="' + opt.value + '" data-stock-status-id="' + itemId + '"' + checked + '>' +
+                        '<span class="inv-stock-status-check__box" aria-hidden="true"></span>' +
+                        '<span class="inv-stock-status-check__text">' + opt.label + '</span>' +
+                    '</label>';
+                }).join('') +
+            '</div>';
         }
 
         function isItemCapacityConfigured(item) {
@@ -955,6 +1024,10 @@
                 '<select class="receipt-stock-type">' +
                     '<option value="consumable">Consumable</option>' +
                     '<option value="non_consumable">Non-consumable</option>' +
+                '</select>' +
+                '<select class="receipt-entry-mode">' +
+                    '<option value="automatic">Automatic</option>' +
+                    '<option value="manual">Manual</option>' +
                 '</select>';
             return row;
         }
@@ -1003,7 +1076,7 @@
             var row = createReceiptLineRow(receiptModalMode);
             row.style.gridTemplateColumns = receiptModalMode === 'add_receipt'
                 ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
-                : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr)';
+                : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr) minmax(110px, 1fr)';
             receiptLinesBody.appendChild(row);
             fillReceiptItemOptions(row);
         }
@@ -1018,10 +1091,10 @@
             if (receiptLinesRowHead) {
                 receiptLinesRowHead.innerHTML = isAddReceiptMode
                     ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>open (+)</span><span></span>'
-                    : '<span>Main Category</span><span>Item</span><span>Stock Type</span>';
+                    : '<span>Main Category</span><span>Item</span><span>Stock Type</span><span>Mode</span>';
                 receiptLinesRowHead.style.gridTemplateColumns = isAddReceiptMode
                     ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
-                    : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr)';
+                    : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr) minmax(110px, 1fr)';
             }
         }
 
@@ -1072,6 +1145,7 @@
                 var stocksEl = row.querySelector('.receipt-stocks');
                 var inUseEl = row.querySelector('.receipt-in-use');
                 var stockTypeEl = row.querySelector('.receipt-stock-type');
+                var entryModeEl = row.querySelector('.receipt-entry-mode');
                 var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
                 var inUseVal = parseFloat((inUseEl && inUseEl.value) || '0');
                 var line = {
@@ -1080,6 +1154,8 @@
                     stocks: stocksVal,
                     in_use: inUseVal,
                     stock_type: (stockTypeEl && stockTypeEl.value) || 'consumable',
+                    entry_mode: (entryModeEl && entryModeEl.value) || 'automatic',
+                    stock_status: 'good',
                     per_stock_amount: 1,
                     unit: 'pcs',
                     unit_cost: 0,
@@ -1097,12 +1173,14 @@
                 ordered_date: (receiptDate && receiptDate.value) || getTodayIsoDate(),
                 expected_receive_date: (receiptExpectedDate && receiptExpectedDate.value) || getTodayIsoDate(),
                 supplier: supplierName,
+                mode: receiptModalMode,
                 lines: lines
             };
         }
 
         function saveReceipt() {
             var payload = collectReceiptPayload();
+            var isRegisterMode = receiptModalMode === 'register';
             if (receiptModalMode === 'add_receipt') {
                 if (!payload.date) return setReceiptError('Date ordered is required.');
                 if (!payload.expected_receive_date) return setReceiptError('Date received is required.');
@@ -1115,7 +1193,7 @@
 
             var hasInvalid = payload.lines.some(function (line) {
                 if (!line.line_type || !line.item_name) return true;
-                if (receiptModalMode === 'register') return false;
+                if (isRegisterMode) return false;
                 return line.stocks < 0 || line.in_use < 0;
             });
             if (hasInvalid) return setReceiptError('Please complete required fields with valid values.');
@@ -1129,15 +1207,24 @@
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (!d.success) {
-                        setReceiptError(d.error || 'Failed to save stock entry.');
+                        setReceiptError(d.error || (isRegisterMode ? 'Failed to register inventory item.' : 'Failed to save stock entry.'));
                         return;
                     }
                     closeReceiptModal();
-                    alert('Stock entry saved. Entry #' + d.receipt_id);
+                    if (isRegisterMode) {
+                        var manualCount = payload.lines.filter(function (line) { return line.entry_mode === 'manual'; }).length;
+                        var automaticCount = payload.lines.length - manualCount;
+                        var parts = [];
+                        if (manualCount) parts.push(manualCount + ' manual');
+                        if (automaticCount) parts.push(automaticCount + ' automatic');
+                        alert('Inventory item(s) registered' + (parts.length ? ' (' + parts.join(', ') + ')' : '') + '.');
+                    } else {
+                        alert('Stock entry saved. Entry #' + d.receipt_id);
+                    }
                     loadInventory();
                 })
                 .catch(function () {
-                    setReceiptError('Network error while saving stock entry.');
+                    setReceiptError(isRegisterMode ? 'Network error while registering inventory item.' : 'Network error while saving stock entry.');
                 })
                 .finally(function () {
                     if (receiptModalSave) receiptModalSave.disabled = false;
@@ -1639,11 +1726,13 @@
             updateFilterButtonLabel();
         }
 
-        function getFilteredItems() {
+        function getFilteredItems(entryMode) {
             var q = (searchIn && searchIn.value || '').trim().toLowerCase();
             var anyType = inventoryFilters.types.consumable || inventoryFilters.types.non_consumable;
             var anyCategory = inventoryFilters.categories.Bar || inventoryFilters.categories.Kitchen;
+            var modeFilter = entryMode ? String(entryMode).trim().toLowerCase() : '';
             return allItems.filter(function (item) {
+                if (modeFilter && getEntryMode(item) !== modeFilter) return false;
                 var stockType = getStockType(item);
                 var categoryName = String(item.category_name || '').trim();
                 var typeOk = !anyType || !!inventoryFilters.types[stockType];
@@ -1991,11 +2080,46 @@
             }
         }
 
+        var INVENTORY_TABLE_MAX_ROWS = 10;
+
+        function renderManualRows() {
+            if (!manualTableWrap) return;
+            manualTableWrap.querySelectorAll('.table-row').forEach(function (row) { row.remove(); });
+
+            var filtered = getFilteredItems('manual');
+            filtered.forEach(function (item) {
+                var stockStatus = getManualStockStatus(item);
+                var status = manualStockStatusMeta(stockStatus);
+                var stockType = getStockType(item);
+                var row = document.createElement('div');
+                row.className = 'table-row';
+                row.innerHTML =
+                    '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
+                    '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                    '<div>' + buildStockStatusChecklistHtml(item.id, stockStatus) + '</div>' +
+                    '<div class="inv-manual-cell-center"><span class="pill ' + status.pill + '">' + status.label + '</span></div>' +
+                    '<div class="inv-manual-notes-cell">' +
+                        '<input type="text" class="inv-manual-notes-input" data-notes-id="' + item.id + '" value="' + escAttr(getManualNotes(item)) + '" placeholder="Add notes..." maxlength="500" aria-label="Notes for ' + escAttr(item.name) + '">' +
+                        '<button type="button" class="inv-manual-notes-save" data-save-notes-id="' + item.id + '">Save</button>' +
+                    '</div>' +
+                    '<div class="actions inv-manual-actions"><button class="link-btn" title="Archive" data-delete-id="' + item.id + '">Delete</button></div>';
+                manualTableWrap.appendChild(row);
+            });
+
+            if (!filtered.length) {
+                var empty = document.createElement('div');
+                empty.className = 'table-row';
+                empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No manual inventory items found.</div>';
+                manualTableWrap.appendChild(empty);
+            }
+        }
+
         function renderRows() {
             tableWrap.querySelectorAll('.table-row').forEach(function (row) { row.remove(); });
 
-            var filtered = getFilteredItems();
-            filtered.forEach(function (item) {
+            var filtered = getFilteredItems('automatic');
+            var visible = filtered.slice(0, INVENTORY_TABLE_MAX_ROWS);
+            visible.forEach(function (item) {
                 var meta = statusMeta(item.status);
                 var nonConsumable = isNonConsumable(item);
                 var batchDisplay = usesBatchStockDisplay(item);
@@ -2040,7 +2164,7 @@
                 tableWrap.appendChild(row);
             });
 
-            if (!filtered.length) {
+            if (!visible.length) {
                 var empty = document.createElement('div');
                 empty.className = 'table-row';
                 empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No inventory items found.</div>';
@@ -2048,8 +2172,83 @@
             }
 
             if (tableFoot) {
-                tableFoot.textContent = 'Showing ' + filtered.length + ' of ' + allItems.length + ' items';
+                tableFoot.textContent = 'Showing ' + visible.length + ' of ' + filtered.length + ' items (max ' + INVENTORY_TABLE_MAX_ROWS + ')';
             }
+
+            renderManualRows();
+        }
+
+        function saveManualStockStatus(itemId, stockStatus) {
+            var id = parseInt(itemId, 10);
+            var status = String(stockStatus || 'good').trim().toLowerCase();
+            if (!id) return;
+            if (status !== 'low' && status !== 'critical') status = 'good';
+
+            var item = allItems.find(function (it) { return it.id === id; });
+            if (item) item.stock_status = status;
+            renderManualRows();
+
+            fetch('api/inventory.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, stock_status: status })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.success) {
+                    alert(d.error || 'Failed to update stock status.');
+                    loadInventory();
+                }
+            })
+            .catch(function () {
+                alert('Network error while updating stock status.');
+                loadInventory();
+            });
+        }
+
+        function saveManualNotes(itemId, notes, saveBtn) {
+            var id = parseInt(itemId, 10);
+            if (!id) return;
+            var value = String(notes || '').trim();
+
+            var item = allItems.find(function (it) { return it.id === id; });
+            if (item) item.notes = value;
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+            }
+
+            fetch('api/inventory.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, notes: value })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.success) {
+                    alert(d.error || 'Failed to save notes.');
+                    loadInventory();
+                    return;
+                }
+                if (saveBtn) {
+                    saveBtn.textContent = 'Saved';
+                    window.setTimeout(function () {
+                        saveBtn.textContent = 'Save';
+                        saveBtn.disabled = false;
+                    }, 1200);
+                }
+            })
+            .catch(function () {
+                alert('Network error while saving notes.');
+                loadInventory();
+            })
+            .finally(function () {
+                if (saveBtn && saveBtn.textContent === 'Saving...') {
+                    saveBtn.textContent = 'Save';
+                    saveBtn.disabled = false;
+                }
+            });
         }
 
         function collectFormData() {
@@ -2313,6 +2512,25 @@
         }
 
         if (tableWrap) tableWrap.addEventListener('click', handleRowAction);
+        if (manualTableWrap) {
+            manualTableWrap.addEventListener('click', function (e) {
+                var saveBtn = e.target && e.target.closest ? e.target.closest('[data-save-notes-id]') : null;
+                if (saveBtn) {
+                    var row = saveBtn.closest('.table-row');
+                    var notesInput = row ? row.querySelector('input[data-notes-id]') : null;
+                    if (notesInput) {
+                        saveManualNotes(saveBtn.getAttribute('data-save-notes-id'), notesInput.value, saveBtn);
+                    }
+                    return;
+                }
+                handleRowAction(e);
+            });
+            manualTableWrap.addEventListener('change', function (e) {
+                var input = e.target && e.target.closest ? e.target.closest('input[data-stock-status-id]') : null;
+                if (!input) return;
+                saveManualStockStatus(input.getAttribute('data-stock-status-id'), input.value);
+            });
+        }
         if (btnOpenRestockNotification) btnOpenRestockNotification.addEventListener('click', openRestockNotification);
         if (restockNotificationClose) restockNotificationClose.addEventListener('click', closeRestockNotification);
         if (restockNotificationBackdrop) {

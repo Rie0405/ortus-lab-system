@@ -1,0 +1,559 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    background: #1a1c21;
+    color: #fff;
+    font-family: "Space Grotesk", sans-serif;
+}
+
+.admin-page {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 42px 24px;
+    overflow: hidden;
+    background: #221910;
+}
+
+.admin-bg-image {
+    position: absolute;
+    inset: 0;
+    opacity: 0.1;
+    background-image: url("https://www.figma.com/api/mcp/asset/b99f7265-bfef-4923-9e3c-6b4408218400");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    filter: grayscale(100%);
+}
+
+.admin-bg-shade {
+    position: absolute;
+    inset: 0;
+    background: rgba(34, 25, 16, 0.8);
+}
+
+.ambient-glow {
+    position: absolute;
+    width: 512px;
+    height: 409px;
+    border-radius: 999px;
+    filter: blur(60px);
+    pointer-events: none;
+}
+
+.ambient-glow--top {
+    top: -105px;
+    left: -128px;
+    background: rgba(244, 140, 37, 0.1);
+}
+
+.ambient-glow--bottom {
+    right: -128px;
+    bottom: -102px;
+    background: rgba(244, 140, 37, 0.05);
+}
+
+.admin-shell {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+}
+
+.admin-brand {
+    width: 284px;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.admin-brand-title {
+    font-size: 48px;
+    line-height: 48px;
+    letter-spacing: -0.05em;
+    font-weight: 700;
+}
+
+.admin-brand-subtitle {
+    margin-top: 6px;
+    color: rgba(244, 140, 37, 0.6);
+    font-size: 20px;
+    line-height: 16px;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 448px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(34, 25, 16, 0.85);
+    box-shadow: 0 25px 30px 15px rgba(45, 45, 45, 0.3);
+    overflow: hidden;
+}
+
+.login-card-top-accent {
+    height: 6px;
+    opacity: 0.5;
+    background: linear-gradient(90deg, rgba(244, 140, 37, 0) 0%, #f48c25 50%, rgba(244, 140, 37, 0) 100%);
+}
+
+.login-card-body {
+    padding: 40px;
+}
+
+.login-copy h2 {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+}
+
+.login-copy p {
+    margin-top: 4px;
+    color: #a8a29e;
+    font-size: 14px;
+    line-height: 20px;
+    max-width: 290px;
+}
+
+.login-form {
+    margin-top: 32px;
+}
+
+.field {
+    margin-bottom: 24px;
+}
+
+.field label {
+    display: block;
+    margin-left: 4px;
+    color: #78716c;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+}
+
+.field-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.forgot-link {
+    color: #78716c;
+    font-size: 10px;
+    letter-spacing: -0.05em;
+    line-height: 15px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.forgot-link:hover {
+    color: rgba(244, 140, 37, 0.8);
+}
+
+.input-wrap {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.input-wrap input {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #292524;
+    background: rgba(34, 25, 16, 0.5);
+    color: #d6d3d1;
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 21px;
+    padding: 18px 17px 19px 45px;
+    outline: none;
+}
+
+.input-wrap input::placeholder {
+    color: #57534e;
+}
+
+.input-wrap input:focus {
+    border-color: rgba(244, 140, 37, 0.7);
+    box-shadow: 0 0 0 3px rgba(244, 140, 37, 0.15);
+}
+
+.login-error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 6px;
+    color: #f87171;
+    font-size: 13px;
+    padding: 10px 14px;
+    margin-bottom: 4px;
+}
+
+.login-btn {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: #f48c25;
+    color: #221910;
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 24px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 16px;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.login-btn:hover {
+    filter: brightness(1.05);
+}
+
+.login-btn:active {
+    transform: translateY(1px);
+}
+
+.demo-creds {
+    margin-top: 12px;
+    color: rgba(244, 140, 37, 0.65);
+    font-size: 11px;
+    line-height: 16px;
+    text-transform: uppercase;
+}
+
+.demo-creds strong {
+    color: #d6d3d1;
+    font-weight: 700;
+}
+
+.info-panel {
+    margin-top: 25px;
+    padding-top: 25px;
+    border-top: 1px solid rgba(41, 37, 36, 0.5);
+}
+
+.info-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.info-icon {
+    width: 15px;
+    height: 17px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.info-content p {
+    color: #78716c;
+    font-size: 11px;
+    line-height: 17.88px;
+    text-transform: uppercase;
+}
+
+.info-content strong {
+    color: #d6d3d1;
+    font-weight: 500;
+}
+
+.info-content span {
+    color: rgba(244, 140, 37, 0.7);
+}
+
+.admin-footer {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding-top: 32px;
+}
+
+.status-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #78716c;
+    font-size: 10px;
+    line-height: 15px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.footer-divider {
+    width: 1px;
+    height: 16px;
+    background: #292524;
+}
+
+.support-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #78716c;
+    font-size: 10px;
+    line-height: 15px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.support-link:hover {
+    color: rgba(244, 140, 37, 0.8);
+}
+
+.support-link img {
+    width: 9px;
+    height: 9px;
+}
+
+.starting-money-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    background: rgba(34, 25, 16, 0.72);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.starting-money-overlay.is-hidden {
+    display: none;
+}
+
+body.starting-money-overlay-open {
+    overflow: hidden;
+}
+
+.starting-money-modal {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(34, 25, 16, 0.95);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+.starting-money-modal__accent {
+    height: 6px;
+    background: linear-gradient(90deg, rgba(244, 140, 37, 0) 0%, #f48c25 50%, rgba(244, 140, 37, 0) 100%);
+}
+
+.starting-money-modal__body {
+    padding: 32px 36px 36px;
+}
+
+.starting-money-modal__header {
+    margin-bottom: 24px;
+}
+
+.starting-money-modal__badge {
+    display: inline-block;
+    margin-bottom: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(244, 140, 37, 0.12);
+    color: rgba(244, 140, 37, 0.9);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.starting-money-modal__title {
+    font-size: 28px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.starting-money-modal__desc {
+    margin-top: 8px;
+    color: #a8a29e;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.starting-money-modal__field-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #d6d3d1;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.starting-money-modal__input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(26, 28, 33, 0.8);
+    padding: 0 14px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.starting-money-modal__input-wrap:focus-within {
+    border-color: rgba(244, 140, 37, 0.7);
+    box-shadow: 0 0 0 3px rgba(244, 140, 37, 0.15);
+}
+
+.starting-money-modal__currency {
+    color: rgba(244, 140, 37, 0.85);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.starting-money-modal__input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 700;
+    padding: 14px 0;
+    outline: none;
+    width: 100%;
+}
+
+.starting-money-modal__input::placeholder {
+    color: #57534e;
+}
+
+.starting-money-modal__error {
+    margin-top: 12px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 6px;
+    color: #f87171;
+    font-size: 13px;
+    padding: 10px 14px;
+}
+
+.starting-money-modal__btn {
+    width: 100%;
+    margin-top: 20px;
+    border: 0;
+    border-radius: 8px;
+    background: #f48c25;
+    color: #221910;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 15px;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.starting-money-modal__btn:hover {
+    filter: brightness(1.05);
+}
+
+.starting-money-modal__btn:active {
+    transform: translateY(1px);
+}
+
+.starting-money-modal__skip {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    border: 0;
+    background: transparent;
+    color: #78716c;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 8px;
+    cursor: pointer;
+}
+
+.starting-money-modal__skip:hover {
+    color: rgba(244, 140, 37, 0.85);
+}
+
+@media (max-width: 680px) {
+    .admin-page {
+        padding: 24px 16px;
+    }
+
+    .admin-brand-title {
+        font-size: 40px;
+        line-height: 42px;
+    }
+
+    .admin-brand-subtitle {
+        font-size: 16px;
+        letter-spacing: 0.1em;
+    }
+
+    .login-card-body {
+        padding: 28px 20px;
+    }
+
+    .admin-footer {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .footer-divider {
+        display: none;
+    }
+
+    .starting-money-modal__body {
+        padding: 24px 20px 28px;
+    }
+
+    .starting-money-modal__title {
+        font-size: 24px;
+    }
+}

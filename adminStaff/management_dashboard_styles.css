@@ -1,0 +1,638 @@
+.mgmt-main {
+    padding: 26px 32px 24px;
+    display: grid;
+    gap: 18px;
+}
+
+.mgmt-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.mgmt-eyebrow {
+    margin: 0 0 8px;
+    color: #f48c25;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.mgmt-hero h1 {
+    margin: 0;
+    font-size: 40px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+}
+
+.mgmt-hero__text {
+    margin: 10px 0 0;
+    max-width: 760px;
+    color: #cbd5e1;
+    line-height: 1.6;
+}
+
+.mgmt-period-card,
+.mgmt-panel,
+.mgmt-kpi-card,
+.mgmt-financial-card,
+.mgmt-shift-card,
+.mgmt-detail-card {
+    border: 1px solid #3d3025;
+    background: rgba(42, 33, 24, 0.92);
+    border-radius: 14px;
+}
+
+.mgmt-period-card {
+    min-width: 250px;
+    padding: 16px 18px;
+}
+
+.mgmt-period-card__label {
+    display: block;
+    margin-bottom: 6px;
+    color: #f48c25;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.mgmt-period-card strong {
+    display: block;
+    font-size: 20px;
+}
+
+.mgmt-period-card p {
+    margin: 8px 0 0;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mgmt-filter-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.mgmt-filter-chip {
+    border: 1px solid #3d3025;
+    background: #2a2118;
+    color: #cbd5e1;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: default;
+}
+
+.mgmt-filter-chip--active {
+    background: #f48c25;
+    border-color: #f48c25;
+    color: #120e0a;
+}
+
+.mgmt-panel {
+    padding: 18px;
+    display: grid;
+    gap: 16px;
+}
+
+.mgmt-panel__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.mgmt-panel__head h2 {
+    margin: 0;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+}
+
+.mgmt-panel__head p {
+    margin: 8px 0 0;
+    color: #94a3b8;
+    line-height: 1.5;
+    max-width: 760px;
+}
+
+.mgmt-head-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgba(244, 140, 37, 0.12);
+    border: 1px solid rgba(244, 140, 37, 0.35);
+    color: #f48c25;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.mgmt-cashier-card,
+.mgmt-kpi-grid,
+.mgmt-financial-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.mgmt-cashier-card {
+    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    align-items: stretch;
+}
+
+.mgmt-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mgmt-financial-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mgmt-cashier-field,
+.mgmt-cashier-summary,
+.mgmt-kpi-card,
+.mgmt-financial-card {
+    padding: 16px;
+}
+
+.mgmt-cashier-field,
+.mgmt-cashier-summary {
+    border: 1px solid #3d3025;
+    background: rgba(18, 14, 10, 0.55);
+    border-radius: 14px;
+    color: #fff;
+}
+
+.mgmt-cashier-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mgmt-cashier-field > span,
+.mgmt-cashier-summary__role,
+.mgmt-kpi-card span,
+.mgmt-financial-card span {
+    display: block;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.mgmt-cashier-field select {
+    border: 1px solid #3d3025;
+    background: #120e0a;
+    color: #fff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+}
+
+.mgmt-cashier-field select:focus {
+    border-color: #f48c25;
+}
+
+.mgmt-add-cashier-btn {
+    border: 1px solid #f48c25;
+    background: rgba(244, 140, 37, 0.12);
+    color: #f48c25;
+    border-radius: 10px;
+    padding: 11px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.mgmt-add-cashier-btn:hover {
+    background: #f48c25;
+    color: #120e0a;
+}
+
+.mgmt-switch-admin-btn {
+    margin-top: 8px;
+    width: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: transparent;
+    color: #cbd5e1;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mgmt-switch-admin-btn:hover {
+    border-color: #f48c25;
+    color: #f48c25;
+}
+
+.mgmt-cashier-summary strong,
+.mgmt-kpi-card strong,
+.mgmt-financial-card strong {
+    display: block;
+    margin-top: 10px;
+    font-size: 22px;
+    line-height: 1.2;
+    color: #fff;
+}
+
+.mgmt-cashier-summary p,
+.mgmt-kpi-card p {
+    display: block;
+    margin: 10px 0 0;
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mgmt-detail-card {
+    padding: 16px;
+}
+
+.mgmt-detail-card h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+}
+
+.mgmt-detail-card__text {
+    margin: 0;
+    color: #cbd5e1;
+    line-height: 1.6;
+}
+
+.mgmt-sales-history {
+    border: 1px solid #3d3025;
+    background: rgba(18, 14, 10, 0.45);
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.mgmt-sales-history__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.mgmt-sales-history__head h3 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 0.03em;
+}
+
+.mgmt-sales-history__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgba(244, 140, 37, 0.12);
+    border: 1px solid rgba(244, 140, 37, 0.35);
+    color: #f48c25;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.mgmt-sales-history__list {
+    display: grid;
+    gap: 10px;
+}
+
+.mgmt-sales-history-item {
+    border: 1px solid rgba(61, 48, 37, 0.8);
+    background: rgba(42, 33, 24, 0.92);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.mgmt-sales-history-item__main {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.mgmt-sales-history-item__meta,
+.mgmt-sales-history-item__total-row,
+.mgmt-sales-history-item__line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.mgmt-sales-history-item__meta {
+    margin-top: 8px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.mgmt-sales-history-item__lines {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+}
+
+.mgmt-sales-history-item__line {
+    color: #e2e8f0;
+    font-size: 13px;
+}
+
+.mgmt-sales-history-item__line strong {
+    font-weight: 500;
+}
+
+.mgmt-sales-history-item__divider {
+    height: 1px;
+    margin: 12px 0;
+    background: rgba(61, 48, 37, 0.8);
+}
+
+.mgmt-sales-history-item__total-row {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.mgmt-sales-history-item__total-label {
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.mgmt-refund-history__list {
+    display: grid;
+    gap: 10px;
+}
+
+.mgmt-refund-card {
+    border: 1px solid rgba(61, 48, 37, 0.8);
+    background: rgba(42, 33, 24, 0.92);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.mgmt-refund-card__main {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.mgmt-refund-card__meta {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.mgmt-refund-card__reason {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(244, 140, 37, 0.08);
+    border: 1px solid rgba(244, 140, 37, 0.2);
+    color: #e2e8f0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mgmt-refund-card__reason strong {
+    color: #f48c25;
+}
+
+.mgmt-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    z-index: 60;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease-out;
+}
+
+.mgmt-modal-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mgmt-modal {
+    width: min(460px, 100%);
+    background: #1a1410;
+    border: 1px solid #3d3025;
+    border-radius: 14px;
+    box-shadow: 0 32px 72px rgba(0, 0, 0, 0.7);
+}
+
+.mgmt-modal__header,
+.mgmt-modal__footer {
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.mgmt-modal__header {
+    border-bottom: 1px solid rgba(61, 48, 37, 0.8);
+}
+
+.mgmt-modal__footer {
+    border-top: 1px solid rgba(61, 48, 37, 0.8);
+    justify-content: flex-end;
+}
+
+.mgmt-modal__header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.mgmt-modal__close {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.mgmt-modal__body {
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+}
+
+.mgmt-modal__hint {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mgmt-modal__error {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    color: #fca5a5;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.mgmt-modal__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mgmt-modal__field span {
+    color: #f48c25;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.mgmt-modal__field input {
+    border: 1px solid #3d3025;
+    background: #120e0a;
+    color: #fff;
+    border-radius: 10px;
+    padding: 11px 12px;
+    font: inherit;
+    outline: none;
+}
+
+.mgmt-modal__field input:focus {
+    border-color: #f48c25;
+}
+
+.mgmt-modal__btn {
+    border-radius: 10px;
+    padding: 10px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.mgmt-modal__btn--muted {
+    background: #2a2118;
+    border-color: #3d3025;
+    color: #fff;
+}
+
+.mgmt-modal__btn--primary {
+    background: #f48c25;
+    border-color: #f48c25;
+    color: #120e0a;
+}
+
+.mgmt-list {
+    margin: 0;
+    padding-left: 18px;
+    color: #cbd5e1;
+    line-height: 1.7;
+}
+
+.mgmt-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 32px;
+    border-top: 1px solid #3d3025;
+    color: rgba(244, 140, 37, 0.6);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.mgmt-footer__left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.mgmt-footer__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #f48c25;
+}
+
+@media (max-width: 1100px) {
+    .mgmt-hero {
+        flex-direction: column;
+    }
+
+    .mgmt-period-card {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .mgmt-cashier-card,
+    .mgmt-financial-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mgmt-cashier-card {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 780px) {
+    .mgmt-main {
+        padding: 18px 16px 20px;
+    }
+
+    .mgmt-hero h1 {
+        font-size: 32px;
+    }
+
+    .mgmt-panel__head {
+        flex-direction: column;
+    }
+
+    .mgmt-kpi-grid,
+    .mgmt-cashier-card,
+    .mgmt-financial-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mgmt-footer {
+        padding: 14px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

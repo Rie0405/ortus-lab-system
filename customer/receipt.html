@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortus Lab — Order Receipt</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="receipt_styles.css">
+</head>
+<body>
+    <main class="receipt-page" id="receipt-page">
+        <header class="receipt-page__brand">
+            <span class="receipt-page__logo">ORTUS LAB</span>
+            <span class="receipt-page__tag">Order Receipt</span>
+        </header>
+        <div id="receipt-loading" class="receipt-state">Loading receipt…</div>
+        <div id="receipt-error" class="receipt-state receipt-state--error" hidden></div>
+        <article id="receipt-card" class="receipt-card" hidden></article>
+    </main>
+    <script>
+    (function () {
+        function esc(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function formatPHP(n) {
+            var num = Number(n || 0);
+            if (!Number.isFinite(num)) num = 0;
+            return '₱' + num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        function formatDate(raw) {
+            if (!raw) return '';
+            var d = new Date(raw);
+            if (isNaN(d.getTime())) return String(raw);
+            return d.toLocaleString(undefined, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+        function labelStatus(st) {
+            var s = String(st || '').toLowerCase();
+            if (s === 'confirmed') return 'Confirmed';
+            if (s === 'served') return 'Served';
+            if (s === 'pending') return 'Pending confirmation';
+            if (s === 'voided') return 'Voided';
+            return st || '—';
+        }
+        function labelPayment(pm) {
+            var p = String(pm || '').toLowerCase();
+            if (p === 'gcash') return 'GCash';
+            if (p === 'cash') return 'Cash';
+            return pm || '—';
+        }
+        function renderReceipt(r) {
+            var items = r.items || [];
+            var rows = items.map(function (it) {
+                var note = it.notes ? '<small class="receipt-line-note">' + esc(it.notes) + '</small>' : '';
+                return '' +
+                    '<div class="receipt-line">' +
+                        '<div class="receipt-line__main">' +
+                            '<strong>' + esc(it.name) + '</strong>' +
+                            '<span>x' + (parseInt(it.quantity, 10) || 1) + '</span>' +
+                        '</div>' +
+                        note +
+                        '<div class="receipt-line__amt">' + formatPHP(it.subtotal) + '</div>' +
+                    '</div>';
+            }).join('');
+
+            var discountBlock = '';
+            if (parseFloat(r.discount_amount || 0) > 0) {
+                discountBlock =
+                    '<div class="receipt-total-row"><span>Discount</span><strong>-' + formatPHP(r.discount_amount) + '</strong></div>';
+            }
+            var vatBlock = '';
+            if (parseFloat(r.vat_exempt_amount || 0) > 0) {
+                vatBlock =
+                    '<div class="receipt-total-row"><span>VAT exempt</span><strong>' + formatPHP(r.vat_exempt_amount) + '</strong></div>';
+            }
+
+            return '' +
+                '<div class="receipt-card__head">' +
+                    '<h1>#' + esc(r.order_number) + '</h1>' +
+                    '<p>' + esc(formatDate(r.created_at)) + '</p>' +
+                '</div>' +
+                '<div class="receipt-meta">' +
+                    '<span><em>Status</em> ' + esc(labelStatus(r.status)) + '</span>' +
+                    '<span><em>Payment</em> ' + esc(labelPayment(r.payment_method)) + '</span>' +
+                '</div>' +
+                '<div class="receipt-items">' + (rows || '<p class="receipt-empty">No line items.</p>') + '</div>' +
+                '<div class="receipt-totals">' +
+                    '<div class="receipt-total-row"><span>Subtotal</span><strong>' + formatPHP(r.gross_amount) + '</strong></div>' +
+                    vatBlock + discountBlock +
+                    '<div class="receipt-total-row receipt-total-row--grand"><span>Total</span><strong>' + formatPHP(r.total_amount) + '</strong></div>' +
+                '</div>' +
+                '<p class="receipt-foot">Thank you for ordering at Ortus Lab.</p>';
+        }
+
+        var params = new URLSearchParams(window.location.search);
+        var token = params.get('t') || '';
+        var loading = document.getElementById('receipt-loading');
+        var errEl = document.getElementById('receipt-error');
+        var card = document.getElementById('receipt-card');
+
+        if (!token) {
+            if (loading) loading.hidden = true;
+            if (errEl) { errEl.hidden = false; errEl.textContent = 'Missing receipt link.'; }
+            return;
+        }
+
+        fetch('api/receipt_public.php?t=' + encodeURIComponent(token), { cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (loading) loading.hidden = true;
+                if (!d || !d.success || !d.receipt) {
+                    if (errEl) {
+                        errEl.hidden = false;
+                        errEl.textContent = (d && d.error) || 'Could not load receipt.';
+                    }
+                    return;
+                }
+                if (card) {
+                    card.innerHTML = renderReceipt(d.receipt);
+                    card.hidden = false;
+                }
+            })
+            .catch(function () {
+                if (loading) loading.hidden = true;
+                if (errEl) {
+                    errEl.hidden = false;
+                    errEl.textContent = 'Network error while loading receipt.';
+                }
+            });
+    })();
+    </script>
+</body>
+</html>

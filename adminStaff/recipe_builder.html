@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Recipes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050608;
+            --panel: #101216;
+            --panel-border: #1a202b;
+            --text: #e5e7eb;
+            --muted: #8a94a6;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --ok: #22c55e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+        .page {
+            min-height: 100vh;
+            padding: 0 24px 24px;
+        }
+        .topbar {
+            height: 66px;
+            display: grid;
+            grid-template-columns: 120px 1fr 120px;
+            align-items: center;
+            border-bottom: 1px solid #111827;
+            margin-bottom: 18px;
+        }
+        .back-btn, .save-btn {
+            border: 0;
+            border-radius: 8px;
+            font: inherit;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: .04em;
+            padding: 9px 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .back-btn { background: #b91c1c; color: #fff; justify-self: start; }
+        .save-btn { background: var(--accent); color: #1f2937; justify-self: end; }
+        .top-title {
+            text-align: center;
+            margin: 0;
+            font-size: 35px;
+            font-style: italic;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+        .panel {
+            max-width: 1280px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #11151b 0%, #0d1117 100%);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 28px;
+        }
+        .product-name {
+            margin: 0;
+            font-size: 46px;
+            font-weight: 500;
+        }
+        .hint {
+            margin: 6px 0 24px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .ingredient-grid-head, .ingredient-row {
+            display: grid;
+            grid-template-columns: minmax(260px, 1fr) 36px;
+            gap: 10px;
+            align-items: center;
+        }
+        /* Temporarily hidden — Amount / Units / Line Cost / summary */
+        .ingredient-row [data-field="qty"],
+        .ingredient-row [data-field="unit"],
+        .ingredient-row .cost-input-wrap,
+        .summary {
+            display: none !important;
+        }
+        .ingredient-grid-head {
+            margin: 18px 0 10px;
+        }
+        .ingredient-grid-head span {
+            color: var(--muted);
+            font-size: 13px;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .ingredient-row { margin-bottom: 10px; }
+        input, select {
+            width: 100%;
+            border: 1px solid #243041;
+            background: #0b0f14;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 11px 12px;
+            font: inherit;
+        }
+        input::placeholder { color: #6b7280; }
+        .cost-input-wrap {
+            position: relative;
+        }
+        .cost-input-wrap span {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        .cost-input-wrap input { padding-left: 28px; }
+        .remove-ingredient {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #3b4250;
+            border-radius: 8px;
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .add-ingredient {
+            margin-top: 4px;
+            border: 0;
+            background: transparent;
+            color: var(--accent);
+            font: inherit;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .summary {
+            margin-top: 26px;
+            border-top: 1px solid #1f2937;
+            padding-top: 22px;
+            display: grid;
+            justify-content: end;
+            gap: 10px;
+        }
+        .summary-row {
+            display: grid;
+            grid-template-columns: 160px 180px;
+            align-items: center;
+            gap: 10px;
+        }
+        .summary-row label {
+            color: #4ade80;
+            font-size: 14px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            font-weight: 700;
+            text-align: right;
+        }
+        @media (max-width: 980px) {
+            .ingredient-grid-head, .ingredient-row {
+                grid-template-columns: 1fr 36px;
+            }
+            .topbar { grid-template-columns: 1fr; height: auto; gap: 10px; padding: 10px 0; }
+            .top-title { order: -1; }
+            .back-btn, .save-btn { justify-self: stretch; }
+        }
+        .variant-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 18px;
+        }
+        .variant-tab {
+            border: 1px solid #243041;
+            border-radius: 999px;
+            background: #0b0f14;
+            color: var(--muted);
+            padding: 8px 16px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            cursor: pointer;
+        }
+        .variant-tab.active {
+            background: var(--accent);
+            color: #111827;
+            border-color: var(--accent);
+        }
+        .recipe-partition {
+            display: none;
+        }
+        .recipe-partition.active {
+            display: block;
+        }
+        .partition-title {
+            margin: 0 0 12px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header class="topbar">
+            <button type="button" class="back-btn" id="btn-back-recipes">&lt; Back</button>
+            <h1 class="top-title">Create Recipes</h1>
+            <button type="button" class="save-btn" id="btn-save-recipe">Save Recipe</button>
+        </header>
+
+        <section class="panel">
+            <h2 class="product-name" id="recipe-product-name">Menu Item</h2>
+            <p class="hint" id="recipe-builder-hint">Select ingredients for this product. Cost fields are hidden for now.</p>
+
+            <div class="variant-tabs" id="variant-tabs" hidden></div>
+            <div id="recipe-partitions"></div>
+
+            <template id="recipe-partition-template">
+                <div class="recipe-partition" data-variant-signature="">
+                    <h3 class="partition-title"></h3>
+                    <div class="ingredient-grid-head">
+                        <span>Ingredients</span>
+                        <span></span>
+                    </div>
+                    <div class="ingredient-rows"></div>
+                    <button type="button" class="add-ingredient">+ Add ingredient</button>
+                    <div class="summary" hidden>
+                        <div class="summary-row">
+                            <label>Cost of Goods (COGS):</label>
+                            <div class="cost-input-wrap">
+                                <span>P</span>
+                                <input type="number" class="partition-unit-cost" step="0.01" value="0.00" readonly>
+                            </div>
+                        </div>
+                        <div class="summary-row">
+                            <label>Gross Profit:</label>
+                            <div class="cost-input-wrap">
+                                <span>P</span>
+                                <input type="number" class="partition-gross-profit" step="0.01" value="0.00" readonly>
+                            </div>
+                        </div>
+                        <div class="summary-row">
+                            <label>Sale Price:</label>
+                            <div class="cost-input-wrap">
+                                <span>P</span>
+                                <input type="number" class="partition-sale-price" step="0.01" value="0.00">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </section>
+    </div>
+
+    <script>
+    (function () {
+        var qp = new URLSearchParams(window.location.search || '');
+        var menuId = qp.get('menu_id') || '';
+        var productNameEl = document.getElementById('recipe-product-name');
+        var backBtn = document.getElementById('btn-back-recipes');
+        var saveBtn = document.getElementById('btn-save-recipe');
+        var variantTabsEl = document.getElementById('variant-tabs');
+        var partitionsWrap = document.getElementById('recipe-partitions');
+        var partitionTemplate = document.getElementById('recipe-partition-template');
+        var inventoryItems = [];
+        var saveInFlight = false;
+        var menuItem = null;
+        var variantDefs = [];
+        var recipesByVariant = {};
+        var activeVariantSignature = '';
+
+        function variantSignatureFromParsed(v) {
+            if (!v) return '';
+            var size = String(v.size || '').trim();
+            var label = String(v.label || '').trim();
+            if (size && label && size !== label) return size + ' (' + label + ')';
+            return size || label || '';
+        }
+
+        function parseVariantsFromDescription(description) {
+            var descStr = String(description || '');
+            var lines = descStr.split(/\r?\n/);
+            var line = null;
+            lines.forEach(function (ln) {
+                if (line) return;
+                if (/^\s*Variants\s*:/i.test(ln || '')) line = ln;
+            });
+            if (!line) return [];
+            var payload = String(line).replace(/^\s*Variants\s*:/i, '').trim();
+            if (!payload) return [];
+            return payload.split(';').map(function (seg) {
+                var s = String(seg || '').trim();
+                if (!s) return null;
+                var lastEq = s.lastIndexOf('=');
+                if (lastEq === -1) return null;
+                var left = s.substring(0, lastEq).trim();
+                var priceStr = s.substring(lastEq + 1).trim();
+                var firstParen = left.indexOf('(');
+                if (firstParen === -1) {
+                    return { size: left, label: left, price: priceStr };
+                }
+                var size = left.substring(0, firstParen).trim();
+                var label = left.substring(firstParen + 1).trim();
+                if (label.endsWith(')')) label = label.substring(0, label.length - 1).trim();
+                return { size: size, label: label, price: priceStr };
+            }).filter(Boolean);
+        }
+
+        function getInventoryItemById(id) {
+            return inventoryItems.find(function (it) { return it.id === id; }) || null;
+        }
+
+        function getSelectedInventoryId(row) {
+            var sel = row.querySelector('[data-field="name"]');
+            if (!sel || !sel.selectedIndex) return null;
+            var invId = parseInt(sel.options[sel.selectedIndex].getAttribute('data-inv-id'), 10);
+            return Number.isFinite(invId) && invId > 0 ? invId : null;
+        }
+
+        function escAttr(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;');
+        }
+
+        function parseMoney(v) {
+            var n = parseFloat(String(v == null ? '' : v).replace(/,/g, '').trim());
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function getPartition(signature) {
+            return partitionsWrap.querySelector('.recipe-partition[data-variant-signature="' + escAttr(signature) + '"]');
+        }
+
+        function getRowsWrap(partition) {
+            return partition ? partition.querySelector('.ingredient-rows') : null;
+        }
+
+        function normalizeMeasureUnit(unit) {
+            var u = String(unit || 'unit').trim().toLowerCase();
+            return u === 'units' ? 'unit' : u;
+        }
+
+        function measureFamily(unit) {
+            var u = normalizeMeasureUnit(unit);
+            if (u === 'g' || u === 'kg') return 'weight';
+            if (u === 'ml' || u === 'l') return 'volume';
+            return 'count';
+        }
+
+        function amountToBase(amount, unit) {
+            var u = normalizeMeasureUnit(unit);
+            var n = Math.max(0, parseMoney(amount));
+            if (u === 'kg') return { family: 'weight', amount: n * 1000 };
+            if (u === 'g') return { family: 'weight', amount: n };
+            if (u === 'l') return { family: 'volume', amount: n * 1000 };
+            if (u === 'ml') return { family: 'volume', amount: n };
+            return { family: 'count', amount: n };
+        }
+
+        function computeIngredientLineCost(inventoryItem, useAmount, useUnit) {
+            if (!inventoryItem) return 0;
+            var bulkPrice = parseMoney(inventoryItem.unit_cost);
+            var packAmount = parseMoney(inventoryItem.per_stock_amount);
+            if (packAmount <= 0) packAmount = 1;
+            var useQty = Math.max(0, parseMoney(useAmount));
+            if (bulkPrice <= 0 || useQty <= 0) return 0;
+
+            var packBase = amountToBase(packAmount, inventoryItem.per_stock_unit || 'pcs');
+            var useBase = amountToBase(useQty, useUnit);
+            if (packBase.family !== useBase.family || packBase.amount <= 0) return 0;
+
+            return Math.round(((bulkPrice / packBase.amount) * useBase.amount) * 100) / 100;
+        }
+
+        function readRowLineCost(row) {
+            return parseMoney((row.querySelector('[data-field="line_cost"]') || {}).value);
+        }
+
+        function autoFillRowLineCost(row, force) {
+            if (!row) return 0;
+            var lineCostEl = row.querySelector('[data-field="line_cost"]');
+            if (!force && (row.getAttribute('data-manual-line-cost') === '1' || row.getAttribute('data-persist-line-cost') === '1')) {
+                return readRowLineCost(row);
+            }
+
+            if (force) {
+                row.removeAttribute('data-persist-line-cost');
+                row.removeAttribute('data-manual-line-cost');
+            }
+
+            var qtyEl = row.querySelector('[data-field="qty"]');
+            var unitEl = row.querySelector('[data-field="unit"]');
+            var qty = parseMoney(qtyEl && qtyEl.value);
+            var unit = unitEl ? String(unitEl.value || 'unit') : 'unit';
+            var invId = getSelectedInventoryId(row);
+            var item = invId ? getInventoryItemById(invId) : null;
+            var lineCost = computeIngredientLineCost(item, qty, unit);
+            if (lineCostEl) {
+                lineCostEl.value = lineCost > 0 ? lineCost.toFixed(2) : '';
+            }
+            return lineCost;
+        }
+
+        function computeIngredientLineCostForRow(row) {
+            return autoFillRowLineCost(row, false);
+        }
+
+        function recalcPartition(partition, options) {
+            options = options || {};
+            if (!partition) return;
+            var unitCost = 0;
+            getRowsWrap(partition).querySelectorAll('.ingredient-row').forEach(function (row) {
+                unitCost += options.fromManualLineCost
+                    ? readRowLineCost(row)
+                    : autoFillRowLineCost(row, false);
+            });
+            var saleInput = partition.querySelector('.partition-sale-price');
+            var unitCostInput = partition.querySelector('.partition-unit-cost');
+            var grossInput = partition.querySelector('.partition-gross-profit');
+            var sale = parseMoney(saleInput && saleInput.value);
+            if (unitCostInput) unitCostInput.value = unitCost.toFixed(2);
+            if (grossInput) grossInput.value = (sale - unitCost).toFixed(2);
+        }
+
+        function buildIngredientOptions(selectedName) {
+            var html = '<option value="">Select ingredient</option>';
+            inventoryItems.forEach(function (item) {
+                var name = item.name || '';
+                var selected = selectedName && String(selectedName) === String(name) ? ' selected' : '';
+                html += '<option value="' + escAttr(name) + '" data-inv-id="' + item.id + '"' + selected + '>' +
+                    escAttr(name) + '</option>';
+            });
+            return html;
+        }
+
+        function applyIngredientSelection(row) {
+            if (!row) return;
+            autoFillRowLineCost(row, true);
+        }
+
+        function ingredientRowHtml(defaults) {
+            defaults = defaults || {};
+            var unit = defaults.unit || 'unit';
+            return '' +
+                '<div class="ingredient-row">' +
+                    '<select data-field="name">' + buildIngredientOptions(defaults.name) + '</select>' +
+                    '<input data-field="qty" type="number" min="0" step="0.01" value="' + (defaults.qty || '1') + '">' +
+                    '<select data-field="unit">' +
+                        '<option value="unit"' + (unit === 'unit' ? ' selected' : '') + '>Units</option>' +
+                        '<option value="g"' + (unit === 'g' ? ' selected' : '') + '>Grams</option>' +
+                        '<option value="kg"' + (unit === 'kg' ? ' selected' : '') + '>Kilograms</option>' +
+                        '<option value="ml"' + (unit === 'ml' ? ' selected' : '') + '>Milliliters</option>' +
+                        '<option value="l"' + (unit === 'l' ? ' selected' : '') + '>Liters</option>' +
+                        '<option value="pcs"' + (unit === 'pcs' ? ' selected' : '') + '>Pieces</option>' +
+                    '</select>' +
+                    '<div class="cost-input-wrap">' +
+                        '<span>P</span>' +
+                        '<input data-field="line_cost" type="number" min="0" step="0.01" placeholder="0.00" value="' + escAttr(defaults.line_cost || '') + '" title="Auto-fills from inventory, or type your own">' +
+                    '</div>' +
+                    '<button type="button" class="remove-ingredient" title="Remove ingredient">×</button>' +
+                '</div>';
+        }
+
+        function addIngredientRow(partition, defaults, options) {
+            options = options || {};
+            var rowsWrap = getRowsWrap(partition);
+            if (!rowsWrap) return null;
+            var tmp = document.createElement('div');
+            tmp.innerHTML = ingredientRowHtml(defaults);
+            var row = tmp.firstChild;
+            rowsWrap.appendChild(row);
+            if (defaults.persistLineCost) {
+                row.setAttribute('data-persist-line-cost', '1');
+            }
+            if (!options.skipRecalc) {
+                recalcPartition(partition);
+            }
+            return row;
+        }
+
+        function populatePartitionIngredients(partition, lines) {
+            var rowsWrap = getRowsWrap(partition);
+            if (!rowsWrap) return;
+            rowsWrap.innerHTML = '';
+            if (!lines || !lines.length) {
+                addIngredientRow(partition, { qty: '1' });
+                return;
+            }
+            lines.forEach(function (line) {
+                var savedLineCost = line.line_cost != null ? parseMoney(line.line_cost) : 0;
+                addIngredientRow(partition, {
+                    name: line.ingredient_name || '',
+                    qty: String(line.quantity != null ? line.quantity : 1),
+                    unit: line.unit || 'unit',
+                    line_cost: savedLineCost > 0 ? savedLineCost.toFixed(2) : '',
+                    persistLineCost: true
+                }, { skipRecalc: true });
+            });
+            recalcPartition(partition);
+        }
+
+        function setActiveVariant(signature) {
+            activeVariantSignature = signature;
+            if (variantTabsEl) {
+                variantTabsEl.querySelectorAll('.variant-tab').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-variant-signature') === signature);
+                });
+            }
+            partitionsWrap.querySelectorAll('.recipe-partition').forEach(function (panel) {
+                panel.classList.toggle('active', panel.getAttribute('data-variant-signature') === signature);
+            });
+        }
+
+        function createPartition(def, existing) {
+            if (!partitionTemplate || !partitionsWrap) return null;
+            var node = partitionTemplate.content.firstElementChild.cloneNode(true);
+            var signature = def.signature || '';
+            var label = def.label || def.signature || 'Default Recipe';
+            node.setAttribute('data-variant-signature', signature);
+            node.querySelector('.partition-title').textContent = variantDefs.length > 1
+                ? ('Recipe for ' + label)
+                : 'Recipe Ingredients';
+            var saleInput = node.querySelector('.partition-sale-price');
+            if (saleInput) {
+                saleInput.value = parseMoney(
+                    existing && existing.recipe && existing.recipe.sale_price != null
+                        ? existing.recipe.sale_price
+                        : (def.price != null ? def.price : (menuItem && menuItem.price))
+                ).toFixed(2);
+            }
+            partitionsWrap.appendChild(node);
+            populatePartitionIngredients(node, existing ? (existing.ingredients || []) : []);
+            return node;
+        }
+
+        function buildPartitions() {
+            partitionsWrap.innerHTML = '';
+            if (variantTabsEl) {
+                variantTabsEl.innerHTML = '';
+                variantTabsEl.hidden = variantDefs.length <= 1;
+            }
+
+            if (!variantDefs.length) {
+                var defaultDef = { signature: '', label: 'Default', price: menuItem ? menuItem.price : 0 };
+                createPartition(defaultDef, recipesByVariant[''] || null);
+                setActiveVariant('');
+                return;
+            }
+
+            variantDefs.forEach(function (def, idx) {
+                if (variantTabsEl) {
+                    var tab = document.createElement('button');
+                    tab.type = 'button';
+                    tab.className = 'variant-tab' + (idx === 0 ? ' active' : '');
+                    tab.setAttribute('data-variant-signature', def.signature);
+                    tab.textContent = def.label || def.signature;
+                    tab.addEventListener('click', function () {
+                        setActiveVariant(def.signature);
+                    });
+                    variantTabsEl.appendChild(tab);
+                }
+                createPartition(def, recipesByVariant[def.signature] || null);
+            });
+            setActiveVariant(variantDefs[0].signature);
+        }
+
+        function collectPartitionPayload(partition) {
+            var signature = partition.getAttribute('data-variant-signature') || '';
+            var ingredients = [];
+            getRowsWrap(partition).querySelectorAll('.ingredient-row').forEach(function (row) {
+                var nameEl = row.querySelector('[data-field="name"]');
+                var qtyEl = row.querySelector('[data-field="qty"]');
+                var unitEl = row.querySelector('[data-field="unit"]');
+                var name = nameEl ? String(nameEl.value || '').trim() : '';
+                var qty = parseMoney(qtyEl && qtyEl.value);
+                var unit = unitEl ? String(unitEl.value || 'unit') : 'unit';
+                var lineCost = readRowLineCost(row);
+                if (!name) return;
+                ingredients.push({
+                    inventory_item_id: getSelectedInventoryId(row),
+                    ingredient_name: name,
+                    quantity: qty,
+                    unit: unit,
+                    line_cost: lineCost,
+                    unit_cost: qty > 0 ? Math.round((lineCost / qty) * 10000) / 10000 : 0
+                });
+            });
+            recalcPartition(partition);
+            return {
+                variant_signature: signature,
+                recipe_type: 'made_to_order',
+                unit_cost: parseMoney(partition.querySelector('.partition-unit-cost').value),
+                sale_price: parseMoney(partition.querySelector('.partition-sale-price').value),
+                gross_profit: parseMoney(partition.querySelector('.partition-gross-profit').value),
+                ingredients: ingredients
+            };
+        }
+
+        function collectRecipePayload() {
+            var sets = [];
+            partitionsWrap.querySelectorAll('.recipe-partition').forEach(function (partition) {
+                sets.push(collectPartitionPayload(partition));
+            });
+            return {
+                menu_item_id: parseInt(menuId, 10),
+                recipe_type: 'made_to_order',
+                recipe_sets: sets
+            };
+        }
+
+        function loadExistingRecipe() {
+            if (!menuId) return;
+            fetch('api/recipes.php?menu_id=' + encodeURIComponent(String(menuId)))
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        buildPartitions();
+                        return;
+                    }
+                    recipesByVariant = d.recipes_by_variant || {};
+                    if (!variantDefs.length && d.variants && d.variants.length) {
+                        variantDefs = d.variants.map(function (v) {
+                            return {
+                                signature: v.signature || variantSignatureFromParsed(v),
+                                label: v.signature || variantSignatureFromParsed(v),
+                                price: v.price
+                            };
+                        });
+                    }
+                    buildPartitions();
+                })
+                .catch(function () {
+                    buildPartitions();
+                });
+        }
+
+        function saveRecipe() {
+            if (!menuId) {
+                alert('Open this page from Recipes and choose a menu item first.');
+                return;
+            }
+            var payload = collectRecipePayload();
+            var invalidLabel = '';
+            var hasInvalid = payload.recipe_sets.some(function (set) {
+                if (!set.ingredients.length) {
+                    invalidLabel = set.variant_signature || 'default';
+                    return true;
+                }
+                return set.ingredients.some(function (line) {
+                    return !line.quantity || line.quantity <= 0;
+                });
+            });
+            if (hasInvalid) {
+                alert(variantDefs.length > 1
+                    ? 'Each variant needs at least one ingredient with amount greater than zero (' + invalidLabel + ').'
+                    : 'Add at least one ingredient with an amount greater than zero.');
+                return;
+            }
+
+            if (saveInFlight) return;
+            saveInFlight = true;
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+            }
+
+            fetch('api/recipes.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        alert((d && d.error) || 'Failed to save recipe.');
+                        return;
+                    }
+                    alert('Recipe saved successfully.');
+                    loadExistingRecipe();
+                })
+                .catch(function () {
+                    alert('Network error while saving recipe.');
+                })
+                .finally(function () {
+                    saveInFlight = false;
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Save Recipe';
+                    }
+                });
+        }
+
+        partitionsWrap.addEventListener('focusin', function (e) {
+            if (!e.target || !e.target.matches('[data-field="line_cost"]')) return;
+            if (parseMoney(e.target.value) === 0) {
+                e.target.value = '';
+            }
+        });
+        partitionsWrap.addEventListener('input', function (e) {
+            var partition = e.target.closest('.recipe-partition');
+            if (!partition) return;
+            if (e.target && e.target.matches('[data-field="line_cost"]')) {
+                var row = e.target.closest('.ingredient-row');
+                if (row) {
+                    row.setAttribute('data-manual-line-cost', '1');
+                    row.removeAttribute('data-persist-line-cost');
+                }
+                recalcPartition(partition, { fromManualLineCost: true });
+                return;
+            }
+            recalcPartition(partition);
+        });
+        partitionsWrap.addEventListener('change', function (e) {
+            var partition = e.target.closest('.recipe-partition');
+            if (!partition) return;
+            if (e.target && e.target.matches('[data-field="name"]')) {
+                var row = e.target.closest('.ingredient-row');
+                if (row) applyIngredientSelection(row);
+            } else if (e.target && e.target.matches('[data-field="qty"], [data-field="unit"]')) {
+                var qtyRow = e.target.closest('.ingredient-row');
+                if (qtyRow) autoFillRowLineCost(qtyRow, true);
+            }
+            recalcPartition(partition);
+        });
+        partitionsWrap.addEventListener('click', function (e) {
+            var addBtn = e.target.closest('.add-ingredient');
+            if (addBtn) {
+                var partition = addBtn.closest('.recipe-partition');
+                if (partition) addIngredientRow(partition, { qty: '1' });
+                return;
+            }
+            var removeBtn = e.target.closest('.remove-ingredient');
+            if (!removeBtn) return;
+            var partition = removeBtn.closest('.recipe-partition');
+            var row = removeBtn.closest('.ingredient-row');
+            if (row) row.remove();
+            if (partition && !getRowsWrap(partition).querySelector('.ingredient-row')) {
+                addIngredientRow(partition);
+            }
+            if (partition) recalcPartition(partition);
+        });
+
+        if (backBtn) {
+            backBtn.addEventListener('click', function () {
+                window.location.href = 'ordering_dashboard.html';
+            });
+        }
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveRecipe);
+        }
+
+        function loadMenuItem(done) {
+            if (!menuId) {
+                if (done) done();
+                return;
+            }
+            fetch('api/menu.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success || !d.items) return;
+                    menuItem = d.items.find(function (it) { return String(it.id) === String(menuId); }) || null;
+                    if (!menuItem) return;
+                    if (productNameEl) productNameEl.textContent = menuItem.name || ('Menu #' + menuId);
+                    variantDefs = parseVariantsFromDescription(menuItem.description || '').map(function (v) {
+                        var sig = variantSignatureFromParsed(v);
+                        return {
+                            signature: sig,
+                            label: sig,
+                            price: parseMoney(v.price)
+                        };
+                    });
+                })
+                .catch(function () {})
+                .finally(function () {
+                    if (done) done();
+                });
+        }
+
+        function loadInventoryItems(done) {
+            fetch('api/inventory.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d && d.success && d.items) {
+                        inventoryItems = d.items.slice().sort(function (a, b) {
+                            return String(a.name || '').localeCompare(String(b.name || ''));
+                        });
+                    }
+                })
+                .catch(function () {})
+                .finally(function () {
+                    if (done) done();
+                });
+        }
+
+        loadInventoryItems(function () {
+            loadMenuItem(function () {
+                if (menuId) {
+                    loadExistingRecipe();
+                } else {
+                    buildPartitions();
+                }
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

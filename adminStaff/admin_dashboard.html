@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortus Lab Management Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin_dashboard_styles.css">
+    <link rel="stylesheet" href="brand_role_label.css">
+</head>
+<body>
+    <div class="dash-page" data-dashboard="admin">
+        <header class="top-nav">
+            <div class="brand-block">
+                <div class="brand-name-group">
+                    <span class="brand-name">ORTUS LAB</span>
+                    <span class="brand-role brand-role--admin">Admin</span>
+                </div>
+            </div>
+
+            <nav class="top-links">
+                <a href="admin_dashboard.html" class="top-link top-link--active">Dashboard</a>
+                <a href="inventory_dashboard.html" class="top-link">Inventory</a>
+                <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
+                <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
+                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
+            </nav>
+
+            <div class="top-actions">
+                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout">!</button>
+            </div>
+        </header>
+
+        <main class="dash-main">
+            <div id="dash-api-banner" class="dash-api-banner is-hidden" role="alert"></div>
+            <pre id="dash-debug-panel" class="dash-debug-panel is-hidden" aria-label="Dashboard debug output"></pre>
+            <section class="kpi-grid kpi-grid--sales-history" aria-label="Cashflow summary (recipe-based COGS)">
+                <article class="kpi-card">
+                    <h3>Net Sales</h3>
+                    <p class="kpi-value" id="sales-kpi-revenue">₱0.00</p>
+                    <div class="kpi-track"><span class="fill-75"></span></div>
+                </article>
+                <article class="kpi-card">
+                    <h3>Total Refunds</h3>
+                    <p class="kpi-value" id="sales-kpi-refunds">₱0.00</p>
+                    <div class="kpi-track"><span class="fill-65"></span></div>
+                </article>
+                <article class="kpi-card">
+                    <h3>Total Discounts</h3>
+                    <p class="kpi-value" id="sales-kpi-discounts">₱0.00</p>
+                    <div class="kpi-track"><span class="fill-55"></span></div>
+                </article>
+                <article class="kpi-card">
+                    <h3>Gross Profit</h3>
+                    <p class="kpi-value" id="sales-kpi-net">₱0.00</p>
+                    <div class="kpi-track"><span class="fill-70"></span></div>
+                </article>
+            </section>
+
+            <section class="grid-main">
+                <article class="panel chart-panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2>SALES</h2>
+                            <p>Sales analytics report (last 7 days)</p>
+                        </div>
+                        <div class="sales-analytics-head sales-analytics-head--inline">
+                            <div class="sales-analytics-item">
+                                <span>7D Revenue</span>
+                                <strong id="sales-analytics-revenue">₱0.00</strong>
+                            </div>
+                            <div class="sales-analytics-item">
+                                <span>Daily Average</span>
+                                <strong id="sales-analytics-daily">₱0.00</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-plot">
+                        <div class="sales-analytics">
+                            <div class="sales-analytics-line-wrap" id="sales-analytics-bars">
+                                <p class="list-hint">No sales data yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="diag-column">
+                    <h2 class="diag-title">FORECASTING</h2>
+                    <div class="diag-card">
+                        <h3>Forecast Analysis</h3>
+                        <p id="forecast-analysis-text">Analyzes recent served orders, revenue trend, and item movement to estimate demand for the next <span>7 days</span>.</p>
+                    </div>
+                    <div class="diag-card">
+                        <h3>Predictive Suggestion: Sales</h3>
+                        <p id="forecast-sales-text">Predicts which menu categories are likely to rise next cycle so you can prepare staffing and promo timing early.</p>
+                    </div>
+                    <div class="diag-card">
+                        <h3>Predictive Suggestion: Inventory</h3>
+                        <p id="forecast-inventory-text">Predicts restock priority from expected demand and consumption rate, highlighting <span>critical stock items</span> first.</p>
+                    </div>
+                </article>
+            </section>
+
+            <section class="grid-bottom">
+                <article class="panel stocks-panel" title="Units sold on the same set of orders as Staff → Sales Report → Order History (last 100 served).">
+                    <div class="panel-line-head">
+                        <div>
+                            <h3>Top selling</h3>
+                            <p class="panel-line-sub">Line-item qty · last 100 served orders</p>
+                        </div>
+                        <span>100</span>
+                    </div>
+                    <div class="top-selling-cats mini-filters" id="dash-top-selling-cats" hidden></div>
+                    <div class="line-list" id="dash-top-selling-list"></div>
+                </article>
+
+                <article class="panel idle-panel" title="Fewest units sold from served order lines in the last 30 days (same menu line basis as the staff sales report).">
+                    <div class="panel-line-head">
+                        <div>
+                            <h3>Slow moving</h3>
+                            <p class="panel-line-sub">Line-item qty · served · last 30 days</p>
+                        </div>
+                        <span>30D</span>
+                    </div>
+                    <div class="top-selling-cats mini-filters" id="dash-slow-moving-cats" hidden></div>
+                    <div class="idle-head"><span>Product</span><span>Units (30d)</span></div>
+                    <div id="dash-slow-moving-list"></div>
+                    <button class="panel-cta" type="button" title="Run Liquidation Analysis" aria-label="Run Liquidation Analysis"></button>
+                </article>
+            </section>
+        </main>
+
+        <footer class="dash-footer">
+            <div class="foot-left">
+                <span class="foot-dot"></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span class="foot-right"></span>
+        </footer>
+    </div>
+
+    <script src="dashboard_script.js"></script>
+    <script>
+    /* ── Admin dashboard: live KPI stats from DB ─────────────────────────── */
+    (function () {
+        function esc(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function peso(v) {
+            return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        var topSellingItems = [];
+        var topSellingInventoryCategories = [];
+        var topSellingFilter = 'all';
+        var slowMovingItems = [];
+        var slowMovingFilter = 'all';
+
+        function normalizeTopSellingCategory(name) {
+            return String(name || 'Uncategorized').trim() || 'Uncategorized';
+        }
+
+        function getTopSellingCategories(items, inventoryOrder) {
+            var present = {};
+            (items || []).forEach(function (item) {
+                present[normalizeTopSellingCategory(item.category)] = true;
+            });
+            var ordered = [];
+            (inventoryOrder || []).forEach(function (name) {
+                var cat = normalizeTopSellingCategory(name);
+                if (present[cat]) {
+                    ordered.push(cat);
+                    delete present[cat];
+                }
+            });
+            Object.keys(present).sort(function (a, b) {
+                return a.localeCompare(b);
+            }).forEach(function (name) {
+                ordered.push(name);
+            });
+            return ordered;
+        }
+
+        function buildTopSellingLineRow(item, rank, maxQty, showCategory) {
+            var qty = parseFloat(item.qty_sold || 0);
+            var row = document.createElement('div');
+            row.className = 'line-item';
+            var pctWidth = Math.max(12, Math.min(100, Math.round((qty / maxQty) * 100)));
+            var cat = showCategory && item.category ? ' · ' + esc(item.category) : '';
+            row.innerHTML =
+                '<span class="rank">' + String(rank).padStart(2, '0') + '</span>' +
+                '<div class="line-meta">' +
+                    '<div class="line-top"><strong>' + esc(item.name) + '</strong><span>' + qty + ' sold' + cat + '</span></div>' +
+                    '<div class="kpi-track"><span style="width:' + pctWidth + '%"></span></div>' +
+                '</div>';
+            return row;
+        }
+
+        function renderTopSellingCategoryChips() {
+            var wrap = document.getElementById('dash-top-selling-cats');
+            if (!wrap) return;
+            var cats = getTopSellingCategories(topSellingItems, topSellingInventoryCategories);
+            if (!cats.length) {
+                wrap.hidden = true;
+                wrap.innerHTML = '';
+                return;
+            }
+            wrap.hidden = false;
+            var html = '<button type="button" class="mini-filter' + (topSellingFilter === 'all' ? ' mini-filter--active' : '') + '" data-top-cat="all">All</button>';
+            cats.forEach(function (cat) {
+                var active = topSellingFilter === cat;
+                html += '<button type="button" class="mini-filter' + (active ? ' mini-filter--active' : '') + '" data-top-cat="' + esc(cat) + '">' + esc(cat) + '</button>';
+            });
+            wrap.innerHTML = html;
+            wrap.querySelectorAll('[data-top-cat]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    topSellingFilter = btn.getAttribute('data-top-cat') || 'all';
+                    renderTopSellingCategoryChips();
+                    renderTopSellingList();
+                });
+            });
+        }
+
+        function renderTopSellingList() {
+            var topList = document.getElementById('dash-top-selling-list');
+            if (!topList) return;
+            topList.innerHTML = '';
+            var tops = topSellingItems || [];
+            if (!tops.length) {
+                topList.innerHTML = '<p class="list-hint">No served orders in the database yet. Staff must mark kitchen orders Done (served) before line items appear here.</p>';
+                return;
+            }
+
+            if (topSellingFilter === 'all') {
+                var cats = getTopSellingCategories(tops, topSellingInventoryCategories);
+                cats.forEach(function (cat) {
+                    var catItems = tops.filter(function (item) {
+                        return normalizeTopSellingCategory(item.category) === cat;
+                    }).sort(function (a, b) {
+                        return parseFloat(b.qty_sold || 0) - parseFloat(a.qty_sold || 0);
+                    });
+                    if (!catItems.length) return;
+                    var block = document.createElement('div');
+                    block.className = 'line-category-block';
+                    var title = document.createElement('p');
+                    title.className = 'line-category-title';
+                    title.textContent = cat;
+                    block.appendChild(title);
+                    var maxQty = Math.max(1, parseFloat(catItems[0].qty_sold || 0));
+                    catItems.forEach(function (item, i) {
+                        block.appendChild(buildTopSellingLineRow(item, i + 1, maxQty, false));
+                    });
+                    topList.appendChild(block);
+                });
+                return;
+            }
+
+            var filtered = tops.filter(function (item) {
+                return normalizeTopSellingCategory(item.category) === topSellingFilter;
+            }).sort(function (a, b) {
+                return parseFloat(b.qty_sold || 0) - parseFloat(a.qty_sold || 0);
+            });
+            if (!filtered.length) {
+                topList.innerHTML = '<p class="list-hint">No top sellers in this category for the current window.</p>';
+                return;
+            }
+            var maxQtyFiltered = Math.max(1, parseFloat(filtered[0].qty_sold || 0));
+            filtered.forEach(function (item, i) {
+                topList.appendChild(buildTopSellingLineRow(item, i + 1, maxQtyFiltered, false));
+            });
+        }
+
+        function renderSlowMovingCategoryChips() {
+            var wrap = document.getElementById('dash-slow-moving-cats');
+            if (!wrap) return;
+            var cats = getTopSellingCategories(slowMovingItems, topSellingInventoryCategories);
+            if (!cats.length) {
+                wrap.hidden = true;
+                wrap.innerHTML = '';
+                return;
+            }
+            wrap.hidden = false;
+            var html = '<button type="button" class="mini-filter' + (slowMovingFilter === 'all' ? ' mini-filter--active' : '') + '" data-slow-cat="all">All</button>';
+            cats.forEach(function (cat) {
+                var active = slowMovingFilter === cat;
+                html += '<button type="button" class="mini-filter' + (active ? ' mini-filter--active' : '') + '" data-slow-cat="' + esc(cat) + '">' + esc(cat) + '</button>';
+            });
+            wrap.innerHTML = html;
+            wrap.querySelectorAll('[data-slow-cat]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    slowMovingFilter = btn.getAttribute('data-slow-cat') || 'all';
+                    renderSlowMovingCategoryChips();
+                    renderSlowMovingList();
+                });
+            });
+        }
+
+        function renderSlowMovingList() {
+            var slowList = document.getElementById('dash-slow-moving-list');
+            if (!slowList) return;
+            slowList.innerHTML = '';
+            var slows = slowMovingItems || [];
+            if (slowMovingFilter !== 'all') {
+                slows = slows.filter(function (item) {
+                    return normalizeTopSellingCategory(item.category) === slowMovingFilter;
+                });
+            }
+            if (!slows.length) {
+                slowList.innerHTML = '<p class="list-hint">No slow moving items in this category.</p>';
+                return;
+            }
+            slows.forEach(function (item) {
+                var qty = parseFloat(item.qty_sold_30d || 0);
+                var row = document.createElement('div');
+                row.className = 'idle-row';
+                var stat = qty <= 0
+                    ? '<span class="down">No sales</span>'
+                    : '<span class="down">' + qty + ' sold</span>';
+                row.innerHTML = '<span>' + esc(item.name) + '</span>' + stat;
+                slowList.appendChild(row);
+            });
+        }
+
+        function loadSalesHistoryKpis() {
+            var todayObj = new Date();
+            var toDate = todayObj.toISOString().slice(0, 10);
+            var fromObj = new Date(todayObj.getTime());
+            fromObj.setDate(fromObj.getDate() - 6);
+            var fromDate = fromObj.toISOString().slice(0, 10);
+            var cacheBust = Date.now();
+            fetch('api/sales.php?from=' + encodeURIComponent(fromDate) + '&to=' + encodeURIComponent(toDate) + '&limit=200&_=' + cacheBust, { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (summaryRes) {
+                    var rev = 0;
+                    var refunds = 0;
+                    var discounts = 0;
+                    var grossProfit = 0;
+                    var orders = [];
+                    if (summaryRes && summaryRes.success && summaryRes.summary) {
+                        rev = parseFloat(summaryRes.summary.net_sales || summaryRes.summary.total_revenue || 0);
+                        refunds = parseFloat(summaryRes.summary.refunds_total || 0);
+                        discounts = parseFloat(summaryRes.summary.discounts_total || 0);
+                        grossProfit = parseFloat(summaryRes.summary.gross_profit || 0);
+                        orders = Array.isArray(summaryRes.orders) ? summaryRes.orders : [];
+                    }
+
+                    var revEl = document.getElementById('sales-kpi-revenue');
+                    var refundsEl = document.getElementById('sales-kpi-refunds');
+                    var discountsEl = document.getElementById('sales-kpi-discounts');
+                    var netEl = document.getElementById('sales-kpi-net');
+                    var analyticsRevEl = document.getElementById('sales-analytics-revenue');
+                    var analyticsDailyEl = document.getElementById('sales-analytics-daily');
+                    var analyticsBarsEl = document.getElementById('sales-analytics-bars');
+                    if (revEl) revEl.textContent = peso(rev);
+                    if (refundsEl) refundsEl.textContent = peso(refunds);
+                    if (discountsEl) discountsEl.textContent = peso(discounts);
+                    if (netEl) netEl.textContent = peso(grossProfit);
+                    if (analyticsRevEl) analyticsRevEl.textContent = peso(rev);
+                    if (analyticsDailyEl) analyticsDailyEl.textContent = peso(rev / 7);
+                    if (analyticsBarsEl) {
+                        var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        var buckets = {};
+                        for (var i = 6; i >= 0; i--) {
+                            var d = new Date(todayObj.getTime());
+                            d.setDate(todayObj.getDate() - i);
+                            var key = d.toISOString().slice(0, 10);
+                            buckets[key] = { label: dayNames[d.getDay()], amount: 0 };
+                        }
+
+                        orders.forEach(function (order) {
+                            var created = String(order && order.created_at || '');
+                            var key = created.slice(0, 10);
+                            if (!buckets[key]) return;
+                            buckets[key].amount += parseFloat(order.total_amount || 0);
+                        });
+
+                        var dayRows = Object.keys(buckets).map(function (key) {
+                            return buckets[key];
+                        });
+                        var maxAmount = dayRows.reduce(function (m, row) {
+                            return Math.max(m, row.amount);
+                        }, 0);
+
+                        if (maxAmount <= 0) {
+                            analyticsBarsEl.innerHTML = '<p class="list-hint">No sales data yet.</p>';
+                        } else {
+                            var width = 560;
+                            var height = 170;
+                            var paddingX = 22;
+                            var paddingY = 16;
+                            var plotWidth = width - (paddingX * 2);
+                            var plotHeight = height - (paddingY * 2);
+                            var points = [];
+                            dayRows.forEach(function (row, idx) {
+                                var x = paddingX + (plotWidth * idx / Math.max(1, dayRows.length - 1));
+                                var y = paddingY + (plotHeight * (1 - (row.amount / maxAmount)));
+                                points.push({ x: x, y: y, label: row.label, amount: row.amount });
+                            });
+                            var polyline = points.map(function (p) {
+                                return p.x.toFixed(1) + ',' + p.y.toFixed(1);
+                            }).join(' ');
+
+                            var markers = points.map(function (p) {
+                                return '' +
+                                    '<g>' +
+                                        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" class="sales-analytics-point"></circle>' +
+                                        '<title>' + p.label + ': ' + peso(p.amount) + '</title>' +
+                                    '</g>';
+                            }).join('');
+
+                            var labels = points.map(function (p) {
+                                return '<span>' + p.label + '</span>';
+                            }).join('');
+
+                            analyticsBarsEl.innerHTML =
+                                '<svg class="sales-analytics-line" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="7-day sales line chart">' +
+                                    '<line x1="' + paddingX + '" y1="' + (height - paddingY) + '" x2="' + (width - paddingX) + '" y2="' + (height - paddingY) + '" class="sales-analytics-axis"></line>' +
+                                    '<polyline points="' + polyline + '" class="sales-analytics-path"></polyline>' +
+                                    markers +
+                                '</svg>' +
+                                '<div class="sales-analytics-line-labels">' + labels + '</div>';
+                        }
+                    }
+                })
+                .catch(function (e) { console.warn('Sales history KPIs unavailable:', e.message); });
+        }
+        loadSalesHistoryKpis();
+
+        var dashDebug = typeof location !== 'undefined' && /(?:^|[?&])debug=1(?:&|$)/.test(location.search);
+        var dashUrl = 'api/dashboard.php' + (dashDebug ? '?debug=1' : '');
+
+        function dashShowBanner(message, isError) {
+            var el = document.getElementById('dash-api-banner');
+            if (!el) return;
+            if (!message) {
+                el.textContent = '';
+                el.classList.add('is-hidden');
+                el.classList.remove('dash-api-banner--error');
+                return;
+            }
+            el.textContent = message;
+            el.classList.remove('is-hidden');
+            el.classList.toggle('dash-api-banner--error', !!isError);
+        }
+
+        function dashShowDebugPanel(httpStatus, body) {
+            var el = document.getElementById('dash-debug-panel');
+            if (!el) return;
+            if (!dashDebug) {
+                el.classList.add('is-hidden');
+                el.textContent = '';
+                return;
+            }
+            var out = { http: httpStatus, success: body && body.success, error: body && body.error };
+            if (body && body.debug) out.debug = body.debug;
+            else if (body) out.response_keys = Object.keys(body);
+            el.textContent = JSON.stringify(out, null, 2);
+            el.classList.remove('is-hidden');
+        }
+
+        fetch(dashUrl, { credentials: 'same-origin' })
+            .then(function (r) {
+                return r.text().then(function (text) {
+                    var parsed = null;
+                    try {
+                        parsed = JSON.parse(text);
+                    } catch (err) {
+                        throw new Error('HTTP ' + r.status + ' — not JSON (' + text.slice(0, 160).replace(/\s+/g, ' ') + '…)');
+                    }
+                    return { status: r.status, ok: r.ok, d: parsed };
+                });
+            })
+            .then(function (packed) {
+                var d = packed.d;
+                var st = packed.status;
+                dashShowDebugPanel(st, d);
+
+                if (!packed.ok || !d || d.success !== true) {
+                    var msg = (d && d.error) ? d.error : 'Unknown error';
+                    var tip403 =
+                        'You are signed in, but this API needs an administrator. Open admin.html, log out if needed, then sign in with an admin account. ' +
+                        '(Staff sessions cannot load admin dashboard data.)';
+                    var tip401 = 'Not signed in. Open admin.html and log in.';
+                    var tip = st === 403 ? tip403 : st === 401 ? tip401 : 'Add ?debug=1 to the URL for server-side counts.';
+                    dashShowBanner('Dashboard API HTTP ' + st + ' — ' + msg + '. ' + tip, true);
+                    console.warn('[admin_dashboard] api/dashboard.php', st, d);
+                    return;
+                }
+
+                dashShowBanner('', false);
+
+                topSellingItems = d.top_items || [];
+                topSellingInventoryCategories = (d.inventory_categories || []).map(function (row) {
+                    return typeof row === 'string' ? row : (row && row.name ? row.name : '');
+                }).filter(Boolean);
+                if (!topSellingFilter || topSellingFilter === 'all') {
+                    topSellingFilter = 'all';
+                } else {
+                    var stillValid = getTopSellingCategories(topSellingItems, topSellingInventoryCategories).indexOf(topSellingFilter) !== -1;
+                    if (!stillValid) topSellingFilter = 'all';
+                }
+                renderTopSellingCategoryChips();
+                renderTopSellingList();
+
+                slowMovingItems = d.slow_items || [];
+                if (!slowMovingFilter || slowMovingFilter === 'all') {
+                    slowMovingFilter = 'all';
+                } else {
+                    var slowCats = getTopSellingCategories(slowMovingItems, topSellingInventoryCategories);
+                    if (slowCats.indexOf(slowMovingFilter) === -1) slowMovingFilter = 'all';
+                }
+                renderSlowMovingCategoryChips();
+                renderSlowMovingList();
+
+                // Forecasting cards: backend analysis -> predictive suggestions
+                var forecastAnalysisEl = document.getElementById('forecast-analysis-text');
+                var forecastSalesEl = document.getElementById('forecast-sales-text');
+                var forecastInventoryEl = document.getElementById('forecast-inventory-text');
+                var topToday = (d.top_items_today && d.top_items_today[0]) ? d.top_items_today[0] : null;
+                var slowFirst = (d.slow_items && d.slow_items[0]) ? d.slow_items[0] : null;
+                var pctRevenue = Number.isFinite(parseFloat(d.pct_revenue)) ? parseFloat(d.pct_revenue) : 0;
+                var trendWord = pctRevenue >= 0 ? 'up' : 'down';
+                var trendValue = Math.abs(pctRevenue).toFixed(1) + '%';
+                var topName = topToday && topToday.name ? topToday.name : 'Top item';
+                var topQty = topToday ? parseFloat(topToday.qty_sold || 0) : 0;
+                var slowName = slowFirst && slowFirst.name ? slowFirst.name : 'No-risk item';
+                var slowQty = slowFirst ? parseFloat(slowFirst.qty_sold_30d || 0) : 0;
+                var lowStockCount = parseInt(d.low_stock_count || 0, 10) || 0;
+
+                if (forecastAnalysisEl) {
+                    forecastAnalysisEl.innerHTML =
+                        'Backend analysis shows revenue trend is <span>' + trendWord + ' ' + trendValue +
+                        '</span> vs yesterday, based on served orders and category movement.';
+                }
+                if (forecastSalesEl) {
+                    forecastSalesEl.innerHTML =
+                        'Prediction: <span>' + esc(topName) + '</span> may stay busy next cycle (' + topQty +
+                        ' sold today), so prepare crew coverage for peak hours.';
+                }
+                if (forecastInventoryEl) {
+                    forecastInventoryEl.innerHTML =
+                        'Prediction: prioritize <span>' + esc(slowName) + '</span> review (' + slowQty +
+                        ' sold in 30d) and monitor <span>' + lowStockCount + ' low-stock item(s)</span> for restock.';
+                }
+            })
+            .catch(function (e) {
+                dashShowDebugPanel('(network/parse)', { success: false, error: e && e.message ? e.message : String(e) });
+                dashShowBanner('Dashboard load failed: ' + (e && e.message ? e.message : String(e)), true);
+                console.warn('[admin_dashboard] dashboard fetch', e);
+            });
+    })();
+    </script>
+</body>
+</html>

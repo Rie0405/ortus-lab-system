@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Ortus Lab Staff Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin_dashboard_styles.css?v=20260311-2">
+    <link rel="stylesheet" href="staff_admin_dashboard_styles.css?v=20260311-2">
+    <link rel="stylesheet" href="brand_role_label.css">
+</head>
+<body>
+    <div class="dash-page" data-dashboard="staff-admin">
+        <header class="top-nav">
+            <div class="brand-block">
+                <div class="brand-name-group">
+                    <span class="brand-name">ORTUS LAB</span>
+                    <span class="brand-role brand-role--admin">Admin</span>
+                </div>
+            </div>
+
+            <nav class="top-links">
+                <a href="admin_dashboard.html" class="top-link">Dashboard</a>
+                <a href="inventory_dashboard.html" class="top-link">Inventory</a>
+                <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
+                <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
+                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
+            </nav>
+
+            <div class="top-actions">
+                <button type="button" class="icon-btn">!</button>
+                <button type="button" class="icon-btn" id="btn-logout" title="Logout">&#x21B5;</button>
+            </div>
+        </header>
+
+        <main class="dash-main staff-main">
+            <header class="staff-header">
+                <div>
+                    <h1>Staff Management</h1>
+                    <p>Oversee garage floor operations and shift logs.</p>
+                </div>
+                <div class="staff-header-actions">
+                    <button class="staff-btn staff-btn--ghost">Export Timesheets</button>
+                    <button class="staff-btn staff-btn--primary" id="btn-register-crew">Register Crew</button>
+                </div>
+            </header>
+
+            <section class="staff-kpi-row">
+                <article class="staff-kpi-card">
+                    <h3>Total Crew</h3>
+                    <p class="staff-kpi-value">32</p>
+                </article>
+                <article class="staff-kpi-card">
+                    <h3>On Shift</h3>
+                    <p class="staff-kpi-value">12</p>
+                </article>
+                <article class="staff-kpi-card">
+                    <h3>Active Managers</h3>
+                    <p class="staff-kpi-value">03</p>
+                </article>
+                <article class="staff-kpi-card">
+                    <h3>Open Roles</h3>
+                    <p class="staff-kpi-value">02</p>
+                </article>
+            </section>
+
+            <section class="staff-filters-row">
+                <div class="staff-chip-group">
+                    <button class="staff-chip staff-chip--active">All Staff</button>
+                    <button class="staff-chip">Managers</button>
+                    <button class="staff-chip">Full Time</button>
+                    <button class="staff-chip">Students</button>
+                </div>
+                <div class="staff-icons">
+                    <button class="staff-icon-btn" aria-label="Sort staff">
+                        <img src="icons_admin/sort_icon.svg" alt="">
+                    </button>
+                    <button class="staff-icon-btn" aria-label="Filter staff">
+                        <img src="icons_admin/filter_icon.svg" alt="">
+                    </button>
+                </div>
+            </section>
+
+            <section class="staff-cards">
+                <article class="staff-card">
+                    <div class="staff-card-top">
+                        <div class="staff-avatar staff-avatar--manager">
+                            <img src="https://www.figma.com/api/mcp/asset/5fea8a80-9bdb-4e68-969d-74382eabbf49" alt="Marcus Thorne">
+                        </div>
+                        <div class="staff-meta">
+                            <h2>Marcus Thorne</h2>
+                            <span class="staff-tag staff-tag--manager">Manager</span>
+                        </div>
+                    </div>
+                    <div class="staff-card-body">
+                        <div class="staff-line">
+                            <span class="staff-line-label">Phone</span>
+                            <span class="staff-line-value">+1 (555) 123-4567</span>
+                        </div>
+                        <div class="staff-line">
+                            <span class="staff-line-label">Email</span>
+                            <span class="staff-line-value">m.thorne@garagebrew.com</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="staff-card">
+                    <div class="staff-card-top">
+                        <div class="staff-avatar staff-avatar--full">
+                            <img src="https://www.figma.com/api/mcp/asset/9a9f6924-04b8-4c39-b4a0-a182a045a881" alt="Elena Vance">
+                        </div>
+                        <div class="staff-meta">
+                            <h2>Elena Vance</h2>
+                            <span class="staff-tag staff-tag--full">Full Time</span>
+                        </div>
+                    </div>
+                    <div class="staff-card-body">
+                        <div class="staff-line">
+                            <span class="staff-line-label">Phone</span>
+                            <span class="staff-line-value">+1 (555) 987-6543</span>
+                        </div>
+                        <div class="staff-line">
+                            <span class="staff-line-label">Email</span>
+                            <span class="staff-line-value">e.vance@garagebrew.com</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="staff-card">
+                    <div class="staff-card-top">
+                        <div class="staff-avatar staff-avatar--part">
+                            <img src="https://www.figma.com/api/mcp/asset/2f9d396f-0ccd-4b0d-8a3a-6fb3d43b1103" alt="Kaelen Moore">
+                        </div>
+                        <div class="staff-meta">
+                            <h2>Kaelen Moore</h2>
+                            <span class="staff-tag staff-tag--part">Part Time</span>
+                        </div>
+                    </div>
+                    <div class="staff-card-body">
+                        <div class="staff-line">
+                            <span class="staff-line-label">Phone</span>
+                            <span class="staff-line-value">+1 (555) 234-5678</span>
+                        </div>
+                        <div class="staff-line">
+                            <span class="staff-line-label">Email</span>
+                            <span class="staff-line-value">k.moore@garagebrew.com</span>
+                        </div>
+                    </div>
+                </article>
+            </section>
+        </main>
+
+        <!-- Register Crew Modal (same style as product modals) -->
+        <div class="product-modal-backdrop" id="register-crew-modal" aria-hidden="true">
+            <div class="product-modal" role="dialog" aria-modal="true" aria-labelledby="register-crew-title">
+                <header class="product-modal__header">
+                    <div class="product-modal__title-block">
+                        <p class="product-modal__eyebrow">STAFF MANAGEMENT</p>
+                        <h2 id="register-crew-title">REGISTER CREW</h2>
+                    </div>
+                    <button type="button" class="product-modal__close" id="register-crew-close" aria-label="Close">
+                        ×
+                    </button>
+                </header>
+
+                <div class="product-modal__body">
+                    <p id="register-crew-error" class="register-crew-error" hidden role="alert"></p>
+                    <div class="product-modal__grid product-modal__grid--single">
+                        <div class="product-modal__left">
+                            <div class="product-field-group">
+                                <label class="product-field-label" for="crew-full-name">FULL NAME</label>
+                                <input id="crew-full-name" type="text" class="product-input" placeholder="e.g. Juan Dela Cruz" required>
+                            </div>
+                            <div class="product-field-group">
+                                <label class="product-field-label" for="crew-username">USERNAME</label>
+                                <input id="crew-username" type="text" class="product-input" placeholder="e.g. juan.d" required>
+                            </div>
+                            <div class="product-field-group">
+                                <label class="product-field-label" for="crew-email">EMAIL</label>
+                                <input id="crew-email" type="email" class="product-input" placeholder="e.g. juan@ortus.local" required>
+                            </div>
+                            <div class="product-field-group">
+                                <label class="product-field-label" for="crew-password">PASSWORD</label>
+                                <input id="crew-password" type="password" class="product-input" placeholder="Min. 6 characters" required minlength="6">
+                            </div>
+                            <div class="product-field-group">
+                                <label class="product-field-label" for="crew-role">ROLE</label>
+                                <div class="product-select-wrap">
+                                    <select id="crew-role" class="product-select" title="Account role">
+                                        <option value="staff">Staff</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    <span class="product-select-caret">▾</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="product-modal__footer">
+                    <button type="button" class="product-btn product-btn--ghost" id="register-crew-discard">DISCARD</button>
+                    <button type="button" class="product-btn product-btn--primary" id="register-crew-submit">REGISTER CREW</button>
+                </footer>
+            </div>
+        </div>
+
+        <footer class="dash-footer">
+            <div class="foot-left">
+                <span class="foot-dot"></span>
+                <span>V8 ANALYTICS ENGINE 2.4.0</span>
+                <span>CLOUD SYNC: VERIFIED</span>
+            </div>
+            <span class="foot-right">© 2024 GARAGE CAFE CO. BI DASHBOARD</span>
+        </footer>
+    </div>
+
+    <script src="dashboard_script.js?v=20260311-2"></script>
+    <script>
+    /* ── Staff management: load accounts + Register Crew ─────────────────── */
+    (function () {
+        var cardsSection  = document.querySelector('.staff-cards');
+        var registerBtn   = document.getElementById('btn-register-crew');
+        var kpiTotal      = document.querySelectorAll('.staff-kpi-value')[0];
+        var kpiAdmins     = document.querySelectorAll('.staff-kpi-value')[2];
+
+        var modalBackdrop = document.getElementById('register-crew-modal');
+        var modalClose    = document.getElementById('register-crew-close');
+        var modalDiscard  = document.getElementById('register-crew-discard');
+        var modalSubmit   = document.getElementById('register-crew-submit');
+        var modalError    = document.getElementById('register-crew-error');
+        var crewFullName  = document.getElementById('crew-full-name');
+        var crewUsername  = document.getElementById('crew-username');
+        var crewEmail     = document.getElementById('crew-email');
+        var crewPassword  = document.getElementById('crew-password');
+        var crewRole      = document.getElementById('crew-role');
+
+        function openRegisterModal() {
+            if (crewFullName) crewFullName.value = '';
+            if (crewUsername) crewUsername.value = '';
+            if (crewEmail) crewEmail.value = '';
+            if (crewPassword) crewPassword.value = '';
+            if (crewRole) crewRole.value = 'staff';
+            if (modalError) { modalError.hidden = true; modalError.textContent = ''; }
+            if (modalBackdrop) {
+                modalBackdrop.classList.add('is-visible');
+                modalBackdrop.setAttribute('aria-hidden', 'false');
+            }
+            window.setTimeout(function () {
+                if (crewFullName) crewFullName.focus();
+            }, 0);
+        }
+
+        function closeRegisterModal() {
+            if (modalBackdrop) {
+                modalBackdrop.classList.remove('is-visible');
+                modalBackdrop.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        function showRegisterError(msg) {
+            if (modalError) {
+                modalError.textContent = msg;
+                modalError.hidden = false;
+            }
+        }
+
+        function roleTag(role) {
+            return role === 'admin'
+                ? '<span class="staff-tag staff-tag--manager">Admin</span>'
+                : '<span class="staff-tag staff-tag--full">Staff</span>';
+        }
+
+        function renderCards(users) {
+            if (!cardsSection) return;
+            cardsSection.innerHTML = '';
+            users.forEach(function (u) {
+                var card = document.createElement('article');
+                card.className = 'staff-card';
+                card.innerHTML =
+                    '<div class="staff-card-top">' +
+                        '<div class="staff-avatar staff-avatar--' + (u.role === 'admin' ? 'manager' : 'full') + '">' +
+                            '<span style="font-size:1.6rem">👤</span>' +
+                        '</div>' +
+                        '<div class="staff-meta">' +
+                            '<h2>' + esc(u.full_name) + '</h2>' +
+                            roleTag(u.role) +
+                            (!u.is_active ? ' <span class="staff-tag" style="background:#ef444433;color:#f87171">Inactive</span>' : '') +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="staff-card-body">' +
+                        '<div class="staff-line"><span class="staff-line-label">Username</span>' +
+                            '<span class="staff-line-value">@' + esc(u.username) + '</span></div>' +
+                        '<div class="staff-line"><span class="staff-line-label">Email</span>' +
+                            '<span class="staff-line-value">' + esc(u.email) + '</span></div>' +
+                        '<div class="staff-line"><span class="staff-line-label">Joined</span>' +
+                            '<span class="staff-line-value">' + u.created_at.slice(0,10) + '</span></div>' +
+                    '</div>' +
+                    '<div class="staff-card-foot" style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #2d2d2d">' +
+                        (u.is_active
+                            ? '<button class="staff-btn staff-btn--ghost" data-deactivate="' + u.id + '" style="flex:1;font-size:12px">Deactivate</button>'
+                            : '<button class="staff-btn staff-btn--ghost" style="flex:1;font-size:12px;opacity:.4" disabled>Inactive</button>') +
+                    '</div>';
+                cardsSection.appendChild(card);
+            });
+
+            // Bind deactivate buttons
+            cardsSection.querySelectorAll('[data-deactivate]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    if (!confirm('Deactivate this account?')) return;
+                    fetch('api/staff.php', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: parseInt(btn.dataset.deactivate) }),
+                    })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.success) loadStaff();
+                        else alert(d.error);
+                    });
+                });
+            });
+        }
+
+        function esc(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function loadStaff() {
+            fetch('api/staff.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) return;
+                    var users = d.users;
+                    renderCards(users);
+                    if (kpiTotal)  kpiTotal.textContent  = users.filter(function(u){return u.is_active;}).length;
+                    if (kpiAdmins) kpiAdmins.textContent = users.filter(function(u){return u.role==='admin'&&u.is_active;}).length;
+                })
+                .catch(function (e) { console.warn('Staff load unavailable:', e.message); });
+        }
+
+        // Register Crew: open modal and submit via form
+        if (registerBtn) {
+            registerBtn.addEventListener('click', openRegisterModal);
+        }
+
+        if (modalClose)   modalClose.addEventListener('click', closeRegisterModal);
+        if (modalDiscard) modalDiscard.addEventListener('click', closeRegisterModal);
+        if (modalBackdrop) {
+            modalBackdrop.addEventListener('click', function (e) {
+                if (e.target === modalBackdrop) closeRegisterModal();
+            });
+        }
+
+        if (modalSubmit) {
+            modalSubmit.addEventListener('click', function () {
+                var fullName = crewFullName && crewFullName.value.trim();
+                var username = crewUsername && crewUsername.value.trim();
+                var email    = crewEmail && crewEmail.value.trim();
+                var password = crewPassword && crewPassword.value;
+                var role    = crewRole && crewRole.value || 'staff';
+                if (!fullName) { showRegisterError('Full name is required.'); return; }
+                if (!username) { showRegisterError('Username is required.'); return; }
+                if (!email) { showRegisterError('Email is required.'); return; }
+                if (!password || password.length < 6) { showRegisterError('Password must be at least 6 characters.'); return; }
+
+                fetch('api/staff.php', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_name: fullName, username: username, email: email, password: password, role: role }),
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.success) {
+                        closeRegisterModal();
+                        loadStaff();
+                    } else {
+                        showRegisterError(d.error || 'Could not create account.');
+                    }
+                })
+                .catch(function () { showRegisterError('Network error. Try again.'); });
+            });
+        }
+
+        loadStaff();
+    })();
+    </script>
+</body>
+</html>
+

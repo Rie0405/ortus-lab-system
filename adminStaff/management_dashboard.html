@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortus Lab Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css">
+    <link rel="stylesheet" href="management_dashboard_styles.css">
+    <link rel="stylesheet" href="brand_role_label.css">
+</head>
+<body>
+    <div class="inv-page">
+        <header class="top-nav">
+            <div class="brand-block">
+                <div class="brand-name-group">
+                    <span class="brand-name">ORTUS LAB</span>
+                    <span class="brand-role brand-role--admin">Admin</span>
+                </div>
+            </div>
+
+            <nav class="top-links">
+                <a href="admin_dashboard.html" class="top-link">Dashboard</a>
+                <a href="inventory_dashboard.html" class="top-link">Inventory</a>
+                <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
+                <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
+                <a href="management_dashboard.html" class="top-link top-link--active">Staff Activity</a>
+            </nav>
+
+            <div class="top-actions">
+                <button type="button" class="icon-btn" title="Notifications" aria-label="Notifications"><img src="icons_admin/bell_icon.svg" alt=""></button>
+                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/wrench_icon.svg" alt=""></button>
+            </div>
+        </header>
+
+        <main class="mgmt-main">
+            <section class="mgmt-hero">
+                <div>
+                    <p class="mgmt-eyebrow">Management Overview</p>
+                    <h1>Staff Management Dashboard</h1>
+                    <p class="mgmt-hero__text">Shift-based staff monitoring with sales and refund activity per cashier.</p>
+                </div>
+                <div class="mgmt-period-card" aria-label="Selected period context">
+                    <span class="mgmt-period-card__label">Selected Shift</span>
+                    <strong>Morning Shift</strong>
+                    <p>July 28, 2026 · 6:00 AM to 2:00 PM</p>
+                </div>
+            </section>
+
+            <section class="mgmt-filter-row" aria-label="Management period filters">
+                <button type="button" class="mgmt-filter-chip mgmt-filter-chip--active">Today</button>
+                <button type="button" class="mgmt-filter-chip">Morning Shift</button>
+                <button type="button" class="mgmt-filter-chip">Afternoon Shift</button>
+                <button type="button" class="mgmt-filter-chip">Closing Shift</button>
+            </section>
+
+            <section class="mgmt-panel mgmt-panel--shift" aria-label="Cashier selector">
+                <div class="mgmt-panel__head">
+                    <div>
+                        <h2>Cashier On Duty</h2>
+                        <p>Select one cashier from the staff POS side. The report cards below will switch based on the cashier and the time of their shift.</p>
+                    </div>
+                    <span class="mgmt-head-pill" id="mgmt-cashier-shift-pill">Morning Shift</span>
+                </div>
+                <div class="mgmt-cashier-card">
+                    <label class="mgmt-cashier-field" for="mgmt-cashier-select">
+                        <span>Select Cashier</span>
+                        <select id="mgmt-cashier-select">
+                            <option value="">Loading cashiers…</option>
+                        </select>
+                        <button type="button" class="mgmt-add-cashier-btn" id="mgmt-add-cashier-btn">Add Cashier</button>
+                        <button type="button" class="mgmt-switch-admin-btn" id="mgmt-switch-admin-btn" hidden>Switch to Admin Login</button>
+                    </label>
+                    <div class="mgmt-cashier-summary">
+                        <span class="mgmt-cashier-summary__role">Cashier Shift</span>
+                        <strong id="mgmt-cashier-name">—</strong>
+                        <p id="mgmt-cashier-time">Add a cashier to get started</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mgmt-panel" aria-label="Sales management section">
+                <div class="mgmt-panel__head">
+                    <div>
+                        <h2>Sales</h2>
+                        <p>Total sales plus a cashier-based breakdown of the sold items for the selected shift.</p>
+                    </div>
+                    <span class="mgmt-head-pill" id="mgmt-sales-history-count">0 Orders</span>
+                </div>
+                <div class="mgmt-kpi-grid">
+                    <article class="mgmt-kpi-card">
+                        <span>Total Sales</span>
+                        <strong id="mgmt-sales-total">₱0.00</strong>
+                        <p id="mgmt-sales-note">Select a cashier to view shift sales.</p>
+                    </article>
+                    <article class="mgmt-kpi-card">
+                        <span>Orders Processed</span>
+                        <strong id="mgmt-sales-orders">0</strong>
+                        <p id="mgmt-sales-orders-note">Transactions handled by the selected cashier.</p>
+                    </article>
+                    <article class="mgmt-kpi-card">
+                        <span>Average Ticket</span>
+                        <strong id="mgmt-sales-ticket">₱0.00</strong>
+                        <p id="mgmt-sales-ticket-note">Helpful for future cashier performance comparisons.</p>
+                    </article>
+                </div>
+                <section class="mgmt-sales-history" aria-label="Cashier sales breakdown">
+                    <div class="mgmt-sales-history__head">
+                        <h3>Sales Breakdown</h3>
+                        <span class="mgmt-sales-history__badge" id="mgmt-sales-history-total">Today Sales: ₱0.00</span>
+                    </div>
+                    <div class="mgmt-sales-history__list" id="mgmt-sales-history-list">
+                        <article class="mgmt-sales-history-item">
+                            <div class="mgmt-sales-history-item__main">No sales records yet.</div>
+                        </article>
+                    </div>
+                </section>
+            </section>
+
+            <section class="mgmt-panel" aria-label="Refund management section">
+                <div class="mgmt-panel__head">
+                    <div>
+                        <h2>Refunds</h2>
+                        <p>Simple refund cards showing all refund activity for the selected cashier shift and the reason for each refund.</p>
+                    </div>
+                    <span class="mgmt-head-pill" id="mgmt-refund-history-count">0 Refunds</span>
+                </div>
+                <div class="mgmt-kpi-grid">
+                    <article class="mgmt-kpi-card">
+                        <span>Refund Count</span>
+                        <strong id="mgmt-refund-count">0</strong>
+                        <p id="mgmt-refund-count-note">Refund count for the selected cashier shift.</p>
+                    </article>
+                    <article class="mgmt-kpi-card">
+                        <span>Total Refunded</span>
+                        <strong id="mgmt-refund-total">₱0.00</strong>
+                        <p>To be connected to actual refund records later.</p>
+                    </article>
+                    <article class="mgmt-kpi-card">
+                        <span>Most Common Reason</span>
+                        <strong id="mgmt-refund-reason">—</strong>
+                        <p id="mgmt-refund-reason-note">Refund reason summary for this cashier shift.</p>
+                    </article>
+                </div>
+                <section class="mgmt-refund-history" aria-label="Cashier refund history">
+                    <div class="mgmt-refund-history__list" id="mgmt-refund-history-list">
+                        <article class="mgmt-refund-card">
+                            <div class="mgmt-refund-card__main">No refund records for this shift.</div>
+                        </article>
+                    </div>
+                </section>
+            </section>
+        </main>
+
+        <footer class="mgmt-footer">
+            <div class="mgmt-footer__left">
+                <span class="mgmt-footer__dot"></span>
+                <span>Management UI Preview</span>
+                <span>Frontend Only</span>
+            </div>
+            <span class="mgmt-footer__right">Ortus Lab Admin Panel</span>
+        </footer>
+    </div>
+    <div class="mgmt-modal-backdrop" id="mgmt-cashier-modal" aria-hidden="true">
+        <div class="mgmt-modal" role="dialog" aria-modal="true" aria-labelledby="mgmt-cashier-modal-title">
+            <header class="mgmt-modal__header">
+                <h2 id="mgmt-cashier-modal-title">Add Cashier</h2>
+                <button type="button" class="mgmt-modal__close" id="mgmt-cashier-modal-close" aria-label="Close">×</button>
+            </header>
+            <div class="mgmt-modal__body">
+                <p class="mgmt-modal__hint">Creates a staff account for the POS cashier. They can log in at the staff login page using the username and password below.</p>
+                <p class="mgmt-modal__error" id="mgmt-cashier-modal-error" hidden role="alert"></p>
+                <label class="mgmt-modal__field">
+                    <span>Cashier Name</span>
+                    <input type="text" id="mgmt-cashier-name-input" placeholder="e.g. Carla Mendoza" autocomplete="name">
+                </label>
+                <label class="mgmt-modal__field">
+                    <span>Username</span>
+                    <input type="text" id="mgmt-cashier-username-input" placeholder="e.g. carla.mendoza" autocomplete="username">
+                </label>
+                <label class="mgmt-modal__field">
+                    <span>Password</span>
+                    <input type="password" id="mgmt-cashier-password-input" placeholder="Min. 6 characters" autocomplete="new-password">
+                </label>
+            </div>
+            <footer class="mgmt-modal__footer">
+                <button type="button" class="mgmt-modal__btn mgmt-modal__btn--muted" id="mgmt-cashier-modal-cancel">Cancel</button>
+                <button type="button" class="mgmt-modal__btn mgmt-modal__btn--primary" id="mgmt-cashier-modal-save">Save Cashier</button>
+            </footer>
+        </div>
+    </div>
+    <script src="dashboard_script.js?v=20260311-2"></script>
+    <script>
+    (function () {
+        var cashierSelect = document.getElementById('mgmt-cashier-select');
+        if (!cashierSelect) return;
+
+        var addCashierBtn = document.getElementById('mgmt-add-cashier-btn');
+        var switchAdminBtn = document.getElementById('mgmt-switch-admin-btn');
+        var cashierModal = document.getElementById('mgmt-cashier-modal');
+        var cashierModalClose = document.getElementById('mgmt-cashier-modal-close');
+        var cashierModalCancel = document.getElementById('mgmt-cashier-modal-cancel');
+        var cashierModalSave = document.getElementById('mgmt-cashier-modal-save');
+        var cashierModalError = document.getElementById('mgmt-cashier-modal-error');
+        var cashierNameInput = document.getElementById('mgmt-cashier-name-input');
+        var cashierUsernameInput = document.getElementById('mgmt-cashier-username-input');
+        var cashierPasswordInput = document.getElementById('mgmt-cashier-password-input');
+
+        var cashierStaff = [];
+        var allOrders = [];
+        var adminAccessReady = false;
+
+        function showCashierLoadError(message) {
+            cashierStaff = [];
+            cashierSelect.innerHTML = '<option value="">' + escHtml(message || 'Could not load cashiers') + '</option>';
+            setText('mgmt-cashier-name', '—');
+            setText('mgmt-cashier-time', message || 'Could not load cashiers.');
+            setText('mgmt-cashier-shift-pill', 'Unavailable');
+            renderEmptyCashierView();
+        }
+
+        function ensureAdminAccess(onReady) {
+            fetch('api/auth.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success || !d.user) {
+                        window.location.href = 'admin.html?next=' + encodeURIComponent('management_dashboard.html');
+                        return;
+                    }
+                    var role = String(d.user.role || '').toLowerCase();
+                    if (role !== 'admin') {
+                        showCashierLoadError('Admin login required');
+                        setText('mgmt-cashier-time', 'You are logged in as staff. Use the button below to switch to admin without hunting for logout.');
+                        if (addCashierBtn) addCashierBtn.disabled = true;
+                        if (switchAdminBtn) switchAdminBtn.hidden = false;
+                        return;
+                    }
+                    if (switchAdminBtn) switchAdminBtn.hidden = true;
+                    adminAccessReady = true;
+                    if (addCashierBtn) addCashierBtn.disabled = false;
+                    if (typeof onReady === 'function') onReady();
+                })
+                .catch(function () {
+                    showCashierLoadError('Could not verify admin session');
+                    setText('mgmt-cashier-time', 'Make sure XAMPP is running, then log in again as admin.');
+                });
+        }
+
+        function setText(id, value) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+
+        function showModalError(msg) {
+            if (!cashierModalError) return;
+            cashierModalError.textContent = msg;
+            cashierModalError.hidden = !msg;
+        }
+
+        function escHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function peso(value) {
+            var n = Number(value);
+            if (!Number.isFinite(n)) n = 0;
+            return '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function asDateLabel(raw) {
+            var d = new Date(raw);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleString('en-PH', {
+                month: 'short',
+                day: '2-digit',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        function renderSalesHistory(items, salesTotal) {
+            var list = document.getElementById('mgmt-sales-history-list');
+            if (!list) return;
+
+            setText('mgmt-sales-history-total', 'Today Sales: ' + salesTotal);
+            setText('mgmt-sales-history-count', (items && items.length ? items.length : 0) + ' Orders');
+
+            if (!items || !items.length) {
+                list.innerHTML = '<article class="mgmt-sales-history-item"><div class="mgmt-sales-history-item__main">No sales records yet.</div></article>';
+                return;
+            }
+
+            list.innerHTML = items.map(function (entry) {
+                var linesHtml = (entry.lines || []).map(function (line) {
+                    return '' +
+                        '<div class="mgmt-sales-history-item__line">' +
+                            '<strong>' + escHtml(line.name) + '</strong>' +
+                            '<span>' + escHtml(line.amount) + '</span>' +
+                        '</div>';
+                }).join('');
+
+                return '' +
+                    '<article class="mgmt-sales-history-item">' +
+                        '<div class="mgmt-sales-history-item__main">' + escHtml(entry.label) + '</div>' +
+                        '<div class="mgmt-sales-history-item__meta">' +
+                            '<span>' + escHtml(entry.meta) + '</span>' +
+                            '<span>' + (entry.lines || []).length + ' item(s)</span>' +
+                        '</div>' +
+                        '<div class="mgmt-sales-history-item__lines">' + linesHtml + '</div>' +
+                        '<div class="mgmt-sales-history-item__divider"></div>' +
+                        '<div class="mgmt-sales-history-item__total-row">' +
+                            '<span class="mgmt-sales-history-item__total-label">Order total</span>' +
+                            '<span>' + escHtml(entry.total) + '</span>' +
+                        '</div>' +
+                    '</article>';
+            }).join('');
+        }
+
+        function renderRefundHistory(items) {
+            var list = document.getElementById('mgmt-refund-history-list');
+            if (!list) return;
+
+            setText('mgmt-refund-history-count', (items && items.length ? items.length : 0) + ' Refunds');
+
+            if (!items || !items.length) {
+                list.innerHTML = '<article class="mgmt-refund-card"><div class="mgmt-refund-card__main">No refund records for this shift.</div></article>';
+                return;
+            }
+
+            list.innerHTML = items.map(function (entry) {
+                return '' +
+                    '<article class="mgmt-refund-card">' +
+                        '<div class="mgmt-refund-card__main">' + escHtml(entry.label) + '</div>' +
+                        '<div class="mgmt-refund-card__meta">' +
+                            '<span>' + escHtml(entry.meta) + '</span>' +
+                            '<span>Refund Logged</span>' +
+                        '</div>' +
+                        '<div class="mgmt-refund-card__reason"><strong>Reason:</strong> ' + escHtml(entry.reason) + '</div>' +
+                    '</article>';
+            }).join('');
+        }
+
+        function renderEmptyCashierView() {
+            setText('mgmt-cashier-name', '—');
+            setText('mgmt-cashier-time', 'Add a cashier to get started');
+            setText('mgmt-cashier-shift-pill', 'No Shift');
+            setText('mgmt-sales-total', '₱0.00');
+            setText('mgmt-sales-note', 'Select a cashier to view shift sales.');
+            setText('mgmt-sales-orders', '0');
+            setText('mgmt-sales-orders-note', 'Transactions handled by the selected cashier.');
+            setText('mgmt-sales-ticket', '₱0.00');
+            setText('mgmt-sales-ticket-note', 'Average ticket will appear once shift data is connected.');
+            setText('mgmt-refund-count', '0');
+            setText('mgmt-refund-count-note', 'Refund count for the selected cashier shift.');
+            setText('mgmt-refund-total', '₱0.00');
+            setText('mgmt-refund-reason', '—');
+            setText('mgmt-refund-reason-note', 'Refund reason summary for this cashier shift.');
+            renderSalesHistory([], '₱0.00');
+            renderRefundHistory([]);
+        }
+
+        function formatJoinedDate(createdAt) {
+            if (!createdAt) return 'Shift time not set yet';
+            var datePart = String(createdAt).slice(0, 10);
+            if (!datePart) return 'Shift time not set yet';
+            return 'Registered ' + datePart + ' · shift window coming soon';
+        }
+
+        function findCashierById(id) {
+            var want = String(id || '');
+            for (var i = 0; i < cashierStaff.length; i++) {
+                if (String(cashierStaff[i].id) === want) return cashierStaff[i];
+            }
+            return null;
+        }
+
+        function populateCashierSelect(selectedId) {
+            cashierSelect.innerHTML = '';
+
+            if (!cashierStaff.length) {
+                var emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = 'No cashiers yet';
+                cashierSelect.appendChild(emptyOpt);
+                cashierSelect.value = '';
+                renderEmptyCashierView();
+                return;
+            }
+
+            cashierStaff.forEach(function (user) {
+                var option = document.createElement('option');
+                option.value = String(user.id);
+                option.textContent = user.full_name;
+                cashierSelect.appendChild(option);
+            });
+
+            var nextId = selectedId ? String(selectedId) : String(cashierStaff[0].id);
+            if (!findCashierById(nextId)) nextId = String(cashierStaff[0].id);
+            cashierSelect.value = nextId;
+            renderCashier(nextId);
+        }
+
+        function buildSalesHistoryFromOrders(orders) {
+            return (orders || []).map(function (order) {
+                var items = Array.isArray(order.items) ? order.items : [];
+                return {
+                    label: 'Order ' + (order.order_number || ('#' + order.id)),
+                    meta: asDateLabel(order.created_at) + ' · ' + String(order.payment_method || 'cash').toUpperCase(),
+                    total: peso(order.total_amount || 0),
+                    lines: items.map(function (line) {
+                        var qty = Math.max(1, parseInt(line && line.quantity, 10) || 1);
+                        var name = line && line.name ? line.name : 'Item';
+                        var subtotal = Number(line && line.subtotal);
+                        if (!Number.isFinite(subtotal)) {
+                            var unit = Number(line && line.unit_price);
+                            subtotal = (Number.isFinite(unit) ? unit : 0) * qty;
+                        }
+                        return {
+                            name: qty + 'x ' + name,
+                            amount: peso(subtotal)
+                        };
+                    })
+                };
+            });
+        }
+
+        function formatRefundItemLabel(order) {
+            var items = Array.isArray(order && order.items) ? order.items : [];
+            if (!items.length) {
+                return order.order_number || ('Order #' + order.id);
+            }
+            return items.map(function (line) {
+                var qty = Math.max(1, parseInt(line && line.quantity, 10) || 1);
+                var name = line && line.name ? line.name : 'Item';
+                return qty + 'x ' + name;
+            }).join(', ');
+        }
+
+        function buildRefundHistoryFromOrders(refundOrders) {
+            return (refundOrders || []).map(function (order) {
+                return {
+                    label: formatRefundItemLabel(order),
+                    meta: asDateLabel(order.created_at) + ' · ' + String(order.payment_method || 'cash').toUpperCase(),
+                    reason: String(order.refund_reason || '').trim() || 'No refund reason provided.'
+                };
+            });
+        }
+
+        function summarizeRefundReason(refundOrders) {
+            if (!refundOrders || !refundOrders.length) return '—';
+            var counts = {};
+            refundOrders.forEach(function (order) {
+                var reason = String(order.refund_reason || '').trim() || 'No refund reason provided.';
+                counts[reason] = (counts[reason] || 0) + 1;
+            });
+            var topReason = '—';
+            var topCount = 0;
+            Object.keys(counts).forEach(function (reason) {
+                if (counts[reason] > topCount) {
+                    topCount = counts[reason];
+                    topReason = reason;
+                }
+            });
+            return topReason;
+        }
+
+        function renderCashier(cashierId) {
+            var user = findCashierById(cashierId);
+            if (!user) {
+                renderEmptyCashierView();
+                return;
+            }
+
+            var userId = parseInt(user.id, 10);
+            var userOrders = allOrders.filter(function (order) {
+                return parseInt(order && order.staff_id, 10) === userId;
+            });
+            var salesOrders = userOrders.filter(function (order) {
+                var st = String(order && order.status || '').toLowerCase();
+                return st === 'confirmed' || st === 'served';
+            });
+            var refundOrders = userOrders.filter(function (order) {
+                return String(order && order.status || '').toLowerCase() === 'voided';
+            });
+
+            var totalSales = salesOrders.reduce(function (sum, order) {
+                return sum + (Number(order && order.total_amount) || 0);
+            }, 0);
+            var totalRefund = refundOrders.reduce(function (sum, order) {
+                return sum + (Number(order && order.total_amount) || 0);
+            }, 0);
+            var averageTicket = salesOrders.length ? totalSales / salesOrders.length : 0;
+
+            var salesHistory = buildSalesHistoryFromOrders(salesOrders.slice(0, 20));
+            var refundHistory = buildRefundHistoryFromOrders(refundOrders.slice(0, 20));
+
+            if (cashierSelect) cashierSelect.value = String(user.id);
+            setText('mgmt-cashier-name', user.full_name);
+            setText('mgmt-cashier-time', formatJoinedDate(user.created_at));
+            setText('mgmt-cashier-shift-pill', 'Staff POS');
+            setText('mgmt-sales-total', peso(totalSales));
+            setText('mgmt-sales-note', 'Based on recorded POS orders handled by ' + user.full_name + '.');
+            setText('mgmt-sales-orders', String(salesOrders.length));
+            setText('mgmt-sales-orders-note', 'Transactions handled by ' + user.full_name + '.');
+            setText('mgmt-sales-ticket', peso(averageTicket));
+            setText('mgmt-sales-ticket-note', 'Computed from completed/served orders.');
+            setText('mgmt-refund-count', String(refundOrders.length));
+            setText('mgmt-refund-count-note', 'Refund count for ' + user.full_name + '\'s shift.');
+            setText('mgmt-refund-total', peso(totalRefund));
+            setText('mgmt-refund-reason', summarizeRefundReason(refundOrders));
+            setText('mgmt-refund-reason-note', 'Refund summary for ' + user.full_name + '\'s shift.');
+            renderSalesHistory(salesHistory, peso(totalSales));
+            renderRefundHistory(refundHistory);
+        }
+
+        function loadOrders(onDone) {
+            fetch('api/orders.php?limit=200')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        allOrders = [];
+                        if (d.error) console.warn('Orders load failed:', d.error);
+                    } else {
+                        allOrders = Array.isArray(d.orders) ? d.orders : [];
+                    }
+                })
+                .catch(function (err) {
+                    allOrders = [];
+                    console.warn('Orders load unavailable:', err.message);
+                })
+                .finally(function () {
+                    if (typeof onDone === 'function') onDone();
+                });
+        }
+
+        function loadCashiers(selectId) {
+            if (!adminAccessReady) {
+                ensureAdminAccess(function () { loadCashiers(selectId); });
+                return;
+            }
+
+            cashierSelect.innerHTML = '<option value="">Loading cashiers…</option>';
+
+            fetch('api/staff.php')
+                .then(function (r) {
+                    return r.json().then(function (d) {
+                        return { ok: r.ok, status: r.status, data: d };
+                    });
+                })
+                .then(function (result) {
+                    var d = result.data || {};
+                    if (!d.success) {
+                        var message = 'Could not load cashiers';
+                        if (result.status === 401 || d.error === 'Unauthenticated') {
+                            message = 'Please log in as admin';
+                            window.setTimeout(function () { window.location.href = 'admin.html'; }, 1200);
+                        } else if (result.status === 403 || d.error === 'Forbidden') {
+                            message = 'Admin login required';
+                            setText('mgmt-cashier-time', 'You are logged in as staff. Log out, then sign in with an admin account.');
+                        } else if (d.error) {
+                            message = d.error;
+                        }
+                        showCashierLoadError(message);
+                        if (d.error) console.warn('Staff load failed:', d.error);
+                        return;
+                    }
+
+                    cashierStaff = (d.users || []).filter(function (u) {
+                        return u.role === 'staff' && u.is_active;
+                    });
+
+                    loadOrders(function () {
+                        populateCashierSelect(selectId || null);
+                    });
+                })
+                .catch(function (err) {
+                    showCashierLoadError('Could not load cashiers');
+                    setText('mgmt-cashier-time', 'Network error. Make sure XAMPP is running.');
+                    console.warn('Staff load unavailable:', err.message);
+                });
+        }
+
+        function openCashierModal() {
+            if (!cashierModal) return;
+            showModalError('');
+            if (cashierNameInput) cashierNameInput.value = '';
+            if (cashierUsernameInput) cashierUsernameInput.value = '';
+            if (cashierPasswordInput) cashierPasswordInput.value = '';
+            cashierModal.classList.add('is-visible');
+            cashierModal.setAttribute('aria-hidden', 'false');
+            if (cashierNameInput) cashierNameInput.focus();
+        }
+
+        function closeCashierModal() {
+            if (!cashierModal) return;
+            cashierModal.classList.remove('is-visible');
+            cashierModal.setAttribute('aria-hidden', 'true');
+            showModalError('');
+            if (cashierNameInput) cashierNameInput.value = '';
+            if (cashierUsernameInput) cashierUsernameInput.value = '';
+            if (cashierPasswordInput) cashierPasswordInput.value = '';
+        }
+
+        cashierSelect.addEventListener('change', function () {
+            if (!cashierSelect.value) {
+                renderEmptyCashierView();
+                return;
+            }
+            renderCashier(cashierSelect.value);
+        });
+
+        if (switchAdminBtn) {
+            switchAdminBtn.addEventListener('click', function () {
+                fetch('api/auth.php', { method: 'DELETE' })
+                    .finally(function () {
+                        window.location.href = 'admin.html?next=' + encodeURIComponent('management_dashboard.html');
+                    });
+            });
+        }
+
+        if (addCashierBtn) addCashierBtn.addEventListener('click', openCashierModal);
+        if (cashierModalClose) cashierModalClose.addEventListener('click', closeCashierModal);
+        if (cashierModalCancel) cashierModalCancel.addEventListener('click', closeCashierModal);
+        if (cashierModal) {
+            cashierModal.addEventListener('click', function (e) {
+                if (e.target === cashierModal) closeCashierModal();
+            });
+        }
+
+        if (cashierModalSave) {
+            cashierModalSave.addEventListener('click', function () {
+                if (!adminAccessReady) {
+                    showModalError('Admin login required to register cashiers.');
+                    return;
+                }
+                var cashierName = String((cashierNameInput && cashierNameInput.value) || '').trim();
+                var cashierUsername = String((cashierUsernameInput && cashierUsernameInput.value) || '').trim();
+                var cashierPassword = String((cashierPasswordInput && cashierPasswordInput.value) || '');
+
+                showModalError('');
+                if (!cashierName) { showModalError('Cashier name is required.'); return; }
+                if (!cashierUsername) { showModalError('Username is required.'); return; }
+                if (!cashierPassword || cashierPassword.length < 6) {
+                    showModalError('Password must be at least 6 characters.');
+                    return;
+                }
+
+                cashierModalSave.disabled = true;
+                var oldLabel = cashierModalSave.textContent;
+                cashierModalSave.textContent = 'Saving…';
+
+                fetch('api/staff.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_name: cashierName,
+                        username: cashierUsername,
+                        password: cashierPassword,
+                        role: 'staff'
+                    })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        showModalError(d.error || 'Could not create cashier account.');
+                        return;
+                    }
+                    closeCashierModal();
+                    loadCashiers(d.id || null);
+                })
+                .catch(function () {
+                    showModalError('Network error. Try again.');
+                })
+                .finally(function () {
+                    cashierModalSave.disabled = false;
+                    cashierModalSave.textContent = oldLabel || 'Save Cashier';
+                });
+            });
+        }
+
+        ensureAdminAccess(function () {
+            loadCashiers();
+        });
+    })();
+    </script>
+</body>
+</html>

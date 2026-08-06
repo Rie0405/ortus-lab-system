@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortus Lab Coffee and Lifestyle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo+Narrow:wght@400;500&family=Lora:wght@700&family=Manrope:wght@400;500;700&family=Inter:wght@700&family=Roboto:wght@500&family=Roboto+Mono:wght@400&family=Alatsi&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="customer_styles.css?v=20260422c">
+</head>
+<body>
+
+    <!-- ── Screen 1: Service Selection ── -->
+    <div id="screen-service" class="page">
+
+        <!-- Decorative blur overlay -->
+        <div class="blur-overlay">
+            <div class="blur-circle"></div>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="header-brand">
+                    <span class="header-title">ORTUS LAB</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content-margin">
+            <div class="main-content">
+
+                <!-- Hero Section -->
+                <div class="hero-section">
+                    <h1 class="hero-heading">WELCOME</h1>
+                    <p class="hero-subheading">How would you like to place your order?</p>
+                </div>
+
+                <!-- Selection Cards -->
+                <div class="cards-grid">
+
+                    <!-- Pick Up Card -->
+                    <a href="#" class="card" id="btn-remote-order">
+                        <div class="card-icon-wrap">
+                            <img class="card-icon" src="icons_customer/icon_startup/remote.svg" alt="Remote order icon">
+                        </div>
+                        <h3 class="card-title">Pick Up</h3>
+                        <p class="card-desc">Order now and pick up at the counter</p>
+                        <img class="card-arrow" src="https://www.figma.com/api/mcp/asset/7addb5ff-4c0a-4a26-8c3f-514256f876e7" alt="">
+                    </a>
+
+                    <!-- Onsite Order Card -->
+                    <a href="#" class="card" id="btn-onsite-order">
+                        <div class="card-icon-wrap">
+                            <img class="card-icon card-icon--store" src="icons_customer/icon_startup/onsite.svg" alt="Onsite order icon">
+                        </div>
+                        <h3 class="card-title">Onsite Order</h3>
+                        <p class="card-desc">Order while at the restaurant</p>
+                        <img class="card-arrow" src="https://www.figma.com/api/mcp/asset/7addb5ff-4c0a-4a26-8c3f-514256f876e7" alt="">
+                    </a>
+
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <nav class="footer-links">
+                <a href="#" class="footer-link">Help &amp; Support</a>
+                <a href="#" class="footer-link">Language: English</a>
+                <a href="#" class="footer-link">Terms of Service</a>
+            </nav>
+            <div class="footer-brand">
+                <span class="footer-divider"></span>
+                <span class="footer-brand-name">ORTUS LAB CAFE &amp; LIFESTYLE</span>
+                <span class="footer-divider"></span>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- ── Screen 2: Remote Order Options ── -->
+    <div id="screen-remote" class="page page--hidden">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="header-brand">
+                    <span class="header-title">ORTUS LAB</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="ro-container">
+            <div class="ro-content">
+
+                <!-- Title & Subtitle -->
+                <div class="ro-hero">
+                    <h2 class="ro-heading">How would you like to receive your order?</h2>
+                    <p class="ro-subheading">Select your preferred fulfillment method to see the menu and estimated time for your location.</p>
+                </div>
+
+                <!-- Option Cards -->
+                <div class="ro-cards">
+
+                    <!-- Pickup -->
+                    <a href="#" class="ro-card">
+                        <div class="ro-card-icon-wrap">
+                            <img class="ro-card-icon" src="icons_customer/icon_startup/takeout.svg" alt="Pickup icon">
+                        </div>
+                        <h3 class="ro-card-title">Pickup</h3>
+                        <p class="ro-card-desc">Select a nearby location and collect at your convenience.</p>
+                        <div class="ro-btn">Select Option</div>
+                    </a>
+
+                    <!-- Delivery -->
+                    <a href="#" class="ro-card">
+                        <div class="ro-card-icon-wrap">
+                            <img class="ro-card-icon" src="icons_customer/icon_startup/delivery.svg" alt="Delivery icon">
+                        </div>
+                        <h3 class="ro-card-title">Delivery</h3>
+                        <p class="ro-card-desc">We bring your order straight to your door.</p>
+                        <div class="ro-btn">Select Option</div>
+                    </a>
+
+                </div>
+
+                <!-- Back button -->
+                <button class="ro-back-btn" id="btn-remote-back">Back</button>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Screen 3: Onsite Order Options ── -->
+    <div id="screen-onsite" class="page page--hidden">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="header-brand">
+                    <span class="header-title">ORTUS LAB</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="ro-container">
+            <div class="ro-content">
+
+                <!-- Title & Subtitle -->
+                <div class="ro-hero">
+                    <h2 class="ro-heading">Where will you be eating?</h2>
+                    <p class="ro-subheading">Please select your preferred dining option to proceed with your order.</p>
+                </div>
+
+                <!-- Option Cards -->
+                <div class="ro-cards">
+
+                    <!-- Dine In -->
+                    <a href="#" class="ro-card">
+                        <div class="ro-card-icon-wrap">
+                            <img class="ro-card-icon" src="icons_customer/icon_startup/dineIn.svg" alt="Dine in icon">
+                        </div>
+                        <h3 class="ro-card-title">Dine in</h3>
+                        <p class="ro-card-desc">Enjoy your meal at our table.</p>
+                        <div class="ro-btn">Select Option</div>
+                    </a>
+
+                    <!-- Take Out -->
+                    <a href="#" class="ro-card">
+                        <div class="ro-card-icon-wrap">
+                            <img class="ro-card-icon" src="icons_customer/icon_startup/takeout.svg" alt="Take out icon">
+                        </div>
+                        <h3 class="ro-card-title">Take out</h3>
+                        <p class="ro-card-desc">Packed and ready to go.</p>
+                        <div class="ro-btn">Select Option</div>
+                    </a>
+
+                </div>
+
+                <!-- Back button -->
+                <button class="ro-back-btn" id="btn-onsite-back">Back</button>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Screen 4: Choose Category ── -->
+    <div id="screen-category" class="page page--hidden">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="header-brand">
+                    <span class="header-title">ORTUS LAB</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="ro-container">
+            <div class="ro-content">
+
+                <!-- Title & Subtitle -->
+                <div class="ro-hero">
+                    <h2 class="ro-heading">Choose category</h2>
+                    <p class="ro-subheading">Select an Ortus Lab cafe favorite!</p>
+                </div>
+
+                <!-- Category Cards -->
+                <div class="ro-cards">
+
+                    <!-- Snacks and Meals -->
+                    <a href="#" class="ro-card ro-card--grey-border">
+                        <div class="ro-card-icon-wrap ro-card-icon-wrap--grey">
+                            <img class="ro-card-icon" src="icons_customer/icon_startup/meals.svg" alt="Snacks and meals icon">
+                        </div>
+                        <h3 class="ro-card-title">Snacks and meals</h3>
+                        <p class="ro-card-desc">Small bites or a heavy meal</p>
+                        <div class="ro-btn">Select Option</div>
+                    </a>
+
+                    <!-- Beverages -->
+                    <a href="#" class="ro-card ro-card--grey-border">
+                        <div class="ro-card-icon-wrap ro-card-icon-wrap--grey">
+                            <img class="ro-card-icon" src="icons_customer/icon_startup/beverage.svg" alt="Beverages icon">
+                        </div>
+                        <h3 class="ro-card-title">Beverages</h3>
+                        <p class="ro-card-desc">Hot or cold?</p>
+                        <div class="ro-btn">Select Option</div>
+                    </a>
+
+                </div>
+
+                <!-- Back button -->
+                <button class="ro-back-btn" id="btn-category-back">Back</button>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Screen 5: Beverages Menu ── -->
+    <div id="screen-beverages" class="page page--hidden menu-page">
+
+        <!-- Menu Header -->
+        <header class="menu-header">
+            <div class="menu-header-brand">
+                <span class="menu-logo-text">ORTUS LAB - Menu</span>
+            </div>
+            <div class="menu-search-wrap">
+                <span class="menu-search-icon" aria-hidden="true"></span>
+                <input type="text" class="menu-search-input" placeholder="Searching for a drink?">
+            </div>
+        </header>
+
+        <!-- Menu Body -->
+        <div class="menu-body">
+
+            <!-- Product Grid Area -->
+            <div class="menu-grid-area">
+                <div class="menu-grid-header">
+                    <div class="menu-grid-title-block">
+                        <h2 class="menu-grid-heading">Beverages</h2>
+                        <p class="menu-grid-sub">Select from our freshly brewed collection</p>
+                        <div class="menu-group-switch">
+                            <button class="menu-group-btn" data-menu-group="beverages">
+                                <span class="menu-group-btn__icon-wrap">
+                                    <img src="icons_customer/icon_startup/beverage.svg" alt="" class="menu-group-btn__icon">
+                                </span>
+                                <span class="menu-group-btn__label">Beverages</span>
+                            </button>
+                            <button class="menu-group-btn" data-menu-group="meals">
+                                <span class="menu-group-btn__icon-wrap">
+                                    <img src="icons_customer/icon_startup/meals.svg" alt="" class="menu-group-btn__icon">
+                                </span>
+                                <span class="menu-group-btn__label">Snacks &amp; Meals</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="menu-header-actions">
+                        <button class="menu-back-btn" id="btn-beverages-back">Back</button>
+                    </div>
+                </div>
+
+                <div class="meals-layout beverages-layout">
+                    <!-- Beverage Circles -->
+                    <div class="menu-grid menu-grid--meals menu-choice-hidden" id="bev-circles">
+                        <div class="menu-product menu-product--selected" data-bev-category="coffee" role="button" tabindex="0">
+                            <div class="menu-product-circle">
+                                <img class="menu-product-icon menu-product-icon--bev1" src="icons_customer/icon_customer_meals/bev1.svg" alt="">
+                            </div>
+                            <span class="menu-product-name">Coffee</span>
+                        </div>
+                        <div class="menu-product" data-bev-category="nonCoffee" role="button" tabindex="0">
+                            <div class="menu-product-circle">
+                                <img class="menu-product-icon menu-product-icon--bev2" src="icons_customer/icon_customer_meals/bev2.svg" alt="">
+                            </div>
+                            <span class="menu-product-name">Non-Coffee</span>
+                        </div>
+                        <div class="menu-product" data-bev-category="frappe" role="button" tabindex="0">
+                            <div class="menu-product-circle">
+                                <img class="menu-product-icon menu-product-icon--bev3" src="icons_customer/icon_customer_meals/bev3.svg" alt="">
+                            </div>
+                            <span class="menu-product-name">Frappe</span>
+                        </div>
+                        <div class="menu-product" data-bev-category="juice" role="button" tabindex="0">
+                            <div class="menu-product-circle">
+                                <img class="menu-product-icon menu-product-icon--bev4" src="icons_customer/icon_customer_meals/bev4.svg" alt="">
+                            </div>
+                            <span class="menu-product-name">Juice</span>
+                        </div>
+                    </div>
+
+                    <div id="bev-temp-filters" class="bev-temp-filters" hidden>
+                        <button type="button" class="bev-temp-chip bev-temp-chip--active" data-drink-temp="all">All</button>
+                        <button type="button" class="bev-temp-chip" data-drink-temp="hot">Hot</button>
+                        <button type="button" class="bev-temp-chip" data-drink-temp="cold">Cold</button>
+                    </div>
+
+                    <!-- Product Cards — hidden until a circle is clicked -->
+                    <div class="prod-grid" id="prod-grid">
+
+                    <div class="prod-card">
+                        <div class="prod-card-img"></div>
+                        <div class="prod-card-body">
+                            <div class="prod-card-name-row">
+                                <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                <span class="prod-card-price">100.00</span>
+                            </div>
+                            <p class="prod-card-desc">Description</p>
+                        </div>
+                        <button class="prod-add-btn">ADD ORDER</button>
+                    </div>
+
+                    <div class="prod-card">
+                        <div class="prod-card-img"></div>
+                        <div class="prod-card-body">
+                            <div class="prod-card-name-row">
+                                <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                <span class="prod-card-price">100.00</span>
+                            </div>
+                            <p class="prod-card-desc">Description</p>
+                        </div>
+                        <button class="prod-add-btn">ADD ORDER</button>
+                    </div>
+
+                    <div class="prod-card">
+                        <div class="prod-card-img"></div>
+                        <div class="prod-card-body">
+                            <div class="prod-card-name-row">
+                                <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                <span class="prod-card-price">100.00</span>
+                            </div>
+                            <p class="prod-card-desc">Description</p>
+                        </div>
+                        <button class="prod-add-btn">ADD ORDER</button>
+                    </div>
+
+                    <div class="prod-card">
+                        <div class="prod-card-img"></div>
+                        <div class="prod-card-body">
+                            <div class="prod-card-name-row">
+                                <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                <span class="prod-card-price">100.00</span>
+                            </div>
+                            <p class="prod-card-desc">Description</p>
+                        </div>
+                        <button class="prod-add-btn">ADD ORDER</button>
+                    </div>
+
+                    <div class="prod-card">
+                        <div class="prod-card-img"></div>
+                        <div class="prod-card-body">
+                            <div class="prod-card-name-row">
+                                <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                <span class="prod-card-price">100.00</span>
+                            </div>
+                            <p class="prod-card-desc">Description</p>
+                        </div>
+                        <button class="prod-add-btn">ADD ORDER</button>
+                    </div>
+
+                    <div class="prod-card">
+                        <div class="prod-card-img"></div>
+                        <div class="prod-card-body">
+                            <div class="prod-card-name-row">
+                                <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                <span class="prod-card-price">100.00</span>
+                            </div>
+                            <p class="prod-card-desc">Description</p>
+                        </div>
+                        <button class="prod-add-btn">ADD ORDER</button>
+                    </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Sidebar -->
+            <aside class="menu-sidebar">
+                <div class="sidebar-inner">
+
+                    <!-- Header -->
+                    <div class="sidebar-header">
+                        <h3 class="sidebar-title">YOUR ORDER</h3>
+                        <span class="sidebar-badge">3 ITEMS</span>
+                    </div>
+
+                    <!-- Order Type -->
+                    <div class="sidebar-section">
+                        <h4 class="sidebar-section-title">ORDER TYPE</h4>
+                        <p class="order-type-value">Not selected</p>
+                    </div>
+
+                    <!-- Cart Items -->
+                    <div class="sidebar-items">
+                        <div class="cart-item">
+                            <div class="cart-item-row">
+                                <span class="cart-item-name">Cheddar Cheese Fries</span>
+                                <span class="cart-item-price">$4.75</span>
+                            </div>
+                            <div class="cart-item-row">
+                                <span class="cart-mods">Modifications</span>
+                                <div class="qty-ctrl">
+                                    <button class="qty-btn">−</button>
+                                    <span class="qty-val">1</span>
+                                    <button class="qty-btn">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cart-item">
+                            <div class="cart-item-row">
+                                <span class="cart-item-name">Nachos</span>
+                                <span class="cart-item-price">$19.00</span>
+                            </div>
+                            <div class="cart-item-row">
+                                <span class="cart-mods">Modifications</span>
+                                <div class="qty-ctrl">
+                                    <button class="qty-btn">−</button>
+                                    <span class="qty-val">2</span>
+                                    <button class="qty-btn">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section discount-section" hidden>
+                        <h4 class="sidebar-section-title">DISCOUNT</h4>
+                        <select class="discount-type-select" aria-label="Discount type">
+                            <option value="none">None</option>
+                            <option value="senior">Senior Citizen</option>
+                            <option value="pwd">PWD</option>
+                        </select>
+                        <div class="discount-fields" hidden>
+                            <input type="text" class="discount-name-input" placeholder="Customer name" maxlength="160" autocomplete="off">
+                            <input type="text" class="discount-id-input" placeholder="Senior/PWD ID number" maxlength="80" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="sidebar-section payment-method-section">
+                        <h4 class="sidebar-section-title">PAYMENT METHOD</h4>
+                        <div class="payment-btns">
+                            <button class="payment-btn payment-btn--active">CASH</button>
+                            <button class="payment-btn">GCASH</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer Totals -->
+                <div class="sidebar-footer">
+                    <div class="total-row total-row--final">
+                        <span class="total-label-final">Total</span>
+                        <span class="total-amt-final">$24.93</span>
+                    </div>
+                    <button class="checkout-btn">
+                        Proceed to Checkout &nbsp;→
+                    </button>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+
+    <!-- ── Screen 6: Snacks and Meals Menu ── -->
+    <div id="screen-meals" class="page page--hidden menu-page">
+
+        <!-- Menu Header -->
+        <header class="menu-header">
+            <div class="menu-header-brand">
+                <span class="menu-logo-text">ORTUS LAB - Menu</span>
+            </div>
+            <div class="menu-search-wrap">
+                <span class="menu-search-icon" aria-hidden="true"></span>
+                <input type="text" class="menu-search-input" placeholder="Searching for a meal?">
+            </div>
+        </header>
+
+        <!-- Menu Body -->
+        <div class="menu-body">
+
+            <!-- Product Grid Area -->
+            <div class="menu-grid-area">
+                <div class="menu-grid-header">
+                    <div class="menu-grid-title-block">
+                        <h2 class="menu-grid-heading">Snacks and Meals</h2>
+                        <p class="menu-grid-sub">Small bites or a hearty meal</p>
+                        <div class="menu-group-switch">
+                            <button class="menu-group-btn" data-menu-group="beverages">
+                                <span class="menu-group-btn__icon-wrap">
+                                    <img src="icons_customer/icon_startup/beverage.svg" alt="" class="menu-group-btn__icon">
+                                </span>
+                                <span class="menu-group-btn__label">Beverages</span>
+                            </button>
+                            <button class="menu-group-btn" data-menu-group="meals">
+                                <span class="menu-group-btn__icon-wrap">
+                                    <img src="icons_customer/icon_startup/meals.svg" alt="" class="menu-group-btn__icon">
+                                </span>
+                                <span class="menu-group-btn__label">Snacks &amp; Meals</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="menu-header-actions">
+                        <button class="menu-back-btn" id="btn-meals-back">Back</button>
+                    </div>
+                </div>
+
+                <!-- Meals layout: circles left, product cards right -->
+                <div class="meals-layout">
+
+                    <!-- Meal Circles (left column) -->
+                    <div class="menu-grid menu-grid--meals" id="meal-circles">
+                        <div class="menu-product" data-meal="snacks">
+                            <div class="menu-product-circle menu-product-circle--meal">
+                                <img class="menu-product-icon menu-product-icon--meal-nacho" src="icons_customer/icon_customer_meals/nacho.svg" alt="Snacks">
+                            </div>
+                        </div>
+                        <div class="menu-product" data-meal="pastries">
+                            <div class="menu-product-circle menu-product-circle--meal">
+                                <img class="menu-product-icon menu-product-icon--meal-pastries" src="icons_customer/icon_customer_meals/pastries.svg" alt="Pastries">
+                            </div>
+                        </div>
+                        <div class="menu-product" data-meal="meal">
+                            <div class="menu-product-circle menu-product-circle--meal">
+                                <img class="menu-product-icon menu-product-icon--meal-rice" src="icons_customer/icon_customer_meals/rice_meal.svg" alt="Meal">
+                            </div>
+                        </div>
+                        <div class="menu-product" data-meal="wings">
+                            <div class="menu-product-circle menu-product-circle--meal">
+                                <img class="menu-product-icon menu-product-icon--meal-chicken" src="icons_customer/icon_customer_meals/chicken.svg" alt="Wings">
+                            </div>
+                        </div>
+                        <div class="menu-product" data-meal="pasta">
+                            <div class="menu-product-circle menu-product-circle--meal">
+                                <img class="menu-product-icon menu-product-icon--meal-pasta" src="icons_customer/icon_customer_meals/pasta.svg" alt="Pasta">
+                            </div>
+                        </div>
+                        <div class="menu-product" data-meal="Add More">
+                            <div class="menu-product-circle menu-product-circle--meal menu-product-circle--add">
+                                <img class="menu-product-icon menu-product-icon--meal-other" src="icons_customer/icon_customer_meals/other.svg" alt="Add More">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product Cards (right side) — hidden until a circle is clicked -->
+                    <div class="prod-grid prod-grid--meals" id="meal-prod-grid">
+
+                        <div class="prod-card">
+                            <div class="prod-card-img"></div>
+                            <div class="prod-card-body">
+                                <div class="prod-card-name-row">
+                                    <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                    <span class="prod-card-price">100.00</span>
+                                </div>
+                                <p class="prod-card-desc">Description</p>
+                            </div>
+                            <button class="prod-add-btn">ADD ORDER</button>
+                        </div>
+
+                        <div class="prod-card">
+                            <div class="prod-card-img"></div>
+                            <div class="prod-card-body">
+                                <div class="prod-card-name-row">
+                                    <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                    <span class="prod-card-price">100.00</span>
+                                </div>
+                                <p class="prod-card-desc">Description</p>
+                            </div>
+                            <button class="prod-add-btn">ADD ORDER</button>
+                        </div>
+
+                        <div class="prod-card">
+                            <div class="prod-card-img"></div>
+                            <div class="prod-card-body">
+                                <div class="prod-card-name-row">
+                                    <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                    <span class="prod-card-price">100.00</span>
+                                </div>
+                                <p class="prod-card-desc">Description</p>
+                            </div>
+                            <button class="prod-add-btn">ADD ORDER</button>
+                        </div>
+
+                        <div class="prod-card">
+                            <div class="prod-card-img"></div>
+                            <div class="prod-card-body">
+                                <div class="prod-card-name-row">
+                                    <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                    <span class="prod-card-price">100.00</span>
+                                </div>
+                                <p class="prod-card-desc">Description</p>
+                            </div>
+                            <button class="prod-add-btn">ADD ORDER</button>
+                        </div>
+
+                        <div class="prod-card">
+                            <div class="prod-card-img"></div>
+                            <div class="prod-card-body">
+                                <div class="prod-card-name-row">
+                                    <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                    <span class="prod-card-price">100.00</span>
+                                </div>
+                                <p class="prod-card-desc">Description</p>
+                            </div>
+                            <button class="prod-add-btn">ADD ORDER</button>
+                        </div>
+
+                        <div class="prod-card">
+                            <div class="prod-card-img"></div>
+                            <div class="prod-card-body">
+                                <div class="prod-card-name-row">
+                                    <span class="prod-card-name">CHEDDAR CHEESE FRIES</span>
+                                    <span class="prod-card-price">100.00</span>
+                                </div>
+                                <p class="prod-card-desc">Description</p>
+                            </div>
+                            <button class="prod-add-btn">ADD ORDER</button>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Order Sidebar -->
+            <aside class="menu-sidebar">
+                <div class="sidebar-inner">
+
+                    <!-- Header -->
+                    <div class="sidebar-header">
+                        <h3 class="sidebar-title">YOUR ORDER</h3>
+                        <span class="sidebar-badge">3 ITEMS</span>
+                    </div>
+
+                    <!-- Order Type -->
+                    <div class="sidebar-section">
+                        <h4 class="sidebar-section-title">ORDER TYPE</h4>
+                        <p class="order-type-value">Not selected</p>
+                    </div>
+
+                    <!-- Cart Items -->
+                    <div class="sidebar-items">
+                        <div class="cart-item">
+                            <div class="cart-item-row">
+                                <span class="cart-item-name">Cheddar Cheese Fries</span>
+                                <span class="cart-item-price">$4.75</span>
+                            </div>
+                            <div class="cart-item-row">
+                                <span class="cart-mods">Modifications</span>
+                                <div class="qty-ctrl">
+                                    <button class="qty-btn">−</button>
+                                    <span class="qty-val">1</span>
+                                    <button class="qty-btn">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cart-item">
+                            <div class="cart-item-row">
+                                <span class="cart-item-name">Nachos</span>
+                                <span class="cart-item-price">$19.00</span>
+                            </div>
+                            <div class="cart-item-row">
+                                <span class="cart-mods">Modifications</span>
+                                <div class="qty-ctrl">
+                                    <button class="qty-btn">−</button>
+                                    <span class="qty-val">2</span>
+                                    <button class="qty-btn">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section discount-section" hidden>
+                        <h4 class="sidebar-section-title">DISCOUNT</h4>
+                        <select class="discount-type-select" aria-label="Discount type">
+                            <option value="none">None</option>
+                            <option value="senior">Senior Citizen</option>
+                            <option value="pwd">PWD</option>
+                        </select>
+                        <div class="discount-fields" hidden>
+                            <input type="text" class="discount-name-input" placeholder="Customer name" maxlength="160" autocomplete="off">
+                            <input type="text" class="discount-id-input" placeholder="Senior/PWD ID number" maxlength="80" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="sidebar-section payment-method-section">
+                        <h4 class="sidebar-section-title">PAYMENT METHOD</h4>
+                        <div class="payment-btns">
+                            <button class="payment-btn payment-btn--active">CASH</button>
+                            <button class="payment-btn">GCASH</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer Totals -->
+                <div class="sidebar-footer">
+                    <div class="total-row total-row--final">
+                        <span class="total-label-final">Total</span>
+                        <span class="total-amt-final">$24.93</span>
+                    </div>
+                    <button class="checkout-btn">
+                        Proceed to Checkout &nbsp;→
+                    </button>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+
+    <!-- ── CASH Checkout Modal ── -->
+    <div id="cash-checkout-modal" class="cash-modal-overlay" aria-hidden="true">
+        <div class="cash-modal" role="dialog" aria-modal="true" aria-labelledby="cash-modal-title">
+            <p class="cash-modal-note" id="cash-modal-title">Review your order before confirming:</p>
+            <p class="cash-modal-message cash-modal-message--pickup-only">Your order is ready within 15-20 mins.</p>
+            <div id="cash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
+            <div class="cash-modal-actions">
+                <button id="cash-modal-cancel" class="cash-modal-cancel-btn" type="button">CANCEL</button>
+                <button id="cash-modal-confirm" class="cash-modal-confirm-btn" type="button">CONFIRM</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── GCASH Checkout Modal ── -->
+    <div id="gcash-checkout-modal" class="cash-modal-overlay" aria-hidden="true">
+        <div class="cash-modal" role="dialog" aria-modal="true" aria-labelledby="gcash-modal-title">
+            <p id="gcash-modal-title" class="cash-modal-message cash-modal-message--gcash">
+                GCASH NO. <span id="gcash-number-display">09XXXXXXXXXX</span>
+                <button type="button" id="gcash-copy-number-btn" class="gcash-copy-number-btn" aria-label="Copy GCash number">COPY</button><br>
+                NAME: ***** ***<br><br>
+                Enter your GCash reference number, then confirm once the transaction is successful.
+            </p>
+                    <div class="gcash-qr-wrap" aria-label="GCash QR code">
+                        <img id="gcash-qr-img" class="gcash-qr-img" src="" alt="GCash QR Code" />
+                    </div>
+            <p class="cash-modal-message cash-modal-message--pickup-only">Your order is ready within 15-20 mins.</p>
+            <p class="cash-modal-pickup-time-note cash-modal-message--pickup-only">If much later, indicate time</p>
+            <input id="pickup-later-time-input" class="gcash-ref-input cash-modal-message--pickup-only" type="text" placeholder="e.g. 6:30 PM" autocomplete="off">
+            <div id="gcash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
+            <input id="gcash-ref-input" class="gcash-ref-input" type="text" placeholder="GCash reference number" inputmode="numeric" autocomplete="off">
+            <div class="cash-modal-actions">
+                <button id="gcash-modal-cancel" class="cash-modal-cancel-btn" type="button">CANCEL</button>
+                <button id="gcash-modal-confirm" class="cash-modal-confirm-btn" type="button">CONFIRM</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Order receipt QR (after checkout) ── -->
+    <div id="order-receipt-modal" class="cash-modal-overlay" aria-hidden="true">
+        <div class="cash-modal cash-modal--receipt" role="dialog" aria-modal="true" aria-labelledby="order-receipt-title">
+            <p class="cash-modal-note" id="order-receipt-title">Order received</p>
+            <p class="cash-modal-note cash-modal-note--thanks" id="order-receipt-subtitle">Scan the QR to open your receipt on your phone.</p>
+            <p class="order-receipt-number" id="order-receipt-number"></p>
+            <div class="order-receipt-qr-wrap" aria-label="Receipt QR code">
+                <canvas id="order-receipt-qr" width="200" height="200"></canvas>
+            </div>
+            <p class="order-receipt-hint">QR not working? Use the button below.</p>
+            <button type="button" class="order-receipt-view-btn" id="order-receipt-view-btn">View My Receipt</button>
+            <div class="cash-modal-actions">
+                <button id="order-receipt-done" class="cash-modal-confirm-btn" type="button">DONE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Add-ons checklist modal (same ids/classes as before for styles) ── -->
+    <div id="ingredient-modal" class="ingredient-modal-overlay" aria-hidden="true">
+        <div class="ingredient-modal" role="dialog" aria-modal="true" aria-labelledby="ingredient-modal-title">
+            <h3 id="ingredient-modal-title" class="ingredient-modal-title">Add-ons</h3>
+            <p id="ingredient-modal-sub" class="ingredient-modal-sub">Tap add-ons to select or deselect. Extra charges may apply at pickup.</p>
+            <div id="ingredient-checklist" class="ingredient-checklist ingredient-checklist--addons" role="group" aria-label="Add-ons"></div>
+            <div class="ingredient-modal-actions">
+                <button id="ingredient-modal-cancel" class="ingredient-modal-btn ingredient-modal-btn--ghost">Cancel</button>
+                <button id="ingredient-modal-confirm" class="ingredient-modal-btn">Add to Order</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="customer_script.js?v=20260422g"></script>
+
+</body>
+</html>

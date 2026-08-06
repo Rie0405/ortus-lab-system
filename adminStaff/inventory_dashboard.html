@@ -1,0 +1,2466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortus Lab Inventory Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css">
+    <link rel="stylesheet" href="brand_role_label.css">
+</head>
+<body>
+    <div class="inv-page">
+        <header class="top-nav">
+            <div class="brand-block">
+                <div class="brand-name-group">
+                    <span class="brand-name">ORTUS LAB</span>
+                    <span class="brand-role brand-role--admin">Admin</span>
+                </div>
+            </div>
+
+            <nav class="top-links">
+                <a href="admin_dashboard.html" class="top-link">Dashboard</a>
+                <a href="inventory_dashboard.html" class="top-link top-link--active">Inventory</a>
+                <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
+                <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
+                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
+            </nav>
+
+            <div class="top-actions">
+                <button type="button" class="icon-btn" title="Notifications" aria-label="Notifications"><img src="icons_admin/bell_icon.svg" alt=""></button>
+                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/wrench_icon.svg" alt=""></button>
+            </div>
+        </header>
+
+        <main class="inv-main">
+            <section class="title-row">
+                <div>
+                    <h1>Inventory Management</h1>
+                    <div class="low-stock-title">
+                        <img src="icons_admin/hazard_icon.svg" alt="">
+                        <span id="inventory-low-stock-title">Low-stock alerts</span>
+                    </div>
+                </div>
+                <div class="title-actions">
+                    <button class="btn btn-muted" id="btn-low-stock-level">Low Stock Alert Level</button>
+                    <button class="btn btn-muted" id="btn-add-inventory">Register Inventory Item</button>
+                    <button class="btn btn-muted" id="btn-view-receipts">Stock Log</button>
+                    <button class="btn btn-muted" id="btn-open-restock-notification" hidden>Open Restock Notification</button>
+                </div>
+            </section>
+
+            <section class="alert-grid" id="inventory-alert-grid">
+                <article class="alert-card alert-red">
+                    <img src="icons_admin/money_icon.svg" alt="" class="alert-thumb">
+                    <div>
+                        <h3>Coffee Beans</h3>
+                        <p class="left red">0 LEFT</p>
+                        <button class="mini-link"><img src="icons_admin/watch_icon.svg" alt=""> Reorder Now</button>
+                    </div>
+                </article>
+                <article class="alert-card alert-orange">
+                    <img src="icons_admin/rocket_icon.svg" alt="" class="alert-thumb">
+                    <div>
+                        <h3>Milk</h3>
+                        <p class="left orange">5 LEFT</p>
+                        <button class="mini-link"><img src="icons_admin/watch_icon.svg" alt=""> Reorder Now</button>
+                    </div>
+                </article>
+                <article class="alert-card alert-orange">
+                    <img src="icons_admin/ai_icon.svg" alt="" class="alert-thumb">
+                    <div>
+                        <h3>Cups</h3>
+                        <p class="left orange">8 LEFT</p>
+                        <button class="mini-link"><img src="icons_admin/watch_icon.svg" alt=""> Reorder Now</button>
+                    </div>
+                </article>
+                <article class="alert-card alert-red">
+                    <img src="icons_admin/stocks_icon.svg" alt="" class="alert-thumb">
+                    <div>
+                        <h3>Trash Bags</h3>
+                        <p class="left red">0 LEFT</p>
+                        <button class="mini-link"><img src="icons_admin/watch_icon.svg" alt=""> Reorder Now</button>
+                    </div>
+                </article>
+            </section>
+
+            <section class="inv-view-tabs" id="inventory-view-tabs" aria-label="Inventory views">
+                <button type="button" class="inv-view-tab inv-view-tab--active" data-inv-view="items">Inventory Items</button>
+                <button type="button" class="inv-view-tab" data-inv-view="movement">Stock Movement</button>
+            </section>
+
+            <section class="inv-view-panel is-active" id="inventory-items-panel" data-inv-view="items">
+            <section class="inv-filter-bar">
+                <button type="button" class="btn inv-filter-btn" id="btn-inventory-filter" aria-haspopup="dialog" aria-expanded="false" aria-controls="inventory-filter-popover">
+                    <img src="icons_admin/list_icon.svg" alt="" aria-hidden="true">
+                    <span class="inv-filter-btn__label">Filters</span>
+                    <span class="inv-filter-btn__summary" id="inventory-filter-summary">All Items</span>
+                </button>
+            </section>
+
+            <div class="inv-filter-backdrop" id="inventory-filter-backdrop" aria-hidden="true">
+                <div class="inv-filter-popover" id="inventory-filter-popover" role="dialog" aria-modal="true" aria-labelledby="inventory-filter-title">
+                    <header class="inv-filter-popover__head">
+                        <h3 id="inventory-filter-title">Filter Items</h3>
+                        <button type="button" class="inv-filter-popover__close" id="inventory-filter-close" aria-label="Close">×</button>
+                    </header>
+                    <div class="inv-filter-popover__body">
+                        <div class="inv-filter-check-grid">
+                            <label class="inv-filter-check">
+                                <input type="checkbox" id="filter-type-non-consumable" value="non_consumable" checked>
+                                <span class="inv-filter-check__box" aria-hidden="true"></span>
+                                <span class="inv-filter-check__text">Non-consumable</span>
+                            </label>
+                            <label class="inv-filter-check">
+                                <input type="checkbox" id="filter-type-consumable" value="consumable" checked>
+                                <span class="inv-filter-check__box" aria-hidden="true"></span>
+                                <span class="inv-filter-check__text">Consumable</span>
+                            </label>
+                        </div>
+                        <div class="inv-filter-divider" role="separator"></div>
+                        <div class="inv-filter-check-grid">
+                            <label class="inv-filter-check">
+                                <input type="checkbox" id="filter-cat-bar" value="Bar" checked>
+                                <span class="inv-filter-check__box" aria-hidden="true"></span>
+                                <span class="inv-filter-check__text">Bar</span>
+                            </label>
+                            <label class="inv-filter-check">
+                                <input type="checkbox" id="filter-cat-kitchen" value="Kitchen" checked>
+                                <span class="inv-filter-check__box" aria-hidden="true"></span>
+                                <span class="inv-filter-check__text">Kitchen</span>
+                            </label>
+                        </div>
+                    </div>
+                    <footer class="inv-filter-popover__foot">
+                        <button type="button" class="btn btn-muted" id="inventory-filter-reset">Reset</button>
+                        <button type="button" class="btn btn-primary" id="inventory-filter-done">Done</button>
+                    </footer>
+                </div>
+            </div>
+
+            <section class="table-wrap" id="inventory-table-wrap">
+                <div class="table-head">
+                    <span>ITEM DETAILS</span>
+                    <span>CATEGORY</span>
+                    <div class="table-head--stacked">
+                        <span>STOCK USED</span>
+                        <span class="table-head-sub">open items</span>
+                    </div>
+                    <span>STOCK LEVEL</span>
+                    <div class="table-head--stacked">
+                        <span>Orders per Stock Item</span>
+                        <span class="table-head-sub">order yield per stock item</span>
+                    </div>
+                    <div class="table-head--stacked">
+                        <span>Batch Size</span>
+                        <span class="table-head-sub">non-consumable only</span>
+                    </div>
+                    <span>STATUS</span>
+                    <span>ACTIONS</span>
+                </div>
+
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>Fries</strong><small>SKU: TR-902-X</small></div></div>
+                    <div><span class="cat">Food Ingredients</span></div>
+                    <div><strong>42 units</strong><div class="bar"><span class="w-80"></span></div></div>
+                    <div><span class="pill ok">IN STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Reorder Point</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>Rice</strong><small>SKU: TR-902-X</small></div></div>
+                    <div><span class="cat">Food Ingredients</span></div>
+                    <div><strong>42 units</strong><div class="bar"><span class="w-80"></span></div></div>
+                    <div><span class="pill ok">IN STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Reorder Point</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>Chicken</strong><small>SKU: TR-902-X</small></div></div>
+                    <div><span class="cat">Food Ingredients</span></div>
+                    <div><strong>42 units</strong><div class="bar"><span class="w-80"></span></div></div>
+                    <div><span class="pill ok">IN STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Reorder Point</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>Whipped Cream</strong><small>SKU: TR-902-X</small></div></div>
+                    <div><span class="cat">Add Ons</span></div>
+                    <div><strong>42 units</strong><div class="bar"><span class="w-80"></span></div></div>
+                    <div><span class="pill ok">IN STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Reorder Point</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocks_icon.svg" alt=""><div><strong>Milk</strong><small>SKU: BK-554-A</small></div></div>
+                    <div><span class="cat">Beverage Ingredients</span></div>
+                    <div><strong>5 units</strong><div class="bar"><span class="w-25"></span></div></div>
+                    <div><span class="pill low">LOW STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Reorder Point</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocks_icon.svg" alt=""><div><strong>Coffee Beans</strong><small>SKU: BT-120-X</small></div></div>
+                    <div><span class="cat">Beverage Ingredients</span></div>
+                    <div><strong>0 units</strong><div class="bar"><span class="w-0"></span></div></div>
+                    <div><span class="pill out">OUT OF STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Reorder Point</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocks_icon.svg" alt=""><div><strong>Vanilla Syrup</strong><small>SKU: FL-112-L</small></div></div>
+                    <div><span class="cat">Syrups &amp; Flavoring</span></div>
+                    <div><strong>124 units</strong><div class="bar"><span class="w-100"></span></div></div>
+                    <div><span class="pill ok">IN STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Reorder Point</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocks_icon.svg" alt=""><div><strong>Matcha Powder</strong><small>SKU: AF-440-S</small></div></div>
+                    <div><span class="cat">Powder &amp; Mixer</span></div>
+                    <div><strong>18 units</strong><div class="bar"><span class="w-45"></span></div></div>
+                    <div><span class="pill ok">IN STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Select</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocks_icon.svg" alt=""><div><strong>Cups</strong><small>SKU: BK-554-A</small></div></div>
+                    <div><span class="cat">Packaging</span></div>
+                    <div><strong>5 units</strong><div class="bar"><span class="w-25"></span></div></div>
+                    <div><span class="pill low">LOW STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Select</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+                <div class="table-row">
+                    <div class="item-col"><img src="icons_admin/stocks_icon.svg" alt=""><div><strong>Trash Bags</strong><small>SKU: BT-120-X</small></div></div>
+                    <div><span class="cat">Cleaning Supplies</span></div>
+                    <div><strong>0 units</strong><div class="bar"><span class="w-0"></span></div></div>
+                    <div><span class="pill out">OUT OF STOCK</span></div>
+                    <div class="inv-applicable-cell"><button type="button" class="btn-select-applicable" disabled>Select</button></div>
+                    <div class="actions"><button>Edit</button> | <button>Delete</button></div>
+                </div>
+            </section>
+
+            <p class="table-foot" id="inventory-table-foot">Showing 0 items</p>
+            </section>
+
+            <section class="inv-view-panel" id="inventory-movement-panel" data-inv-view="movement">
+            <section class="chips-row" id="stock-movement-chip-row"></section>
+            <section class="stock-movement" id="inventory-stock-movement">
+                <div class="stock-movement__head">
+                    <h2>Stock Movement</h2>
+                    <span id="stock-movement-period">Today's sold menu items</span>
+                </div>
+                <div class="stock-movement__list" id="stock-movement-list">
+                    <p class="stock-movement__empty">No stock movement data yet.</p>
+                </div>
+            </section>
+            </section>
+        </main>
+
+        <div class="inv-modal-backdrop" id="inventory-modal-backdrop" aria-hidden="true">
+            <div class="inv-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-modal-title">
+                <header class="inv-modal__header">
+                    <h2 id="inventory-modal-title">ADD INVENTORY ITEM</h2>
+                    <button type="button" class="inv-modal__close" id="inventory-modal-close" aria-label="Close">×</button>
+                </header>
+                <div class="inv-modal__body">
+                    <p class="inv-modal__error" id="inventory-modal-error" hidden></p>
+                    <div class="inv-modal__grid">
+                        <label class="inv-field">
+                            <span id="inv-name-label">Item Name</span>
+                            <input type="text" id="inv-item-name" placeholder="e.g. Coffee Beans">
+                        </label>
+                        <label class="inv-field">
+                            <span id="inv-category-label">Main Category</span>
+                            <select id="inv-category-name">
+                                <option value="">Select main category</option>
+                            </select>
+                        </label>
+                        <label class="inv-field" id="inv-stock-type-wrap">
+                            <span>Stock Type</span>
+                            <span class="inv-field-sub">Consumable = ingredients (orders left). Non-consumable = cups/lids (plain stock count).</span>
+                            <select id="inv-stock-type">
+                                <option value="consumable">Consumable</option>
+                                <option value="non_consumable">Non-consumable</option>
+                            </select>
+                        </label>
+                        <label class="inv-field" id="inv-avg-usage-wrap" hidden>
+                            <span id="inv-avg-usage-label">Average Daily Usage</span>
+                            <span class="inv-field-sub">Set by user. Used in formula: (Average Daily Usage x Lead Time) + Safety Stock.</span>
+                            <input type="number" id="inv-avg-daily-usage" min="0" step="0.01" placeholder="0">
+                        </label>
+                        <label class="inv-field" id="inv-lead-time-wrap" hidden>
+                            <span id="inv-lead-time-label">Lead Time (Days)</span>
+                            <input type="number" id="inv-lead-time-days" min="0" step="1" placeholder="7">
+                        </label>
+                        <label class="inv-field" id="inv-safety-stock-wrap" hidden>
+                            <span id="inv-safety-stock-label">Safety Stock</span>
+                            <input type="number" id="inv-safety-stock" min="0" step="0.01" placeholder="10">
+                        </label>
+                        <label class="inv-field">
+                            <span id="inv-stock-label">Stock Units</span>
+                            <input type="number" id="inv-stock-units" min="0" step="1" placeholder="0">
+                        </label>
+                        <label class="inv-field" id="inv-in-use-wrap" hidden>
+                            <span id="inv-in-use-label">Orders Left (open item)</span>
+                            <span class="inv-field-sub">Orders remaining on the active open item (used first).</span>
+                            <input type="number" id="inv-in-use" min="0" step="1" placeholder="0">
+                        </label>
+                        <label class="inv-field" id="inv-open-items-wrap" hidden>
+                            <span>Stock Used (open items)</span>
+                            <span class="inv-field-sub">How many items are open now (no max). Each open item is pulled from sealed stock — hindi ito idinadagdag sa Stock Level.</span>
+                            <input type="number" id="inv-open-items" min="0" step="1" placeholder="0">
+                            <span class="inv-field-sub" id="inv-open-items-hint" hidden></span>
+                        </label>
+                        <label class="inv-field" id="inv-per-stock-wrap" hidden>
+                            <span id="inv-per-stock-label">Per Stock</span>
+                            <input type="number" id="inv-per-stock" min="0.01" step="0.01" placeholder="1">
+                        </label>
+                        <label class="inv-field" id="inv-unit-wrap" hidden>
+                            <span id="inv-unit-label">Unit</span>
+                            <select id="inv-unit">
+                                <option value="g">g</option>
+                                <option value="kg">kg</option>
+                                <option value="ml">ml</option>
+                                <option value="l">l</option>
+                                <option value="pcs">pcs</option>
+                            </select>
+                        </label>
+                        <label class="inv-field" id="inv-orders-per-box-wrap" hidden>
+                        <span>Orders per Stock Item</span>
+                        <span class="inv-field-sub">How many orders one sealed item can serve.</span>
+                            <input type="number" id="inv-orders-per-box" min="1" step="1" placeholder="e.g. 80">
+                        </label>
+                    </div>
+                </div>
+                <footer class="inv-modal__footer">
+                    <button type="button" class="btn btn-muted" id="inventory-modal-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="inventory-modal-save">Save Item</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="inv-modal-backdrop" id="restock-notification-backdrop" aria-hidden="true">
+            <div class="inv-modal" role="dialog" aria-modal="true" aria-labelledby="restock-notification-title">
+                <header class="inv-modal__header">
+                    <h2 id="restock-notification-title">Low-stock Restock Alerts</h2>
+                    <button type="button" class="inv-modal__close" id="restock-notification-close" aria-label="Close">×</button>
+                </header>
+                <div class="inv-modal__body">
+                    <p class="app-modal__hint">Showing current low/out-of-stock items. Per-item restock is UI-only for now (test placeholders).</p>
+                    <div id="restock-notification-list" class="stock-movement__list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-modal-backdrop" id="orders-per-box-modal" aria-hidden="true">
+            <div class="app-modal" role="dialog" aria-modal="true" aria-labelledby="orders-per-box-title">
+                <header class="app-modal__header">
+                    <h2 id="orders-per-box-title">Set Orders per Stock Item</h2>
+                    <button type="button" class="app-modal__close" id="orders-per-box-close" aria-label="Close">×</button>
+                </header>
+                <div class="app-modal__body">
+                    <p class="app-modal__hint" id="orders-per-box-item-name">Item</p>
+                    <label class="inv-field">
+                        <span id="orders-per-box-label">Orders per Stock Item</span>
+                        <input type="number" id="orders-per-box-input" min="1" step="1" placeholder="e.g. 80">
+                    </label>
+                </div>
+                <footer class="app-modal__footer">
+                    <button type="button" class="btn btn-muted" id="orders-per-box-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="orders-per-box-save">Save</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="app-modal-backdrop" id="applicable-items-modal" aria-hidden="true">
+            <div class="app-modal" role="dialog" aria-modal="true" aria-labelledby="applicable-items-title">
+                <header class="app-modal__header">
+                    <h2 id="applicable-items-title">Low Stock Alert Level</h2>
+                    <button type="button" class="app-modal__close" id="applicable-items-close" aria-label="Close">×</button>
+                </header>
+                <div class="app-modal__body">
+                    <p class="app-modal__hint">Based on <strong>overall stock</strong> — pinagsama ang <strong>Stock Level</strong> (sealed/reserve) at <strong>Stock Used</strong> (open/active batch). Hindi isa lang ang tinitingnan.</p>
+                    <div id="applicable-items-list"></div>
+                </div>
+                <footer class="app-modal__footer">
+                    <button type="button" class="btn btn-muted" id="applicable-items-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="applicable-items-save">Save</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="receipt-modal-backdrop" id="receipt-modal-backdrop" aria-hidden="true">
+            <div class="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-modal-title">
+                <header class="receipt-modal__header">
+                    <h2 id="receipt-modal-title">REGISTER INVENTORY ITEM</h2>
+                    <button type="button" class="receipt-modal__close" id="receipt-modal-close" aria-label="Close">×</button>
+                </header>
+                <div class="receipt-modal__body">
+                    <p class="inv-modal__error" id="receipt-modal-error" hidden></p>
+                    <div class="receipt-modal__grid" id="receipt-date-grid">
+                        <label class="inv-field">
+                            <span>Date Ordered</span>
+                            <input type="date" id="receipt-date">
+                        </label>
+                        <label class="inv-field">
+                            <span>Date Received</span>
+                            <input type="date" id="receipt-expected-date">
+                        </label>
+                        <label class="inv-field receipt-modal__supplier">
+                            <span>Supplier</span>
+                            <input type="text" id="receipt-supplier" maxlength="140" placeholder="Supplier name">
+                        </label>
+                    </div>
+                    <div class="receipt-lines">
+                        <div class="receipt-lines__head">
+                            <span id="receipt-lines-title">Register Inventory Item</span>
+                            <button type="button" class="btn btn-muted" id="receipt-add-line">Add line</button>
+                        </div>
+                        <div class="receipt-lines__table">
+                            <div class="receipt-lines__row receipt-lines__row--head" id="receipt-lines-row-head">
+                                <span>Main Category</span>
+                                <span>Item</span>
+                            </div>
+                            <div id="receipt-lines-body"></div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="receipt-modal__footer">
+                    <button type="button" class="btn btn-muted" id="receipt-modal-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="receipt-modal-save">Save</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="receipt-summary-backdrop" id="receipt-summary-backdrop" aria-hidden="true">
+            <div class="receipt-summary-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-summary-title">
+                <header class="receipt-summary-modal__header">
+                    <h2 id="receipt-summary-title">STOCK LOG</h2>
+                    <button type="button" class="receipt-summary-modal__close" id="receipt-summary-close" aria-label="Close">×</button>
+                </header>
+                <div class="receipt-summary-modal__body">
+                    <p class="inv-modal__error" id="receipt-summary-error" hidden></p>
+                    <div class="receipt-summary-list" id="receipt-summary-list"></div>
+                </div>
+                <footer class="receipt-summary-modal__footer">
+                    <button type="button" class="btn btn-muted" id="receipt-summary-add">Add Entry</button>
+                    <button type="button" class="btn btn-muted" id="receipt-summary-refresh">Refresh</button>
+                    <button type="button" class="btn btn-primary" id="receipt-summary-done">Done</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="receipt-detail-backdrop" id="receipt-detail-backdrop" aria-hidden="true">
+            <div class="receipt-detail-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-detail-title">
+                <header class="receipt-detail-modal__header">
+                    <h2 id="receipt-detail-title">Entry Details</h2>
+                    <button type="button" class="receipt-detail-modal__close" id="receipt-detail-close" aria-label="Close">×</button>
+                </header>
+                <div class="receipt-detail-modal__body" id="receipt-detail-body">
+                    <p class="receipt-summary-empty">Loading entry...</p>
+                </div>
+                <footer class="receipt-detail-modal__footer">
+                    <button type="button" class="btn btn-primary" id="receipt-detail-done">Close</button>
+                </footer>
+            </div>
+        </div>
+
+        <footer class="dash-footer">
+            <div class="foot-left">
+                <span class="foot-dot"></span>
+                <span>V8 ANALYTICS ENGINE 2.4.0</span>
+                <span>CLOUD SYNC: VERIFIED</span>
+            </div>
+            <span class="foot-right">© 2024 GARAGE CAFE CO. BI DASHBOARD</span>
+        </footer>
+    </div>
+
+    <script src="dashboard_script.js"></script>
+    <script>
+    (function () {
+        var alertGrid = document.getElementById('inventory-alert-grid');
+        var filterBtn = document.getElementById('btn-inventory-filter');
+        var filterSummary = document.getElementById('inventory-filter-summary');
+        var filterBackdrop = document.getElementById('inventory-filter-backdrop');
+        var filterCloseBtn = document.getElementById('inventory-filter-close');
+        var filterResetBtn = document.getElementById('inventory-filter-reset');
+        var filterDoneBtn = document.getElementById('inventory-filter-done');
+        var filterTypeNonConsumable = document.getElementById('filter-type-non-consumable');
+        var filterTypeConsumable = document.getElementById('filter-type-consumable');
+        var filterCatBar = document.getElementById('filter-cat-bar');
+        var filterCatKitchen = document.getElementById('filter-cat-kitchen');
+        var tableWrap = document.getElementById('inventory-table-wrap');
+        var tableFoot = document.getElementById('inventory-table-foot');
+        var stockMovementList = document.getElementById('stock-movement-list');
+        var stockMovementPeriod = document.getElementById('stock-movement-period');
+        var movementChipRow = document.getElementById('stock-movement-chip-row');
+        var lowTitle  = document.getElementById('inventory-low-stock-title');
+        var searchIn  = document.querySelector('.search-wrap input');
+        var addBtn    = document.getElementById('btn-add-stock');
+        var addInventoryBtn = document.getElementById('btn-add-inventory');
+        var btnLowStockLevel = document.getElementById('btn-low-stock-level');
+        var viewReceiptsBtn = document.getElementById('btn-view-receipts');
+
+        var btnOpenRestockNotification = document.getElementById('btn-open-restock-notification');
+
+        var restockNotificationBackdrop = document.getElementById('restock-notification-backdrop');
+        var restockNotificationClose = document.getElementById('restock-notification-close');
+        var restockNotificationList = document.getElementById('restock-notification-list');
+
+        var modalBackdrop = document.getElementById('inventory-modal-backdrop');
+        var modalClose    = document.getElementById('inventory-modal-close');
+        var modalCancel   = document.getElementById('inventory-modal-cancel');
+        var modalSave     = document.getElementById('inventory-modal-save');
+        var modalError    = document.getElementById('inventory-modal-error');
+        var fldName       = document.getElementById('inv-item-name');
+        var fldCategory   = document.getElementById('inv-category-name');
+        var fldStockType  = document.getElementById('inv-stock-type');
+        var fldStockTypeWrap = document.getElementById('inv-stock-type-wrap');
+        var fldStock      = document.getElementById('inv-stock-units');
+        var fldInUse      = document.getElementById('inv-in-use');
+        var fldOpenItems  = document.getElementById('inv-open-items');
+        var fldOpenItemsHint = document.getElementById('inv-open-items-hint');
+        var editingItemSnapshot = null;
+        var fldPerStock   = document.getElementById('inv-per-stock');
+        var fldUnit       = document.getElementById('inv-unit');
+        var fldAvgDailyUsage = document.getElementById('inv-avg-daily-usage');
+        var fldLeadTimeDays  = document.getElementById('inv-lead-time-days');
+        var fldSafetyStock   = document.getElementById('inv-safety-stock');
+        var fldStockLabel = document.getElementById('inv-stock-label');
+        var fldNameLabel  = document.getElementById('inv-name-label');
+        var fldCategoryLabel = document.getElementById('inv-category-label');
+        var fldAvgUsageLabel = document.getElementById('inv-avg-usage-label');
+        var fldNameWrap = fldNameLabel ? fldNameLabel.closest('.inv-field') : null;
+        var fldCategoryWrap = fldCategoryLabel ? fldCategoryLabel.closest('.inv-field') : null;
+        var fldAvgUsageWrap = document.getElementById('inv-avg-usage-wrap') || (fldAvgUsageLabel ? fldAvgUsageLabel.closest('.inv-field') : null);
+        var fldLeadTimeWrap = document.getElementById('inv-lead-time-wrap');
+        var fldSafetyStockWrap = document.getElementById('inv-safety-stock-wrap');
+        var fldInUseWrap = document.getElementById('inv-in-use-wrap');
+        var fldOpenItemsWrap = document.getElementById('inv-open-items-wrap');
+        var fldPerStockWrap = document.getElementById('inv-per-stock-wrap');
+        var fldUnitWrap = document.getElementById('inv-unit-wrap');
+        var fldOrdersPerBox = document.getElementById('inv-orders-per-box');
+        var fldOrdersPerBoxWrap = document.getElementById('inv-orders-per-box-wrap');
+        var ordersPerBoxModal = document.getElementById('orders-per-box-modal');
+        var ordersPerBoxClose = document.getElementById('orders-per-box-close');
+        var ordersPerBoxCancel = document.getElementById('orders-per-box-cancel');
+        var ordersPerBoxSave = document.getElementById('orders-per-box-save');
+        var ordersPerBoxInput = document.getElementById('orders-per-box-input');
+        var ordersPerBoxItemName = document.getElementById('orders-per-box-item-name');
+        var ordersPerBoxTitle = document.getElementById('orders-per-box-title');
+        var ordersPerBoxLabel = document.getElementById('orders-per-box-label');
+        var ordersPerBoxEditingId = null;
+        var ordersPerBoxEditingMode = 'orders_per_stock_item';
+
+        var appModalBackdrop = document.getElementById('applicable-items-modal');
+        var appModalList     = document.getElementById('applicable-items-list');
+        var appModalClose    = document.getElementById('applicable-items-close');
+        var appModalCancel   = document.getElementById('applicable-items-cancel');
+        var appModalSave     = document.getElementById('applicable-items-save');
+
+        var receiptModalBackdrop = document.getElementById('receipt-modal-backdrop');
+        var receiptModalClose = document.getElementById('receipt-modal-close');
+        var receiptModalCancel = document.getElementById('receipt-modal-cancel');
+        var receiptModalSave = document.getElementById('receipt-modal-save');
+        var receiptModalError = document.getElementById('receipt-modal-error');
+        var receiptModalTitle = document.getElementById('receipt-modal-title');
+        var receiptDateGrid = document.getElementById('receipt-date-grid');
+        var receiptDate = document.getElementById('receipt-date');
+        var receiptExpectedDate = document.getElementById('receipt-expected-date');
+        var receiptSupplier = document.getElementById('receipt-supplier');
+        var receiptLinesTitle = document.getElementById('receipt-lines-title');
+        var receiptLinesRowHead = document.getElementById('receipt-lines-row-head');
+        var receiptAddLineBtn = document.getElementById('receipt-add-line');
+        var receiptLinesBody = document.getElementById('receipt-lines-body');
+        var receiptSummaryBackdrop = document.getElementById('receipt-summary-backdrop');
+        var receiptSummaryClose = document.getElementById('receipt-summary-close');
+        var receiptSummaryAdd = document.getElementById('receipt-summary-add');
+        var receiptSummaryDone = document.getElementById('receipt-summary-done');
+        var receiptSummaryRefresh = document.getElementById('receipt-summary-refresh');
+        var receiptSummaryError = document.getElementById('receipt-summary-error');
+        var receiptSummaryList = document.getElementById('receipt-summary-list');
+        var receiptDetailBackdrop = document.getElementById('receipt-detail-backdrop');
+        var receiptDetailClose = document.getElementById('receipt-detail-close');
+        var receiptDetailDone = document.getElementById('receipt-detail-done');
+        var receiptDetailBody = document.getElementById('receipt-detail-body');
+        var receiptModalMode = 'register';
+
+        if (!alertGrid || !tableWrap) return;
+
+        var allItems = [];
+        var menuProducts = [];
+        var inventoryFilters = {
+            types: { consumable: true, non_consumable: true },
+            categories: { Bar: true, Kitchen: true }
+        };
+        var selectedMovementCategory = 'All';
+        var allMovementItems = [];
+        var mainCategories = ['Bar', 'Kitchen'];
+        var searchText = '';
+        var editingId = null;
+        var lowStockFractionDen = 2;
+        var lowStockFractionOptions = [2, 3, 4, 5];
+        var lastLowAlerts = [];
+        var restockNotificationLastShownKey = 'restock_notification_last_shown_date';
+
+        function esc(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function statusMeta(status) {
+            if (status === 'out_of_stock') return { pill: 'out', label: 'OUT OF STOCK' };
+            if (status === 'low_stock') return { pill: 'low', label: 'LOW STOCK' };
+            return { pill: 'ok', label: 'IN STOCK' };
+        }
+
+        function isItemCapacityConfigured(item) {
+            return parseInt(item && item.orders_per_box, 10) > 0;
+        }
+
+        function getStockType(item) {
+            var t = String(item && item.stock_type || 'consumable').trim().toLowerCase();
+            return t === 'non_consumable' ? 'non_consumable' : 'consumable';
+        }
+
+        function isNonConsumable(item) {
+            return getStockType(item) === 'non_consumable';
+        }
+
+        function isKitchenCategory(category) {
+            return String(category || '').trim().toLowerCase() === 'kitchen';
+        }
+
+        function usesBatchStockDisplay(item) {
+            return isNonConsumable(item) || isKitchenCategory(item && item.category_name);
+        }
+
+        function getBatchSize(item) {
+            if (isKitchenCategory(item && item.category_name)) {
+                var kitchenCapacity = parseInt(item && item.orders_per_box, 10);
+                if (kitchenCapacity > 0) return kitchenCapacity;
+            }
+            return getNonConsumableBatchSize(item);
+        }
+
+        function getBatchRemaining(item) {
+            var remaining = Math.max(0, Math.round(getOrdersLeft(item)));
+            return Math.min(remaining, getBatchSize(item));
+        }
+
+        function formatStockTypeLabel(type) {
+            return type === 'non_consumable' ? 'Non-consumable' : 'Consumable';
+        }
+
+        function getConfiguredItemCapacity(item) {
+            return isItemCapacityConfigured(item) ? parseInt(item.orders_per_box, 10) : 0;
+        }
+
+        function getOrdersPerBox(item) {
+            return getConfiguredItemCapacity(item);
+        }
+
+        function getOrdersLeft(item) {
+            return Math.max(0, parseFloat(item && (item.orders_left != null ? item.orders_left : item.units_in_use)) || 0);
+        }
+
+        function getNonConsumableBatchSize(item) {
+            return Math.max(1, Math.round(parseFloat(item && item.per_stock_amount) || 1));
+        }
+
+        function getNonConsumableBatchRemaining(item) {
+            var remaining = Math.max(0, Math.round(getOrdersLeft(item)));
+            var batchSize = getNonConsumableBatchSize(item);
+            return Math.min(remaining, batchSize);
+        }
+
+        function getOpenItemsCount(item) {
+            var count = parseInt(item && item.open_items_count, 10);
+            if (Number.isFinite(count) && count > 0) {
+                return Math.max(0, count);
+            }
+            return getOrdersLeft(item) > 0 ? 1 : 0;
+        }
+
+        function formatOrdersLeftSubtitle(item) {
+            var ordersLeft = getOrdersLeft(item);
+            var capacity = getConfiguredItemCapacity(item);
+            var configured = isItemCapacityConfigured(item);
+            var openCount = getOpenItemsCount(item);
+
+            if (usesBatchStockDisplay(item)) {
+                var batchSize = getBatchSize(item);
+                var batchRemaining = getBatchRemaining(item);
+                if (batchRemaining <= 0) {
+                    return (parseInt(item.stock_units, 10) || 0) > 0 ? 'No active batch' : 'Out of stock';
+                }
+                return batchRemaining + ' of ' + batchSize + ' left in active batch';
+            }
+
+            if (openCount <= 0) {
+                return (parseInt(item.stock_units, 10) || 0) > 0 ? 'No open item yet' : 'Out of stock';
+            }
+            if (!configured) {
+                return 'Open item — set orders per stock item';
+            }
+            var left = Math.min(Math.round(ordersLeft), capacity);
+            if (openCount > 1) {
+                return left + ' of ' + capacity + ' on 1st item · ' + openCount + ' open items';
+            }
+            return left + ' of ' + capacity + ' orders left';
+        }
+
+        function getDisplayOrdersLeft(item) {
+            if (usesBatchStockDisplay(item)) return getBatchRemaining(item);
+            var ordersLeft = getOrdersLeft(item);
+            if (!isItemCapacityConfigured(item)) return ordersLeft;
+            return Math.min(ordersLeft, getConfiguredItemCapacity(item));
+        }
+
+        function formatStockUsedCell(item) {
+            if (usesBatchStockDisplay(item)) {
+                var remaining = getBatchRemaining(item);
+                var subtitle = esc(formatOrdersLeftSubtitle(item));
+                return '' +
+                    '<div class="stock-used-display">' +
+                        '<strong class="stock-used-display__main">' + String(remaining) + '</strong>' +
+                        '<small class="stock-used-display__sub">' + subtitle + '</small>' +
+                    '</div>';
+            }
+            var openCount = getOpenItemsCount(item);
+            var main = String(openCount);
+            var subtitle = formatOrdersLeftSubtitle(item);
+            return '' +
+                '<div class="stock-used-display">' +
+                    '<strong class="stock-used-display__main">' + main + '</strong>' +
+                    '<small class="stock-used-display__sub">' + esc(subtitle) + '</small>' +
+                '</div>';
+        }
+
+        function stockUsedBarWidthOrders(ordersLeft, ordersPerBox) {
+            var cap = Math.max(1, parseInt(ordersPerBox, 10) || 1);
+            return Math.max(0, Math.min(100, Math.round((ordersLeft / cap) * 100)));
+        }
+
+        function boxCapacityButtonLabel(item) {
+            if (isItemCapacityConfigured(item)) return String(getConfiguredItemCapacity(item));
+            return 'Set';
+        }
+
+        function boxCapacityButtonTitle(item) {
+            if (isItemCapacityConfigured(item)) {
+                return getConfiguredItemCapacity(item) + ' orders per stock item — click to edit';
+            }
+            return 'Set orders per stock item — how many orders one item can serve';
+        }
+
+        function formatStockUsed(n) {
+            var num = parseFloat(n || 0);
+            if (!Number.isFinite(num)) num = 0;
+            return Number.isInteger(num) ? String(num) : num.toFixed(2);
+        }
+
+        function normalizeDisplayUnit(unit) {
+            var u = String(unit || 'pcs').trim().toLowerCase();
+            if (u === 'unit' || u === 'units') return 'pcs';
+            return u;
+        }
+
+        function formatStockUsedDisplay(n, unit) {
+            return formatStockUsed(n) + ' ' + normalizeDisplayUnit(unit);
+        }
+
+        function safeNumber(value, fallback) {
+            var num = Number(value);
+            return Number.isFinite(num) ? num : fallback;
+        }
+
+        function getLowStockFractionDen() {
+            var den = parseInt(lowStockFractionDen, 10);
+            return lowStockFractionOptions.indexOf(den) !== -1 ? den : 2;
+        }
+
+        function formatFractionLabel(den) {
+            return '1/' + den;
+        }
+
+        function getItemMaxCapacity(item) {
+            var stockUnits = Math.max(0, parseInt(item && item.stock_units, 10) || 0);
+            var ordersLeft = getOrdersLeft(item);
+            var openCount = getOpenItemsCount(item);
+            if (usesBatchStockDisplay(item)) {
+                var batchSize = getBatchSize(item);
+                if (ordersLeft > 0 || openCount > 0) {
+                    return stockUnits + batchSize;
+                }
+                return Math.max(1, stockUnits);
+            }
+            var capacity = getConfiguredItemCapacity(item);
+            if (capacity <= 0) {
+                if (ordersLeft > 0 || openCount > 0) {
+                    return Math.max(1, stockUnits + Math.max(ordersLeft, 1));
+                }
+                return Math.max(1, stockUnits);
+            }
+            return (stockUnits + openCount) * capacity;
+        }
+
+        function getItemTotalAvailable(item) {
+            if (item && item.total_available != null) {
+                return Math.max(0, parseFloat(item.total_available) || 0);
+            }
+            var stockUnits = Math.max(0, parseInt(item && item.stock_units, 10) || 0);
+            if (usesBatchStockDisplay(item)) {
+                return stockUnits + getBatchRemaining(item);
+            }
+            var ordersLeft = getOrdersLeft(item);
+            var capacity = getConfiguredItemCapacity(item);
+            var openCount = getOpenItemsCount(item);
+            if (capacity <= 0) return ordersLeft + stockUnits;
+            var queued = Math.max(0, openCount - 1) * capacity;
+            return ordersLeft + queued + (stockUnits * capacity);
+        }
+
+        function getItemStockRatio(item) {
+            if (item && item.stock_ratio != null) {
+                return Math.max(0, parseFloat(item.stock_ratio) || 0);
+            }
+            var max = getItemMaxCapacity(item);
+            if (max <= 0) return 0;
+            return getItemTotalAvailable(item) / max;
+        }
+
+        function isItemLowStockByFraction(item) {
+            var total = getItemTotalAvailable(item);
+            if (total <= 0) return false;
+            return getItemStockRatio(item) <= (1 / getLowStockFractionDen());
+        }
+
+        function getStockLevelColor(item) {
+            var total = getItemTotalAvailable(item);
+            if (total <= 0) return '#ef4444';
+            if (isItemLowStockByFraction(item)) return '#f59e0b';
+            return '#22c55e';
+        }
+
+        function stockBarColor(units, threshold) {
+            var level = Number.isFinite(threshold) ? threshold : 10;
+            if (units <= 0) return '#ef4444';
+            if (units <= level) return '#f59e0b';
+            return '#22c55e';
+        }
+
+        function formatStockLevel(n) {
+            return String(parseInt(n, 10) || 0) + ' stocks';
+        }
+
+        function stockUsedBarWidth(inUse, perStockAmount) {
+            var amount = parseFloat(perStockAmount || 0);
+            if (amount > 0) {
+                return Math.max(0, Math.min(100, Math.round((inUse / amount) * 100)));
+            }
+            return stockBarWidth(inUse);
+        }
+
+        function stockBarWidth(units) {
+            var width = Math.max(0, Math.min(100, Math.round((units / 60) * 100)));
+            return width;
+        }
+
+        function setModalError(msg) {
+            if (!modalError) return;
+            modalError.textContent = msg;
+            modalError.hidden = !msg;
+        }
+
+        function setReceiptError(msg) {
+            if (!receiptModalError) return;
+            receiptModalError.textContent = msg;
+            receiptModalError.hidden = !msg;
+        }
+
+        function buildMainCategoryOptionsHtml(selected) {
+            var html = '';
+            if (!mainCategories.length) {
+                html += '<option value="">Select main category</option>';
+            }
+            mainCategories.forEach(function (cat) {
+                var name = String(cat || '').trim();
+                if (!name) return;
+                var sel = (name === selected) ? ' selected' : '';
+                html += '<option value="' + escAttr(name) + '"' + sel + '>' + esc(name) + '</option>';
+            });
+            if (selected && mainCategories.indexOf(selected) === -1) {
+                html += '<option value="' + escAttr(selected) + '" selected>' + esc(selected) + '</option>';
+            }
+            return html;
+        }
+
+        function populateMainCategorySelect(selectEl, selected) {
+            if (!selectEl) return;
+            selectEl.innerHTML = buildMainCategoryOptionsHtml(selected || '');
+        }
+
+        function receiptMainCategoryFieldHtml() {
+            return '<select class="receipt-line-type">' + buildMainCategoryOptionsHtml(mainCategories[0] || 'Kitchen') + '</select>';
+        }
+
+        function refreshAllReceiptCategorySelects() {
+            if (!receiptLinesBody) return;
+            receiptLinesBody.querySelectorAll('.receipt-lines__row').forEach(function (row) {
+                var typeEl = row.querySelector('.receipt-line-type');
+                if (!typeEl) return;
+                var current = String(typeEl.value || '').trim();
+                typeEl.innerHTML = buildMainCategoryOptionsHtml(current || mainCategories[0] || 'Kitchen');
+                if (current) typeEl.value = current;
+                fillReceiptItemOptions(row);
+            });
+        }
+
+        function resolveLineCategory(row) {
+            if (!row) return '';
+            var typeEl = row.querySelector('.receipt-line-type');
+            return String(typeEl && typeEl.value || '').trim();
+        }
+
+        function getTodayIsoDate() {
+            var now = new Date();
+            var month = String(now.getMonth() + 1).padStart(2, '0');
+            var day = String(now.getDate()).padStart(2, '0');
+            return now.getFullYear() + '-' + month + '-' + day;
+        }
+
+        function createReceiptLineRow(mode) {
+            var row = document.createElement('div');
+            row.className = 'receipt-lines__row';
+            if (mode === 'add_receipt') {
+                row.innerHTML =
+                    receiptMainCategoryFieldHtml() +
+                    '<select class="receipt-item-name"><option value="">Select item</option></select>' +
+                    '<input type="number" class="receipt-stocks" min="0" step="1" value="0">' +
+                    '<input type="number" class="receipt-in-use" min="0" step="1" value="0" title="How many ADDITIONAL items to open (adds to current Stock Used). 1 = 1 full box pulled from sealed stock. 0 = leave open as-is.">' +
+                    '<button type="button" class="receipt-line-remove">×</button>';
+                return row;
+            }
+            row.innerHTML =
+                receiptMainCategoryFieldHtml() +
+                '<input type="text" class="receipt-item-name" placeholder="Enter item name">' +
+                '<select class="receipt-stock-type">' +
+                    '<option value="consumable">Consumable</option>' +
+                    '<option value="non_consumable">Non-consumable</option>' +
+                '</select>';
+            return row;
+        }
+
+        function fillReceiptItemOptions(row) {
+            if (!row) return;
+            var typeEl = row.querySelector('.receipt-line-type');
+            var itemEl = row.querySelector('.receipt-item-name');
+            if (!typeEl || !itemEl) return;
+            if (itemEl.tagName === 'INPUT') return;
+            var selectedType = resolveLineCategory(row);
+            var prevValue = String(itemEl.value || '').trim();
+            if (!selectedType) {
+                itemEl.innerHTML = '<option value="">Select item</option>';
+                return;
+            }
+            var matches = allItems.filter(function (it) {
+                return String(it.category_name || '').trim() === selectedType;
+            }).sort(function (a, b) {
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+
+            var html = '<option value="">Select item</option>';
+            matches.forEach(function (it) {
+                var nm = String(it.name || '').trim();
+                if (!nm) return;
+                html += '<option value="' + escAttr(nm) + '">' + esc(nm) + '</option>';
+            });
+            itemEl.innerHTML = html;
+            if (prevValue && matches.some(function (it) { return String(it.name || '').trim() === prevValue; })) {
+                itemEl.value = prevValue;
+            }
+            syncReceiptOpenFieldFromItem(row);
+        }
+
+        function syncReceiptOpenFieldFromItem(row) {
+            if (!row || receiptModalMode !== 'add_receipt') return;
+            var inUseEl = row.querySelector('.receipt-in-use');
+            if (!inUseEl) return;
+            // Additive field — always start at 0 (0 = don't change current open count).
+            inUseEl.value = '0';
+        }
+
+        function addReceiptLine() {
+            if (!receiptLinesBody) return;
+            var row = createReceiptLineRow(receiptModalMode);
+            row.style.gridTemplateColumns = receiptModalMode === 'add_receipt'
+                ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
+                : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr)';
+            receiptLinesBody.appendChild(row);
+            fillReceiptItemOptions(row);
+        }
+
+        function setReceiptLayoutByMode() {
+            var isAddReceiptMode = receiptModalMode === 'add_receipt';
+            if (receiptDateGrid) receiptDateGrid.style.display = isAddReceiptMode ? 'grid' : 'none';
+            if (receiptAddLineBtn) receiptAddLineBtn.style.display = isAddReceiptMode ? '' : 'none';
+            if (receiptLinesTitle) receiptLinesTitle.textContent = isAddReceiptMode ? 'Line Items' : 'Register Inventory Item';
+            var headWrap = receiptLinesTitle ? receiptLinesTitle.parentElement : null;
+            if (headWrap) headWrap.style.justifyContent = isAddReceiptMode ? 'space-between' : 'flex-start';
+            if (receiptLinesRowHead) {
+                receiptLinesRowHead.innerHTML = isAddReceiptMode
+                    ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>open (+)</span><span></span>'
+                    : '<span>Main Category</span><span>Item</span><span>Stock Type</span>';
+                receiptLinesRowHead.style.gridTemplateColumns = isAddReceiptMode
+                    ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
+                    : 'minmax(100px, 1fr) minmax(140px, 1.4fr) minmax(120px, 1fr)';
+            }
+        }
+
+        function resetReceiptModal() {
+            setReceiptLayoutByMode();
+            if (receiptDate) receiptDate.value = getTodayIsoDate();
+            if (receiptExpectedDate) receiptExpectedDate.value = getTodayIsoDate();
+            if (receiptSupplier) receiptSupplier.value = '';
+            if (receiptLinesBody) {
+                receiptLinesBody.innerHTML = '';
+                addReceiptLine();
+            }
+            setReceiptError('');
+        }
+
+        function openReceiptModal(mode) {
+            receiptModalMode = (mode === 'add_receipt') ? 'add_receipt' : 'register';
+            resetReceiptModal();
+            if (receiptModalTitle) {
+                receiptModalTitle.textContent = receiptModalMode === 'add_receipt'
+                    ? 'ADD STOCK ENTRY'
+                    : 'REGISTER INVENTORY ITEM';
+            }
+            if (receiptModalSave) {
+                receiptModalSave.textContent = receiptModalMode === 'add_receipt'
+                    ? 'Save Entry'
+                    : 'Save';
+            }
+            if (receiptModalBackdrop) {
+                receiptModalBackdrop.classList.add('is-visible');
+                receiptModalBackdrop.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closeReceiptModal() {
+            if (receiptModalBackdrop) {
+                receiptModalBackdrop.classList.remove('is-visible');
+                receiptModalBackdrop.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        function collectReceiptPayload() {
+            var lineRows = receiptLinesBody ? receiptLinesBody.querySelectorAll('.receipt-lines__row') : [];
+            var lines = [];
+            lineRows.forEach(function (row) {
+                var lineType = resolveLineCategory(row);
+                var itemNameEl = row.querySelector('.receipt-item-name');
+                var stocksEl = row.querySelector('.receipt-stocks');
+                var inUseEl = row.querySelector('.receipt-in-use');
+                var stockTypeEl = row.querySelector('.receipt-stock-type');
+                var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
+                var inUseVal = parseFloat((inUseEl && inUseEl.value) || '0');
+                var line = {
+                    line_type: lineType,
+                    item_name: (itemNameEl && itemNameEl.value || '').trim(),
+                    stocks: stocksVal,
+                    in_use: inUseVal,
+                    stock_type: (stockTypeEl && stockTypeEl.value) || 'consumable',
+                    per_stock_amount: 1,
+                    unit: 'pcs',
+                    unit_cost: 0,
+                    total_cost: 0
+                };
+                if (!line.item_name) return;
+                lines.push(line);
+            });
+            var supplierName = (receiptSupplier && receiptSupplier.value || '').trim();
+            if (!supplierName && receiptModalMode !== 'add_receipt') {
+                supplierName = 'Unassigned';
+            }
+            return {
+                date: (receiptDate && receiptDate.value) || getTodayIsoDate(),
+                ordered_date: (receiptDate && receiptDate.value) || getTodayIsoDate(),
+                expected_receive_date: (receiptExpectedDate && receiptExpectedDate.value) || getTodayIsoDate(),
+                supplier: supplierName,
+                lines: lines
+            };
+        }
+
+        function saveReceipt() {
+            var payload = collectReceiptPayload();
+            if (receiptModalMode === 'add_receipt') {
+                if (!payload.date) return setReceiptError('Date ordered is required.');
+                if (!payload.expected_receive_date) return setReceiptError('Date received is required.');
+                if (!payload.supplier) return setReceiptError('Supplier is required.');
+            }
+            if (!payload.lines.length) return setReceiptError('At least one line item is required.');
+
+            var hasMissingCategory = payload.lines.some(function (line) { return !line.line_type; });
+            if (hasMissingCategory) return setReceiptError('Category is required for all lines.');
+
+            var hasInvalid = payload.lines.some(function (line) {
+                if (!line.line_type || !line.item_name) return true;
+                if (receiptModalMode === 'register') return false;
+                return line.stocks < 0 || line.in_use < 0;
+            });
+            if (hasInvalid) return setReceiptError('Please complete required fields with valid values.');
+
+            if (receiptModalSave) receiptModalSave.disabled = true;
+            fetch('api/receipts.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        setReceiptError(d.error || 'Failed to save stock entry.');
+                        return;
+                    }
+                    closeReceiptModal();
+                    alert('Stock entry saved. Entry #' + d.receipt_id);
+                    loadInventory();
+                })
+                .catch(function () {
+                    setReceiptError('Network error while saving stock entry.');
+                })
+                .finally(function () {
+                    if (receiptModalSave) receiptModalSave.disabled = false;
+                });
+        }
+
+        function setReceiptSummaryError(msg) {
+            if (!receiptSummaryError) return;
+            receiptSummaryError.textContent = msg;
+            receiptSummaryError.hidden = !msg;
+        }
+
+        function formatMoney(n) {
+            var num = Number(n || 0);
+            if (!Number.isFinite(num)) num = 0;
+            return 'PHP ' + num.toFixed(2);
+        }
+
+        function renderReceiptSummaryList(items) {
+            if (!receiptSummaryList) return;
+            if (!items || !items.length) {
+                receiptSummaryList.innerHTML = '<p class="receipt-summary-empty">No stock log entries yet.</p>';
+                return;
+            }
+            receiptSummaryList.innerHTML = items.map(function (it) {
+                return '' +
+                    '<article class="receipt-summary-item" data-receipt-id="' + it.receipt_id + '">' +
+                        '<div class="receipt-summary-item__main">' +
+                            '<strong>Entry #' + it.receipt_id + '</strong>' +
+                            '<span>' + esc(it.date) + ' · ' + esc(it.supplier) + '</span>' +
+                        '</div>' +
+                        '<div class="receipt-summary-item__meta">' +
+                            '<span>' + it.line_count + ' item(s)</span>' +
+                            '<strong>' + formatMoney(it.total_amount) + '</strong>' +
+                        '</div>' +
+                    '</article>';
+            }).join('');
+        }
+
+        function renderReceiptDetail(receipt, lines) {
+            if (!receiptDetailBody) return;
+            if (!receipt || !lines) {
+                receiptDetailBody.innerHTML = '<p class="receipt-summary-empty">Could not load entry details.</p>';
+                return;
+            }
+
+            var rowsHtml = lines.map(function (line) {
+                return '' +
+                    '<tr>' +
+                        '<td>' + esc(line.line_type) + '</td>' +
+                        '<td>' + esc(line.item_name) + '</td>' +
+                        '<td>' + Number(line.stocks != null ? line.stocks : line.quantity || 0).toFixed(0) + '</td>' +
+                        '<td>' + (Number(line.in_use || 0) >= 1 ? String(Math.max(0, Math.round(Number(line.in_use || 0)))) : '0') + '</td>' +
+                        '<td>' + formatMoney(line.unit_cost) + '</td>' +
+                        '<td>' + formatMoney(line.total_cost) + '</td>' +
+                    '</tr>';
+            }).join('');
+
+            if (document.getElementById('receipt-detail-title')) {
+                document.getElementById('receipt-detail-title').textContent = 'Entry #' + receipt.receipt_id;
+            }
+
+            receiptDetailBody.innerHTML =
+                '<div class="receipt-summary-detail__head">' +
+                    '<h3>Entry #' + receipt.receipt_id + '</h3>' +
+                    '<span>' + esc(receipt.date) + '</span>' +
+                '</div>' +
+                '<div class="receipt-summary-detail__meta">' +
+                    '<span><strong>Supplier:</strong> ' + esc(receipt.supplier || 'N/A') + '</span>' +
+                    '<span><strong>Date Ordered:</strong> ' + esc(receipt.ordered_date || receipt.date || '-') + '</span>' +
+                    '<span><strong>Date Received:</strong> ' + esc(receipt.expected_receive_date || '-') + '</span>' +
+                    '<span><strong>Items:</strong> ' + lines.length + ' line(s)</span>' +
+                    '<span><strong>Total Amount:</strong> ' + formatMoney(receipt.total_amount) + '</span>' +
+                '</div>' +
+                '<div class="receipt-summary-detail__table-wrap">' +
+                    '<table class="receipt-summary-detail__table">' +
+                        '<thead>' +
+                            '<tr><th>Main Category</th><th>Item</th><th>Stocks</th><th>open item</th><th>Unit Cost</th><th>Total</th></tr>' +
+                        '</thead>' +
+                        '<tbody>' + rowsHtml + '</tbody>' +
+                    '</table>' +
+                '</div>';
+        }
+
+        function openReceiptDetailModal() {
+            if (receiptDetailBackdrop) {
+                receiptDetailBackdrop.classList.add('is-visible');
+                receiptDetailBackdrop.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closeReceiptDetailModal() {
+            if (receiptDetailBackdrop) {
+                receiptDetailBackdrop.classList.remove('is-visible');
+                receiptDetailBackdrop.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        function loadReceiptDetail(receiptId) {
+            setReceiptSummaryError('');
+            if (receiptDetailBody) {
+                receiptDetailBody.innerHTML = '<p class="receipt-summary-empty">Loading entry...</p>';
+            }
+            openReceiptDetailModal();
+            fetch('api/receipts.php?receipt_id=' + encodeURIComponent(String(receiptId)))
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        setReceiptSummaryError(d.error || 'Could not load stock entry.');
+                        closeReceiptDetailModal();
+                        return;
+                    }
+                    renderReceiptDetail(d.receipt || null, d.lines || []);
+                })
+                .catch(function () {
+                    setReceiptSummaryError('Network error while loading stock entry.');
+                    closeReceiptDetailModal();
+                });
+        }
+
+        function loadReceiptSummaries() {
+            setReceiptSummaryError('');
+            if (receiptSummaryRefresh) receiptSummaryRefresh.disabled = true;
+            fetch('api/receipts.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        setReceiptSummaryError(d.error || 'Could not load stock log.');
+                        renderReceiptSummaryList([]);
+                        closeReceiptDetailModal();
+                        return;
+                    }
+                    var receipts = d.receipts || [];
+                    renderReceiptSummaryList(receipts);
+                })
+                .catch(function () {
+                    setReceiptSummaryError('Network error while loading stock log.');
+                    renderReceiptSummaryList([]);
+                })
+                .finally(function () {
+                    if (receiptSummaryRefresh) receiptSummaryRefresh.disabled = false;
+                });
+        }
+
+        function openReceiptSummaryModal() {
+            if (receiptSummaryBackdrop) {
+                receiptSummaryBackdrop.classList.add('is-visible');
+                receiptSummaryBackdrop.setAttribute('aria-hidden', 'false');
+            }
+            loadReceiptSummaries();
+        }
+
+        function closeReceiptSummaryModal() {
+            closeReceiptDetailModal();
+            if (receiptSummaryBackdrop) {
+                receiptSummaryBackdrop.classList.remove('is-visible');
+                receiptSummaryBackdrop.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        function resetForm() {
+            if (fldName) fldName.value = '';
+            if (fldCategory) {
+                populateMainCategorySelect(fldCategory, mainCategories[0] || 'Kitchen');
+            }
+            if (fldStock) fldStock.value = '0';
+            if (fldInUse) fldInUse.value = '0';
+            if (fldPerStock) fldPerStock.value = '1';
+            if (fldUnit) fldUnit.value = 'pcs';
+            if (fldAvgDailyUsage) fldAvgDailyUsage.value = '0';
+            if (fldLeadTimeDays) fldLeadTimeDays.value = '7';
+            if (fldSafetyStock) fldSafetyStock.value = '10';
+            if (fldName) fldName.readOnly = false;
+            if (fldCategory) fldCategory.disabled = false;
+            if (fldAvgDailyUsage) fldAvgDailyUsage.readOnly = false;
+            if (fldLeadTimeDays) fldLeadTimeDays.readOnly = false;
+            if (fldSafetyStock) fldSafetyStock.readOnly = false;
+            if (fldStock) fldStock.readOnly = false;
+            if (fldInUse) fldInUse.readOnly = false;
+            if (fldPerStock) fldPerStock.readOnly = false;
+            if (fldUnit) fldUnit.disabled = false;
+            if (fldStockLabel) fldStockLabel.textContent = 'Stock Units';
+            var inUseLabel = document.getElementById('inv-in-use-label');
+            if (inUseLabel) inUseLabel.textContent = 'Orders Left (open item)';
+            var inUseSub = fldInUseWrap ? fldInUseWrap.querySelector('.inv-field-sub') : null;
+            if (inUseSub) inUseSub.textContent = 'Orders remaining on the active open item (used first).';
+            var perStockLabel = document.getElementById('inv-per-stock-label');
+            if (perStockLabel) perStockLabel.textContent = 'Per Stock';
+            if (fldNameWrap) fldNameWrap.style.display = '';
+            if (fldCategoryWrap) fldCategoryWrap.style.display = '';
+            if (fldAvgUsageWrap) fldAvgUsageWrap.style.display = '';
+            if (fldLeadTimeWrap) fldLeadTimeWrap.style.display = '';
+            if (fldSafetyStockWrap) fldSafetyStockWrap.style.display = '';
+            if (fldInUseWrap) fldInUseWrap.style.display = 'none';
+            if (fldPerStockWrap) fldPerStockWrap.style.display = 'none';
+            if (fldUnitWrap) fldUnitWrap.style.display = 'none';
+            if (fldOpenItemsWrap) fldOpenItemsWrap.style.display = 'none';
+            if (fldOpenItems) fldOpenItems.value = '';
+            if (fldOpenItemsHint) {
+                fldOpenItemsHint.textContent = '';
+                fldOpenItemsHint.hidden = true;
+            }
+            editingItemSnapshot = null;
+            if (fldOrdersPerBoxWrap) fldOrdersPerBoxWrap.style.display = 'none';
+            if (fldOrdersPerBox) fldOrdersPerBox.value = '';
+            if (fldStockType) fldStockType.value = 'consumable';
+            if (fldStockTypeWrap) fldStockTypeWrap.style.display = '';
+            setModalError('');
+        }
+
+        function applyStockTypeEditFields(item) {
+            var non = isNonConsumable(item || { stock_type: fldStockType && fldStockType.value });
+            var inUseLabel = document.getElementById('inv-in-use-label');
+            var inUseSub = fldInUseWrap ? fldInUseWrap.querySelector('.inv-field-sub') : null;
+            var perStockLabel = document.getElementById('inv-per-stock-label');
+            if (fldInUseWrap) fldInUseWrap.style.display = non ? '' : '';
+            if (fldOrdersPerBoxWrap) fldOrdersPerBoxWrap.style.display = non ? 'none' : '';
+            if (fldPerStockWrap) fldPerStockWrap.style.display = non ? '' : 'none';
+            if (fldOpenItemsWrap) fldOpenItemsWrap.style.display = non ? 'none' : '';
+            if (fldStockTypeWrap) fldStockTypeWrap.style.display = '';
+            if (fldStockLabel) fldStockLabel.textContent = non ? 'Overall Stocks' : 'Sealed Items';
+            if (inUseLabel) inUseLabel.textContent = non ? 'Active Batch Remaining' : 'Orders Left (open item)';
+            if (inUseSub) {
+                inUseSub.textContent = non
+                    ? 'Remaining quantity in the current batch. This goes down by 1 per served use.'
+                    : 'Orders remaining on the active open item (used first).';
+            }
+            if (perStockLabel) perStockLabel.textContent = non ? 'Batch Size' : 'Per Stock';
+        }
+
+        function updateOpenItemsHint() {
+            if (!fldOpenItemsHint || !fldOpenItems || !editingItemSnapshot) return;
+            var currentOpen = getOpenItemsCount(editingItemSnapshot);
+            var targetOpen = parseInt(fldOpenItems.value, 10);
+            if (!Number.isFinite(targetOpen)) targetOpen = 0;
+            targetOpen = Math.max(0, targetOpen);
+            var baseSealed = parseInt(editingItemSnapshot.stock_units, 10) || 0;
+            var delta = targetOpen - currentOpen;
+            if (delta > 0 && baseSealed < delta) {
+                fldOpenItemsHint.textContent = 'Kulang ang sealed stock — kailangan ng ' + delta + ' sealed item(s) para maging ' + targetOpen + ' open.';
+                fldOpenItemsHint.hidden = false;
+                return;
+            }
+            if (delta !== 0) {
+                fldOpenItemsHint.textContent = 'On save: Sealed Items ' + baseSealed + ' → ' + Math.max(0, baseSealed - delta) + '.';
+                fldOpenItemsHint.hidden = false;
+                return;
+            }
+            fldOpenItemsHint.textContent = '';
+            fldOpenItemsHint.hidden = true;
+        }
+
+        function openModal(item) {
+            editingId = item ? item.id : null;
+            resetForm();
+            if (item) {
+                editingItemSnapshot = item;
+                if (fldName) fldName.value = item.name || '';
+                if (fldCategory) {
+                    var rawCat = String(item.category_name || '').trim();
+                    populateMainCategorySelect(fldCategory, rawCat || mainCategories[0] || 'Kitchen');
+                }
+                if (fldStock) fldStock.value = String(item.stock_units || 0);
+                if (fldStockType) fldStockType.value = getStockType(item);
+                if (fldInUse) fldInUse.value = String(Math.round(getOrdersLeft(item)));
+                if (fldPerStock) fldPerStock.value = String(item.per_stock_amount || 1);
+                if (fldOpenItems) fldOpenItems.value = String(getOpenItemsCount(item));
+                updateOpenItemsHint();
+                if (fldOrdersPerBox) fldOrdersPerBox.value = isItemCapacityConfigured(item) ? String(getConfiguredItemCapacity(item)) : '';
+                if (fldAvgDailyUsage) fldAvgDailyUsage.value = String(item.average_daily_usage || 0);
+                if (fldLeadTimeDays) fldLeadTimeDays.value = String(item.lead_time_days || 7);
+                if (fldSafetyStock) fldSafetyStock.value = String(item.safety_stock != null ? item.safety_stock : (item.reorder_level || 0));
+                if (fldName) fldName.readOnly = true;
+                if (fldCategory) fldCategory.disabled = true;
+                if (fldAvgDailyUsage) fldAvgDailyUsage.readOnly = false;
+                if (fldLeadTimeDays) fldLeadTimeDays.readOnly = false;
+                if (fldSafetyStock) fldSafetyStock.readOnly = false;
+                if (fldStock) fldStock.readOnly = false;
+                if (fldStockLabel) fldStockLabel.textContent = isNonConsumable(item) ? 'Overall Stocks' : 'Sealed Items';
+                if (fldStock) fldStock.readOnly = false;
+                if (fldNameWrap) fldNameWrap.style.display = 'none';
+                if (fldCategoryWrap) fldCategoryWrap.style.display = 'none';
+                if (fldAvgUsageWrap) fldAvgUsageWrap.style.display = 'none';
+                if (fldLeadTimeWrap) fldLeadTimeWrap.style.display = 'none';
+                if (fldSafetyStockWrap) fldSafetyStockWrap.style.display = 'none';
+                applyStockTypeEditFields(item);
+                if (fldPerStockWrap) fldPerStockWrap.style.display = isNonConsumable(item) ? '' : 'none';
+                if (fldUnitWrap) fldUnitWrap.style.display = 'none';
+                if (modalSave) modalSave.textContent = 'Update Item';
+                var title = document.getElementById('inventory-modal-title');
+                if (title) title.textContent = 'EDIT INVENTORY ITEM';
+            } else {
+                if (modalSave) modalSave.textContent = 'Save Item';
+                var createTitle = document.getElementById('inventory-modal-title');
+                if (createTitle) createTitle.textContent = 'ADD INVENTORY ITEM';
+            }
+            if (modalBackdrop) {
+                modalBackdrop.classList.add('is-visible');
+                modalBackdrop.setAttribute('aria-hidden', 'false');
+            }
+            if (fldName) fldName.focus();
+        }
+
+        function closeModal() {
+            if (modalBackdrop) {
+                modalBackdrop.classList.remove('is-visible');
+                modalBackdrop.setAttribute('aria-hidden', 'true');
+            }
+            editingId = null;
+        }
+
+        function renderAlerts(alerts) {
+            alerts = Array.isArray(alerts) ? alerts : [];
+            lastLowAlerts = alerts.slice();
+            alertGrid.innerHTML = '';
+            if (!alerts.length) {
+                alertGrid.innerHTML = '<article class="alert-card alert-orange"><div><h3>No active stock alerts</h3><p class="left orange">SYSTEM HEALTHY</p></div></article>';
+                return;
+            }
+
+            alerts.forEach(function (item) {
+                var card = document.createElement('article');
+                card.className = 'alert-card ' + (item.status === 'out_of_stock' ? 'alert-red' : 'alert-orange');
+                card.innerHTML =
+                    '<img src="icons_admin/stocks_icon.svg" alt="" class="alert-thumb">' +
+                    '<div>' +
+                        '<h3>' + esc(item.name) + '</h3>' +
+                        '<p class="left ' + (item.status === 'out_of_stock' ? 'red' : 'orange') + '">' +
+                            esc(formatOrdersLeftSubtitle(item)) +
+                        '</p>' +
+                        '<button class="mini-link"><img src="icons_admin/watch_icon.svg" alt=""> Reorder Now</button>' +
+                    '</div>';
+                alertGrid.appendChild(card);
+            });
+        }
+
+        function populateRestockNotification() {
+            if (!restockNotificationList) return;
+
+            restockNotificationList.innerHTML = '';
+            var alerts = lastLowAlerts || [];
+
+            if (!alerts.length) {
+                restockNotificationList.innerHTML = '<p class="stock-movement__empty">No active low-stock alerts.</p>';
+                return;
+            }
+
+            alerts.forEach(function (item) {
+                var pillClass = item.status === 'out_of_stock' ? 'out' : 'low';
+                var pillText = item.status === 'out_of_stock' ? 'OUT OF STOCK' : 'LOW STOCK';
+                var subtitle = esc(formatOrdersLeftSubtitle(item));
+
+                var row = document.createElement('div');
+                row.className = 'stock-movement__item';
+                row.innerHTML =
+                    '<div class="stock-movement__meta">' +
+                        '<strong>' + esc(item.name) + '</strong>' +
+                        '<small>' + subtitle + '</small>' +
+                    '</div>' +
+                    '<div style="display:flex;align-items:center;gap:10px;">' +
+                        '<span class="pill ' + pillClass + '">' + pillText + '</span>' +
+                    '</div>';
+                restockNotificationList.appendChild(row);
+            });
+        }
+
+        function openRestockNotification() {
+            if (!restockNotificationBackdrop) return;
+
+            populateRestockNotification();
+
+            restockNotificationBackdrop.classList.add('is-visible');
+            restockNotificationBackdrop.setAttribute('aria-hidden', 'false');
+
+            if (btnOpenRestockNotification) btnOpenRestockNotification.hidden = true;
+
+            // Prevent repeated auto-notification within the same day.
+            try {
+                localStorage.setItem(restockNotificationLastShownKey, getLocalDateKey());
+            } catch (e) { /* ignore */ }
+        }
+
+        function closeRestockNotification() {
+            if (!restockNotificationBackdrop) return;
+
+            restockNotificationBackdrop.classList.remove('is-visible');
+            restockNotificationBackdrop.setAttribute('aria-hidden', 'true');
+
+            if (btnOpenRestockNotification) btnOpenRestockNotification.hidden = false;
+        }
+
+        function getLocalDateKey() {
+            var d = new Date();
+            var yyyy = d.getFullYear();
+            var mm = String(d.getMonth() + 1).padStart(2, '0');
+            var dd = String(d.getDate()).padStart(2, '0');
+            return yyyy + '-' + mm + '-' + dd;
+        }
+
+        function maybeAutoOpenRestockNotification() {
+            if (!restockNotificationBackdrop) return;
+
+            var alerts = lastLowAlerts || [];
+            var todayKey = getLocalDateKey();
+
+            // If system is healthy, clear last-shown so it can notify again on the next low/out event.
+            if (!alerts.length) {
+                try { localStorage.removeItem(restockNotificationLastShownKey); } catch (e) { /* ignore */ }
+                return;
+            }
+
+            var lastShownKey = null;
+            try { lastShownKey = localStorage.getItem(restockNotificationLastShownKey); } catch (e) { /* ignore */ }
+            if (lastShownKey === todayKey) return;
+
+            openRestockNotification();
+        }
+
+        function syncFilterCheckboxesFromState() {
+            if (filterTypeNonConsumable) filterTypeNonConsumable.checked = !!inventoryFilters.types.non_consumable;
+            if (filterTypeConsumable) filterTypeConsumable.checked = !!inventoryFilters.types.consumable;
+            if (filterCatBar) filterCatBar.checked = !!inventoryFilters.categories.Bar;
+            if (filterCatKitchen) filterCatKitchen.checked = !!inventoryFilters.categories.Kitchen;
+        }
+
+        function syncFilterStateFromCheckboxes() {
+            inventoryFilters.types.non_consumable = !!(filterTypeNonConsumable && filterTypeNonConsumable.checked);
+            inventoryFilters.types.consumable = !!(filterTypeConsumable && filterTypeConsumable.checked);
+            inventoryFilters.categories.Bar = !!(filterCatBar && filterCatBar.checked);
+            inventoryFilters.categories.Kitchen = !!(filterCatKitchen && filterCatKitchen.checked);
+        }
+
+        function resetInventoryFilters() {
+            inventoryFilters.types.consumable = true;
+            inventoryFilters.types.non_consumable = true;
+            inventoryFilters.categories.Bar = true;
+            inventoryFilters.categories.Kitchen = true;
+            syncFilterCheckboxesFromState();
+            updateFilterButtonLabel();
+            renderRows();
+        }
+
+        function updateFilterButtonLabel() {
+            if (!filterSummary) return;
+            var typeParts = [];
+            var catParts = [];
+            if (inventoryFilters.types.non_consumable) typeParts.push('Non-consumable');
+            if (inventoryFilters.types.consumable) typeParts.push('Consumable');
+            if (inventoryFilters.categories.Bar) catParts.push('Bar');
+            if (inventoryFilters.categories.Kitchen) catParts.push('Kitchen');
+
+            if (typeParts.length === 2 && catParts.length === 2) {
+                filterSummary.textContent = 'All Items';
+                return;
+            }
+            if (!typeParts.length && !catParts.length) {
+                filterSummary.textContent = 'None selected';
+                return;
+            }
+
+            var labelParts = [];
+            if (typeParts.length === 1) labelParts.push(typeParts[0]);
+            else if (typeParts.length === 2) labelParts.push('All Types');
+            else labelParts.push('No Types');
+
+            if (catParts.length === 1) labelParts.push(catParts[0]);
+            else if (catParts.length === 2) labelParts.push('All Areas');
+            else labelParts.push('No Area');
+
+            filterSummary.textContent = labelParts.join(' · ');
+        }
+
+        function openInventoryFilterPopover() {
+            if (!filterBackdrop) return;
+            syncFilterCheckboxesFromState();
+            filterBackdrop.classList.add('is-visible');
+            filterBackdrop.setAttribute('aria-hidden', 'false');
+            if (filterBtn) filterBtn.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeInventoryFilterPopover() {
+            if (!filterBackdrop) return;
+            filterBackdrop.classList.remove('is-visible');
+            filterBackdrop.setAttribute('aria-hidden', 'true');
+            if (filterBtn) filterBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        function applyInventoryFiltersFromCheckboxes() {
+            syncFilterStateFromCheckboxes();
+            updateFilterButtonLabel();
+            renderRows();
+        }
+
+        function renderTypeChips() {
+            updateFilterButtonLabel();
+        }
+
+        function renderChips() {
+            updateFilterButtonLabel();
+        }
+
+        function getFilteredItems() {
+            var q = (searchIn && searchIn.value || '').trim().toLowerCase();
+            var anyType = inventoryFilters.types.consumable || inventoryFilters.types.non_consumable;
+            var anyCategory = inventoryFilters.categories.Bar || inventoryFilters.categories.Kitchen;
+            return allItems.filter(function (item) {
+                var stockType = getStockType(item);
+                var categoryName = String(item.category_name || '').trim();
+                var typeOk = !anyType || !!inventoryFilters.types[stockType];
+                var categoryOk = !anyCategory || !!inventoryFilters.categories[categoryName];
+                if (!categoryOk || !typeOk) return false;
+                if (!q) return true;
+                return String(item.name || '').toLowerCase().indexOf(q) !== -1
+                    || String(item.category_name || '').toLowerCase().indexOf(q) !== -1;
+            });
+        }
+
+        function ensureMenuProducts(done) {
+            if (menuProducts.length) {
+                done();
+                return;
+            }
+            fetch('api/menu.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.success && d.items) {
+                        menuProducts = d.items.slice().sort(function (a, b) {
+                            var ca = (a.category_name || '').localeCompare(b.category_name || '');
+                            if (ca !== 0) return ca;
+                            return (a.name || '').localeCompare(b.name || '');
+                        });
+                    }
+                    done();
+                })
+                .catch(function () { done(); });
+        }
+
+        function parseVariantsFromDescription(description) {
+            var descStr = String(description || '');
+            var lines = descStr.split(/\r?\n/);
+            var line = null;
+            lines.forEach(function (ln) {
+                if (line) return;
+                if (/^\s*Variants\s*:/i.test(ln || '')) line = ln;
+            });
+            if (!line) return [];
+            var payload = String(line).replace(/^\s*Variants\s*:/i, '').trim();
+            if (!payload) return [];
+            var parts = payload.split(';');
+            var out = [];
+            parts.forEach(function (seg) {
+                var s = String(seg || '').trim();
+                if (!s) return;
+                var lastEq = s.lastIndexOf('=');
+                if (lastEq === -1) return;
+                var left = s.substring(0, lastEq).trim();
+                var priceStr = s.substring(lastEq + 1).trim();
+                var firstParen = left.indexOf('(');
+                if (firstParen === -1) {
+                    out.push({ size: left, label: left, price: priceStr });
+                    return;
+                }
+                var size = left.substring(0, firstParen).trim();
+                var label = left.substring(firstParen + 1).trim();
+                if (label.endsWith(')')) label = label.substring(0, label.length - 1).trim();
+                out.push({ size: size, label: label, price: priceStr });
+            });
+            return out;
+        }
+
+        function variantSignatureFromParsed(v) {
+            if (!v) return '';
+            if (v.size && v.label && v.size !== v.label) {
+                return (v.size + ' (' + v.label + ')').trim();
+            }
+            return (v.size || v.label || '').trim();
+        }
+
+        function escAttr(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;');
+        }
+
+        function isMenuVariantSelected(selectedLinks, menuId, variantSig) {
+            return (selectedLinks || []).some(function (L) {
+                return parseInt(L.menu_item_id, 10) === menuId && String(L.variant_signature || '') === String(variantSig || '');
+            });
+        }
+
+        function renderApplicableChecklist(selectedLinks) {
+            if (!appModalList) return;
+            selectedLinks = selectedLinks || [];
+            if (!menuProducts.length) {
+                appModalList.innerHTML = '<p class="app-modal__empty">No menu products found. Add products in Ordering System first.</p>';
+                return;
+            }
+            var byCat = {};
+            menuProducts.forEach(function (m) {
+                var c = m.category_name || 'Other';
+                if (!byCat[c]) byCat[c] = [];
+                byCat[c].push(m);
+            });
+            var cats = Object.keys(byCat).sort();
+            var html = '';
+            cats.forEach(function (cat) {
+                html += '<div class="app-menu-group-title">' + esc(cat) + '</div>';
+                byCat[cat].forEach(function (m) {
+                    var mid = m.id;
+                    var variants = parseVariantsFromDescription(m.description || '');
+                    html += '<div class="app-menu-product-block">';
+                    html += '<div class="app-menu-product-head"><strong>' + esc(m.name) + '</strong></div>';
+                    if (variants.length) {
+                        html += '<div class="app-menu-variants">';
+                        variants.forEach(function (v) {
+                            var sig = variantSignatureFromParsed(v);
+                            var checked = isMenuVariantSelected(selectedLinks, mid, sig) ? ' checked' : '';
+                            html +=
+                                '<label class="app-menu-check app-menu-check--variant">' +
+                                '<input type="checkbox" data-applicable-link="1" data-menu-id="' +
+                                mid +
+                                '" data-variant-sig="' +
+                                escAttr(sig) +
+                                '"' +
+                                checked +
+                                '>' +
+                                '<span class="app-menu-check__text">' + esc(sig) + '</span>' +
+                                '</label>';
+                        });
+                        html += '</div>';
+                    } else {
+                        var checkedAny = isMenuVariantSelected(selectedLinks, mid, '') ? ' checked' : '';
+                        html +=
+                            '<label class="app-menu-check">' +
+                            '<input type="checkbox" data-applicable-link="1" data-menu-id="' +
+                            mid +
+                            '" data-variant-sig=""' +
+                            checkedAny +
+                            '>' +
+                            '<span class="app-menu-check__text">All orders of this product</span>' +
+                            '</label>';
+                    }
+                    html += '</div>';
+                });
+            });
+            appModalList.innerHTML = html;
+        }
+
+        function openLowStockLevelModal() {
+            if (!appModalList) return;
+            var selectedDen = getLowStockFractionDen();
+            var buttonsHtml = lowStockFractionOptions.map(function (den) {
+                var active = den === selectedDen ? ' low-stock-fraction-btn--active' : '';
+                return '<button type="button" class="low-stock-fraction-btn' + active + '" data-fraction-den="' + den + '">' + formatFractionLabel(den) + '</button>';
+            }).join('');
+
+            appModalList.innerHTML =
+                '<div class="low-stock-fraction-group">' +
+                    '<p class="low-stock-fraction-label">Mark as low stock when remaining stock is at or below</p>' +
+                    '<div class="low-stock-fraction-options" id="low-stock-fraction-options">' + buttonsHtml + '</div>' +
+                '</div>' +
+                '<p class="app-modal__hint">Example: with <strong>1/4</strong>, LOW STOCK kapag ang overall stock (Stock Level + Stock Used) ay 25% na lang o mas mababa ng full capacity.</p>';
+
+            var optionsEl = document.getElementById('low-stock-fraction-options');
+            if (optionsEl) {
+                optionsEl.addEventListener('click', function (e) {
+                    var btn = e.target.closest('[data-fraction-den]');
+                    if (!btn) return;
+                    var den = parseInt(btn.getAttribute('data-fraction-den'), 10);
+                    if (!lowStockFractionOptions.includes(den)) return;
+                    lowStockFractionDen = den;
+                    optionsEl.querySelectorAll('[data-fraction-den]').forEach(function (el) {
+                        el.classList.toggle('low-stock-fraction-btn--active', parseInt(el.getAttribute('data-fraction-den'), 10) === den);
+                    });
+                });
+            }
+
+            if (appModalBackdrop) {
+                appModalBackdrop.classList.add('is-visible');
+                appModalBackdrop.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closeApplicableModal() {
+            if (appModalBackdrop) {
+                appModalBackdrop.classList.remove('is-visible');
+                appModalBackdrop.setAttribute('aria-hidden', 'true');
+            }
+            if (appModalList) appModalList.innerHTML = '';
+        }
+
+        function saveLowStockLevel() {
+            var fractionDen = getLowStockFractionDen();
+
+            fetch('api/inventory.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'set_low_stock_fraction',
+                    low_stock_fraction_den: fractionDen
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        alert(d.error || 'Could not save low stock alert level.');
+                        return;
+                    }
+                    lowStockFractionDen = fractionDen;
+                    closeApplicableModal();
+                    loadInventory();
+                })
+                .catch(function () { alert('Network error while saving.'); });
+        }
+
+        function openOrdersPerBoxModal(itemId, mode) {
+            var item = allItems.find(function (it) { return it.id === itemId; });
+            if (!item || !ordersPerBoxModal) return;
+            mode = mode || 'orders_per_stock_item';
+            ordersPerBoxEditingId = itemId;
+            ordersPerBoxEditingMode = mode;
+            if (ordersPerBoxItemName) ordersPerBoxItemName.textContent = item.name || 'Item';
+            if (ordersPerBoxTitle) ordersPerBoxTitle.textContent = mode === 'batch_size' ? 'Set Batch Size' : 'Set Orders per Stock Item';
+            if (ordersPerBoxLabel) ordersPerBoxLabel.textContent = mode === 'batch_size' ? 'Batch Size' : 'Orders per Stock Item';
+            if (ordersPerBoxInput) {
+                ordersPerBoxInput.value = mode === 'batch_size'
+                    ? String(getNonConsumableBatchSize(item))
+                    : (isItemCapacityConfigured(item) ? String(getConfiguredItemCapacity(item)) : '');
+            }
+            ordersPerBoxModal.classList.add('is-visible');
+            ordersPerBoxModal.setAttribute('aria-hidden', 'false');
+            if (ordersPerBoxInput) ordersPerBoxInput.focus();
+        }
+
+        function closeOrdersPerBoxModal() {
+            ordersPerBoxEditingId = null;
+            ordersPerBoxEditingMode = 'orders_per_stock_item';
+            if (ordersPerBoxModal) {
+                ordersPerBoxModal.classList.remove('is-visible');
+                ordersPerBoxModal.setAttribute('aria-hidden', 'true');
+            }
+            if (ordersPerBoxInput) ordersPerBoxInput.value = '';
+        }
+
+        function saveOrdersPerBox() {
+            if (!ordersPerBoxEditingId) return;
+            var val = parseInt((ordersPerBoxInput && ordersPerBoxInput.value) || '0', 10);
+            if (!Number.isFinite(val) || val < 1) {
+                alert(ordersPerBoxEditingMode === 'batch_size'
+                    ? 'Batch size must be at least 1.'
+                    : 'Orders per stock item must be at least 1.');
+                return;
+            }
+            var payload = ordersPerBoxEditingMode === 'batch_size'
+                ? { id: ordersPerBoxEditingId, per_stock_amount: val }
+                : { id: ordersPerBoxEditingId, orders_per_box: val };
+            fetch('api/inventory.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        alert(d.error || (ordersPerBoxEditingMode === 'batch_size'
+                            ? 'Could not save batch size.'
+                            : 'Could not save orders per stock item.'));
+                        return;
+                    }
+                    var it = allItems.find(function (x) { return x.id === ordersPerBoxEditingId; });
+                    if (it) {
+                        if (ordersPerBoxEditingMode === 'batch_size') {
+                            it.per_stock_amount = val;
+                            if (getOrdersLeft(it) > val) {
+                                it.units_in_use = val;
+                                it.orders_left = val;
+                            }
+                        } else {
+                            it.orders_per_box = val;
+                            it.item_capacity_configured = 1;
+                            if (getOrdersLeft(it) > val) {
+                                it.units_in_use = val;
+                                it.orders_left = val;
+                            }
+                        }
+                    }
+                    closeOrdersPerBoxModal();
+                    loadInventory();
+                })
+                .catch(function () { alert('Network error while saving.'); });
+        }
+
+        function handleRowAction(e) {
+            var ordersBoxBtn = e.target.closest('.btn-box-capacity');
+            if (ordersBoxBtn && ordersBoxBtn.hasAttribute('data-orders-box-id')) {
+                e.preventDefault();
+                var obId = parseInt(ordersBoxBtn.getAttribute('data-orders-box-id'), 10);
+                if (obId) openOrdersPerBoxModal(obId, 'orders_per_stock_item');
+                return;
+            }
+            var batchSizeBtn = e.target.closest('.btn-batch-size');
+            if (batchSizeBtn && batchSizeBtn.hasAttribute('data-batch-size-id')) {
+                e.preventDefault();
+                var bsId = parseInt(batchSizeBtn.getAttribute('data-batch-size-id'), 10);
+                if (bsId) openOrdersPerBoxModal(bsId, 'batch_size');
+                return;
+            }
+            var delBtn = e.target.closest('[data-delete-id]');
+            // Fallback for static/sample rows that do not yet carry data-* ids.
+            var plainActionBtn = e.target.closest('.actions button');
+            if (!delBtn && plainActionBtn) {
+                var rowEl = plainActionBtn.closest('.table-row');
+                var nameEl = rowEl ? rowEl.querySelector('.item-col strong') : null;
+                var itemName = nameEl ? String(nameEl.textContent || '').trim() : '';
+                if (itemName) {
+                    var found = allItems.find(function (it) {
+                        return String(it.name || '').trim().toLowerCase() === itemName.toLowerCase();
+                    });
+                    if (found) {
+                        var actionText = String(plainActionBtn.textContent || '').trim().toLowerCase();
+                        if (actionText === 'delete') {
+                            if (!confirm('Archive this inventory item?')) return;
+                            fetch('api/inventory.php', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: found.id })
+                            }).then(function (r) { return r.json(); })
+                              .then(function (d) {
+                                  if (!d.success) { alert(d.error || 'Failed to archive item.'); return; }
+                                  loadInventory();
+                              });
+                            return;
+                        }
+                    }
+                }
+            }
+            if (delBtn) {
+                var delId = parseInt(delBtn.getAttribute('data-delete-id'), 10);
+                if (!delId) return;
+                if (!confirm('Archive this inventory item?')) return;
+                fetch('api/inventory.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: delId })
+                }).then(function (r) { return r.json(); })
+                  .then(function (d) {
+                      if (!d.success) { alert(d.error || 'Failed to archive item.'); return; }
+                      loadInventory();
+                  });
+            }
+        }
+
+        function renderRows() {
+            tableWrap.querySelectorAll('.table-row').forEach(function (row) { row.remove(); });
+
+            var filtered = getFilteredItems();
+            filtered.forEach(function (item) {
+                var meta = statusMeta(item.status);
+                var nonConsumable = isNonConsumable(item);
+                var batchDisplay = usesBatchStockDisplay(item);
+                var ordersLeft = getDisplayOrdersLeft(item);
+                var ordersPerBox = getOrdersPerBox(item);
+                var capacityConfigured = isItemCapacityConfigured(item);
+                var batchSize = getBatchSize(item);
+                var usedWidth = batchDisplay
+                    ? stockUsedBarWidthOrders(ordersLeft, batchSize)
+                    : (capacityConfigured ? stockUsedBarWidthOrders(ordersLeft, ordersPerBox) : 0);
+                var usedColor = batchDisplay
+                    ? (ordersLeft > 0 ? getStockLevelColor(item) : 'rgba(148, 163, 184, 0.35)')
+                    : (capacityConfigured ? getStockLevelColor(item) : 'rgba(148, 163, 184, 0.35)');
+                var capacityLabel = nonConsumable ? '—' : boxCapacityButtonLabel(item);
+                var capacityTitle = nonConsumable
+                    ? 'Not used for non-consumable items'
+                    : boxCapacityButtonTitle(item);
+                var batchLabel = nonConsumable ? String(batchSize) : '—';
+                var batchTitle = nonConsumable
+                    ? ('Batch size for this non-consumable item. Current setting: ' + batchSize)
+                    : 'Not used for consumable items';
+                var stockType = getStockType(item);
+                var row = document.createElement('div');
+                row.className = 'table-row';
+                row.innerHTML =
+                    '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
+                    '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                    '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
+                    '<div><strong>' + formatStockLevel(item.stock_units) + '</strong></div>' +
+                    '<div class="inv-box-capacity-cell">' +
+                        (nonConsumable
+                            ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'
+                            : '<button type="button" class="btn-box-capacity"' + (capacityConfigured ? ' data-configured="1"' : '') + ' data-orders-box-id="' + item.id + '" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</button>') +
+                    '</div>' +
+                    '<div class="inv-box-capacity-cell">' +
+                        (nonConsumable
+                            ? '<button type="button" class="btn-box-capacity btn-batch-size" data-configured="1" data-batch-size-id="' + item.id + '" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</button>'
+                            : '<span class="inv-box-capacity-na" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</span>') +
+                    '</div>' +
+                    '<div><span class="pill ' + meta.pill + '">' + meta.label + '</span></div>' +
+                    '<div class="actions"><button class="link-btn" title="Archive" data-delete-id="' + item.id + '">Delete</button></div>';
+                tableWrap.appendChild(row);
+            });
+
+            if (!filtered.length) {
+                var empty = document.createElement('div');
+                empty.className = 'table-row';
+                empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No inventory items found.</div>';
+                tableWrap.appendChild(empty);
+            }
+
+            if (tableFoot) {
+                tableFoot.textContent = 'Showing ' + filtered.length + ' of ' + allItems.length + ' items';
+            }
+        }
+
+        function collectFormData() {
+            var data = {
+                item_name: (fldName && fldName.value || '').trim(),
+                category_name: String(fldCategory && fldCategory.value || '').trim(),
+                stock_type: String(fldStockType && fldStockType.value || 'consumable'),
+                stock_units: parseInt((fldStock && fldStock.value) || '0', 10)
+            };
+            if (editingId) {
+                var stockType = String(fldStockType && fldStockType.value || 'consumable');
+                data = {
+                    stock_type: stockType,
+                    stock_units: parseInt((fldStock && fldStock.value) || '0', 10)
+                };
+                if (stockType === 'consumable') {
+                    data.open_items_count = parseInt((fldOpenItems && fldOpenItems.value) || '0', 10);
+                    data.units_in_use = parseFloat((fldInUse && fldInUse.value) || '0');
+                    data.orders_per_box = parseInt((fldOrdersPerBox && fldOrdersPerBox.value) || '0', 10);
+                } else {
+                    data.units_in_use = parseFloat((fldInUse && fldInUse.value) || '0');
+                    data.per_stock_amount = parseFloat((fldPerStock && fldPerStock.value) || '1');
+                }
+            }
+            return data;
+        }
+
+        function normMenuCategoryName(n) {
+            return String(n || '').trim().toLowerCase();
+        }
+
+        function isBarMenuCategory(name) {
+            var c = normMenuCategoryName(name);
+            if (!c) return false;
+            if (c === 'beverages') return true;
+            if (c === 'coffee') return true;
+            if (/\bnon[\s-]*coffee\b/.test(c) || c === 'noncoffee' || c === 'non coffee') return true;
+            if (c.indexOf('frappe') !== -1) return true;
+            if (/\brefresher/.test(c)) return true;
+            if (c === 'drinks') return true;
+            return false;
+        }
+
+        function menuItemStockGroup(categoryName) {
+            return isBarMenuCategory(categoryName) ? 'Bar' : 'Kitchen';
+        }
+
+        function renderMovementChips() {
+            if (!movementChipRow) return;
+            movementChipRow.innerHTML = '';
+            var allBtn = document.createElement('button');
+            allBtn.className = 'chip ' + (selectedMovementCategory === 'All' ? 'chip-active' : '');
+            allBtn.textContent = 'All';
+            allBtn.addEventListener('click', function () {
+                selectedMovementCategory = 'All';
+                renderMovementChips();
+                renderStockMovement();
+            });
+            movementChipRow.appendChild(allBtn);
+
+            mainCategories.forEach(function (cat) {
+                var btn = document.createElement('button');
+                btn.className = 'chip ' + (selectedMovementCategory === cat ? 'chip-active' : '');
+                btn.textContent = cat;
+                btn.addEventListener('click', function () {
+                    selectedMovementCategory = cat;
+                    renderMovementChips();
+                    renderStockMovement();
+                });
+                movementChipRow.appendChild(btn);
+            });
+        }
+
+        function getFilteredMovementItems() {
+            return allMovementItems.filter(function (item) {
+                var qty = parseInt(item.qty_sold || 0, 10);
+                if (qty <= 0) return false;
+                return selectedMovementCategory === 'All' || item.stock_group === selectedMovementCategory;
+            });
+        }
+
+        function renderStockMovement() {
+            if (!stockMovementList) return;
+            var items = getFilteredMovementItems();
+            if (!items.length) {
+                var emptyMsg = 'No sales today yet.';
+                if (selectedMovementCategory !== 'All') {
+                    emptyMsg = 'No sales today for ' + selectedMovementCategory + '.';
+                }
+                stockMovementList.innerHTML = '<p class="stock-movement__empty">' + emptyMsg + '</p>';
+                return;
+            }
+
+            var html = '';
+            items.forEach(function (it) {
+                var qty = parseInt(it.qty_sold || 0, 10);
+                var productName = esc(it.name || 'Unknown item');
+                html +=
+                    '<article class="stock-movement__item">' +
+                        '<div class="stock-movement__meta">' +
+                            '<strong>' + productName + '</strong>' +
+                            '<small>' + esc(it.category_name || '') + '</small>' +
+                        '</div>' +
+                        '<span class="stock-movement__qty">' + qty + ' sold</span>' +
+                    '</article>';
+            });
+            stockMovementList.innerHTML = html;
+
+            if (stockMovementPeriod) {
+                var label = selectedMovementCategory === 'All'
+                    ? 'Today\'s sales'
+                    : 'Today\'s ' + selectedMovementCategory + ' sales';
+                stockMovementPeriod.textContent = label + ' (processed orders only)';
+            }
+        }
+
+        function loadStockMovement() {
+            var cacheBust = Date.now();
+            Promise.all([
+                fetch('api/dashboard.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
+            ])
+                .then(function (res) {
+                    var dashRes = res[0];
+                    var menuRes = res[1];
+                    if (!dashRes || !dashRes.success) {
+                        allMovementItems = [];
+                        renderMovementChips();
+                        renderStockMovement();
+                        return;
+                    }
+
+                    var mainCatMap = {};
+                    if (menuRes && menuRes.success && menuRes.items) {
+                        menuRes.items.forEach(function (it) {
+                            var key = String(it.name || '').trim().toLowerCase();
+                            if (!key) return;
+                            var mc = String(it.main_category_name || '').trim();
+                            if (!mc) mc = menuItemStockGroup(it.category_name);
+                            mainCatMap[key] = mc;
+                        });
+                    }
+
+                    allMovementItems = (dashRes.top_items_today || []).map(function (it) {
+                        var nm = String(it.name || '').trim();
+                        var key = nm.toLowerCase();
+                        var catName = String(it.category || it.category_name || '').trim();
+                        var stockGroup = mainCatMap[key] || menuItemStockGroup(catName);
+                        return {
+                            name: nm,
+                            category_name: catName,
+                            stock_group: stockGroup,
+                            qty_sold: parseInt(it.qty_sold || 0, 10) || 0
+                        };
+                    }).filter(function (it) {
+                        return it.name && it.qty_sold > 0;
+                    });
+
+                    allMovementItems.sort(function (a, b) {
+                        var aq = parseInt(a.qty_sold || 0, 10);
+                        var bq = parseInt(b.qty_sold || 0, 10);
+                        if (bq !== aq) return bq - aq;
+                        return String(a.name || '').localeCompare(String(b.name || ''));
+                    });
+
+                    renderMovementChips();
+                    renderStockMovement();
+                })
+                .catch(function () {
+                    allMovementItems = [];
+                    renderMovementChips();
+                    renderStockMovement();
+                });
+        }
+
+        function saveInventory() {
+            var payload = collectFormData();
+            if (editingId) {
+                if (!Number.isFinite(payload.stock_units) || payload.stock_units < 0) {
+                    return setModalError('Stocks cannot be negative.');
+                }
+                if (payload.stock_type === 'consumable') {
+                    if (!Number.isFinite(payload.open_items_count) || payload.open_items_count < 0) {
+                        return setModalError('Open items cannot be negative.');
+                    }
+                    if (!Number.isFinite(payload.units_in_use) || payload.units_in_use < 0) {
+                        return setModalError('Orders left cannot be negative.');
+                    }
+                    if (!Number.isFinite(payload.orders_per_box) || payload.orders_per_box < 1) {
+                        return setModalError('Item capacity must be at least 1.');
+                    }
+                } else {
+                    if (!Number.isFinite(payload.units_in_use) || payload.units_in_use < 0) {
+                        return setModalError('Active batch remaining cannot be negative.');
+                    }
+                    if (!Number.isFinite(payload.per_stock_amount) || payload.per_stock_amount < 1) {
+                        return setModalError('Batch size must be at least 1.');
+                    }
+                }
+            } else {
+                if (!payload.item_name) return setModalError('Item name is required.');
+                if (!payload.category_name) return setModalError('Category is required.');
+                if (payload.stock_units < 0) return setModalError('Stock units cannot be negative.');
+            }
+
+            var method = editingId ? 'PUT' : 'POST';
+            if (editingId) payload.id = editingId;
+
+            fetch('api/inventory.php', {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.success) {
+                    setModalError(d.error || 'Failed to save inventory item.');
+                    return;
+                }
+                closeModal();
+                loadInventory();
+            })
+            .catch(function () { setModalError('Network error while saving item.'); });
+        }
+
+        function loadInventory() {
+            fetch('api/inventory.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        console.warn('Inventory load failed:', d.error || 'Unknown error');
+                        // Remove non-functional placeholder rows and show a clear empty state.
+                        allItems = [];
+                        renderRows();
+                        if (tableFoot) tableFoot.textContent = d.error || 'Unable to load inventory data.';
+                        return;
+                    }
+                    allItems = (d.items || []).map(function (it) {
+                        if (!it.applicable_menu_ids) it.applicable_menu_ids = [];
+                        if (!it.applicable_menu_links) it.applicable_menu_links = [];
+                        return it;
+                    });
+                    var loadedDen = parseInt(d.low_stock_fraction_den, 10);
+                    lowStockFractionDen = lowStockFractionOptions.indexOf(loadedDen) !== -1 ? loadedDen : 2;
+                    mainCategories = (d.categories || []).slice();
+                    if (!mainCategories.length) mainCategories = ['Bar', 'Kitchen'];
+                    populateMainCategorySelect(fldCategory, mainCategories[0] || 'Kitchen');
+                    renderAlerts(d.low_alerts || []);
+                    maybeAutoOpenRestockNotification();
+                    renderTypeChips();
+                    renderChips(mainCategories);
+                    renderMovementChips();
+                    renderRows();
+                    refreshAllReceiptCategorySelects();
+                    if (lowTitle) {
+                        var alertCount = (d.low_alerts || []).length;
+                        lowTitle.textContent = 'Low-stock alerts (' + alertCount + ')';
+                    }
+                })
+                .catch(function (e) { console.warn('Inventory unavailable:', e.message); });
+        }
+
+        if (tableWrap) tableWrap.addEventListener('click', handleRowAction);
+        if (btnOpenRestockNotification) btnOpenRestockNotification.addEventListener('click', openRestockNotification);
+        if (restockNotificationClose) restockNotificationClose.addEventListener('click', closeRestockNotification);
+        if (restockNotificationBackdrop) {
+            restockNotificationBackdrop.addEventListener('click', function (e) {
+                if (e.target === restockNotificationBackdrop) closeRestockNotification();
+            });
+        }
+        if (searchIn) {
+            searchIn.addEventListener('input', function () {
+                searchText = (searchIn.value || '').trim().toLowerCase();
+                renderRows();
+            });
+        }
+        if (filterBtn) filterBtn.addEventListener('click', openInventoryFilterPopover);
+        if (filterCloseBtn) filterCloseBtn.addEventListener('click', closeInventoryFilterPopover);
+        if (filterDoneBtn) filterDoneBtn.addEventListener('click', closeInventoryFilterPopover);
+        if (filterResetBtn) filterResetBtn.addEventListener('click', resetInventoryFilters);
+        if (filterBackdrop) {
+            filterBackdrop.addEventListener('click', function (e) {
+                if (e.target === filterBackdrop) closeInventoryFilterPopover();
+            });
+        }
+        [filterTypeNonConsumable, filterTypeConsumable, filterCatBar, filterCatKitchen].forEach(function (inputEl) {
+            if (!inputEl) return;
+            inputEl.addEventListener('change', applyInventoryFiltersFromCheckboxes);
+        });
+        if (addBtn) addBtn.addEventListener('click', function () { openModal(null); });
+        if (addInventoryBtn) addInventoryBtn.addEventListener('click', function () { openReceiptModal('register'); });
+        if (btnLowStockLevel) btnLowStockLevel.addEventListener('click', openLowStockLevelModal);
+        if (viewReceiptsBtn) viewReceiptsBtn.addEventListener('click', openReceiptSummaryModal);
+        if (modalClose) modalClose.addEventListener('click', closeModal);
+        if (modalCancel) modalCancel.addEventListener('click', closeModal);
+        if (modalSave) modalSave.addEventListener('click', saveInventory);
+        if (fldOpenItems) fldOpenItems.addEventListener('input', updateOpenItemsHint);
+        if (fldStockType) {
+            fldStockType.addEventListener('change', function () {
+                if (!editingId) return;
+                applyStockTypeEditFields({ stock_type: fldStockType.value });
+            });
+        }
+        if (modalBackdrop) {
+            modalBackdrop.addEventListener('click', function (e) {
+                if (e.target === modalBackdrop) closeModal();
+            });
+        }
+
+        if (appModalClose) appModalClose.addEventListener('click', closeApplicableModal);
+        if (appModalCancel) appModalCancel.addEventListener('click', closeApplicableModal);
+        if (appModalSave) appModalSave.addEventListener('click', saveLowStockLevel);
+        if (appModalBackdrop) {
+            appModalBackdrop.addEventListener('click', function (e) {
+                if (e.target === appModalBackdrop) closeApplicableModal();
+            });
+        }
+
+        if (ordersPerBoxClose) ordersPerBoxClose.addEventListener('click', closeOrdersPerBoxModal);
+        if (ordersPerBoxCancel) ordersPerBoxCancel.addEventListener('click', closeOrdersPerBoxModal);
+        if (ordersPerBoxSave) ordersPerBoxSave.addEventListener('click', saveOrdersPerBox);
+        if (ordersPerBoxModal) {
+            ordersPerBoxModal.addEventListener('click', function (e) {
+                if (e.target === ordersPerBoxModal) closeOrdersPerBoxModal();
+            });
+        }
+
+        if (receiptLinesBody) {
+            receiptLinesBody.addEventListener('change', function (e) {
+                var typeEl = e.target.closest('.receipt-line-type');
+                if (typeEl) {
+                    var row = typeEl.closest('.receipt-lines__row');
+                    fillReceiptItemOptions(row);
+                    return;
+                }
+                var itemEl = e.target.closest('.receipt-item-name');
+                if (itemEl) {
+                    syncReceiptOpenFieldFromItem(itemEl.closest('.receipt-lines__row'));
+                }
+            });
+            receiptLinesBody.addEventListener('click', function (e) {
+                var removeBtn = e.target.closest('.receipt-line-remove');
+                if (!removeBtn) return;
+                var rows = receiptLinesBody.querySelectorAll('.receipt-lines__row');
+                if (rows.length <= 1) {
+                    setReceiptError('At least one line item is required.');
+                    return;
+                }
+                var row = removeBtn.closest('.receipt-lines__row');
+                if (row) row.remove();
+            });
+        }
+        if (receiptAddLineBtn) receiptAddLineBtn.addEventListener('click', addReceiptLine);
+        if (receiptModalClose) receiptModalClose.addEventListener('click', closeReceiptModal);
+        if (receiptModalCancel) receiptModalCancel.addEventListener('click', closeReceiptModal);
+        if (receiptModalSave) receiptModalSave.addEventListener('click', saveReceipt);
+        if (receiptModalBackdrop) {
+            receiptModalBackdrop.addEventListener('click', function (e) {
+                if (e.target === receiptModalBackdrop) closeReceiptModal();
+            });
+        }
+        if (receiptSummaryClose) receiptSummaryClose.addEventListener('click', closeReceiptSummaryModal);
+        if (receiptSummaryAdd) receiptSummaryAdd.addEventListener('click', function () {
+            closeReceiptSummaryModal();
+            openReceiptModal('add_receipt');
+        });
+        if (receiptSummaryDone) receiptSummaryDone.addEventListener('click', closeReceiptSummaryModal);
+        if (receiptSummaryRefresh) receiptSummaryRefresh.addEventListener('click', loadReceiptSummaries);
+        if (receiptSummaryList) {
+            receiptSummaryList.addEventListener('click', function (e) {
+                var card = e.target.closest('.receipt-summary-item[data-receipt-id]');
+                if (!card) return;
+                var rid = parseInt(card.getAttribute('data-receipt-id'), 10);
+                if (!rid) return;
+                loadReceiptDetail(rid);
+            });
+        }
+        if (receiptSummaryBackdrop) {
+            receiptSummaryBackdrop.addEventListener('click', function (e) {
+                if (e.target === receiptSummaryBackdrop) closeReceiptSummaryModal();
+            });
+        }
+        if (receiptDetailClose) receiptDetailClose.addEventListener('click', closeReceiptDetailModal);
+        if (receiptDetailDone) receiptDetailDone.addEventListener('click', closeReceiptDetailModal);
+        if (receiptDetailBackdrop) {
+            receiptDetailBackdrop.addEventListener('click', function (e) {
+                if (e.target === receiptDetailBackdrop) closeReceiptDetailModal();
+            });
+        }
+
+        var invViewTabs = document.querySelectorAll('.inv-view-tab[data-inv-view]');
+        var invViewPanels = document.querySelectorAll('.inv-view-panel[data-inv-view]');
+
+        function setInventoryView(view) {
+            invViewTabs.forEach(function (tab) {
+                tab.classList.toggle('inv-view-tab--active', tab.getAttribute('data-inv-view') === view);
+            });
+            invViewPanels.forEach(function (panel) {
+                panel.classList.toggle('is-active', panel.getAttribute('data-inv-view') === view);
+            });
+        }
+
+        invViewTabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                setInventoryView(tab.getAttribute('data-inv-view'));
+            });
+        });
+
+        loadInventory();
+        loadStockMovement();
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortus Lab Sales History</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="sales_history_dashboard_styles.css">
+    <link rel="stylesheet" href="brand_role_label.css">
+</head>
+<body>
+    <div class="sales-page">
+        <header class="top-nav">
+            <div class="brand-block">
+                <div class="brand-name-group">
+                    <span class="brand-name">ORTUS LAB</span>
+                    <span class="brand-role brand-role--admin">Admin</span>
+                </div>
+            </div>
+
+            <nav class="top-links">
+                <a href="admin_dashboard.html" class="top-link">Dashboard</a>
+                <a href="inventory_dashboard.html" class="top-link">Inventory</a>
+                <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
+                <a href="sales_history_dashboard.html" class="top-link top-link--active">Sales History</a>
+                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
+            </nav>
+
+            <div class="top-actions">
+                <button type="button" class="icon-btn" title="Notifications" aria-label="Notifications"><img src="icons_admin/bell_icon.svg" alt=""></button>
+                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/wrench_icon.svg" alt=""></button>
+            </div>
+        </header>
+
+        <main class="sales-main">
+            <section class="heading-row">
+                <div>
+                    <h1>SALES HISTORY</h1>
+                    <p>Comprehensive overview of all transactions and financial performance for the current period.</p>
+                </div>
+                <button class="export-btn"><img src="icons_admin/list_icon.svg" alt=""> Export Report</button>
+            </section>
+
+            <section class="staff-brief" id="staff-brief">
+                <div class="staff-brief__head">
+                    <div>
+                        <h2 class="staff-brief__title">From Staff Sales Report</h2>
+                        <p class="staff-brief__sub">Live summary mirrored from staff Sales Report.</p>
+                    </div>
+                    <button type="button" class="export-btn js-sales-export-btn" id="sales-export-btn">
+                        <img src="icons_admin/list_icon.svg" alt=""> Export Excel
+                    </button>
+                </div>
+                <div class="staff-brief__grid" id="staff-brief-grid">
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Orders</span>
+                        <strong class="staff-brief-card__value" data-brief-key="orders">--</strong>
+                    </article>
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Today Sales</span>
+                        <strong class="staff-brief-card__value" data-brief-key="today-sales">--</strong>
+                    </article>
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Cash Revenue</span>
+                        <strong class="staff-brief-card__value" data-brief-key="cash-revenue">--</strong>
+                    </article>
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Coffee Cups</span>
+                        <strong class="staff-brief-card__value" data-brief-key="coffee-cups">--</strong>
+                    </article>
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Expected</span>
+                        <strong class="staff-brief-card__value" data-brief-key="expected" id="staff-brief-expected-val" role="button" tabindex="0" aria-label="Show Cash and GCash sales logs">--</strong>
+                    </article>
+                    <article class="staff-brief-card">
+                        <span class="staff-brief-card__label">Shift Total Loss</span>
+                        <strong class="staff-brief-card__value staff-brief-card__value--loss" data-brief-key="shift-loss">--</strong>
+                    </article>
+                </div>
+                <p class="staff-brief__text" id="staff-brief-text"></p>
+                <section class="sales-detail-card sales-detail-card--in-brief staff-brief-gcash-logs is-hidden" id="staff-brief-gcash-logs" aria-label="Cash and GCash sales logs for today">
+                    <div class="staff-brief-gcash-logs__head">
+                        <h3 class="sales-detail-card__title">PAYMENT SALES LOGS (TODAY)</h3>
+                        <button type="button" class="staff-brief-gcash-logs__close" id="staff-brief-gcash-logs-close" aria-label="Close payment logs">Close</button>
+                    </div>
+                    <div class="staff-brief-gcash-logs__list" id="staff-brief-gcash-logs-list"></div>
+                </section>
+                <div class="staff-brief__report-forms staff-brief__report-readout" id="staff-brief-report-readout">
+                    <section class="sales-detail-card sales-detail-card--in-brief" aria-label="Starting money from staff report">
+                        <h3 class="sales-detail-card__title">STARTING MONEY</h3>
+                        <div class="brief-readout" id="brief-sm">
+                            <p class="brief-readout__empty" id="brief-sm-empty">No starting money saved for today on this device yet.</p>
+                            <div class="brief-readout__list is-hidden" id="brief-sm-list"></div>
+                        </div>
+                    </section>
+                    <section class="sales-detail-card sales-detail-card--in-brief" aria-label="Sales accuracy from staff report">
+                        <h3 class="sales-detail-card__title">SALES ACCURACY CHECK</h3>
+                        <div class="brief-readout" id="brief-ac">
+                            <p class="brief-readout__empty" id="brief-ac-empty">No accuracy check recorded for today on this device yet.</p>
+                            <div class="is-hidden" id="brief-ac-detail">
+                                <p class="brief-readout__status" id="brief-ac-status"></p>
+                                <p class="brief-readout__amount is-hidden" id="brief-ac-amount"></p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="sales-report-block" id="sales-report-block" aria-label="Customer orders sales report">
+                <div class="sales-report-block__head">
+                    <div>
+                        <h2>Sales Report Table</h2>
+                        <p>Source: customer orders processed by the system.</p>
+                    </div>
+                    <div class="sales-report-block__actions">
+                        <label class="sales-report-filter">
+                            <span>Recorded Date</span>
+                            <select id="sales-report-range">
+                                <option value="all" selected>All Dates</option>
+                            </select>
+                        </label>
+                        <button type="button" class="export-btn js-sales-export-btn">
+                            <img src="icons_admin/list_icon.svg" alt=""> Export Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="sales-report-table-wrap">
+                    <table class="sales-report-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sales-report-tbody">
+                            <tr><td colspan="4" class="sales-report-empty">No sales transactions yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="sales-report-foot" id="sales-report-foot">Showing 0 line(s) · Total Sales ₱0.00</p>
+            </section>
+
+            <section class="metrics-grid">
+                <article class="metric-card">
+                    <h3>Net Sales</h3>
+                    <p id="sales-kpi-revenue">₱0.00</p>
+                </article>
+                <article class="metric-card">
+                    <h3>Total Refunds</h3>
+                    <p id="sales-kpi-refunds">₱0.00</p>
+                </article>
+                <article class="metric-card">
+                    <h3>Total Discounts</h3>
+                    <p id="sales-kpi-discounts">₱0.00</p>
+                </article>
+                <article class="metric-card">
+                    <h3>Gross Profit</h3>
+                    <p id="sales-kpi-net">₱0.00</p>
+                </article>
+            </section>
+
+            <section class="filter-bar">
+                <button class="filter-pill"><img src="icons_admin/watch_icon.svg" alt=""> Oct 01 - Oct 31</button>
+                <button class="filter-pill">All Payments</button>
+                <button class="filter-pill">All Status</button>
+            </section>
+
+            <div class="scroll-note">SCROLL FOR MORE</div>
+
+            <section class="table-wrap" id="sales-table-wrap">
+                <div class="table-head">
+                    <span>DATE/TIME</span>
+                    <span>TRANSACTION ID</span>
+                    <span>STAFF NAME</span>
+                    <span>ITEMS SOLD</span>
+                    <span>TOTAL AMOUNT</span>
+                    <span>PAYMENT</span>
+                    <span>STATUS</span>
+                    <span>ACTIONS</span>
+                </div>
+
+                <div class="table-row">
+                    <div><strong>Oct 24, 2023</strong><small>4:30 PM</small></div>
+                    <div class="tx">#GC-9928</div>
+                    <div>Mike Rossi</div>
+                    <div>2x Espresso, 1x Diesel Bu...</div>
+                    <div class="amount">$45.00</div>
+                    <div>Card</div>
+                    <div><span class="status ok">COMPLETED</span></div>
+                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
+                </div>
+                <div class="table-row">
+                    <div><strong>Oct 24, 2023</strong><small>4:15 PM</small></div>
+                    <div class="tx">#GC-9927</div>
+                    <div>Sarah Jenkins</div>
+                    <div>1x Cold Brew, 1x Avocado...</div>
+                    <div class="amount">$22.50</div>
+                    <div>Cash</div>
+                    <div><span class="status warn">REFUNDED</span></div>
+                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
+                </div>
+                <div class="table-row">
+                    <div><strong>Oct 24, 2023</strong><small>3:50 PM</small></div>
+                    <div class="tx">#GC-9926</div>
+                    <div>Mike Rossi</div>
+                    <div>4x Latte, 4x Blueberry M...</div>
+                    <div class="amount">$64.00</div>
+                    <div>NFC</div>
+                    <div><span class="status ok">COMPLETED</span></div>
+                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
+                </div>
+                <div class="table-row">
+                    <div><strong>Oct 24, 2023</strong><small>3:50 PM</small></div>
+                    <div class="tx">#GC-9926</div>
+                    <div>Mike Rossi</div>
+                    <div>4x Latte, 4x Blueberry M...</div>
+                    <div class="amount">$64.00</div>
+                    <div>NFC</div>
+                    <div><span class="status ok">COMPLETED</span></div>
+                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
+                </div>
+                <div class="table-row">
+                    <div><strong>Oct 24, 2023</strong><small>3:50 PM</small></div>
+                    <div class="tx">#GC-9926</div>
+                    <div>Mike Rossi</div>
+                    <div>4x Latte, 4x Blueberry M...</div>
+                    <div class="amount">$64.00</div>
+                    <div>NFC</div>
+                    <div><span class="status ok">COMPLETED</span></div>
+                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
+                </div>
+                <div class="table-row">
+                    <div><strong>Oct 24, 2023</strong><small>3:22 PM</small></div>
+                    <div class="tx">#GC-9925</div>
+                    <div>Sarah Jenkins</div>
+                    <div>1x Flat White</div>
+                    <div class="amount">$4.50</div>
+                    <div>Card</div>
+                    <div><span class="status ok">COMPLETED</span></div>
+                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
+                </div>
+            </section>
+
+            <p class="results" id="sales-results-text">Showing 0 results</p>
+        </main>
+
+        <footer class="dash-footer">
+            <div class="foot-left">
+                <span class="foot-dot"></span>
+                <span>V8 ANALYTICS ENGINE 2.4.0</span>
+                <span>CLOUD SYNC: VERIFIED</span>
+            </div>
+            <span class="foot-right">© 2024 GARAGE CAFE CO. BI DASHBOARD</span>
+        </footer>
+    </div>
+
+    <script src="dashboard_script.js"></script>
+    <script>
+    (function () {
+        var tableWrap = document.getElementById('sales-table-wrap');
+        var resultsTx = document.getElementById('sales-results-text');
+        var staffBriefText = document.getElementById('staff-brief-text');
+        var staffBriefGrid = document.getElementById('staff-brief-grid');
+        var expectedValueEl = document.getElementById('staff-brief-expected-val');
+        var gcashLogsWrap = document.getElementById('staff-brief-gcash-logs');
+        var gcashLogsList = document.getElementById('staff-brief-gcash-logs-list');
+        var gcashLogsCloseBtn = document.getElementById('staff-brief-gcash-logs-close');
+        var salesReportTbody = document.getElementById('sales-report-tbody');
+        var salesReportFoot = document.getElementById('sales-report-foot');
+        var salesReportRange = document.getElementById('sales-report-range');
+
+        var allOrders = [];
+        var todayGcashOrders = [];
+        var todayCashOrders = [];
+        var salesReportOrdersCache = [];
+
+        function localYmd(dateLike) {
+            var d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+            if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+            var y = d.getFullYear();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+
+        function esc(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function peso(v) {
+            return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function pctText(v) {
+            if (v === null || v === undefined) return '';
+            var sign = v >= 0 ? '+' : '';
+            return ' <span>' + sign + v + '%</span>';
+        }
+
+        function hideSalesHistoryUI() {
+            var headingRow = document.querySelector('.heading-row');
+            var metricsGrid = document.querySelector('.metrics-grid');
+            var filterBar = document.querySelector('.filter-bar');
+            var scrollNote = document.querySelector('.scroll-note');
+            if (headingRow) headingRow.style.display = 'none';
+            if (metricsGrid) metricsGrid.style.display = 'none';
+            if (filterBar) filterBar.style.display = 'none';
+            if (scrollNote) scrollNote.style.display = 'none';
+            if (tableWrap) tableWrap.style.display = 'none';
+            if (resultsTx) resultsTx.style.display = 'none';
+        }
+
+        // Only show the staff sales report summary on this page.
+        hideSalesHistoryUI();
+
+        function computeTodayCoffeeSold(orders, menuItems) {
+            var today = new Date().toISOString().slice(0, 10);
+            var menuCategoryByName = {};
+            (menuItems || []).forEach(function (m) {
+                var key = String(m && m.name || '').trim().toLowerCase();
+                if (!key) return;
+                menuCategoryByName[key] = String(m && m.category_name || '').toLowerCase();
+            });
+
+            var totalCoffeeQty = 0;
+            (orders || []).forEach(function (order) {
+                if (!order || !order.created_at) return;
+                var status = String(order.status || '').toLowerCase();
+                if (status !== 'confirmed' && status !== 'served') return;
+                if (String(order.created_at).slice(0, 10) !== today) return;
+
+                (order.items || []).forEach(function (item) {
+                    var itemName = String(item && item.name || '').trim().toLowerCase();
+                    var qty = Math.max(0, parseInt(item && item.quantity, 10) || 0);
+                    if (!itemName || !qty) return;
+                    var cat = menuCategoryByName[itemName] || '';
+                    var isCoffee = cat.indexOf('coffee') !== -1 || /\b(coffee|latte|espresso|americano|cappuccino)\b/i.test(itemName);
+                    if (isCoffee) totalCoffeeQty += qty;
+                });
+            });
+            return totalCoffeeQty;
+        }
+
+        function renderStaffBrief(data) {
+            if (!staffBriefText) return;
+            var orders = data && data.total_orders != null ? data.total_orders : null;
+            var totalRevenue = data && data.total_revenue != null ? data.total_revenue : null;
+            var cashRevenue = data && data.cash_revenue != null ? data.cash_revenue : null;
+            var coffeeCups = data && data.coffee_sold_cups != null ? data.coffee_sold_cups : null;
+            var expectedRevenue = data && data.expected_revenue != null ? data.expected_revenue : null;
+            var wasteTotal = data && data.waste_total_est != null ? data.waste_total_est : null;
+
+            var valueMap = {
+                'orders': (orders != null ? String(orders) : '--'),
+                'today-sales': (totalRevenue != null ? peso(totalRevenue) : '--'),
+                'cash-revenue': (cashRevenue != null ? peso(cashRevenue) : '--'),
+                'coffee-cups': (coffeeCups != null ? (coffeeCups + (coffeeCups === 1 ? ' cup' : ' cups')) : '--'),
+                'expected': (expectedRevenue != null ? peso(expectedRevenue) : '--'),
+                'shift-loss': (wasteTotal != null ? ('-' + peso(wasteTotal)) : '--')
+            };
+
+            if (staffBriefGrid) {
+                staffBriefGrid.querySelectorAll('[data-brief-key]').forEach(function (el) {
+                    var key = el.getAttribute('data-brief-key');
+                    if (!key) return;
+                    el.textContent = valueMap[key] || '--';
+                });
+            }
+
+            var hasAny =
+                orders != null ||
+                totalRevenue != null ||
+                cashRevenue != null ||
+                coffeeCups != null ||
+                expectedRevenue != null ||
+                wasteTotal != null;
+            staffBriefText.textContent = hasAny ? 'Updated just now from staff report.' : 'No staff sales report available yet.';
+        }
+
+        function renderGcashLogs() {
+            if (!gcashLogsList) return;
+            function toRows(title, orders) {
+                var sorted = (orders || []).slice().sort(function (a, b) {
+                    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+                });
+                return sorted.map(function (o) {
+                    var when = new Date(o.created_at || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    var amount = peso(o && o.total_amount || 0);
+                    return {
+                        label: title,
+                        time: when,
+                        amount: amount
+                    };
+                });
+            }
+
+            var cashRows = toRows('Cash', todayCashOrders);
+            var gcashRows = toRows('Gcash', todayGcashOrders);
+
+            var cashTotal = todayCashOrders.reduce(function (sum, o) { return sum + (parseFloat(o && o.total_amount) || 0); }, 0);
+            var gcashTotal = todayGcashOrders.reduce(function (sum, o) { return sum + (parseFloat(o && o.total_amount) || 0); }, 0);
+
+            function renderBlock(title, total, rows) {
+                var body = rows.length
+                    ? rows.map(function (r) {
+                        return (
+                            '<article class="staff-brief-paylog-row">' +
+                                '<div class="staff-brief-paylog-row__meta">' +
+                                    '<strong>' + esc(r.label) + '</strong>' +
+                                    '<span>' + esc(r.time) + '</span>' +
+                                '</div>' +
+                                '<div class="staff-brief-paylog-row__amt">' + esc(r.amount) + '</div>' +
+                            '</article>'
+                        );
+                    }).join('')
+                    : '<p class="staff-brief-paylog-empty">No ' + esc(title) + ' sales found for today.</p>';
+
+                return (
+                    '<section class="staff-brief-paylog-block">' +
+                        '<header class="staff-brief-paylog-head">' +
+                            '<span class="staff-brief-paylog-title">' + esc(title.toUpperCase()) + '</span>' +
+                            '<strong class="staff-brief-paylog-total">' + esc(peso(total)) + '</strong>' +
+                        '</header>' +
+                        '<div class="staff-brief-paylog-items">' + body + '</div>' +
+                    '</section>'
+                );
+            }
+
+            gcashLogsList.innerHTML =
+                renderBlock('Cash', cashTotal, cashRows) +
+                renderBlock('Gcash', gcashTotal, gcashRows);
+        }
+
+        function setGcashLogsOpen(open) {
+            if (!gcashLogsWrap) return;
+            gcashLogsWrap.classList.toggle('is-hidden', !open);
+            if (open) renderGcashLogs();
+        }
+
+        function loadStaffSalesReportSummary() {
+            if (staffBriefText) staffBriefText.textContent = 'Loading staff sales report...';
+            var cacheBust = Date.now();
+            var todayObj = new Date();
+            var toDate = todayObj.toISOString().slice(0, 10);
+            var fromObj = new Date(todayObj.getTime());
+            fromObj.setDate(fromObj.getDate() - 6);
+            var fromDate = fromObj.toISOString().slice(0, 10);
+            return Promise.all([
+                fetch('api/orders.php?type=daily_summary&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/sales.php?from=' + encodeURIComponent(fromDate) + '&to=' + encodeURIComponent(toDate) + '&limit=1&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/waste.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
+            ]).then(function (results) {
+                var summaryRes = results[0];
+                var weeklySalesRes = results[1];
+                var wasteRes = results[2];
+                var menuRes = results[3];
+                var allOrdersRes = results[4];
+
+                var out = {
+                    total_orders: null,
+                    total_revenue: null,
+                    cash_revenue: null,
+                    coffee_sold_cups: null,
+                    expected_revenue: null,
+                    waste_total_est: null
+                };
+
+                if (summaryRes && summaryRes.success && summaryRes.summary) {
+                    out.total_orders = summaryRes.summary.total_orders || 0;
+                    out.total_revenue = summaryRes.summary.total_revenue || 0;
+                    var cash = parseFloat(summaryRes.summary.cash_revenue || 0);
+                    var gcash = parseFloat(summaryRes.summary.digital_revenue || 0);
+                    out.expected_revenue = cash + gcash;
+                }
+                if (weeklySalesRes && weeklySalesRes.success && weeklySalesRes.summary) {
+                    out.cash_revenue = weeklySalesRes.summary.total_revenue || 0;
+                } else {
+                    out.cash_revenue = 0;
+                }
+                if (wasteRes && wasteRes.success) {
+                    var today = new Date().toISOString().slice(0, 10);
+                    var wasteTotal = (wasteRes.entries || []).reduce(function (sum, entry) {
+                        var loggedDate = String(entry.logged_at || entry.created_at || '').slice(0, 10);
+                        if (loggedDate !== today) return sum;
+                        return sum + parseFloat(entry.estimated_value || 0);
+                    }, 0);
+                    out.waste_total_est = wasteTotal;
+                }
+                var menuItems = (menuRes && menuRes.success && menuRes.items) ? menuRes.items : [];
+                var allOrders = (allOrdersRes && allOrdersRes.success && allOrdersRes.orders) ? allOrdersRes.orders : [];
+                var today = localYmd(new Date());
+                todayGcashOrders = allOrders.filter(function (o) {
+                    if (!o || !o.created_at) return false;
+                    if (localYmd(o.created_at) !== today) return false;
+                    var pm = String(o.payment_method || '').toLowerCase();
+                    if (pm !== 'gcash') return false;
+                    var st = String(o.status || '').toLowerCase();
+                    return st === 'served' || st === 'confirmed';
+                });
+                todayCashOrders = allOrders.filter(function (o) {
+                    if (!o || !o.created_at) return false;
+                    if (localYmd(o.created_at) !== today) return false;
+                    var pm = String(o.payment_method || '').toLowerCase();
+                    if (pm !== 'cash') return false;
+                    var st = String(o.status || '').toLowerCase();
+                    return st === 'served' || st === 'confirmed';
+                });
+                out.coffee_sold_cups = computeTodayCoffeeSold(allOrders, menuItems);
+
+                renderStaffBrief(out);
+                renderGcashLogs();
+            }).catch(function (e) {
+                if (staffBriefText) staffBriefText.textContent = 'No staff sales report available yet.';
+                console.warn('Staff sales report summary unavailable:', e && e.message ? e.message : e);
+            });
+        }
+
+        loadStaffSalesReportSummary();
+
+        if (expectedValueEl) {
+            expectedValueEl.addEventListener('click', function () {
+                var willOpen = !gcashLogsWrap || gcashLogsWrap.classList.contains('is-hidden');
+                setGcashLogsOpen(willOpen);
+            });
+            expectedValueEl.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                var willOpen = !gcashLogsWrap || gcashLogsWrap.classList.contains('is-hidden');
+                setGcashLogsOpen(willOpen);
+            });
+        }
+        if (gcashLogsCloseBtn) {
+            gcashLogsCloseBtn.addEventListener('click', function () {
+                setGcashLogsOpen(false);
+            });
+        }
+
+        function statusMeta(status) {
+            if (status === 'voided') return { label: 'REFUNDED', cls: 'warn' };
+            return { label: 'COMPLETED', cls: 'ok' };
+        }
+
+        function shortItems(text) {
+            if (!text) return '--';
+            return text.length > 35 ? text.slice(0, 35) + '...' : text;
+        }
+
+        function formatDate(dateStr) {
+            var d = new Date(dateStr);
+            var day = d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+            var tm  = d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+            return { day: day, time: tm };
+        }
+
+        function filtered() {
+            return allOrders.slice();
+        }
+
+        function parseLineTotal(item) {
+            var sub = parseFloat(item && item.subtotal);
+            if (Number.isFinite(sub)) return sub;
+            var unit = parseFloat(item && item.unit_price);
+            var qty = parseFloat(item && item.quantity);
+            if (Number.isFinite(unit) && Number.isFinite(qty)) return unit * qty;
+            return 0;
+        }
+
+        function ymdFromDateLike(dateLike) {
+            var dt = new Date(dateLike);
+            if (isNaN(dt.getTime())) return '';
+            var y = dt.getFullYear();
+            var m = String(dt.getMonth() + 1).padStart(2, '0');
+            var d = String(dt.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + d;
+        }
+
+        function renderRecordedDateOptions(orders) {
+            if (!salesReportRange) return;
+            var selected = salesReportRange.value || 'all';
+            var map = {};
+            (orders || []).forEach(function (o) {
+                var key = ymdFromDateLike(o && o.created_at);
+                if (key) map[key] = true;
+            });
+            var dates = Object.keys(map).sort(function (a, b) {
+                return new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime();
+            });
+            var html = '<option value="all">All Dates</option>' + dates.map(function (d) {
+                return '<option value="' + d + '">' + d + '</option>';
+            }).join('');
+            salesReportRange.innerHTML = html;
+            if (selected !== 'all' && dates.indexOf(selected) !== -1) {
+                salesReportRange.value = selected;
+            } else {
+                salesReportRange.value = 'all';
+            }
+        }
+
+        function filterOrdersBySelectedRange(orders) {
+            var key = salesReportRange ? salesReportRange.value : 'all';
+            if (key === 'all') return (orders || []).slice();
+            return (orders || []).filter(function (o) {
+                return ymdFromDateLike(o && o.created_at) === key;
+            });
+        }
+
+        function renderSalesReportTable(orders) {
+            if (!salesReportTbody) return;
+            var rows = [];
+            (orders || []).forEach(function (o) {
+                var status = String(o && o.status || '').toLowerCase();
+                if (status !== 'confirmed' && status !== 'served') return;
+                var source = String(o && o.order_source || '').toLowerCase();
+                if (source !== 'kiosk' && source !== 'pos') return;
+                (o.items || []).forEach(function (it) {
+                    var qty = parseFloat(it && it.quantity || 0);
+                    if (!Number.isFinite(qty) || qty <= 0) return;
+                    rows.push({
+                        created_at: o.created_at,
+                        item_name: it && it.name ? it.name : 'Item',
+                        qty: qty,
+                        total: parseLineTotal(it)
+                    });
+                });
+            });
+
+            rows.sort(function (a, b) {
+                return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+            });
+
+            if (!rows.length) {
+                salesReportTbody.innerHTML = '<tr><td colspan="4" class="sales-report-empty">No sales transactions yet.</td></tr>';
+                if (salesReportFoot) salesReportFoot.textContent = 'Showing 0 line(s) · Total Sales ₱0.00';
+                return;
+            }
+
+            var totalSales = 0;
+            salesReportTbody.innerHTML = rows.map(function (r) {
+                totalSales += r.total;
+                var dt = formatDate(r.created_at);
+                return '' +
+                    '<tr>' +
+                        '<td>' + esc(dt.day + ' ' + dt.time) + '</td>' +
+                        '<td>' + esc(r.item_name) + '</td>' +
+                        '<td>' + esc(String(r.qty)) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.total)) + '</td>' +
+                    '</tr>';
+            }).join('');
+
+            if (salesReportFoot) {
+                salesReportFoot.textContent = 'Showing ' + rows.length + ' line(s) · Total Sales ' + peso(totalSales);
+            }
+        }
+
+        function renderRows() {
+            if (!tableWrap) return;
+            tableWrap.querySelectorAll('.table-row').forEach(function (r) { r.remove(); });
+            var rows = filtered();
+            rows.forEach(function (o) {
+                var dt = formatDate(o.created_at);
+                var status = statusMeta(o.status);
+                var row = document.createElement('div');
+                row.className = 'table-row';
+                row.innerHTML =
+                    '<div><strong>' + esc(dt.day) + '</strong><small>' + esc(dt.time) + '</small></div>' +
+                    '<div class="tx">#' + esc(o.order_number) + '</div>' +
+                    '<div>' + esc(o.staff_name) + '</div>' +
+                    '<div>' + esc(shortItems(o.items_sold)) + '</div>' +
+                    '<div class="amount">' + peso(o.total_amount) + '</div>' +
+                    '<div>' + esc((o.payment_method || 'cash').toUpperCase()) + '</div>' +
+                    '<div><span class="status ' + status.cls + '">' + status.label + '</span></div>' +
+                    '<div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>';
+                tableWrap.appendChild(row);
+            });
+
+            if (!rows.length) {
+                var empty = document.createElement('div');
+                empty.className = 'table-row';
+                empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No sales records found.</div>';
+                tableWrap.appendChild(empty);
+            }
+
+            if (resultsTx) {
+                resultsTx.textContent = 'Showing ' + rows.length + ' of ' + allOrders.length + ' results';
+            }
+        }
+
+        function renderSalesReportFromCache() {
+            renderSalesReportTable(filterOrdersBySelectedRange(salesReportOrdersCache));
+        }
+
+        function loadSales() {
+            Promise.all([
+                fetch('api/sales.php?limit=200').then(function (r) { return r.json(); }),
+                fetch('api/orders.php?limit=200').then(function (r) { return r.json(); })
+            ])
+                .then(function (res) {
+                    var d = res[0];
+                    var ordersRes = res[1];
+                    if (!d.success) return;
+
+                    var summary = d.summary || {};
+                    var pct = d.pct || {};
+                    var revEl = document.getElementById('sales-kpi-revenue');
+                    var refundsEl = document.getElementById('sales-kpi-refunds');
+                    var discountsEl = document.getElementById('sales-kpi-discounts');
+                    var netEl = document.getElementById('sales-kpi-net');
+
+                    if (revEl) revEl.innerHTML = peso(summary.net_sales || summary.total_revenue) + pctText(pct.revenue);
+                    if (refundsEl) refundsEl.textContent = peso(summary.refunds_total || 0);
+                    if (discountsEl) discountsEl.textContent = peso(summary.discounts_total || 0);
+                    if (netEl) netEl.textContent = peso(summary.gross_profit);
+
+                    allOrders = d.orders || [];
+                    if (tableWrap) renderRows();
+                    salesReportOrdersCache = (ordersRes && ordersRes.success) ? (ordersRes.orders || []) : [];
+                    renderRecordedDateOptions(salesReportOrdersCache);
+                    renderSalesReportFromCache();
+                })
+                .catch(function (e) { console.warn('Sales data unavailable:', e.message); });
+        }
+
+        if (salesReportRange) {
+            salesReportRange.addEventListener('change', renderSalesReportFromCache);
+        }
+
+        function buildSalesExportUrl() {
+            var params = new URLSearchParams();
+            var range = salesReportRange ? salesReportRange.value : 'all';
+            if (range && range !== 'all') {
+                params.set('date', range);
+            } else {
+                params.set('from', '2020-01-01');
+                params.set('to', localYmd(new Date()));
+            }
+            return 'api/sales_export.php?' + params.toString();
+        }
+
+        document.querySelectorAll('.js-sales-export-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                window.location.href = buildSalesExportUrl();
+            });
+        });
+
+        loadSales();
+    })();
+    </script>
+    <script>
+    (function () {
+        var smList = document.getElementById('brief-sm-list');
+        var smEmpty = document.getElementById('brief-sm-empty');
+        var acEmpty = document.getElementById('brief-ac-empty');
+        var acDetail = document.getElementById('brief-ac-detail');
+        var acStatus = document.getElementById('brief-ac-status');
+        var acAmount = document.getElementById('brief-ac-amount');
+        if (!smList || !smEmpty) return;
+
+        function dayKey() {
+            return new Date().toISOString().slice(0, 10);
+        }
+        function peso(v) {
+            return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function toMoney(v) {
+            var n = parseFloat(v);
+            return Number.isFinite(n) && n >= 0 ? n : 0;
+        }
+        function getStartingMoneyStorageKey() {
+            return 'staff_sales_report_starting_money_' + dayKey();
+        }
+        function getStartingMoneyLockedKey() {
+            return 'staff_sales_report_starting_money_locked_' + dayKey();
+        }
+        function getAccuracyStorageKey() {
+            return 'staff_sales_report_accuracy_' + dayKey();
+        }
+
+        function parseStartingMoney(raw) {
+            var baseVal = 0;
+            var additionalInputs = [];
+            var total = 0;
+            if (!raw) return { baseVal: baseVal, additionalInputs: additionalInputs, total: total, hasData: false };
+            try {
+                var obj = JSON.parse(raw);
+                baseVal = toMoney(obj && obj.base);
+                if (obj && Array.isArray(obj.additional_inputs)) {
+                    additionalInputs = obj.additional_inputs.map(function (x) { return toMoney(x); });
+                } else if (obj && typeof obj.additional !== 'undefined') {
+                    additionalInputs = [toMoney(obj.additional)];
+                }
+                total = typeof obj.total !== 'undefined' ? toMoney(obj.total) : baseVal + additionalInputs.reduce(function (s, x) { return s + x; }, 0);
+                return { baseVal: baseVal, additionalInputs: additionalInputs, total: total, hasData: true };
+            } catch (e) {
+                baseVal = toMoney(raw);
+                return { baseVal: baseVal, additionalInputs: [], total: baseVal, hasData: true };
+            }
+        }
+
+        function renderStartingMoneyReadout() {
+            var raw = localStorage.getItem(getStartingMoneyStorageKey());
+            var p = parseStartingMoney(raw);
+            if (!p.hasData) {
+                smList.classList.add('is-hidden');
+                smEmpty.classList.remove('is-hidden');
+                return;
+            }
+            smEmpty.classList.add('is-hidden');
+            smList.classList.remove('is-hidden');
+            var locked = localStorage.getItem(getStartingMoneyLockedKey()) === '1';
+            var html = '';
+            html += '<div class="brief-readout__row"><span class="brief-readout__k">Base</span><span class="brief-readout__v">' + peso(p.baseVal) + '</span></div>';
+            p.additionalInputs.forEach(function (amt, i) {
+                var label = p.additionalInputs.length > 1 ? ('Additional ' + (i + 1)) : 'Additional';
+                html += '<div class="brief-readout__row"><span class="brief-readout__k">' + label + '</span><span class="brief-readout__v">' + peso(amt) + '</span></div>';
+            });
+            html += '<div class="brief-readout__row brief-readout__row--total"><span class="brief-readout__k">Total</span><span class="brief-readout__v">' + peso(p.total) + '</span></div>';
+            if (locked) {
+                html += '<p class="brief-readout__meta">Saved / locked for today.</p>';
+            }
+            smList.innerHTML = html;
+        }
+
+        function renderAccuracyReadout() {
+            if (!acEmpty || !acDetail || !acStatus || !acAmount) return;
+            var raw = localStorage.getItem(getAccuracyStorageKey());
+            if (!raw) {
+                acDetail.classList.add('is-hidden');
+                acEmpty.classList.remove('is-hidden');
+                return;
+            }
+            var state = { mode: 'accurate', over_under: 0 };
+            try {
+                state = JSON.parse(raw);
+            } catch (e) {
+                acDetail.classList.add('is-hidden');
+                acEmpty.classList.remove('is-hidden');
+                return;
+            }
+            var mode = String(state.mode || 'accurate').toLowerCase();
+            if (mode !== 'over' && mode !== 'under') mode = 'accurate';
+            var ou = toMoney(state.over_under);
+            acEmpty.classList.add('is-hidden');
+            acDetail.classList.remove('is-hidden');
+            acStatus.className = 'brief-readout__status';
+            acAmount.classList.add('is-hidden');
+            if (mode === 'accurate') {
+                acStatus.textContent = 'Accurate';
+                acStatus.classList.add('brief-readout__status--ok');
+            } else if (mode === 'over') {
+                acStatus.textContent = 'Over';
+                acStatus.classList.add('brief-readout__status--over');
+                acAmount.textContent = peso(ou);
+                acAmount.classList.remove('is-hidden');
+            } else {
+                acStatus.textContent = 'Short';
+                acStatus.classList.add('brief-readout__status--under');
+                acAmount.textContent = peso(ou);
+                acAmount.classList.remove('is-hidden');
+            }
+        }
+
+        function refreshStaffReportReadout() {
+            renderStartingMoneyReadout();
+            renderAccuracyReadout();
+        }
+
+        refreshStaffReportReadout();
+        window.addEventListener('storage', function (e) {
+            if (!e.key) return;
+            if (e.key.indexOf('staff_sales_report_') === 0) refreshStaffReportReadout();
+        });
+        window.addEventListener('focus', refreshStaffReportReadout);
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) refreshStaffReportReadout();
+        });
+    })();
+    </script>
+</body>
+</html>

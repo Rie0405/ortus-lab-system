@@ -1,0 +1,62 @@
+/* Small role badge beside ORTUS LAB (admin vs staff) */
+
+.brand-name-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.brand-role {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 999px;
+    line-height: 1;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.88);
+    flex-shrink: 0;
+}
+
+.brand-role--admin {
+    border-color: rgba(244, 140, 37, 0.5);
+    background: rgba(244, 140, 37, 0.14);
+    color: #fbbf24;
+}
+
+.brand-role--staff {
+    border-color: rgba(148, 163, 184, 0.45);
+    background: rgba(148, 163, 184, 0.12);
+    color: #e2e8f0;
+}
+
+.brand-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-brand-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.admin-brand-title-row .admin-brand-title {
+    margin: 0;
+}
+
+@media (max-width: 900px) {
+    .brand-role {
+        font-size: 9px;
+        padding: 3px 7px;
+    }
+}

@@ -170,14 +170,19 @@ function ensure_inventory_settings_schema(PDO $pdo): void {
 function get_low_stock_fraction_den(PDO $pdo): int {
     ensure_inventory_settings_schema($pdo);
     $val = $pdo->query('SELECT low_stock_fraction_den FROM inventory_settings WHERE id = 1 LIMIT 1')->fetchColumn();
-    $den = (int)$val;
-    return in_array($den, [2, 3, 4, 5], true) ? $den : 2;
+    $percent = (int)$val;
+    $allowed = [75, 50, 25];
+    if (in_array($percent, $allowed, true)) {
+        return $percent;
+    }
+    $legacyMap = [2 => 50, 3 => 30, 4 => 25, 5 => 10, 30 => 25, 20 => 25, 10 => 25];
+    return $legacyMap[$percent] ?? 50;
 }
 
 function set_low_stock_fraction_den(PDO $pdo, int $fractionDen): void {
     ensure_inventory_settings_schema($pdo);
-    if (!in_array($fractionDen, [2, 3, 4, 5], true)) {
-        fail('Invalid low stock fraction.');
+    if (!in_array($fractionDen, [75, 50, 25], true)) {
+        fail('Invalid low stock alert level.');
     }
     $stmt = $pdo->prepare('UPDATE inventory_settings SET low_stock_fraction_den = :den WHERE id = 1');
     $stmt->execute([':den' => $fractionDen]);
@@ -399,7 +404,7 @@ if ($method === 'PUT') {
     }
 
     if ($action === 'set_low_stock_fraction') {
-        $fractionDen = (int)($b['low_stock_fraction_den'] ?? 2);
+        $fractionDen = (int)($b['low_stock_fraction_den'] ?? 50);
         set_low_stock_fraction_den($pdo, $fractionDen);
         ok([
             'message' => 'Low stock alert level updated.',

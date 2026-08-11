@@ -298,10 +298,18 @@
 
                         <div class="product-modal__right" data-catalog-role="create">
                             <p class="product-field-label">PRODUCT VISUAL</p>
-                            <div class="product-upload-dropzone">
-                                <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
-                                <p class="product-upload-title">DRAG BLUEPRINT OR CLICK TO UPLOAD</p>
-                                <p class="product-upload-sub">PNG, JPG up to 5MB</p>
+                            <div class="product-upload-dropzone" id="prod-visual-dropzone" role="button" tabindex="0" aria-label="Upload product visual">
+                                <input type="file" id="prod-visual-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                <div class="product-upload-empty" id="prod-visual-empty">
+                                    <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon" id="prod-visual-icon">
+                                    <p class="product-upload-title" id="prod-visual-title">DRAG BLUEPRINT OR CLICK TO UPLOAD</p>
+                                    <p class="product-upload-sub" id="prod-visual-sub">PNG, JPG, JPEG · Max 5MB</p>
+                                </div>
+                                <img alt="" class="product-upload-preview" id="prod-visual-preview">
+                                <div class="product-upload-actions" id="prod-visual-actions">
+                                    <button type="button" class="product-upload-action product-upload-action--update" id="prod-visual-update">Update</button>
+                                    <button type="button" class="product-upload-action product-upload-action--delete" id="prod-visual-delete">Delete</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -430,10 +438,18 @@
 
                         <div class="product-modal__right">
                             <p class="product-field-label">PRODUCT VISUAL</p>
-                            <div class="product-upload-dropzone">
-                                <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
-                                <p class="product-upload-title">DRAG BLUEPRINT OR CLICK TO UPLOAD</p>
-                                <p class="product-upload-sub">PNG, JPG up to 5MB</p>
+                            <div class="product-upload-dropzone" id="edit-visual-dropzone" role="button" tabindex="0" aria-label="Upload product visual">
+                                <input type="file" id="edit-visual-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                <div class="product-upload-empty" id="edit-visual-empty">
+                                    <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon" id="edit-visual-icon">
+                                    <p class="product-upload-title" id="edit-visual-title">DRAG BLUEPRINT OR CLICK TO UPLOAD</p>
+                                    <p class="product-upload-sub" id="edit-visual-sub">PNG, JPG, JPEG · Max 5MB</p>
+                                </div>
+                                <img alt="" class="product-upload-preview" id="edit-visual-preview">
+                                <div class="product-upload-actions" id="edit-visual-actions">
+                                    <button type="button" class="product-upload-action product-upload-action--update" id="edit-visual-update">Update</button>
+                                    <button type="button" class="product-upload-action product-upload-action--delete" id="edit-visual-delete">Delete</button>
+                                </div>
                             </div>
                         </div>
                     </div>

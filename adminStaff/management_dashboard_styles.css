@@ -4,6 +4,15 @@
     gap: 18px;
 }
 
+.mgmt-staff-brief {
+    margin-top: 0;
+}
+
+.mgmt-main .staff-brief {
+    margin-bottom: 0;
+}
+
+
 .mgmt-hero {
     display: flex;
     align-items: flex-start;
@@ -72,10 +81,93 @@
     line-height: 1.5;
 }
 
+.mgmt-shift-filter-block {
+    display: grid;
+    gap: 8px;
+}
+
+.mgmt-shift-filter-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.mgmt-shift-filter-label {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.mgmt-shift-filter-count {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.mgmt-shift-filter-scroll {
+    max-height: 92px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: #3d3025 transparent;
+}
+
+.mgmt-shift-filter-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.mgmt-shift-filter-scroll::-webkit-scrollbar-thumb {
+    background: #3d3025;
+    border-radius: 999px;
+}
+
+.mgmt-shift-filter-hint {
+    margin: 0;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.mgmt-shift-filter-picker {
+    display: grid;
+    gap: 6px;
+    max-width: 280px;
+}
+
+.mgmt-shift-filter-picker span {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.mgmt-shift-filter-picker select {
+    border: 1px solid #3d3025;
+    background: #2a2118;
+    color: #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 12px;
+}
+
+.mgmt-shift-filter-picker.is-hidden,
+.mgmt-shift-filter-hint.is-hidden {
+    display: none;
+}
+
 .mgmt-filter-row {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .mgmt-filter-chip {
@@ -88,7 +180,18 @@
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.04em;
-    cursor: default;
+    cursor: pointer;
+}
+
+.mgmt-filter-chip:not(.mgmt-filter-chip--active):hover {
+    border-color: #f48c25;
+    color: #f48c25;
+}
+
+.mgmt-filter-empty {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
 }
 
 .mgmt-filter-chip--active {

@@ -141,6 +141,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="sales-report-pagination" id="sales-report-pagination" hidden aria-label="Sales report pages"></div>
                 <p class="sales-report-foot" id="sales-report-foot">Showing 0 line(s) · Total Sales ₱0.00</p>
             </section>
 
@@ -271,7 +272,10 @@
         var gcashLogsCloseBtn = document.getElementById('staff-brief-gcash-logs-close');
         var salesReportTbody = document.getElementById('sales-report-tbody');
         var salesReportFoot = document.getElementById('sales-report-foot');
+        var salesReportPagination = document.getElementById('sales-report-pagination');
         var salesReportRange = document.getElementById('sales-report-range');
+        var SALES_REPORT_PAGE_SIZE = 10;
+        var salesReportCurrentPage = 1;
 
         var allOrders = [];
         var todayGcashOrders = [];
@@ -624,6 +628,48 @@
             });
         }
 
+        function renderSalesReportPagination(totalRows, totalPages) {
+            if (!salesReportPagination) return;
+            if (!totalRows || totalPages <= 1) {
+                salesReportPagination.hidden = true;
+                salesReportPagination.innerHTML = '';
+                return;
+            }
+
+            salesReportPagination.hidden = false;
+            var html = '';
+
+            html += '<button type="button" class="sales-report-page-btn" data-page="prev"' +
+                (salesReportCurrentPage <= 1 ? ' disabled' : '') + ' aria-label="Previous page">&lsaquo;</button>';
+
+            for (var p = 1; p <= totalPages; p++) {
+                html += '<button type="button" class="sales-report-page-btn' +
+                    (p === salesReportCurrentPage ? ' sales-report-page-btn--active' : '') +
+                    '" data-page="' + p + '" aria-label="Page ' + p + '"' +
+                    (p === salesReportCurrentPage ? ' aria-current="page"' : '') + '>' + p + '</button>';
+            }
+
+            html += '<button type="button" class="sales-report-page-btn" data-page="next"' +
+                (salesReportCurrentPage >= totalPages ? ' disabled' : '') + ' aria-label="Next page">&rsaquo;</button>';
+
+            salesReportPagination.innerHTML = html;
+
+            salesReportPagination.querySelectorAll('.sales-report-page-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    if (btn.disabled) return;
+                    var target = btn.getAttribute('data-page');
+                    if (target === 'prev') {
+                        salesReportCurrentPage = Math.max(1, salesReportCurrentPage - 1);
+                    } else if (target === 'next') {
+                        salesReportCurrentPage = Math.min(totalPages, salesReportCurrentPage + 1);
+                    } else {
+                        salesReportCurrentPage = parseInt(target, 10) || 1;
+                    }
+                    renderSalesReportFromCache();
+                });
+            });
+        }
+
         function renderSalesReportTable(orders) {
             if (!salesReportTbody) return;
             var rows = [];
@@ -651,12 +697,19 @@
             if (!rows.length) {
                 salesReportTbody.innerHTML = '<tr><td colspan="4" class="sales-report-empty">No sales transactions yet.</td></tr>';
                 if (salesReportFoot) salesReportFoot.textContent = 'Showing 0 line(s) · Total Sales ₱0.00';
+                renderSalesReportPagination(0, 0);
                 return;
             }
 
-            var totalSales = 0;
-            salesReportTbody.innerHTML = rows.map(function (r) {
-                totalSales += r.total;
+            var totalSales = rows.reduce(function (sum, r) { return sum + r.total; }, 0);
+            var totalPages = Math.max(1, Math.ceil(rows.length / SALES_REPORT_PAGE_SIZE));
+            if (salesReportCurrentPage > totalPages) salesReportCurrentPage = totalPages;
+            if (salesReportCurrentPage < 1) salesReportCurrentPage = 1;
+
+            var start = (salesReportCurrentPage - 1) * SALES_REPORT_PAGE_SIZE;
+            var pageRows = rows.slice(start, start + SALES_REPORT_PAGE_SIZE);
+
+            salesReportTbody.innerHTML = pageRows.map(function (r) {
                 var dt = formatDate(r.created_at);
                 return '' +
                     '<tr>' +
@@ -668,8 +721,10 @@
             }).join('');
 
             if (salesReportFoot) {
-                salesReportFoot.textContent = 'Showing ' + rows.length + ' line(s) · Total Sales ' + peso(totalSales);
+                salesReportFoot.textContent = 'Showing ' + (start + 1) + '–' + (start + pageRows.length) +
+                    ' of ' + rows.length + ' line(s) · Total Sales ' + peso(totalSales);
             }
+            renderSalesReportPagination(rows.length, totalPages);
         }
 
         function renderRows() {
@@ -741,7 +796,10 @@
         }
 
         if (salesReportRange) {
-            salesReportRange.addEventListener('change', renderSalesReportFromCache);
+            salesReportRange.addEventListener('change', function () {
+                salesReportCurrentPage = 1;
+                renderSalesReportFromCache();
+            });
         }
 
         function buildSalesExportUrl() {

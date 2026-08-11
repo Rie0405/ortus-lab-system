@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/staff_shifts_helpers.php';
 
 $m = method();
 
@@ -40,6 +41,11 @@ if ($m === 'POST') {
     $_SESSION['user_role'] = $roleNorm;
     $_SESSION['user_name'] = $user['full_name'];
 
+    $shift = null;
+    if ($roleNorm === 'staff') {
+        $shift = register_staff_shift_login(db(), (int)$user['id']);
+    }
+
     ok([
         'user' => [
             'id'        => $user['id'],
@@ -48,6 +54,7 @@ if ($m === 'POST') {
             'email'     => $user['email'],
             'role'      => $roleNorm,
         ],
+        'shift' => $shift,
         'redirect' => $roleNorm === 'admin' ? 'admin_dashboard.html' : 'staff_dashboard.html',
     ]);
 }

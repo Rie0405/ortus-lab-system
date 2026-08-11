@@ -494,6 +494,49 @@ body {
     color: #cbd5e1;
 }
 
+.sales-report-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.sales-report-pagination[hidden] {
+    display: none;
+}
+
+.sales-report-page-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: #2a2118;
+    color: #cbd5e1;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sales-report-page-btn:hover:not(:disabled) {
+    border-color: #f48c25;
+    color: #f48c25;
+}
+
+.sales-report-page-btn--active {
+    background: #f48c25;
+    border-color: #f48c25;
+    color: #120e0a;
+}
+
+.sales-report-page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 /* Sales History page simplified: show staff brief only */
 .heading-row,
 .metrics-grid,

@@ -428,6 +428,7 @@ try {
          SET stock_units = :stock_units,
              units_in_use = :units_in_use,
              open_items_count = :open_items_count,
+             per_stock_unit = :per_stock_unit,
              supplier = :supplier,
              unit_cost = :unit_cost
          WHERE id = :id'
@@ -509,6 +510,7 @@ try {
                 ':stock_units' => $counts['stock_units'],
                 ':units_in_use' => $counts['units_in_use'],
                 ':open_items_count' => $counts['open_items_count'],
+                ':per_stock_unit' => $line['unit'],
                 ':supplier' => $supplier,
                 ':unit_cost' => $line['unit_cost'],
                 ':id' => (int)$existingInventory['id'],

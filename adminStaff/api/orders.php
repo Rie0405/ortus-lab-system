@@ -233,6 +233,16 @@ if ($m === 'GET') {
         $where[] = 'o.status = :st';
         $params[':st'] = $status;
     }
+    $filterDate = trim($_GET['date'] ?? '');
+    if ($filterDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDate)) {
+        $where[] = 'DATE(o.created_at) = :fd';
+        $params[':fd'] = $filterDate;
+    }
+    $filterStaffId = (int)($_GET['staff_id'] ?? 0);
+    if ($filterStaffId > 0) {
+        $where[] = 'o.staff_id = :fsid';
+        $params[':fsid'] = $filterStaffId;
+    }
     if (in_array($source, ['pos', 'kiosk'], true)) {
         $where[] = 'o.order_source = :src';
         $params[':src'] = $source;

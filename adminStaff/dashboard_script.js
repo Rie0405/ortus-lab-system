@@ -49,6 +49,215 @@ function apiCall(method, url, body) {
     var subcategoryChipsRow = document.getElementById('menu-subcategory-chips');
     var selectedCategoryChipKey = 'all';
     var selectedSubcategoryChipId = 'all';
+    var createImageUrl = '';
+    var editImageUrl = '';
+
+    // ── Product visual upload (create + edit) ───────────────────────────────
+    var PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+    var PRODUCT_IMAGE_TYPES = {
+        'image/jpeg': true,
+        'image/jpg': true,
+        'image/png': true,
+        'image/webp': true
+    };
+
+    function resetDropzonePreview(prefix) {
+        var dropzone = document.getElementById(prefix + '-visual-dropzone');
+        var preview = document.getElementById(prefix + '-visual-preview');
+        if (!dropzone || !preview) return;
+        preview.onload = null;
+        preview.onerror = null;
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        dropzone.classList.remove('has-preview');
+        dropzone.classList.remove('is-dragover');
+        dropzone.style.pointerEvents = '';
+    }
+
+    function setDropzonePreview(prefix, url) {
+        var dropzone = document.getElementById(prefix + '-visual-dropzone');
+        var preview = document.getElementById(prefix + '-visual-preview');
+        if (!dropzone || !preview) return;
+        if (url) {
+            preview.hidden = false;
+            preview.onerror = function () {
+                resetDropzonePreview(prefix);
+                setProductImageUrl(prefix, '');
+            };
+            preview.src = url;
+            dropzone.classList.add('has-preview');
+        } else {
+            resetDropzonePreview(prefix);
+        }
+    }
+
+    function deleteProductImageFile(url) {
+        if (!url || /^https?:\/\//i.test(url)) return Promise.resolve();
+        return fetch('api/menu_image_delete.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        }).then(function (r) { return r.json(); }).catch(function (err) {
+            console.warn('Image delete failed:', err);
+        });
+    }
+
+    function getProductImageUrl(prefix) {
+        return prefix === 'prod' ? createImageUrl : editImageUrl;
+    }
+
+    function previewHasStoredImage(prefix) {
+        var preview = document.getElementById(prefix + '-visual-preview');
+        var src = preview && preview.getAttribute('src') ? String(preview.getAttribute('src')) : '';
+        return src.indexOf('uploads/menu/') >= 0 || src.indexOf('blob:') === 0;
+    }
+
+    function setProductImageUrl(prefix, url) {
+        if (prefix === 'prod') createImageUrl = url || '';
+        if (prefix === 'edit') editImageUrl = url || '';
+    }
+
+    function clearProductVisual(prefix, deleteFile) {
+        var preview = document.getElementById(prefix + '-visual-preview');
+        var currentUrl = getProductImageUrl(prefix);
+        var previewSrc = preview && preview.getAttribute('src') ? String(preview.getAttribute('src')) : '';
+        if (!currentUrl && previewSrc.indexOf('uploads/menu/') >= 0) {
+            currentUrl = previewSrc;
+        }
+        setProductImageUrl(prefix, '');
+        var fileInput = document.getElementById(prefix + '-visual-file');
+        if (fileInput) fileInput.value = '';
+        resetDropzonePreview(prefix);
+        if (deleteFile && currentUrl && currentUrl.indexOf('blob:') !== 0) {
+            deleteProductImageFile(currentUrl);
+        }
+    }
+
+    function uploadProductImage(file) {
+        var fd = new FormData();
+        fd.append('image', file);
+        return fetch('api/menu_image_upload.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: fd
+        }).then(function (r) { return r.json(); });
+    }
+
+    function handleProductImageFile(prefix, file) {
+        if (!file) return;
+        if (!PRODUCT_IMAGE_TYPES[file.type]) {
+            alert('Only PNG, JPG, or WEBP images are allowed.');
+            return;
+        }
+        if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+            alert('Image must be PNG/JPG up to 5MB.');
+            return;
+        }
+
+        var localUrl = URL.createObjectURL(file);
+        var previousUrl = getProductImageUrl(prefix);
+        setDropzonePreview(prefix, localUrl);
+
+        var dropzone = document.getElementById(prefix + '-visual-dropzone');
+        var titleEl = document.getElementById(prefix + '-visual-title');
+        var prevTitle = titleEl ? titleEl.textContent : '';
+        if (titleEl) titleEl.textContent = 'UPLOADING…';
+        if (dropzone) dropzone.style.pointerEvents = 'none';
+
+        uploadProductImage(file).then(function (res) {
+            if (res && res.success && res.url) {
+                setProductImageUrl(prefix, res.url);
+                setDropzonePreview(prefix, res.url);
+                if (previousUrl && previousUrl !== res.url) {
+                    deleteProductImageFile(previousUrl);
+                }
+            } else {
+                alert('Upload failed: ' + ((res && res.error) || 'Unknown error'));
+                setDropzonePreview(prefix, previousUrl || '');
+            }
+        }).catch(function (err) {
+            console.error('Image upload failed:', err);
+            alert('Image upload failed. Please try again.');
+            setDropzonePreview(prefix, previousUrl || '');
+        }).finally(function () {
+            URL.revokeObjectURL(localUrl);
+            if (titleEl) titleEl.textContent = prevTitle || 'DRAG BLUEPRINT OR CLICK TO UPLOAD';
+            if (dropzone) dropzone.style.pointerEvents = '';
+        });
+    }
+
+    function wireProductVisualDropzone(prefix) {
+        var dropzone = document.getElementById(prefix + '-visual-dropzone');
+        var fileInput = document.getElementById(prefix + '-visual-file');
+        var updateBtn = document.getElementById(prefix + '-visual-update');
+        var deleteBtn = document.getElementById(prefix + '-visual-delete');
+        if (!dropzone || !fileInput) return;
+
+        function openPicker() { fileInput.click(); }
+
+        dropzone.addEventListener('click', function (e) {
+            if (e.target === fileInput) return;
+            if (e.target.closest('.product-upload-action')) return;
+            if (dropzone.classList.contains('has-preview')) return;
+            openPicker();
+        });
+        dropzone.addEventListener('keydown', function (e) {
+            if (dropzone.classList.contains('has-preview')) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openPicker();
+            }
+        });
+        fileInput.addEventListener('change', function () {
+            var file = fileInput.files && fileInput.files[0];
+            handleProductImageFile(prefix, file);
+        });
+
+        if (updateBtn) {
+            updateBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openPicker();
+            });
+        }
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var hasImage = !!getProductImageUrl(prefix) ||
+                    (dropzone.classList.contains('has-preview') && previewHasStoredImage(prefix));
+                if (!hasImage) {
+                    resetDropzonePreview(prefix);
+                    return;
+                }
+                if (!confirm('Remove this product image?')) return;
+                clearProductVisual(prefix, true);
+            });
+        }
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+        dropzone.addEventListener('drop', function (e) {
+            var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            handleProductImageFile(prefix, file);
+        });
+    }
+
+    wireProductVisualDropzone('prod');
+    wireProductVisualDropzone('edit');
 
     // ── Customizable ingredients tags (ordering_dashboard.html only) ──
     var customizableTagsWrap = null;
@@ -823,6 +1032,7 @@ function apiCall(method, url, body) {
             var basePrice = document.getElementById('prod-base-price');
             if (basePrice) basePrice.value = '';
             syncBevSubVisibility();
+            clearProductVisual('prod');
         }
     }
     function closeModal(backdrop) {
@@ -1448,6 +1658,7 @@ function apiCall(method, url, body) {
                 price: price,
                 description: desc,
                 is_available: 1,
+                image_url: createImageUrl || '',
             };
             if (subcategoryId) {
                 createPayload.subcategory_id = parseInt(subcategoryId, 10);
@@ -1476,6 +1687,7 @@ function apiCall(method, url, body) {
                         customizableTagsList.querySelectorAll('.tag-pill[data-ingredient]').forEach(function (p) { p.remove(); });
                     }
                     if (customizableIngredientsInput) customizableIngredientsInput.value = '';
+                    clearProductVisual('prod');
                     loadItems();
                 } else {
                     alert('Error: ' + res.error);
@@ -1551,6 +1763,9 @@ function apiCall(method, url, body) {
             setServeFlagsOnForm('edit', { hot: false, cold: false });
         }
         syncBevSubVisibility();
+
+        editImageUrl = (item.image_url && String(item.image_url).trim()) || '';
+        setDropzonePreview('edit', editImageUrl);
 
         openModal(editBackdrop);
     }
@@ -1677,6 +1892,7 @@ function apiCall(method, url, body) {
                     price:       price,
                     description: descEdit,
                     subcategory_id: editSubcategoryId ? parseInt(editSubcategoryId, 10) : '',
+                    image_url:   editImageUrl || '',
                 };
                 if (isBeverageEdit) {
                     payload.serve_hot = serveHot;

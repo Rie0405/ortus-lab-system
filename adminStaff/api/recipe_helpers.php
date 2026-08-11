@@ -637,9 +637,9 @@ function inventory_stock_ratio(array $row): float
     return total_available_orders_for_inventory_row($row) / $max;
 }
 
-function is_low_stock_for_inventory_row(array $row, int $fractionDen): bool
+function is_low_stock_for_inventory_row(array $row, int $alertPercent): bool
 {
-    $fractionDen = max(1, $fractionDen);
+    $alertPercent = max(1, min(100, $alertPercent));
     $total = total_available_orders_for_inventory_row($row);
     if ($total <= 0) {
         return false;
@@ -648,7 +648,7 @@ function is_low_stock_for_inventory_row(array $row, int $fractionDen): bool
     if ($max <= 0) {
         return false;
     }
-    return ($total / $max) <= (1.0 / $fractionDen);
+    return ($total / $max) <= ($alertPercent / 100.0);
 }
 
 /**

@@ -845,8 +845,17 @@ function renderMenuItemsInto(gridEl, items) {
     gridEl.innerHTML = items.map(function (it) {
         var kioskMenuPlaceholderImg = '../adminStaff/icons_admin/static_img.jpg';
         var isAvailable = it.is_available !== false;
-        var imgSrc =
-            it.image_url && String(it.image_url).trim() ? String(it.image_url).trim() : kioskMenuPlaceholderImg;
+        var rawImg = it.image_url && String(it.image_url).trim() ? String(it.image_url).trim() : '';
+        var imgSrc = kioskMenuPlaceholderImg;
+        if (rawImg) {
+            if (/^https?:\/\//i.test(rawImg) || rawImg.indexOf('../') === 0 || rawImg.indexOf('/') === 0) {
+                imgSrc = rawImg;
+            } else if (rawImg.indexOf('uploads/') === 0 || rawImg.indexOf('icons_admin/') === 0) {
+                imgSrc = '../adminStaff/' + rawImg;
+            } else {
+                imgSrc = rawImg;
+            }
+        }
         var imgHtml =
             '<img class="prod-card-img-el" src="' +
             escapeHtml(imgSrc) +

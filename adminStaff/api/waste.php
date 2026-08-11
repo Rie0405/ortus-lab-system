@@ -122,7 +122,7 @@ if ($m === 'GET') {
     $stmt = $pdo->prepare(
         'SELECT
             w.id, w.inventory_item_id, w.menu_item_id, w.parent_waste_id, w.quantity, w.reason, w.notes,
-            w.estimated_value, w.logged_at, u.full_name AS staff_name,
+            w.estimated_value, w.logged_at, w.staff_id, u.full_name AS staff_name,
             COALESCE(i.item_name, m.name, "Unknown Item") AS item_name
          FROM waste_log w
          LEFT JOIN users u ON u.id = w.staff_id

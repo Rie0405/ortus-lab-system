@@ -352,8 +352,8 @@
                             <select id="inv-unit">
                                 <option value="g">g</option>
                                 <option value="kg">kg</option>
-                                <option value="ml">ml</option>
-                                <option value="l">l</option>
+                                <option value="ml">mL</option>
+                                <option value="l">L</option>
                                 <option value="pcs">pcs</option>
                             </select>
                         </label>
@@ -411,7 +411,6 @@
                     <button type="button" class="app-modal__close" id="applicable-items-close" aria-label="Close">×</button>
                 </header>
                 <div class="app-modal__body">
-                    <p class="app-modal__hint">Based on <strong>overall stock</strong> — pinagsama ang <strong>Stock Level</strong> (sealed/reserve) at <strong>Stock Used</strong> (open/active batch). Hindi isa lang ang tinitingnan.</p>
                     <div id="applicable-items-list"></div>
                 </div>
                 <footer class="app-modal__footer">
@@ -453,6 +452,7 @@
                                 <span>Main Category</span>
                                 <span>Category Type</span>
                                 <span>Item</span>
+                                <span>Unit Label</span>
                                 <span>Stock Type</span>
                                 <span>Mode</span>
                             </div>
@@ -633,7 +633,14 @@
             { value: 'packaging', label: 'Packaging' },
             { value: 'cashier_area', label: 'Cashier Area' }
         ];
-        var REGISTER_LINE_GRID_REGISTER = 'minmax(90px, 0.95fr) minmax(110px, 1fr) minmax(130px, 1.35fr) minmax(110px, 1fr) minmax(100px, 0.95fr)';
+        var REGISTER_LINE_GRID_REGISTER = 'minmax(90px, 0.95fr) minmax(110px, 1fr) minmax(130px, 1.35fr) minmax(80px, 0.85fr) minmax(110px, 1fr) minmax(100px, 0.95fr)';
+        var REGISTER_UNIT_OPTIONS = [
+            { value: 'pcs', label: 'pcs' },
+            { value: 'g', label: 'g' },
+            { value: 'kg', label: 'kg' },
+            { value: 'ml', label: 'mL' },
+            { value: 'l', label: 'L' }
+        ];
 
         if (!alertGrid || !tableWrap) return;
 
@@ -650,8 +657,8 @@
         var mainCategories = ['Bar', 'Kitchen'];
         var searchText = '';
         var editingId = null;
-        var lowStockFractionDen = 2;
-        var lowStockFractionOptions = [2, 3, 4, 5];
+        var lowStockFractionDen = 50;
+        var lowStockFractionOptions = [75, 50, 25];
         var lastLowAlerts = [];
         var restockNotificationLastShownKey = 'restock_notification_last_shown_date';
 
@@ -784,6 +791,7 @@
             var capacity = getConfiguredItemCapacity(item);
             var configured = isItemCapacityConfigured(item);
             var openCount = getOpenItemsCount(item);
+            var unit = getItemUnit(item);
 
             if (usesBatchStockDisplay(item)) {
                 var batchSize = getBatchSize(item);
@@ -791,7 +799,7 @@
                 if (batchRemaining <= 0) {
                     return (parseInt(item.stock_units, 10) || 0) > 0 ? 'No active batch' : 'Out of stock';
                 }
-                return batchRemaining + ' of ' + batchSize + ' left in active batch';
+                return batchRemaining + ' of ' + batchSize + ' ' + unit + ' left in active batch';
             }
 
             if (openCount <= 0) {
@@ -802,7 +810,7 @@
             }
             var left = Math.min(Math.round(ordersLeft), capacity);
             if (openCount > 1) {
-                return left + ' of ' + capacity + ' on 1st item · ' + openCount + ' open items';
+                return left + ' of ' + capacity + ' on 1st item · ' + openCount + ' open ' + unit;
             }
             return left + ' of ' + capacity + ' orders left';
         }
@@ -815,21 +823,21 @@
         }
 
         function formatStockUsedCell(item) {
+            var unit = getItemUnit(item);
             if (usesBatchStockDisplay(item)) {
                 var remaining = getBatchRemaining(item);
                 var subtitle = esc(formatOrdersLeftSubtitle(item));
                 return '' +
                     '<div class="stock-used-display">' +
-                        '<strong class="stock-used-display__main">' + String(remaining) + '</strong>' +
+                        '<strong class="stock-used-display__main">' + formatStockAmountWithUnitHtml(remaining, unit) + '</strong>' +
                         '<small class="stock-used-display__sub">' + subtitle + '</small>' +
                     '</div>';
             }
             var openCount = getOpenItemsCount(item);
-            var main = String(openCount);
             var subtitle = formatOrdersLeftSubtitle(item);
             return '' +
                 '<div class="stock-used-display">' +
-                    '<strong class="stock-used-display__main">' + main + '</strong>' +
+                    '<strong class="stock-used-display__main">' + formatStockAmountWithUnitHtml(openCount, unit) + '</strong>' +
                     '<small class="stock-used-display__sub">' + esc(subtitle) + '</small>' +
                 '</div>';
         }
@@ -860,11 +868,21 @@
         function normalizeDisplayUnit(unit) {
             var u = String(unit || 'pcs').trim().toLowerCase();
             if (u === 'unit' || u === 'units') return 'pcs';
+            if (u === 'ml') return 'mL';
+            if (u === 'l') return 'L';
             return u;
         }
 
+        function getItemUnit(item) {
+            return normalizeDisplayUnit(item && item.per_stock_unit);
+        }
+
         function formatStockUsedDisplay(n, unit) {
-            return formatStockUsed(n) + ' ' + normalizeDisplayUnit(unit);
+            return formatStockUsed(n) + ' ' + getItemUnit({ per_stock_unit: unit });
+        }
+
+        function formatStockAmountWithUnitHtml(n, unit) {
+            return formatStockUsed(n) + ' <span class="stock-used-display__unit">' + esc(getItemUnit({ per_stock_unit: unit })) + '</span>';
         }
 
         function safeNumber(value, fallback) {
@@ -873,12 +891,12 @@
         }
 
         function getLowStockFractionDen() {
-            var den = parseInt(lowStockFractionDen, 10);
-            return lowStockFractionOptions.indexOf(den) !== -1 ? den : 2;
+            var pct = parseInt(lowStockFractionDen, 10);
+            return lowStockFractionOptions.indexOf(pct) !== -1 ? pct : 50;
         }
 
-        function formatFractionLabel(den) {
-            return '1/' + den;
+        function formatFractionLabel(pct) {
+            return pct + '%';
         }
 
         function getItemMaxCapacity(item) {
@@ -930,7 +948,7 @@
         function isItemLowStockByFraction(item) {
             var total = getItemTotalAvailable(item);
             if (total <= 0) return false;
-            return getItemStockRatio(item) <= (1 / getLowStockFractionDen());
+            return getItemStockRatio(item) <= (getLowStockFractionDen() / 100);
         }
 
         function getStockLevelColor(item) {
@@ -947,8 +965,8 @@
             return '#22c55e';
         }
 
-        function formatStockLevel(n) {
-            return String(parseInt(n, 10) || 0) + ' stocks';
+        function formatStockLevel(n, unit) {
+            return formatStockUsedDisplay(parseInt(n, 10) || 0, unit || 'pcs');
         }
 
         function stockUsedBarWidth(inUse, perStockAmount) {
@@ -1012,6 +1030,20 @@
 
         function receiptCategoryTypeFieldHtml(selected) {
             return '<select class="receipt-category-type">' + buildRegisterCategoryTypeOptionsHtml(selected || 'main') + '</select>';
+        }
+
+        function buildRegisterUnitOptionsHtml(selected) {
+            var current = String(selected || 'pcs').trim().toLowerCase();
+            return REGISTER_UNIT_OPTIONS.map(function (opt) {
+                var sel = opt.value === current ? ' selected' : '';
+                return '<option value="' + escAttr(opt.value) + '"' + sel + '>' + esc(opt.label) + '</option>';
+            }).join('');
+        }
+
+        function receiptUnitLabelFieldHtml(selected) {
+            return '<select class="receipt-unit-label" aria-label="Unit label">' +
+                buildRegisterUnitOptionsHtml(selected || 'pcs') +
+                '</select>';
         }
 
         function formatCategoryTypeLabel(type) {
@@ -1079,7 +1111,7 @@
                     receiptMainCategoryFieldHtml() +
                     '<select class="receipt-item-name"><option value="">Select item</option></select>' +
                     '<input type="number" class="receipt-stocks" min="0" step="1" value="0">' +
-                    '<input type="number" class="receipt-in-use" min="0" step="1" value="0" title="How many ADDITIONAL items to open (adds to current Stock Used). 1 = 1 full box pulled from sealed stock. 0 = leave open as-is.">' +
+                    receiptUnitLabelFieldHtml('pcs') +
                     '<button type="button" class="receipt-line-remove">×</button>';
                 return row;
             }
@@ -1087,6 +1119,7 @@
                 receiptMainCategoryFieldHtml() +
                 receiptCategoryTypeFieldHtml('main') +
                 '<input type="text" class="receipt-item-name" placeholder="Enter item name">' +
+                receiptUnitLabelFieldHtml('pcs') +
                 '<select class="receipt-stock-type">' +
                     '<option value="consumable">Consumable</option>' +
                     '<option value="non_consumable">Non-consumable</option>' +
@@ -1126,15 +1159,35 @@
             if (prevValue && matches.some(function (it) { return String(it.name || '').trim() === prevValue; })) {
                 itemEl.value = prevValue;
             }
-            syncReceiptOpenFieldFromItem(row);
+            syncReceiptUnitFieldFromRow(row);
         }
 
-        function syncReceiptOpenFieldFromItem(row) {
+        function syncReceiptUnitFieldFromRow(row) {
             if (!row || receiptModalMode !== 'add_receipt') return;
-            var inUseEl = row.querySelector('.receipt-in-use');
-            if (!inUseEl) return;
-            // Additive field — always start at 0 (0 = don't change current open count).
-            inUseEl.value = '0';
+            var unitEl = row.querySelector('.receipt-unit-label');
+            if (!unitEl) return;
+            var category = resolveLineCategory(row);
+            // Kitchen defaults to pcs (still editable). Bar uses the item's unit when available.
+            if (isKitchenCategory(category)) {
+                unitEl.value = 'pcs';
+                return;
+            }
+            var itemEl = row.querySelector('.receipt-item-name');
+            var itemName = String(itemEl && itemEl.value || '').trim();
+            if (!itemName) {
+                if (!unitEl.value) unitEl.value = 'pcs';
+                return;
+            }
+            var match = allItems.find(function (it) {
+                return String(it.category_name || '').trim() === category &&
+                    String(it.name || '').trim() === itemName;
+            });
+            if (!match) return;
+            var unit = normalizeDisplayUnit(match.per_stock_unit || 'pcs');
+            var hasOption = Array.prototype.some.call(unitEl.options, function (opt) {
+                return String(opt.value) === unit;
+            });
+            unitEl.value = hasOption ? unit : 'pcs';
         }
 
         function addReceiptLine() {
@@ -1156,8 +1209,8 @@
             if (headWrap) headWrap.style.justifyContent = isAddReceiptMode ? 'space-between' : 'flex-start';
             if (receiptLinesRowHead) {
                 receiptLinesRowHead.innerHTML = isAddReceiptMode
-                    ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>open (+)</span><span></span>'
-                    : '<span>Main Category</span><span>Category Type</span><span>Item</span><span>Stock Type</span><span>Mode</span>';
+                    ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>Unit</span><span></span>'
+                    : '<span>Main Category</span><span>Category Type</span><span>Item</span><span>Unit Label</span><span>Stock Type</span><span>Mode</span>';
                 receiptLinesRowHead.style.gridTemplateColumns = isAddReceiptMode
                     ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
                     : REGISTER_LINE_GRID_REGISTER;
@@ -1209,23 +1262,22 @@
                 var lineType = resolveLineCategory(row);
                 var itemNameEl = row.querySelector('.receipt-item-name');
                 var stocksEl = row.querySelector('.receipt-stocks');
-                var inUseEl = row.querySelector('.receipt-in-use');
                 var stockTypeEl = row.querySelector('.receipt-stock-type');
                 var entryModeEl = row.querySelector('.receipt-entry-mode');
                 var categoryTypeEl = row.querySelector('.receipt-category-type');
+                var unitLabelEl = row.querySelector('.receipt-unit-label');
                 var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
-                var inUseVal = parseFloat((inUseEl && inUseEl.value) || '0');
                 var line = {
                     line_type: lineType,
                     item_name: (itemNameEl && itemNameEl.value || '').trim(),
                     stocks: stocksVal,
-                    in_use: inUseVal,
+                    in_use: 0,
                     stock_type: (stockTypeEl && stockTypeEl.value) || 'consumable',
                     entry_mode: (entryModeEl && entryModeEl.value) || 'automatic',
                     category_type: (categoryTypeEl && categoryTypeEl.value) || 'main',
                     stock_status: 'good',
                     per_stock_amount: 1,
-                    unit: 'pcs',
+                    unit: (unitLabelEl && unitLabelEl.value) || 'pcs',
                     unit_cost: 0,
                     total_cost: 0
                 };
@@ -1349,7 +1401,7 @@
                         '<td>' + esc(line.line_type) + '</td>' +
                         '<td>' + esc(line.item_name) + '</td>' +
                         '<td>' + Number(line.stocks != null ? line.stocks : line.quantity || 0).toFixed(0) + '</td>' +
-                        '<td>' + (Number(line.in_use || 0) >= 1 ? String(Math.max(0, Math.round(Number(line.in_use || 0)))) : '0') + '</td>' +
+                        '<td>' + esc(normalizeDisplayUnit(line.unit || 'pcs')) + '</td>' +
                         '<td>' + formatMoney(line.unit_cost) + '</td>' +
                         '<td>' + formatMoney(line.total_cost) + '</td>' +
                     '</tr>';
@@ -1374,7 +1426,7 @@
                 '<div class="receipt-summary-detail__table-wrap">' +
                     '<table class="receipt-summary-detail__table">' +
                         '<thead>' +
-                            '<tr><th>Main Category</th><th>Item</th><th>Stocks</th><th>open item</th><th>Unit Cost</th><th>Total</th></tr>' +
+                            '<tr><th>Main Category</th><th>Item</th><th>Stocks</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr>' +
                         '</thead>' +
                         '<tbody>' + rowsHtml + '</tbody>' +
                     '</table>' +
@@ -1960,8 +2012,7 @@
                 '<div class="low-stock-fraction-group">' +
                     '<p class="low-stock-fraction-label">Mark as low stock when remaining stock is at or below</p>' +
                     '<div class="low-stock-fraction-options" id="low-stock-fraction-options">' + buttonsHtml + '</div>' +
-                '</div>' +
-                '<p class="app-modal__hint">Example: with <strong>1/4</strong>, LOW STOCK kapag ang overall stock (Stock Level + Stock Used) ay 25% na lang o mas mababa ng full capacity.</p>';
+                '</div>';
 
             var optionsEl = document.getElementById('low-stock-fraction-options');
             if (optionsEl) {
@@ -2217,7 +2268,7 @@
             return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
                 '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
                 '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
-                '<div><strong>' + formatStockLevel(item.stock_units) + '</strong></div>' +
+                '<div><strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong></div>' +
                 '<div class="inv-box-capacity-cell">' +
                     (nonConsumable
                         ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'
@@ -2249,7 +2300,7 @@
                     appendCategoryLabelRow(tableWrap, group.label);
                     group.items.forEach(function (item) {
                         var row = document.createElement('div');
-                        row.className = 'table-row';
+                        row.className = 'table-row' + (item.status === 'out_of_stock' ? ' table-row--out-of-stock' : '');
                         row.innerHTML = buildAutomaticRowHtml(item);
                         tableWrap.appendChild(row);
                     });
@@ -2754,7 +2805,12 @@
                         return it;
                     });
                     var loadedDen = parseInt(d.low_stock_fraction_den, 10);
-                    lowStockFractionDen = lowStockFractionOptions.indexOf(loadedDen) !== -1 ? loadedDen : 2;
+                    if (lowStockFractionOptions.indexOf(loadedDen) !== -1) {
+                        lowStockFractionDen = loadedDen;
+                    } else {
+                        var legacyMap = { 2: 50, 3: 25, 4: 25, 5: 25, 30: 25, 20: 25, 10: 25 };
+                        lowStockFractionDen = legacyMap[loadedDen] || 50;
+                    }
                     mainCategories = (d.categories || []).slice();
                     if (!mainCategories.length) mainCategories = ['Bar', 'Kitchen'];
                     populateMainCategorySelect(fldCategory, mainCategories[0] || 'Kitchen');
@@ -2867,7 +2923,7 @@
                 }
                 var itemEl = e.target.closest('.receipt-item-name');
                 if (itemEl) {
-                    syncReceiptOpenFieldFromItem(itemEl.closest('.receipt-lines__row'));
+                    syncReceiptUnitFieldFromRow(itemEl.closest('.receipt-lines__row'));
                 }
             });
             receiptLinesBody.addEventListener('click', function (e) {

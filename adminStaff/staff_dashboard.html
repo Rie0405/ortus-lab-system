@@ -3477,6 +3477,25 @@
         function getAccuracyStorageKey() {
             return 'staff_sales_report_accuracy_' + new Date().toISOString().slice(0, 10);
         }
+        function syncStaffSalesReportSnapshot() {
+            var staffId = null;
+            if (typeof window.getPosActingStaffId === 'function') {
+                staffId = window.getPosActingStaffId();
+            }
+            var payload = {
+                report_date: new Date().toISOString().slice(0, 10),
+                starting_money: localStorage.getItem(getStartingMoneyStorageKey()),
+                starting_money_locked: localStorage.getItem(getStartingMoneyLockedKey()) === '1',
+                accuracy: localStorage.getItem(getAccuracyStorageKey())
+            };
+            if (staffId) payload.staff_id = staffId;
+            fetch('api/staff_sales_report.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            }).catch(function () {});
+        }
         function getSavedStartingMoneyTotal() {
             var raw = localStorage.getItem(getStartingMoneyStorageKey());
             if (!raw) return 0;
@@ -3662,6 +3681,7 @@
                     expected: toMoney(state && state.expected),
                     updated_at: new Date().toISOString()
                 }));
+                syncStaffSalesReportSnapshot();
             } catch (e) {}
         }
         function loadAccuracyDraft() {
@@ -4210,6 +4230,7 @@
 
             updateStartingMoneyTotalDisplay();
             if (salesReportStartingMoneySaved) salesReportStartingMoneySaved.textContent = peso(total);
+            syncStaffSalesReportSnapshot();
         }
 
         function saveStartingMoneyInLock() {
@@ -4234,6 +4255,7 @@
 
             updateStartingMoneyTotalDisplay();
             if (salesReportStartingMoneySaved) salesReportStartingMoneySaved.textContent = peso(total);
+            syncStaffSalesReportSnapshot();
         }
 
         function clearStartingMoneyForToday() {

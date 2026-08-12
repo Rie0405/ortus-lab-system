@@ -4,6 +4,24 @@ require_once __DIR__ . '/menu_helpers.php';
 require_once __DIR__ . '/recipe_helpers.php';
 require_auth();
 
+function normalize_receipt_entry_source(string $source): string
+{
+    $value = strtolower(trim($source));
+    return $value === 'staff' ? 'staff' : 'admin';
+}
+
+function infer_receipt_entry_source(?string $storedSource, ?string $supplier): string
+{
+    $source = strtolower(trim((string)$storedSource));
+    if ($source === 'staff' || $source === 'admin') {
+        return $source;
+    }
+    if (stripos(trim((string)$supplier), 'Restocked by ') === 0) {
+        return 'staff';
+    }
+    return 'admin';
+}
+
 function ensure_receipt_schema(PDO $pdo): void {
     $pdo->exec(
         'CREATE TABLE IF NOT EXISTS Receipts (
@@ -29,6 +47,14 @@ function ensure_receipt_schema(PDO $pdo): void {
     if (!$chkExpectedDate || !$chkExpectedDate->fetch()) {
         try {
             $pdo->exec('ALTER TABLE Receipts ADD COLUMN ExpectedReceiveDate DATE NULL AFTER OrderedDate');
+        } catch (Throwable $e) {
+            // Ignore migration issues on environments with restricted ALTER privileges.
+        }
+    }
+    $chkEntrySource = $pdo->query("SHOW COLUMNS FROM Receipts LIKE 'EntrySource'");
+    if (!$chkEntrySource || !$chkEntrySource->fetch()) {
+        try {
+            $pdo->exec("ALTER TABLE Receipts ADD COLUMN EntrySource VARCHAR(20) NOT NULL DEFAULT 'admin' AFTER Supplier");
         } catch (Throwable $e) {
             // Ignore migration issues on environments with restricted ALTER privileges.
         }
@@ -300,6 +326,7 @@ if (method() === 'GET') {
             r.OrderedDate,
             r.ExpectedReceiveDate,
             r.Supplier,
+            r.EntrySource,
             r.TotalAmount,
             r.CreatedAt,
             COUNT(rl.ReceiptLineID) AS line_count
@@ -317,6 +344,7 @@ if (method() === 'GET') {
             'ordered_date' => $row['OrderedDate'],
             'expected_receive_date' => $row['ExpectedReceiveDate'],
             'supplier' => $row['Supplier'],
+            'entry_source' => infer_receipt_entry_source($row['EntrySource'] ?? '', $row['Supplier'] ?? ''),
             'total_amount' => (float)$row['TotalAmount'],
             'line_count' => (int)$row['line_count'],
             'created_at' => $row['CreatedAt'],
@@ -335,6 +363,10 @@ $date = trim((string)($b['date'] ?? ''));
 $orderedDate = trim((string)($b['ordered_date'] ?? ''));
 $expectedReceiveDate = trim((string)($b['expected_receive_date'] ?? ''));
 $supplier = trim((string)($b['supplier'] ?? ''));
+$entrySource = normalize_receipt_entry_source((string)($b['entry_source'] ?? ''));
+if ($entrySource === 'admin' && stripos($supplier, 'Restocked by ') === 0) {
+    $entrySource = 'staff';
+}
 $linesRaw = $b['lines'] ?? [];
 
 if ($date === '') {
@@ -396,14 +428,15 @@ try {
     $totalAmount = array_sum(array_column($lines, 'total_cost'));
 
     $receiptStmt = $pdo->prepare(
-        'INSERT INTO Receipts (`Date`, OrderedDate, ExpectedReceiveDate, Supplier, TotalAmount)
-         VALUES (:date, :ordered_date, :expected_receive_date, :supplier, :total_amount)'
+        'INSERT INTO Receipts (`Date`, OrderedDate, ExpectedReceiveDate, Supplier, EntrySource, TotalAmount)
+         VALUES (:date, :ordered_date, :expected_receive_date, :supplier, :entry_source, :total_amount)'
     );
     $receiptStmt->execute([
         ':date' => $date,
         ':ordered_date' => ($orderedDate !== '' ? $orderedDate : null),
         ':expected_receive_date' => $expectedReceiveDate,
         ':supplier' => $supplier,
+        ':entry_source' => $entrySource,
         ':total_amount' => $totalAmount,
     ]);
 
@@ -515,9 +548,6 @@ try {
                 ':unit_cost' => $line['unit_cost'],
                 ':id' => (int)$existingInventory['id'],
             ]);
-            if ((int)$counts['open_items_count'] <= 0 && !$usesBatch) {
-                ensure_open_box_when_stock_available($pdo, (int)$existingInventory['id']);
-            }
             continue;
         }
 
@@ -566,9 +596,6 @@ try {
             ':stock_status' => $line['stock_status'],
         ]);
         $newInvId = (int)$pdo->lastInsertId();
-        if ((int)$counts['open_items_count'] <= 0 && !$usesBatch) {
-            ensure_open_box_when_stock_available($pdo, $newInvId);
-        }
     }
 
     $pdo->commit();

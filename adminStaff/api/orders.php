@@ -341,13 +341,9 @@ if ($m === 'POST') {
     ensure_order_items_cost_schema($pdo);
     ensure_receipt_token_schema($pdo);
 
-    $allowShortage = !empty($b['allow_shortage']);
-    if (!$allowShortage) {
-        $shortages = check_inventory_shortages_for_cart($pdo, $items);
-        if ($shortages) {
-            // POS staff may confirm and retry with allow_shortage=true.
-            respond_inventory_shortage($shortages, true);
-        }
+    $shortages = check_inventory_shortages_for_cart($pdo, $items);
+    if ($shortages) {
+        respond_inventory_shortage($shortages, false);
     }
 
     $receiptToken = generate_receipt_token();

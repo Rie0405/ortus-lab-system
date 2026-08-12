@@ -394,7 +394,6 @@ if ($method === 'PUT') {
                AND menu_item_id IS NULL'
         );
         $stmt->execute([':target' => $targetStock]);
-        ensure_open_box_when_stock_available($pdo);
 
         ok([
             'message' => 'All inventory items restocked to normal level.',
@@ -409,6 +408,23 @@ if ($method === 'PUT') {
         ok([
             'message' => 'Low stock alert level updated.',
             'low_stock_fraction_den' => $fractionDen,
+        ]);
+    }
+
+    if ($action === 'restock_shortages') {
+        $shortagesRaw = $b['shortages'] ?? [];
+        if (!is_array($shortagesRaw) || count($shortagesRaw) === 0) {
+            fail('No shortage items to restock.');
+        }
+        ensure_inventory_schema($pdo);
+        $restocked = restock_inventory_shortages($pdo, $shortagesRaw);
+        if (!$restocked) {
+            fail('No matching inventory items were restocked.');
+        }
+        ok([
+            'message' => 'Shortage items restocked.',
+            'restocked' => $restocked,
+            'restocked_count' => count($restocked),
         ]);
     }
 
@@ -628,42 +644,9 @@ if ($method === 'PUT') {
         $params[':orders_per_box'] = $newCapacity;
 
         if ($newCapacity > 0 && !array_key_exists('units_in_use', $b)) {
-            if ($usesBatch && is_kitchen_inventory_category($capCur['category_name'] ?? '')) {
-                $firstTimeCapacity = ($oldCap <= 0);
-                if ($firstTimeCapacity || $ordersLeft <= 0.0001) {
-                    $opened = open_initial_batch_from_stock(
-                        array_merge($capCur, ['orders_per_box' => $newCapacity]),
-                        $newCapacity
-                    );
-                    $fields[] = 'stock_units = :cap_stock_units';
-                    $fields[] = 'units_in_use = :cap_units_in_use';
-                    $fields[] = 'open_items_count = :cap_open_items_count';
-                    $params[':cap_stock_units'] = $opened['stock_units'];
-                    $params[':cap_units_in_use'] = $opened['units_in_use'];
-                    $params[':cap_open_items_count'] = $opened['open_items_count'];
-                } else {
-                    $fields[] = 'units_in_use = LEAST(units_in_use, :cap_units_in_use)';
-                    $params[':cap_units_in_use'] = $newCapacity;
-                    if ($openCount <= 0) {
-                        $fields[] = 'open_items_count = 1';
-                    }
-                }
-            } elseif ($openCount > 0 || $ordersLeft > 0) {
-                $wasFullAtOldCap = $oldCap > 0 && abs($ordersLeft - (float)$oldCap) < 0.01;
-                $legacyFallbackOpen = ($oldCap <= 1 && $ordersLeft > 0 && $ordersLeft <= 1.01 && $newCapacity > 1);
-                $firstTimeCapacity = ($oldCap <= 0);
-
-                if ($firstTimeCapacity || $wasFullAtOldCap || $legacyFallbackOpen) {
-                    // Newly configured / was "full" at wrong capacity (often fallback of 1) → fill to capacity.
-                    $fields[] = 'units_in_use = :cap_units_in_use';
-                    $params[':cap_units_in_use'] = (float)$newCapacity;
-                    if ($openCount <= 0) {
-                        $fields[] = 'open_items_count = 1';
-                    }
-                } else {
-                    $fields[] = 'units_in_use = LEAST(units_in_use, :cap_units_in_use)';
-                    $params[':cap_units_in_use'] = $newCapacity;
-                }
+            if ($openCount > 0 && $ordersLeft > (float)$newCapacity) {
+                $fields[] = 'units_in_use = LEAST(units_in_use, :cap_units_in_use)';
+                $params[':cap_units_in_use'] = $newCapacity;
             }
         }
     }
@@ -708,21 +691,6 @@ if ($method === 'PUT') {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
 
-        $openStmt = $pdo->prepare(
-            'SELECT open_items_count, units_in_use, category_name, stock_type, orders_per_box, per_stock_amount
-             FROM inventory_items
-             WHERE id = :id
-             LIMIT 1'
-        );
-        $openStmt->execute([':id' => $id]);
-        $after = $openStmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        if (open_items_count_for_row($after) <= 0) {
-            if (inventory_uses_batch_logic($after)) {
-                ensure_batch_open_when_stock_available($pdo, $id);
-            } else {
-                ensure_open_box_when_stock_available($pdo, $id);
-            }
-        }
     }
     ok(['message' => 'Inventory item updated.']);
 }
@@ -751,8 +719,7 @@ if (isset($_GET['movement']) && strtolower(trim((string)$_GET['movement'])) === 
   ]);
 }
 
-ensure_open_box_when_stock_available($pdo);
-ensure_batch_open_when_stock_available($pdo);
+// Stock opening is now manual via the "Open" button only.
 
 $stmt = $pdo->query(
     'SELECT

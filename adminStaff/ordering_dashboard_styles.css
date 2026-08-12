@@ -225,12 +225,38 @@ body.modal-open {
 .stat-card--blue { border-left: 3px solid #334155; }
 .stat-card--red { border-left: 3px solid #ef4444; }
 
-.chips-row {
+.chips-toolbar {
     margin-top: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.chips-row {
     display: flex;
     gap: 6px;
     overflow-x: auto;
     padding-bottom: 2px;
+    flex: 1;
+}
+.menu-search {
+    width: 240px;
+    flex: 0 0 240px;
+}
+.menu-search input {
+    width: 100%;
+    border: 1px solid rgba(61, 48, 37, 0.92);
+    border-radius: 8px;
+    background: #2d241b;
+    color: #e5e7eb;
+    padding: 10px 12px;
+    font: inherit;
+}
+.menu-search input::placeholder {
+    color: #94a3b8;
+}
+.menu-search input:focus {
+    outline: 2px solid rgba(244, 140, 37, 0.45);
+    outline-offset: 1px;
 }
 .chip {
     border: 0;

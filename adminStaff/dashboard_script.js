@@ -47,8 +47,10 @@ function apiCall(method, url, body) {
     var beverageMergedCategoryIds = [];
     var categoryChipsRow = document.getElementById('menu-category-chips') || document.querySelector('.chips-row');
     var subcategoryChipsRow = document.getElementById('menu-subcategory-chips');
+    var menuSearchInput = document.getElementById('menu-search-input');
     var selectedCategoryChipKey = 'all';
     var selectedSubcategoryChipId = 'all';
+    var menuSearchQuery = '';
     var createImageUrl = '';
     var editImageUrl = '';
 
@@ -1371,6 +1373,15 @@ function apiCall(method, url, body) {
                 return String(item.subcategory_id || '') === String(selectedSubcategoryChipId);
             });
         }
+        var query = String(menuSearchQuery || '').trim().toLowerCase();
+        if (query) {
+            list = list.filter(function (item) {
+                var name = String(item && item.name || '').toLowerCase();
+                var category = String(item && item.category_name || '').toLowerCase();
+                var subcategory = String(item && item.subcategory_name || '').toLowerCase();
+                return name.indexOf(query) !== -1 || category.indexOf(query) !== -1 || subcategory.indexOf(query) !== -1;
+            });
+        }
         renderTable(list);
     }
 
@@ -1953,6 +1964,12 @@ function apiCall(method, url, body) {
             if (!chip) return;
             selectedSubcategoryChipId = chip.getAttribute('data-subcategory-id') || 'all';
             renderSubcategoryChips();
+            applyChipFilters();
+        });
+    }
+    if (menuSearchInput) {
+        menuSearchInput.addEventListener('input', function () {
+            menuSearchQuery = String(menuSearchInput.value || '').trim();
             applyChipFilters();
         });
     }

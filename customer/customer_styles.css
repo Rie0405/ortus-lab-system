@@ -767,6 +767,19 @@ body {
     display: block;
 }
 
+.menu-product-circle-label {
+    font-family: 'Manrope', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff !important;
+    text-align: center;
+    line-height: 18px;
+    margin-top: -6px; /* visually pulls label closer to the circle */
+    white-space: nowrap;
+    user-select: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+}
+
 .menu-product:hover .menu-product-circle {
     transform: scale(1.05);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -1545,6 +1558,12 @@ body {
     justify-content: center;
 }
 
+.cash-modal-message--pickup-only {
+    font-size: 28px;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+}
+
 .cash-modal-pickup-time-note {
     margin-top: 6px;
     color: #cbd5e1;
@@ -1630,9 +1649,10 @@ body {
 }
 
 .cash-modal-message--gcash {
-    font-size: 32px;
+    font-size: 20px;
     font-weight: 400;
     letter-spacing: 0;
+    line-height: 1.4;
 }
 
 .gcash-qr-wrap {
@@ -1664,7 +1684,7 @@ body {
     }
 
     .cash-modal-message--gcash {
-        font-size: 26px;
+        font-size: 18px;
     }
 
     .gcash-qr-img {

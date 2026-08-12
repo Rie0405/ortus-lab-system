@@ -542,26 +542,31 @@
                             <div class="menu-product-circle menu-product-circle--meal">
                                 <img class="menu-product-icon menu-product-icon--meal-nacho" src="icons_customer/icon_customer_meals/nacho.svg" alt="Snacks">
                             </div>
+                            <span class="menu-product-circle-label">Starters</span>
                         </div>
                         <div class="menu-product" data-meal="pastries">
                             <div class="menu-product-circle menu-product-circle--meal">
                                 <img class="menu-product-icon menu-product-icon--meal-pastries" src="icons_customer/icon_customer_meals/pastries.svg" alt="Pastries">
                             </div>
+                            <span class="menu-product-circle-label">Pastries</span>
                         </div>
                         <div class="menu-product" data-meal="meal">
                             <div class="menu-product-circle menu-product-circle--meal">
                                 <img class="menu-product-icon menu-product-icon--meal-rice" src="icons_customer/icon_customer_meals/rice_meal.svg" alt="Meal">
                             </div>
+                            <span class="menu-product-circle-label">Rice Meal</span>
                         </div>
                         <div class="menu-product" data-meal="wings">
                             <div class="menu-product-circle menu-product-circle--meal">
                                 <img class="menu-product-icon menu-product-icon--meal-chicken" src="icons_customer/icon_customer_meals/chicken.svg" alt="Wings">
                             </div>
+                            <span class="menu-product-circle-label">Chicken</span>
                         </div>
                         <div class="menu-product" data-meal="pasta">
                             <div class="menu-product-circle menu-product-circle--meal">
                                 <img class="menu-product-icon menu-product-icon--meal-pasta" src="icons_customer/icon_customer_meals/pasta.svg" alt="Pasta">
                             </div>
+                            <span class="menu-product-circle-label">Pasta</span>
                         </div>
                         <div class="menu-product" data-meal="Add More">
                             <div class="menu-product-circle menu-product-circle--meal menu-product-circle--add">
@@ -742,6 +747,7 @@
         <div class="cash-modal" role="dialog" aria-modal="true" aria-labelledby="cash-modal-title">
             <p class="cash-modal-note" id="cash-modal-title">Review your order before confirming:</p>
             <p class="cash-modal-message cash-modal-message--pickup-only">Your order is ready within 15-20 mins.</p>
+            <input id="cash-order-name-input" class="gcash-ref-input" type="text" placeholder="Order name (e.g. your name)" autocomplete="off">
             <div id="cash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
             <div class="cash-modal-actions">
                 <button id="cash-modal-cancel" class="cash-modal-cancel-btn" type="button">CANCEL</button>
@@ -765,6 +771,7 @@
             <p class="cash-modal-message cash-modal-message--pickup-only">Your order is ready within 15-20 mins.</p>
             <p class="cash-modal-pickup-time-note cash-modal-message--pickup-only">If much later, indicate time</p>
             <input id="pickup-later-time-input" class="gcash-ref-input cash-modal-message--pickup-only" type="text" placeholder="e.g. 6:30 PM" autocomplete="off">
+            <input id="gcash-order-name-input" class="gcash-ref-input" type="text" placeholder="Order name (e.g. your name)" autocomplete="off">
             <div id="gcash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
             <input id="gcash-ref-input" class="gcash-ref-input" type="text" placeholder="GCash reference number" inputmode="numeric" autocomplete="off">
             <div class="cash-modal-actions">

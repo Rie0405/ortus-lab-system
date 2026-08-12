@@ -760,10 +760,20 @@ function deduct_units_in_use_with_refill(PDO $pdo, int $invId, float $amount): v
 
     if ($ordersLeft <= 0.0001) {
         if ($openCount > 1) {
+            // Move to the next already-open item.
             $openCount -= 1;
             $ordersLeft = (float)$ordersPerBox;
         } else {
-            $openCount = 0;
+            // Exhausted the last open item exactly at the boundary.
+            // Pre-open 1 sealed item (if available) so the UI never stays at "0 out of 0"
+            // while stock_units still exists.
+            if ($stockUnits > 0 && $ordersPerBox > 0) {
+                $stockUnits -= 1;
+                $openCount = 1;
+                $ordersLeft = (float)$ordersPerBox;
+            } else {
+                $openCount = 0;
+            }
         }
     }
 
@@ -1293,7 +1303,7 @@ function collect_inventory_requirements_for_cart(PDO $pdo, array $items): array
 
 /**
  * @param list<array{menu_item_id:int|string,quantity?:int|string,notes?:string}> $items
- * @return list<array{inventory_item_id:int,item_name:string,required:float,available:float,shortage:float}>
+ * @return list<array{inventory_item_id:int,item_name:string,required:float,available:float,shortage:float,category_name:string,per_stock_unit:string}>
  */
 function check_inventory_shortages_for_cart(PDO $pdo, array $items): array
 {
@@ -1304,7 +1314,7 @@ function check_inventory_shortages_for_cart(PDO $pdo, array $items): array
 
     $shortages = [];
     $stockStmt = $pdo->prepare(
-        'SELECT id, item_name, stock_units, units_in_use, open_items_count, orders_per_box, stock_type
+        'SELECT id, item_name, category_name, per_stock_unit, stock_units, units_in_use, open_items_count, orders_per_box, stock_type
          FROM inventory_items
          WHERE id = :id
            AND is_active = 1
@@ -1322,6 +1332,8 @@ function check_inventory_shortages_for_cart(PDO $pdo, array $items): array
                 'required' => round((float)$req['required'], 2),
                 'available' => 0.0,
                 'shortage' => round((float)$req['required'], 2),
+                'category_name' => 'Bar',
+                'per_stock_unit' => 'pcs',
             ];
             continue;
         }
@@ -1338,6 +1350,8 @@ function check_inventory_shortages_for_cart(PDO $pdo, array $items): array
             'required' => round($required, 2),
             'available' => round(max(0, $available), 2),
             'shortage' => round(max(0, $required - $available), 2),
+            'category_name' => (string)($row['category_name'] ?? 'Bar'),
+            'per_stock_unit' => (string)($row['per_stock_unit'] ?? 'pcs'),
         ];
     }
 
@@ -1368,6 +1382,113 @@ function respond_inventory_shortage(array $shortages, bool $canOverride = true):
         'shortages' => array_values($shortages),
     ]);
     exit;
+}
+
+/**
+ * Add enough stock to cover shortage amounts for specific inventory items only.
+ *
+ * @param list<array{inventory_item_id?:int,shortage?:float,item_name?:string}> $shortages
+ * @return list<array{inventory_item_id:int,item_name:string,shortage:float}>
+ */
+function compute_restock_counts_for_shortage(array $row, float $shortage): array
+{
+    $stockUnits = max(0, (int)($row['stock_units'] ?? 0));
+    $ordersLeft = max(0, (float)($row['units_in_use'] ?? 0));
+    $openCount = open_items_count_for_row($row);
+
+    if ($openCount > 0 || $ordersLeft > 0) {
+        return [
+            'stock_units' => $stockUnits,
+            'units_in_use' => $ordersLeft + $shortage,
+            'open_items_count' => max(1, $openCount),
+        ];
+    }
+
+    if (inventory_uses_batch_logic($row)) {
+        $capacity = max(1, batch_size_for_inventory_row($row));
+        $sealedToAdd = max(1, (int)ceil($shortage / $capacity));
+
+        return [
+            'stock_units' => $stockUnits + max(0, $sealedToAdd - 1),
+            'units_in_use' => min($shortage, (float)$capacity),
+            'open_items_count' => 1,
+        ];
+    }
+
+    $ordersPerBox = max(0, (int)($row['orders_per_box'] ?? 0));
+    if ($ordersPerBox > 0) {
+        $sealedToAdd = max(1, (int)ceil($shortage / $ordersPerBox));
+
+        return [
+            'stock_units' => $stockUnits + $sealedToAdd,
+            'units_in_use' => min($shortage, (float)$ordersPerBox),
+            'open_items_count' => 1,
+        ];
+    }
+
+    return [
+        'stock_units' => $stockUnits + max(1, (int)ceil($shortage)),
+        'units_in_use' => $ordersLeft,
+        'open_items_count' => $openCount,
+    ];
+}
+
+function restock_inventory_shortages(PDO $pdo, array $shortages): array
+{
+    if (!$shortages) {
+        return [];
+    }
+
+    $selectStmt = $pdo->prepare(
+        'SELECT id, item_name, stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, stock_type, category_name
+         FROM inventory_items
+         WHERE id = :id
+           AND is_active = 1
+           AND menu_item_id IS NULL
+         LIMIT 1'
+    );
+    $updateStmt = $pdo->prepare(
+        'UPDATE inventory_items
+         SET stock_units = :stock_units,
+             units_in_use = :units_in_use,
+             open_items_count = :open_items_count
+         WHERE id = :id'
+    );
+
+    $restocked = [];
+
+    foreach ($shortages as $s) {
+        if (!is_array($s)) {
+            continue;
+        }
+        $invId = (int)($s['inventory_item_id'] ?? 0);
+        $shortage = max(0, (float)($s['shortage'] ?? 0));
+        if ($invId <= 0 || $shortage <= 0) {
+            continue;
+        }
+
+        $selectStmt->execute([':id' => $invId]);
+        $row = $selectStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            continue;
+        }
+
+        $counts = compute_restock_counts_for_shortage($row, $shortage);
+        $updateStmt->execute([
+            ':stock_units' => $counts['stock_units'],
+            ':units_in_use' => $counts['units_in_use'],
+            ':open_items_count' => $counts['open_items_count'],
+            ':id' => $invId,
+        ]);
+
+        $restocked[] = [
+            'inventory_item_id' => $invId,
+            'item_name' => (string)($row['item_name'] ?? $s['item_name'] ?? 'Item'),
+            'shortage' => round($shortage, 2),
+        ];
+    }
+
+    return $restocked;
 }
 
 /**

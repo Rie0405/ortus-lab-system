@@ -354,6 +354,7 @@
                         <h2 class="opq-title">PENDING ORDERS</h2>
                         <span class="opq-badge" id="kitchen-pending-count">0 ACTIVE</span>
                     </div>
+                    <button type="button" class="opq-done-all-btn" id="done-all-orders-btn">DONE ALL</button>
                 </div>
                 <div class="kitchen-layout">
                     <div class="opq-grid" id="kitchen-orders-grid">
@@ -367,6 +368,7 @@
                         <div class="kitchen-serving-head">
                             <h3 class="kitchen-serving-title">SERVING</h3>
                             <span class="kitchen-serving-badge" id="kitchen-serving-count">0 READY</span>
+                            <button type="button" class="opq-done-all-btn" id="served-all-orders-btn" style="margin-left:auto;">SERVED ALL</button>
                         </div>
                         <div class="kitchen-serving-list" id="kitchen-serving-list">
                             <div class="kitchen-serving-empty">No orders marked done yet.</div>
@@ -734,13 +736,52 @@
                     <button type="button" class="shortage-modal__close" id="shortage-modal-close" aria-label="Close">×</button>
                 </header>
                 <div class="pay-modal__body shortage-modal__body">
-                    <p class="shortage-modal__intro">Some ingredients or materials are short for this order.</p>
+                    <p class="shortage-modal__intro">This order cannot be completed because some ingredients or materials are out of stock or missing.</p>
                     <div class="shortage-modal__list" id="shortage-modal-list"></div>
-                    <p class="shortage-modal__note">If you proceed, inventory will only deduct what is available.</p>
+                    <p class="shortage-modal__note">Use Restock Inventory to add stock for the items below, then try the order again.</p>
                 </div>
-                <footer class="pay-modal__footer">
-                    <button type="button" class="pay-modal__btn pay-modal__btn--cancel" id="shortage-modal-cancel">CANCEL</button>
-                    <button type="button" class="pay-modal__btn pay-modal__btn--complete shortage-modal__proceed" id="shortage-modal-proceed">PROCEED ANYWAY</button>
+                <footer class="pay-modal__footer shortage-modal__footer">
+                    <button type="button" class="pay-modal__btn pay-modal__btn--cancel" id="shortage-modal-ok">OK</button>
+                    <button type="button" class="pay-modal__btn pay-modal__btn--complete shortage-modal__restock" id="shortage-modal-restock">Restock Inventory</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="pay-modal-backdrop shortage-modal-backdrop" id="shortage-restock-modal" aria-hidden="true">
+            <div class="pay-modal shortage-restock-modal" role="dialog" aria-modal="true" aria-labelledby="shortage-restock-title">
+                <header class="pay-modal__header shortage-modal__header">
+                    <div>
+                        <p class="shortage-modal__eyebrow">Inventory Restock</p>
+                        <h2 class="pay-modal__title" id="shortage-restock-title">RESTOCK SHORTAGE ITEMS</h2>
+                    </div>
+                    <button type="button" class="shortage-modal__close" id="shortage-restock-close" aria-label="Close">×</button>
+                </header>
+                <div class="pay-modal__body shortage-modal__body">
+                    <label class="inv-field shortage-restock-staff-field">
+                        <span>Staff</span>
+                        <select id="shortage-restock-staff"></select>
+                    </label>
+                    <div class="shortage-restock-lines">
+                        <div class="shortage-restock-lines__head">
+                            <span>Line Items</span>
+                            <button type="button" class="pay-modal__btn pay-modal__btn--cancel shortage-restock-addline" id="shortage-restock-addline">Add line</button>
+                        </div>
+                        <div class="shortage-restock-lines__table">
+                            <div class="shortage-restock-lines__row shortage-restock-lines__row--head">
+                                <span>Main Category</span>
+                                <span>Item</span>
+                                <span>Stocks</span>
+                                <span>Unit</span>
+                                <span></span>
+                            </div>
+                            <div id="shortage-restock-lines-body"></div>
+                        </div>
+                    </div>
+                </div>
+                <p class="shortage-restock-help">If restocking takes too long, reload the page and check Stock Log.</p>
+                <footer class="pay-modal__footer shortage-modal__footer">
+                    <button type="button" class="pay-modal__btn pay-modal__btn--cancel" id="shortage-restock-cancel">Cancel</button>
+                    <button type="button" class="pay-modal__btn pay-modal__btn--complete shortage-modal__restock" id="shortage-restock-save">Restock Now</button>
                 </footer>
             </div>
         </div>
@@ -2386,12 +2427,231 @@
                 return String(Math.round(num * 100) / 100);
             }
 
-            function openInventoryShortageModal(shortages) {
+            function normalizeUnitLabel(unit) {
+                var u = String(unit || "pcs").trim().toLowerCase();
+                if (u === "unit" || u === "units") return "pcs";
+                if (u === "l") return "L";
+                if (u === "ml") return "mL";
+                return u;
+            }
+
+            function getTodayIsoDate() {
+                var now = new Date();
+                var month = String(now.getMonth() + 1).padStart(2, "0");
+                var day = String(now.getDate()).padStart(2, "0");
+                return now.getFullYear() + "-" + month + "-" + day;
+            }
+
+            function buildRestockStaffOptions(selectEl) {
+                if (!selectEl) return Promise.resolve();
+                selectEl.innerHTML = '<option value="">Loading staff...</option>';
+                return fetch("api/auth.php")
+                    .then(function (r) { return r.json(); })
+                    .then(function (auth) {
+                        if (!auth || !auth.success || !auth.user) {
+                            selectEl.innerHTML = '<option value="">No staff available</option>';
+                            return;
+                        }
+                        var role = String(auth.user.role || "").toLowerCase();
+                        if (role === "staff") {
+                            var fullName = auth.user.full_name || auth.user.name || "Staff";
+                            selectEl.innerHTML = '<option value="' + String(auth.user.id || "") + '">' + escapeHtml(fullName) + "</option>";
+                            return;
+                        }
+                        return fetch("api/staff.php")
+                            .then(function (r) { return r.json(); })
+                            .then(function (d) {
+                                var users = (d && d.success ? (d.users || []) : []).filter(function (u) {
+                                    return u.role === "staff" && u.is_active;
+                                });
+                                if (!users.length) {
+                                    selectEl.innerHTML = '<option value="">No active staff</option>';
+                                    return;
+                                }
+                                selectEl.innerHTML = users.map(function (u) {
+                                    return '<option value="' + String(u.id) + '">' + escapeHtml(u.full_name || u.name || ("Staff " + String(u.id))) + "</option>";
+                                }).join("");
+                            });
+                    })
+                    .catch(function () {
+                        selectEl.innerHTML = '<option value="">No staff available</option>';
+                    });
+            }
+
+            function createShortageRestockLineRow(line) {
+                var row = document.createElement("div");
+                row.className = "shortage-restock-lines__row";
+                var category = String(line && line.line_type || "Bar");
+                var itemName = String(line && line.item_name || "");
+                var stocks = Math.max(1, parseInt((line && line.stocks) || 1, 10) || 1);
+                var unit = normalizeUnitLabel(line && line.unit);
+                row.innerHTML =
+                    '<select class="shortage-restock-category"><option value="Bar">Bar</option><option value="Kitchen">Kitchen</option></select>' +
+                    '<input type="text" class="shortage-restock-item" placeholder="Item" value="' + escapeHtml(itemName) + '">' +
+                    '<input type="number" class="shortage-restock-stocks" min="1" step="1" value="' + String(stocks) + '">' +
+                    '<select class="shortage-restock-unit">' +
+                        '<option value="pcs">pcs</option>' +
+                        '<option value="g">g</option>' +
+                        '<option value="kg">kg</option>' +
+                        '<option value="ml">mL</option>' +
+                        '<option value="l">L</option>' +
+                    '</select>' +
+                    '<button type="button" class="shortage-restock-lines__remove" title="Remove line">×</button>';
+                var catEl = row.querySelector(".shortage-restock-category");
+                var unitEl = row.querySelector(".shortage-restock-unit");
+                if (catEl) catEl.value = category === "Kitchen" ? "Kitchen" : "Bar";
+                if (unitEl) {
+                    unitEl.value = unit === "L" ? "l" : (unit === "mL" ? "ml" : unit);
+                }
+                return row;
+            }
+
+            function openShortageRestockModal(shortages) {
+                return new Promise(function (resolve) {
+                    var modal = document.getElementById("shortage-restock-modal");
+                    var closeBtn = document.getElementById("shortage-restock-close");
+                    var cancelBtn = document.getElementById("shortage-restock-cancel");
+                    var saveBtn = document.getElementById("shortage-restock-save");
+                    var addLineBtn = document.getElementById("shortage-restock-addline");
+                    var staffSelect = document.getElementById("shortage-restock-staff");
+                    var linesBody = document.getElementById("shortage-restock-lines-body");
+                    if (!modal || !saveBtn || !linesBody) {
+                        resolve(false);
+                        return;
+                    }
+                    var baseLines = (shortages || []).map(function (s) {
+                        var shortage = Number(s && s.shortage);
+                        return {
+                            line_type: String((s && s.category_name) || "Bar"),
+                            item_name: String((s && s.item_name) || "").trim(),
+                            stocks: Math.max(1, Math.ceil(Number.isFinite(shortage) ? shortage : 0)),
+                            unit: String((s && s.per_stock_unit) || "pcs")
+                        };
+                    }).filter(function (line) {
+                        return !!line.item_name;
+                    });
+                    if (!baseLines.length) {
+                        baseLines = [{ line_type: "Bar", item_name: "", stocks: 1, unit: "pcs" }];
+                    }
+                    linesBody.innerHTML = "";
+                    baseLines.forEach(function (line) {
+                        linesBody.appendChild(createShortageRestockLineRow(line));
+                    });
+
+                    function cleanup(result) {
+                        modal.classList.remove("is-visible");
+                        modal.setAttribute("aria-hidden", "true");
+                        if (cancelBtn) cancelBtn.onclick = null;
+                        if (saveBtn) saveBtn.onclick = null;
+                        if (addLineBtn) addLineBtn.onclick = null;
+                        if (closeBtn) closeBtn.onclick = null;
+                        modal.onclick = null;
+                        resolve(result);
+                    }
+
+                    if (cancelBtn) cancelBtn.onclick = function () { cleanup(false); };
+                    if (closeBtn) closeBtn.onclick = function () { cleanup(false); };
+                    if (addLineBtn) {
+                        addLineBtn.onclick = function () {
+                            linesBody.appendChild(createShortageRestockLineRow({ line_type: "Bar", item_name: "", stocks: 1, unit: "pcs" }));
+                        };
+                    }
+                    linesBody.onclick = function (e) {
+                        var removeBtn = e.target.closest(".shortage-restock-lines__remove");
+                        if (!removeBtn) return;
+                        var rows = linesBody.querySelectorAll(".shortage-restock-lines__row");
+                        if (rows.length <= 1) return;
+                        var row = removeBtn.closest(".shortage-restock-lines__row");
+                        if (row) row.remove();
+                    };
+
+                    saveBtn.onclick = function () {
+                        var rows = Array.prototype.slice.call(linesBody.querySelectorAll(".shortage-restock-lines__row"));
+                        var lines = rows.map(function (row) {
+                            var lineTypeEl = row.querySelector(".shortage-restock-category");
+                            var itemNameEl = row.querySelector(".shortage-restock-item");
+                            var stocksEl = row.querySelector(".shortage-restock-stocks");
+                            var unitEl = row.querySelector(".shortage-restock-unit");
+                            var itemName = String(itemNameEl && itemNameEl.value || "").trim();
+                            return {
+                                line_type: String(lineTypeEl && lineTypeEl.value || "Bar"),
+                                item_name: itemName,
+                                stocks: Math.max(1, parseInt((stocksEl && stocksEl.value) || "0", 10) || 1),
+                                in_use: 0,
+                                per_stock_amount: 1,
+                                unit: String(unitEl && unitEl.value || "pcs"),
+                                unit_cost: 0,
+                                total_cost: 0,
+                                stock_type: "consumable",
+                                entry_mode: "automatic",
+                                stock_status: "good",
+                                category_type: "main"
+                            };
+                        }).filter(function (line) {
+                            return !!line.item_name;
+                        });
+                        if (!lines.length) {
+                            alert("Please add at least one restock line item.");
+                            return;
+                        }
+                        var staffName = "";
+                        if (staffSelect && staffSelect.selectedIndex >= 0) {
+                            staffName = String(staffSelect.options[staffSelect.selectedIndex].textContent || "").trim();
+                        }
+                        if (!staffName) staffName = "Staff";
+                        var today = getTodayIsoDate();
+                        var payload = {
+                            date: today,
+                            ordered_date: today,
+                            expected_receive_date: today,
+                            supplier: "Restocked by " + staffName,
+                            entry_source: "staff",
+                            mode: "add_receipt",
+                            lines: lines
+                        };
+
+                        saveBtn.disabled = true;
+                        saveBtn.textContent = "Restocking...";
+                        fetch("api/receipts.php", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload)
+                        })
+                            .then(function (r) { return r.json(); })
+                            .then(function (data) {
+                                if (!data.success) {
+                                    alert(data.error || "Could not save restock entry.");
+                                    saveBtn.disabled = false;
+                                    saveBtn.textContent = "Restock Now";
+                                    return;
+                                }
+                                cleanup(true);
+                            })
+                            .catch(function () {
+                                alert("Network error while saving restock entry.");
+                                saveBtn.disabled = false;
+                                saveBtn.textContent = "Restock Now";
+                            });
+                    };
+
+                    modal.onclick = function (e) {
+                        if (e.target === modal) cleanup(false);
+                    };
+
+                    modal.classList.add("is-visible");
+                    modal.setAttribute("aria-hidden", "false");
+                    buildRestockStaffOptions(staffSelect).finally(function () {
+                        if (staffSelect) staffSelect.focus();
+                    });
+                });
+            }
+
+            function openInventoryShortageModal(shortages, retryPayload) {
                 return new Promise(function (resolve) {
                     var modal = document.getElementById("inventory-shortage-modal");
                     var listEl = document.getElementById("shortage-modal-list");
-                    var cancelBtn = document.getElementById("shortage-modal-cancel");
-                    var proceedBtn = document.getElementById("shortage-modal-proceed");
+                    var okBtn = document.getElementById("shortage-modal-ok");
+                    var restockBtn = document.getElementById("shortage-modal-restock");
                     var closeBtn = document.getElementById("shortage-modal-close");
                     if (!modal || !listEl) {
                         resolve(false);
@@ -2413,23 +2673,29 @@
                     function cleanup(result) {
                         modal.classList.remove("is-visible");
                         modal.setAttribute("aria-hidden", "true");
-                        if (cancelBtn) cancelBtn.onclick = null;
-                        if (proceedBtn) proceedBtn.onclick = null;
+                        if (okBtn) okBtn.onclick = null;
+                        if (restockBtn) restockBtn.onclick = null;
                         if (closeBtn) closeBtn.onclick = null;
                         modal.onclick = null;
                         resolve(result);
                     }
 
-                    if (cancelBtn) cancelBtn.onclick = function () { cleanup(false); };
+                    if (okBtn) okBtn.onclick = function () { cleanup(false); };
                     if (closeBtn) closeBtn.onclick = function () { cleanup(false); };
-                    if (proceedBtn) proceedBtn.onclick = function () { cleanup(true); };
+                    if (restockBtn) {
+                        restockBtn.onclick = function () {
+                            openShortageRestockModal(shortages).then(function (didRestock) {
+                                cleanup(!!didRestock);
+                            });
+                        };
+                    }
                     modal.onclick = function (e) {
                         if (e.target === modal) cleanup(false);
                     };
 
                     modal.classList.add("is-visible");
                     modal.setAttribute("aria-hidden", "false");
-                    if (proceedBtn) proceedBtn.focus();
+                    if (restockBtn) restockBtn.focus();
                 });
             }
 
@@ -2488,17 +2754,20 @@
                             closePayModal();
                             return;
                         }
-                        if (data.code === "inventory_shortage" && data.can_override !== false) {
-                            return openInventoryShortageModal(data.shortages || []).then(function (proceed) {
-                                if (!proceed) return;
-                                payload.allow_shortage = true;
+                        if (data.code === "inventory_shortage") {
+                            return openInventoryShortageModal(data.shortages || [], payload).then(function (restocked) {
+                                if (!restocked) return;
+                                if (payComplete) payComplete.disabled = true;
                                 return postPosOrder(payload).then(function (data2) {
                                     if (data2.success) {
                                         if (window.posOrderCompleted) window.posOrderCompleted();
                                         closePayModal();
-                                    } else {
-                                        alert(data2.error || "Failed to create order");
+                                        return;
                                     }
+                                    if (data2.code === "inventory_shortage") {
+                                        return openInventoryShortageModal(data2.shortages || [], payload);
+                                    }
+                                    alert(data2.error || "Failed to create order after restock.");
                                 });
                             });
                         }
@@ -5238,6 +5507,49 @@
                 renderKitchenOrders();
                 renderPendingOrders();
                 renderServingOrders();
+            });
+        }
+
+        var doneAllBtn = document.getElementById('done-all-orders-btn');
+        if (doneAllBtn) {
+            doneAllBtn.addEventListener('click', function () {
+                if (!kitchenOrders.length) return;
+                if (!window.confirm('Mark as done all pending orders?')) return;
+                kitchenOrders.forEach(function (o) {
+                    if (!servingOrdersQueue.some(function (s) { return parseInt(s && s.id, 10) === parseInt(o && o.id, 10); })) {
+                        servingOrdersQueue.push(o);
+                    }
+                });
+                kitchenOrders = [];
+                pendingOrders = [];
+                renderKitchenOrders();
+                renderPendingOrders();
+                renderServingOrders();
+            });
+        }
+
+        var servedAllBtn = document.getElementById('served-all-orders-btn');
+        if (servedAllBtn) {
+            servedAllBtn.addEventListener('click', function () {
+                if (!servingOrdersQueue.length) return;
+                if (!window.confirm('Mark ALL serving orders as served?')) return;
+                servedAllBtn.disabled = true;
+                var ids = servingOrdersQueue.map(function (o) { return parseInt(o && o.id, 10); }).filter(Boolean);
+                Promise.all(ids.map(function (id) {
+                    return fetch('api/orders.php', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id, status: 'served' })
+                    }).then(function (r) { return r.json(); });
+                })).then(function () {
+                    servingOrdersQueue = [];
+                    renderServingOrders();
+                    loadStaffData();
+                    servedAllBtn.disabled = false;
+                }).catch(function () {
+                    servedAllBtn.disabled = false;
+                    alert('Some orders failed to update. Please reload.');
+                });
             });
         }
 

@@ -1040,6 +1040,22 @@ button {
     gap: 8px;
 }
 
+.opq-done-all-btn {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+}
+.opq-done-all-btn:hover {
+    background: #b91c1c;
+}
+
 .opq-btn {
     display: flex;
     align-items: center;
@@ -3050,9 +3066,119 @@ button {
     color: #e2e8f0;
     font-weight: 600;
 }
-.shortage-modal__proceed {
+.shortage-modal__footer {
+    justify-content: flex-end;
+    gap: 10px;
+}
+.shortage-modal__footer .pay-modal__btn {
+    min-width: 120px;
+}
+.shortage-modal__restock {
     background: #f59e0b;
     box-shadow: 0 10px 15px -3px rgba(245,158,11,0.22), 0 4px 6px -4px rgba(245,158,11,0.22);
+}
+.shortage-modal__restock:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+.shortage-restock-modal {
+    max-width: 980px;
+}
+.shortage-restock-help {
+    margin: -8px 22px 8px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+.shortage-restock-staff-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.shortage-restock-staff-field span {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+.shortage-restock-staff-field select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(244, 140, 37, 0.3);
+    background: #231a12;
+    color: #fff;
+    font: inherit;
+}
+.shortage-restock-lines__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.shortage-restock-lines__head > span {
+    color: #f59e0b;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.shortage-restock-addline {
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    min-width: 120px;
+    min-height: 0;
+}
+.shortage-restock-lines__table {
+    border: 1px solid rgba(244, 140, 37, 0.22);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(17, 24, 39, 0.2);
+}
+.shortage-restock-lines__row {
+    display: grid;
+    grid-template-columns: minmax(100px, 1fr) minmax(220px, 1.7fr) 90px 90px 40px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border-top: 1px solid rgba(61, 48, 37, 0.6);
+}
+.shortage-restock-lines__row--head {
+    border-top: 0;
+    background: rgba(244, 140, 37, 0.08);
+}
+.shortage-restock-lines__row--head > span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+.shortage-restock-lines__row select,
+.shortage-restock-lines__row input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(244, 140, 37, 0.3);
+    background: #231a12;
+    color: #fff;
+    font: inherit;
+}
+.shortage-restock-lines__remove {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.6);
+    background: rgba(239, 68, 68, 0.15);
+    color: #fecaca;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
 }
 
 /* ─── GCash body layout ─────────────────────────────────────── */

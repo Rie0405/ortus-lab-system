@@ -384,6 +384,28 @@
             </div>
         </div>
 
+        <div class="inv-modal-backdrop" id="open-stock-used-backdrop" aria-hidden="true">
+            <div class="inv-modal open-stock-used-modal" role="dialog" aria-modal="true" aria-labelledby="open-stock-used-title">
+                <header class="inv-modal__header">
+                    <h2 id="open-stock-used-title">Open Stock Used</h2>
+                    <button type="button" class="inv-modal__close" id="open-stock-used-close" aria-label="Close">×</button>
+                </header>
+                <div class="inv-modal__body">
+                    <p class="app-modal__hint" id="open-stock-used-hint"></p>
+                    <label class="inv-field">
+                        <span>How many sealed stock items to open (+)</span>
+                        <input type="number" id="open-stock-used-qty" min="1" step="1" placeholder="1">
+                        <span class="inv-field-sub" id="open-stock-used-max"></span>
+                    </label>
+                </div>
+                <footer class="inv-modal__footer">
+                    <button type="button" class="btn btn-muted" id="open-stock-used-cancel">Cancel</button>
+                    <button type="button" class="btn btn-muted" id="open-stock-used-open-all">Open All</button>
+                    <button type="button" class="btn btn-primary" id="open-stock-used-confirm">Open</button>
+                </footer>
+            </div>
+        </div>
+
         <div class="app-modal-backdrop" id="orders-per-box-modal" aria-hidden="true">
             <div class="app-modal" role="dialog" aria-modal="true" aria-labelledby="orders-per-box-title">
                 <header class="app-modal__header">
@@ -475,6 +497,10 @@
                 </header>
                 <div class="receipt-summary-modal__body">
                     <p class="inv-modal__error" id="receipt-summary-error" hidden></p>
+                    <div class="receipt-summary-tabs" id="receipt-summary-tabs">
+                        <button type="button" class="receipt-summary-tab receipt-summary-tab--active" data-stock-log-tab="admin">Admin</button>
+                        <button type="button" class="receipt-summary-tab" data-stock-log-tab="staff">Staff</button>
+                    </div>
                     <div class="receipt-summary-list" id="receipt-summary-list"></div>
                 </div>
                 <footer class="receipt-summary-modal__footer">
@@ -616,11 +642,27 @@
         var receiptSummaryRefresh = document.getElementById('receipt-summary-refresh');
         var receiptSummaryError = document.getElementById('receipt-summary-error');
         var receiptSummaryList = document.getElementById('receipt-summary-list');
+        var receiptSummaryTabs = document.getElementById('receipt-summary-tabs');
+        var stockLogTab = 'admin';
+        var allReceiptSummaries = [];
         var receiptDetailBackdrop = document.getElementById('receipt-detail-backdrop');
         var receiptDetailClose = document.getElementById('receipt-detail-close');
         var receiptDetailDone = document.getElementById('receipt-detail-done');
         var receiptDetailBody = document.getElementById('receipt-detail-body');
         var receiptModalMode = 'register';
+
+        var openStockUsedBackdrop = document.getElementById('open-stock-used-backdrop');
+        var openStockUsedClose = document.getElementById('open-stock-used-close');
+        var openStockUsedCancel = document.getElementById('open-stock-used-cancel');
+        var openStockUsedOpenAll = document.getElementById('open-stock-used-open-all');
+        var openStockUsedConfirm = document.getElementById('open-stock-used-confirm');
+        var openStockUsedQtyInput = document.getElementById('open-stock-used-qty');
+        var openStockUsedMaxEl = document.getElementById('open-stock-used-max');
+        var openStockUsedHintEl = document.getElementById('open-stock-used-hint');
+        var openStockEditingId = null;
+        var openStockEditingItem = null;
+        var openStockCurrentOpenCount = 0;
+        var openStockQtyMax = 1;
         var REGISTER_CATEGORY_TYPES = [
             { value: 'main', label: 'Main' },
             { value: 'ice', label: 'Ice' },
@@ -1293,6 +1335,7 @@
                 ordered_date: (receiptDate && receiptDate.value) || getTodayIsoDate(),
                 expected_receive_date: (receiptExpectedDate && receiptExpectedDate.value) || getTodayIsoDate(),
                 supplier: supplierName,
+                entry_source: 'admin',
                 mode: receiptModalMode,
                 lines: lines
             };
@@ -1367,10 +1410,35 @@
             return 'PHP ' + num.toFixed(2);
         }
 
+        function getReceiptEntrySource(receipt) {
+            var source = String(receipt && receipt.entry_source || '').trim().toLowerCase();
+            if (source === 'staff' || source === 'admin') return source;
+            var supplier = String(receipt && receipt.supplier || '').trim();
+            if (supplier.toLowerCase().indexOf('restocked by ') === 0) return 'staff';
+            return 'admin';
+        }
+
+        function getReceiptsForStockLogTab(tab) {
+            return (allReceiptSummaries || []).filter(function (receipt) {
+                return getReceiptEntrySource(receipt) === tab;
+            });
+        }
+
+        function renderReceiptSummaryTabs() {
+            if (!receiptSummaryTabs) return;
+            receiptSummaryTabs.querySelectorAll('[data-stock-log-tab]').forEach(function (btn) {
+                var tab = btn.getAttribute('data-stock-log-tab') || 'admin';
+                btn.classList.toggle('receipt-summary-tab--active', tab === stockLogTab);
+            });
+        }
+
         function renderReceiptSummaryList(items) {
             if (!receiptSummaryList) return;
             if (!items || !items.length) {
-                receiptSummaryList.innerHTML = '<p class="receipt-summary-empty">No stock log entries yet.</p>';
+                var emptyLabel = stockLogTab === 'staff'
+                    ? 'No staff stock log entries yet.'
+                    : 'No admin stock log entries yet.';
+                receiptSummaryList.innerHTML = '<p class="receipt-summary-empty">' + emptyLabel + '</p>';
                 return;
             }
             receiptSummaryList.innerHTML = items.map(function (it) {
@@ -1477,15 +1545,20 @@
                 .then(function (d) {
                     if (!d.success) {
                         setReceiptSummaryError(d.error || 'Could not load stock log.');
+                        allReceiptSummaries = [];
+                        renderReceiptSummaryTabs();
                         renderReceiptSummaryList([]);
                         closeReceiptDetailModal();
                         return;
                     }
-                    var receipts = d.receipts || [];
-                    renderReceiptSummaryList(receipts);
+                    allReceiptSummaries = d.receipts || [];
+                    renderReceiptSummaryTabs();
+                    renderReceiptSummaryList(getReceiptsForStockLogTab(stockLogTab));
                 })
                 .catch(function () {
                     setReceiptSummaryError('Network error while loading stock log.');
+                    allReceiptSummaries = [];
+                    renderReceiptSummaryTabs();
                     renderReceiptSummaryList([]);
                 })
                 .finally(function () {
@@ -2124,17 +2197,9 @@
                     if (it) {
                         if (ordersPerBoxEditingMode === 'batch_size') {
                             it.per_stock_amount = val;
-                            if (getOrdersLeft(it) > val) {
-                                it.units_in_use = val;
-                                it.orders_left = val;
-                            }
                         } else {
                             it.orders_per_box = val;
                             it.item_capacity_configured = 1;
-                            if (getOrdersLeft(it) > val) {
-                                it.units_in_use = val;
-                                it.orders_left = val;
-                            }
                         }
                     }
                     closeOrdersPerBoxModal();
@@ -2144,6 +2209,44 @@
         }
 
         function handleRowAction(e) {
+            var openStockBtn = e.target.closest('[data-open-stock-id]');
+            if (openStockBtn) {
+                e.preventDefault();
+                var openId = parseInt(openStockBtn.getAttribute('data-open-stock-id'), 10);
+                if (!openId) return;
+                var targetItem = allItems.find(function (it) { return it.id === openId; });
+                if (!targetItem) return;
+                if (usesBatchStockDisplay(targetItem)) {
+                    alert('Open +1 is only for consumable items.');
+                    return;
+                }
+                if (!isItemCapacityConfigured(targetItem)) {
+                    alert('Set Orders per Stock Item first before opening +1.');
+                    return;
+                }
+                // Open popup to ask how many sealed stock items to open.
+                if (!openStockUsedBackdrop) return;
+                openStockUsedBackdrop.classList.add('is-visible');
+                openStockUsedBackdrop.setAttribute('aria-hidden', 'false');
+                openStockUsedQtyInput.value = '1';
+                openStockQtyMax = parseInt(String(targetItem.stock_units || 0), 10);
+                if (!Number.isFinite(openStockQtyMax) || openStockQtyMax < 1) openStockQtyMax = 1;
+                if (openStockQtyMax < 1) openStockQtyMax = 1;
+                openStockCurrentOpenCount = getOpenItemsCount(targetItem);
+                openStockEditingId = openId;
+                openStockEditingItem = targetItem;
+                if (openStockUsedMaxEl) {
+                    openStockUsedMaxEl.textContent = 'Available sealed stock: ' + String(openStockQtyMax);
+                }
+                if (openStockUsedHintEl) {
+                    openStockUsedHint.textContent = 'Current open items: ' + String(openStockCurrentOpenCount);
+                }
+                if (openStockUsedHintEl) {
+                    openStockUsedHintEl.textContent = 'Current open items: ' + String(openStockCurrentOpenCount);
+                }
+                openStockUsedQtyInput.setAttribute('max', String(openStockQtyMax));
+                return;
+            }
             var ordersBoxBtn = e.target.closest('.btn-box-capacity');
             if (ordersBoxBtn && ordersBoxBtn.hasAttribute('data-orders-box-id')) {
                 e.preventDefault();
@@ -2265,10 +2368,14 @@
                 ? ('Batch size for this non-consumable item. Current setting: ' + batchSize)
                 : 'Not used for consumable items';
             var stockType = getStockType(item);
+            var canOpen = !batchDisplay && capacityConfigured;
+            var openBtn = canOpen
+                ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open stock item">Open</button>'
+                : '<span class="btn-open-stock-used btn-open-stock-used--disabled" title="Set orders per stock item first">Open</span>';
             return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
                 '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
                 '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
-                '<div><strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong></div>' +
+                '<div class="inv-stock-level-cell"><strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' + openBtn + '</div>' +
                 '<div class="inv-box-capacity-cell">' +
                     (nonConsumable
                         ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'
@@ -2947,6 +3054,75 @@
                 if (e.target === receiptModalBackdrop) closeReceiptModal();
             });
         }
+
+        function closeOpenStockUsedModal() {
+            if (!openStockUsedBackdrop) return;
+            openStockUsedBackdrop.classList.remove('is-visible');
+            openStockUsedBackdrop.setAttribute('aria-hidden', 'true');
+        }
+
+        if (openStockUsedClose) openStockUsedClose.addEventListener('click', closeOpenStockUsedModal);
+        if (openStockUsedCancel) openStockUsedCancel.addEventListener('click', closeOpenStockUsedModal);
+
+        if (openStockUsedQtyInput) {
+            openStockUsedQtyInput.addEventListener('input', function () {
+                var v = parseInt(String(openStockUsedQtyInput.value || '1'), 10);
+                if (!Number.isFinite(v) || v < 1) v = 1;
+                if (Number.isFinite(openStockQtyMax) && v > openStockQtyMax) v = openStockQtyMax;
+                openStockUsedQtyInput.value = String(v);
+            });
+        }
+
+        if (openStockUsedOpenAll) {
+            openStockUsedOpenAll.addEventListener('click', function () {
+                if (!openStockUsedQtyInput) return;
+                openStockUsedQtyInput.value = String(openStockQtyMax);
+            });
+        }
+
+        if (openStockUsedConfirm) {
+            openStockUsedConfirm.addEventListener('click', function () {
+                if (!openStockEditingId || !openStockEditingItem) return;
+                if (!openStockUsedQtyInput) return;
+                var qtyToOpen = parseInt(String(openStockUsedQtyInput.value || '0'), 10);
+                if (!Number.isFinite(qtyToOpen) || qtyToOpen < 1) qtyToOpen = 1;
+                if (qtyToOpen > openStockQtyMax) qtyToOpen = openStockQtyMax;
+                var requestedOpen = Math.max(0, openStockCurrentOpenCount + qtyToOpen);
+                var currentOrdersLeft = getOrdersLeft(openStockEditingItem);
+                var capacity = getConfiguredItemCapacity(openStockEditingItem);
+                var targetOrdersLeft = currentOrdersLeft > 0 ? currentOrdersLeft : capacity;
+
+                openStockUsedConfirm.disabled = true;
+                var prevText = openStockUsedConfirm.textContent;
+                openStockUsedConfirm.textContent = 'Opening...';
+
+                fetch('api/inventory.php', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: openStockEditingId,
+                        open_items_count: requestedOpen,
+                        units_in_use: targetOrdersLeft
+                    })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d.success) {
+                            alert(d.error || 'Could not open stock item(s).');
+                            return;
+                        }
+                        closeOpenStockUsedModal();
+                        loadInventory();
+                    })
+                    .catch(function () {
+                        alert('Network error while opening stock item(s).');
+                    })
+                    .finally(function () {
+                        openStockUsedConfirm.disabled = false;
+                        openStockUsedConfirm.textContent = prevText || 'Open';
+                    });
+            });
+        }
         if (receiptSummaryClose) receiptSummaryClose.addEventListener('click', closeReceiptSummaryModal);
         if (receiptSummaryAdd) receiptSummaryAdd.addEventListener('click', function () {
             closeReceiptSummaryModal();
@@ -2954,6 +3130,15 @@
         });
         if (receiptSummaryDone) receiptSummaryDone.addEventListener('click', closeReceiptSummaryModal);
         if (receiptSummaryRefresh) receiptSummaryRefresh.addEventListener('click', loadReceiptSummaries);
+        if (receiptSummaryTabs) {
+            receiptSummaryTabs.addEventListener('click', function (e) {
+                var tabBtn = e.target.closest('[data-stock-log-tab]');
+                if (!tabBtn) return;
+                stockLogTab = tabBtn.getAttribute('data-stock-log-tab') || 'admin';
+                renderReceiptSummaryTabs();
+                renderReceiptSummaryList(getReceiptsForStockLogTab(stockLogTab));
+            });
+        }
         if (receiptSummaryList) {
             receiptSummaryList.addEventListener('click', function (e) {
                 var card = e.target.closest('.receipt-summary-item[data-receipt-id]');

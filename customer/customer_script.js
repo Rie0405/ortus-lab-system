@@ -1486,10 +1486,6 @@ function renderCheckoutSummary(targetEl, paymentLabel) {
         '</div>' +
         discountMetaHtml +
         '<div class="cash-modal-order-list">' + itemsHtml + '</div>' +
-        '<div class="cash-modal-meta-row">' +
-            '<span class="cash-modal-meta-label">Gross</span>' +
-            '<span class="cash-modal-meta-value">' + formatCurrency(totals.gross) + '</span>' +
-        '</div>' +
         (totals.discountType === 'none' ? '' : (
             '<div class="cash-modal-meta-row">' +
                 '<span class="cash-modal-meta-label">VAT Exempt</span>' +
@@ -1514,6 +1510,8 @@ function openCashModal() {
         el.style.display = isPickupOrder ? '' : 'none';
     });
     renderCheckoutSummary(cashModalSummary, 'CASH');
+    var cashNameInput = document.getElementById('cash-order-name-input');
+    if (cashNameInput) cashNameInput.value = '';
     cashCheckoutModal.classList.add('cash-modal-overlay--open');
     cashCheckoutModal.setAttribute('aria-hidden', 'false');
 }
@@ -1536,6 +1534,8 @@ function openGcashModal() {
     gcashCheckoutModal.classList.add('cash-modal-overlay--open');
     gcashCheckoutModal.setAttribute('aria-hidden', 'false');
     if (pickupLaterTimeInput) pickupLaterTimeInput.value = '';
+    var gcashNameInput = document.getElementById('gcash-order-name-input');
+    if (gcashNameInput) gcashNameInput.value = '';
     if (gcashRefInput) {
         gcashRefInput.value = '';
         setTimeout(function () { gcashRefInput.focus(); }, 50);
@@ -1607,6 +1607,9 @@ document.querySelectorAll('.checkout-btn').forEach(function (btn) {
 
 function submitPublicOrder(paymentMethod, gcashRef) {
     var pickupLaterTime = pickupLaterTimeInput ? String(pickupLaterTimeInput.value || '').trim() : '';
+    var cashNameInput = document.getElementById('cash-order-name-input');
+    var gcashNameInput = document.getElementById('gcash-order-name-input');
+    var orderName = String((paymentMethod === 'gcash' ? (gcashNameInput && gcashNameInput.value) : (cashNameInput && cashNameInput.value)) || '').trim();
     var discount = getOrderDiscountPayload();
     if (discount.type !== 'none' && (!discount.customer_name || !discount.id_number)) {
         return Promise.reject(new Error('Please complete the Senior/PWD customer name and ID number.'));
@@ -1638,6 +1641,7 @@ function submitPublicOrder(paymentMethod, gcashRef) {
         })
     };
     if (pickupLaterTime) payload.pickup_later_time = pickupLaterTime;
+    if (orderName) payload.customer_name = orderName;
     // Guard: menu_item_id is required to be DB-backed
     var hasMissingIds = payload.items.some(function (it) { return !it.menu_item_id; });
     if (hasMissingIds) {
@@ -1652,10 +1656,11 @@ function submitPublicOrder(paymentMethod, gcashRef) {
     }).then(function (r) { return r.json(); }).then(function (res) {
         if (!res || !res.success) {
             if (res && res.code === 'inventory_shortage') {
-                var lines = ['Insufficient inventory for this order:'];
+                var lines = ['This order cannot be completed because some items are out of stock or missing:'];
                 (res.shortages || []).forEach(function (s) {
                     lines.push('- ' + (s.item_name || 'Item') + ': need ' + s.required + ', only ' + s.available + ' available');
                 });
+                lines.push('Please choose different items or try again later.');
                 throw new Error(lines.join('\n'));
             }
             throw new Error((res && res.error) || 'Order failed');
@@ -1680,6 +1685,13 @@ if (orderReceiptModal) {
 
 if (cashModalConfirmBtn) {
     cashModalConfirmBtn.addEventListener('click', function () {
+        var cashNameInput = document.getElementById('cash-order-name-input');
+        var orderName = cashNameInput ? String(cashNameInput.value || '').trim() : '';
+        if (!orderName) {
+            window.alert('Please enter your name for the order.');
+            if (cashNameInput) cashNameInput.focus();
+            return;
+        }
         submitPublicOrder('cash', '').then(function (res) {
             closeCashModal();
             cartItems.splice(0, cartItems.length);
@@ -1696,8 +1708,15 @@ if (cashModalCancelBtn) {
 }
 if (gcashModalConfirmBtn) {
     gcashModalConfirmBtn.addEventListener('click', function () {
+        var gcashNameInput = document.getElementById('gcash-order-name-input');
+        var orderName = gcashNameInput ? String(gcashNameInput.value || '').trim() : '';
+        if (!orderName) {
+            window.alert('Please enter your name for the order.');
+            if (gcashNameInput) gcashNameInput.focus();
+            return;
+        }
         var ref = gcashRefInput ? String(gcashRefInput.value || '').trim() : '';
-        if (selectedServiceType === 'remote' && !ref) {
+        if (!ref) {
             window.alert('Please enter your GCash reference number.');
             if (gcashRefInput) gcashRefInput.focus();
             return;

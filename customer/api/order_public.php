@@ -47,6 +47,7 @@ $orderType = trim($b['order_type'] ?? '');
 $paymentMethod = strtolower(trim($b['payment_method'] ?? 'cash'));
 $gcashRef = trim($b['gcash_ref'] ?? '');
 $pickupLaterTime = trim((string)($b['pickup_later_time'] ?? ''));
+$customerName = trim((string)($b['customer_name'] ?? ''));
 
 if (!in_array($serviceType, ['remote', 'onsite'], true)) fail('Invalid service_type.');
 if (!$orderType) fail('Order type is required.');
@@ -171,9 +172,9 @@ try {
 
     $ins = $pdo->prepare(
         'INSERT INTO orders
-            (order_number, receipt_token, order_source, staff_id, status, payment_method, order_type, discount_type, discount_customer_name,
+            (order_number, receipt_token, order_source, staff_id, status, payment_method, order_type, customer_name, discount_type, discount_customer_name,
              discount_id_number, gross_amount, vat_exempt_amount, discount_amount, total_amount, amount_received, change_due, gcash_ref)
-         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref)'
+         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :cname, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref)'
     );
     $ins->execute([
         ':num' => $orderNumber,
@@ -181,6 +182,7 @@ try {
         ':src' => 'kiosk',
         ':pm' => $paymentMethod,
         ':otype' => substr($orderType, 0, 60),
+        ':cname' => $customerName !== '' ? substr($customerName, 0, 100) : null,
         ':dtype' => $pricing['discount_type'],
         ':dname' => $discount['type'] === 'none' ? null : $discount['customer_name'],
         ':did' => $discount['type'] === 'none' ? null : $discount['id_number'],

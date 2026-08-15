@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortus Lab Forecast Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin_dashboard_styles.css">
+    <link rel="stylesheet" href="brand_role_label.css">
+    <link rel="stylesheet" href="forecast_test_styles.css">
+</head>
+<body>
+    <div class="dash-page" data-dashboard="admin">
+        <header class="top-nav">
+            <div class="brand-block">
+                <div class="brand-name-group">
+                    <span class="brand-name">ORTUS LAB</span>
+                    <span class="brand-role brand-role--admin">Admin</span>
+                </div>
+            </div>
+
+            <nav class="top-links">
+                <a href="admin_dashboard.html" class="top-link">Dashboard</a>
+                <a href="inventory_dashboard.html" class="top-link">Inventory</a>
+                <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
+                <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
+                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
+                <a href="forecast_test.html" class="top-link top-link--active">Forecast Lab</a>
+            </nav>
+
+            <div class="top-actions">
+                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout">!</button>
+            </div>
+        </header>
+
+        <main class="dash-main forecast-lab">
+            <section class="forecast-lab__intro">
+                <div>
+                    <h1>Forecast Lab</h1>
+                    <p>Experiment with lead time and moving-average windows. Defaults match production (2 / 2). Manual sandbox uses the same engine as live inventory forecasts.</p>
+                </div>
+                <p class="forecast-lab__hint">Preset: 2 sealed × 50 orders/stock (= 100 slots), sold 40, MA/LT 2 → ADU 20, days 5, ROP 40.</p>
+            </section>
+
+            <div class="forecast-lab__grid">
+                <section class="forecast-lab__panel">
+                    <h2>Sandbox inputs</h2>
+                    <form id="forecast-sandbox-form" class="forecast-lab__form">
+                        <label>
+                            <span>Item name</span>
+                            <input type="text" id="sb-item-name" name="item_name" value="Coffee Beans" autocomplete="off">
+                            <small class="forecast-lab__help">Label only — which inventory item this sandbox run represents.</small>
+                        </label>
+                        <label>
+                            <span>Item id (optional)</span>
+                            <input type="number" id="sb-item-id" name="item_id" min="0" step="1" placeholder="—">
+                            <small class="forecast-lab__help">Optional inventory row id for matching live catalog items.</small>
+                        </label>
+                        <label>
+                            <span>Last supplier buy / receive date</span>
+                            <input type="date" id="sb-last-supply" name="last_supply_date">
+                            <small class="forecast-lab__help">When stock last arrived from a supplier (shown in results; not used in ADU math).</small>
+                        </label>
+                        <label>
+                            <span>Sealed stock units</span>
+                            <input type="number" id="sb-sealed-units" name="sealed_stock_units" min="0" step="1" value="2">
+                            <small class="forecast-lab__help">How many sealed packages/boxes on hand (inventory Stock Units).</small>
+                        </label>
+                        <label>
+                            <span>Orders per Stock Item</span>
+                            <input type="number" id="sb-orders-per-stock" name="orders_per_stock_item" min="0" step="1" value="50">
+                            <small class="forecast-lab__help">Same as inventory: how many order slots one sealed item can serve. Available stock = (sealed × this) + orders left open.</small>
+                        </label>
+                        <label>
+                            <span>Orders left (open item)</span>
+                            <input type="number" id="sb-orders-left" name="orders_left_open" min="0" step="0.01" value="0">
+                            <small class="forecast-lab__help">Order slots still left on the currently open item (used first).</small>
+                        </label>
+                        <label>
+                            <span>Sealed max units (capacity)</span>
+                            <input type="number" id="sb-sealed-max" name="sealed_max_units" min="0" step="1" value="4">
+                            <small class="forecast-lab__help">How many sealed units fit at full capacity. Max order-slot capacity = this × orders per stock item.</small>
+                        </label>
+                        <fieldset class="forecast-lab__alert">
+                            <legend>Alert level (% of capacity)</legend>
+                            <p class="forecast-lab__help forecast-lab__help--block">Low-stock line = max capacity × this %. Matches inventory’s 75 / 50 / 25% adjuster.</p>
+                            <label class="forecast-lab__radio"><input type="radio" name="alert_percent" value="75"> 75%</label>
+                            <label class="forecast-lab__radio"><input type="radio" name="alert_percent" value="50" checked> 50%</label>
+                            <label class="forecast-lab__radio"><input type="radio" name="alert_percent" value="25"> 25%</label>
+                        </fieldset>
+                        <label>
+                            <span>Quantity sold (over MA window)</span>
+                            <input type="number" id="sb-qty-sold" name="qty_sold_window" min="0" step="0.01" value="40" required>
+                            <small class="forecast-lab__help">Total units used/sold across the whole MA window (not per day).</small>
+                        </label>
+                        <label>
+                            <span>Moving average window — MA (days)</span>
+                            <input type="number" id="sb-ma-days" name="ma_days" min="1" max="30" step="1" value="2" required>
+                            <small class="forecast-lab__help">How many recent days of usage to average. ADU = quantity sold ÷ MA days.</small>
+                        </label>
+                        <label>
+                            <span>Lead time — LT (days)</span>
+                            <input type="number" id="sb-lead-time" name="lead_time_days" min="1" max="30" step="1" value="2" required>
+                            <small class="forecast-lab__help">Days until a new supplier order arrives. ROP = ADU × lead time.</small>
+                        </label>
+                        <div class="forecast-lab__actions">
+                            <button type="submit" class="btn-forecast">Compute forecast</button>
+                            <button type="button" class="btn-forecast btn-forecast--muted" id="btn-load-preset">Load acceptance preset</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="forecast-lab__panel">
+                    <h2>Sandbox result</h2>
+                    <p id="sandbox-status" class="forecast-lab__status">Submit inputs to compute.</p>
+                    <div id="sandbox-result" class="forecast-lab__result" hidden></div>
+                    <aside class="forecast-lab__glossary" aria-label="Metric glossary">
+                        <h3>What the outputs mean</h3>
+                        <ul>
+                            <li><strong>Available slots</strong> — (sealed × orders/stock) + orders left open.</li>
+                            <li><strong>ADU</strong> — Average Daily Usage in order slots. Quantity sold ÷ MA days.</li>
+                            <li><strong>Days remaining</strong> — Available order slots ÷ ADU.</li>
+                            <li><strong>ROP</strong> — Reorder Point in order slots. ADU × lead time.</li>
+                            <li><strong>Suggested restock</strong> — Order slots to cover the ROP gap; sealed packages = ceil(slots ÷ orders per stock).</li>
+                            <li><strong>Alert threshold</strong> — Max order-slot capacity × alert %.</li>
+                            <li><strong>Urgency</strong> — OUT / CRITICAL (within lead time) / LOW (at alert %) / NO_SIGNAL / OK.</li>
+                            <li><strong>Restock by / Last supply</strong> — Dates only (order-by date and last supplier date).</li>
+                        </ul>
+                    </aside>
+                </section>
+            </div>
+
+            <section class="forecast-lab__panel forecast-lab__live">
+                <div class="forecast-lab__live-head">
+                    <div>
+                        <h2>Live sample</h2>
+                        <p>Pull real inventory + recipe usage + last receipt date. Tune day windows here without changing the dashboard defaults.</p>
+                    </div>
+                    <div class="forecast-lab__live-controls">
+                        <label>
+                            <span>MA days</span>
+                            <input type="number" id="live-ma-days" min="1" max="30" value="2" title="Moving-average window in days">
+                            <small class="forecast-lab__help">Usage lookback window.</small>
+                        </label>
+                        <label>
+                            <span>Lead time</span>
+                            <input type="number" id="live-lead-time" min="1" max="30" value="2" title="Supplier lead time in days">
+                            <small class="forecast-lab__help">Supplier wait days.</small>
+                        </label>
+                        <label>
+                            <span>Limit</span>
+                            <input type="number" id="live-limit" min="1" max="50" value="8" title="Max rows to show">
+                            <small class="forecast-lab__help">Rows to show.</small>
+                        </label>
+                        <button type="button" class="btn-forecast" id="btn-live-sample">Fetch live sample</button>
+                    </div>
+                </div>
+                <p id="live-status" class="forecast-lab__status">No live sample loaded yet.</p>
+                <div id="live-summary" class="forecast-lab__summary" hidden></div>
+                <div id="live-table-wrap" class="forecast-lab__table-wrap" hidden>
+                    <table class="forecast-lab__table">
+                        <thead>
+                            <tr>
+                                <th title="Inventory item name">Item</th>
+                                <th title="Orders one sealed stock item can serve">Orders/stock</th>
+                                <th title="Sealed packages on hand">Sealed</th>
+                                <th title="Available order slots (inventory total available)">Avail slots</th>
+                                <th title="Units consumed over the MA window">Sold (window)</th>
+                                <th title="Average Daily Usage = sold ÷ MA days">ADU</th>
+                                <th title="Days of cover = stock ÷ ADU">Days left</th>
+                                <th title="Reorder Point = ADU × lead time">ROP</th>
+                                <th title="Suggested restock in order slots (and sealed packages)">Restock</th>
+                                <th title="OUT / CRITICAL / LOW / NO_SIGNAL / OK">Urgency</th>
+                                <th title="Order-by date before stockout risk">Restock by</th>
+                                <th title="Latest supplier receive/order date">Last supply</th>
+                            </tr>
+                        </thead>
+                        <tbody id="live-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="dashboard_script.js"></script>
+    <script>
+    (function () {
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function fmtNum(n, digits) {
+            if (n === null || n === undefined || n === '') return '—';
+            var x = Number(n);
+            if (!Number.isFinite(x)) return '—';
+            return x.toFixed(digits == null ? 2 : digits);
+        }
+
+        function urgencyClass(u) {
+            var key = String(u || '').toUpperCase();
+            if (key === 'CRITICAL' || key === 'OUT') return 'urgency--critical';
+            if (key === 'LOW') return 'urgency--low';
+            if (key === 'NO_SIGNAL') return 'urgency--muted';
+            return 'urgency--ok';
+        }
+
+        function metricBlock(title, valueHtml, help) {
+            return '<div><dt>' + esc(title) + '</dt><dd>' + valueHtml + '</dd>' +
+                '<p class="forecast-lab__metric-help">' + esc(help) + '</p></div>';
+        }
+
+        function renderForecastCard(f, mount) {
+            if (!f || !mount) return;
+            mount.hidden = false;
+            var daysVal = f.days_remaining == null ? '∞ / no signal' : fmtNum(f.days_remaining, 2);
+            var alertVal = f.alert_threshold == null
+                ? '—'
+                : fmtNum(f.alert_threshold, 2) + ' (' + esc(f.alert_percent) + '%)';
+            var ops = f.orders_per_stock_item != null ? Number(f.orders_per_stock_item) : 0;
+            var restockHtml = fmtNum(f.suggested_restock, 2) + ' order slots';
+            if (ops > 0 && f.suggested_restock_sealed != null) {
+                restockHtml += ' <small>(' + esc(f.suggested_restock_sealed) + ' sealed)</small>';
+            }
+            mount.innerHTML =
+                '<div class="forecast-lab__badge ' + urgencyClass(f.urgency) + '">' + esc(f.urgency) + '</div>' +
+                '<p class="forecast-lab__metric-help forecast-lab__metric-help--urgency">' +
+                'Computed outputs only — dates kept for restock timing context.</p>' +
+                '<dl class="forecast-lab__metrics">' +
+                metricBlock(
+                    'Available (order slots)',
+                    fmtNum(f.current_stock, 2),
+                    'sealed × orders/stock + orders left open'
+                ) +
+                metricBlock(
+                    'Max capacity (order slots)',
+                    f.max_capacity == null ? '—' : fmtNum(f.max_capacity, 2),
+                    'sealed max × orders/stock'
+                ) +
+                metricBlock(
+                    'ADU (avg daily usage)',
+                    fmtNum(f.avg_daily_usage, 4),
+                    'quantity sold ÷ MA ' + esc(f.ma_days) + 'd'
+                ) +
+                metricBlock(
+                    'Days remaining',
+                    daysVal,
+                    'available slots ÷ ADU'
+                ) +
+                metricBlock(
+                    'ROP (reorder point)',
+                    fmtNum(f.reorder_point, 2),
+                    'ADU × LT ' + esc(f.lead_time_days) + 'd'
+                ) +
+                metricBlock(
+                    'Suggested restock',
+                    restockHtml,
+                    'slots to cover ROP gap (sealed = ceil ÷ orders/stock)'
+                ) +
+                metricBlock(
+                    'Alert threshold',
+                    alertVal,
+                    'max capacity × alert %'
+                ) +
+                metricBlock(
+                    'Restock by',
+                    esc(f.restock_by_date || '—'),
+                    'latest date to order before lead-time stockout'
+                ) +
+                metricBlock(
+                    'Last supply',
+                    esc(f.last_supply_date || '—'),
+                    'last supplier buy / receive date'
+                ) +
+                '</dl>' +
+                '<p class="forecast-lab__why">' + esc(f.why || '') + '</p>';
+        }
+
+        var form = document.getElementById('forecast-sandbox-form');
+        var statusEl = document.getElementById('sandbox-status');
+        var resultEl = document.getElementById('sandbox-result');
+        var btnPreset = document.getElementById('btn-load-preset');
+
+        function loadPreset() {
+            document.getElementById('sb-item-name').value = 'Coffee Beans';
+            document.getElementById('sb-item-id').value = '';
+            document.getElementById('sb-sealed-units').value = '2';
+            document.getElementById('sb-orders-per-stock').value = '50';
+            document.getElementById('sb-orders-left').value = '0';
+            document.getElementById('sb-sealed-max').value = '4';
+            document.getElementById('sb-qty-sold').value = '40';
+            document.getElementById('sb-ma-days').value = '2';
+            document.getElementById('sb-lead-time').value = '2';
+            var alert50 = form.querySelector('input[name="alert_percent"][value="50"]');
+            if (alert50) alert50.checked = true;
+            var supply = document.getElementById('sb-last-supply');
+            if (supply && !supply.value) {
+                var d = new Date();
+                d.setDate(d.getDate() - 3);
+                supply.value = d.toISOString().slice(0, 10);
+            }
+        }
+
+        if (btnPreset) {
+            btnPreset.addEventListener('click', function () {
+                loadPreset();
+                form.requestSubmit();
+            });
+        }
+
+        loadPreset();
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var alertEl = form.querySelector('input[name="alert_percent"]:checked');
+            var sealedVal = document.getElementById('sb-sealed-units').value;
+            var opsVal = document.getElementById('sb-orders-per-stock').value;
+            var leftVal = document.getElementById('sb-orders-left').value;
+            var sealedMaxVal = document.getElementById('sb-sealed-max').value;
+            var ops = opsVal === '' ? 0 : parseInt(opsVal, 10);
+            var payload = {
+                item_name: document.getElementById('sb-item-name').value.trim() || null,
+                item_id: document.getElementById('sb-item-id').value ? parseInt(document.getElementById('sb-item-id').value, 10) : null,
+                last_supply_date: document.getElementById('sb-last-supply').value || null,
+                sealed_stock_units: sealedVal === '' ? 0 : parseFloat(sealedVal),
+                orders_per_stock_item: ops > 0 ? ops : null,
+                orders_left_open: leftVal === '' ? 0 : parseFloat(leftVal),
+                sealed_max_units: sealedMaxVal === '' ? null : parseFloat(sealedMaxVal),
+                alert_percent: alertEl ? parseInt(alertEl.value, 10) : 50,
+                qty_sold_window: parseFloat(document.getElementById('sb-qty-sold').value),
+                ma_days: parseInt(document.getElementById('sb-ma-days').value, 10),
+                lead_time_days: parseInt(document.getElementById('sb-lead-time').value, 10)
+            };
+            statusEl.textContent = 'Computing…';
+            fetch('api/forecast.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (!res || !res.success) {
+                        statusEl.textContent = (res && res.error) ? res.error : 'Forecast failed.';
+                        resultEl.hidden = true;
+                        return;
+                    }
+                    statusEl.textContent = 'Sandbox · MA ' + payload.ma_days + 'd · LT ' + payload.lead_time_days + 'd';
+                    renderForecastCard(res.forecast, resultEl);
+                })
+                .catch(function (err) {
+                    statusEl.textContent = 'Network error: ' + (err && err.message ? err.message : String(err));
+                    resultEl.hidden = true;
+                });
+        });
+
+        var liveStatus = document.getElementById('live-status');
+        var liveSummary = document.getElementById('live-summary');
+        var liveWrap = document.getElementById('live-table-wrap');
+        var liveBody = document.getElementById('live-table-body');
+        var btnLive = document.getElementById('btn-live-sample');
+
+        if (btnLive) {
+            btnLive.addEventListener('click', function () {
+                var ma = parseInt(document.getElementById('live-ma-days').value, 10) || 2;
+                var lt = parseInt(document.getElementById('live-lead-time').value, 10) || 2;
+                var limit = parseInt(document.getElementById('live-limit').value, 10) || 8;
+                var url = 'api/forecast.php?ma_days=' + encodeURIComponent(ma) +
+                    '&lead_time_days=' + encodeURIComponent(lt) +
+                    '&limit=' + encodeURIComponent(limit);
+                liveStatus.textContent = 'Loading live sample…';
+                fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res || !res.success) {
+                            liveStatus.textContent = (res && res.error) ? res.error : 'Live forecast failed.';
+                            liveSummary.hidden = true;
+                            liveWrap.hidden = true;
+                            return;
+                        }
+                        var s = res.summary || {};
+                        liveStatus.textContent =
+                            'Live · alert ' + (res.alert_percent || '—') + '% · MA ' + ma + 'd · LT ' + lt + 'd · ' +
+                            (s.item_count || 0) + ' item(s) in catalog (showing up to ' + limit + ').';
+                        liveSummary.hidden = false;
+                        liveSummary.innerHTML =
+                            '<span><strong>' + (s.critical_count || 0) + '</strong> critical</span>' +
+                            '<span><strong>' + (s.low_count || 0) + '</strong> low</span>' +
+                            '<span><strong>' + (s.out_count || 0) + '</strong> out</span>' +
+                            '<span><strong>' + (s.ok_count || 0) + '</strong> ok</span>' +
+                            '<span><strong>' + (s.no_signal_count || 0) + '</strong> no signal</span>' +
+                            '<span>median days <strong>' + (s.median_days_remaining == null ? '—' : fmtNum(s.median_days_remaining, 2)) + '</strong></span>';
+
+                        var rows = res.items || [];
+                        liveBody.innerHTML = rows.map(function (f) {
+                            var ops = f.orders_per_stock_item != null ? String(f.orders_per_stock_item) : '—';
+                            var restock = fmtNum(f.suggested_restock, 2);
+                            if (f.suggested_restock_sealed != null) {
+                                restock += ' / ' + esc(f.suggested_restock_sealed) + ' sealed';
+                            }
+                            return '<tr>' +
+                                '<td>' + esc(f.item_name || '—') + '</td>' +
+                                '<td>' + esc(ops) + '</td>' +
+                                '<td>' + fmtNum(f.sealed_stock_units, 0) + '</td>' +
+                                '<td>' + fmtNum(f.current_stock, 2) + '</td>' +
+                                '<td>' + fmtNum(f.qty_sold_window, 2) + '</td>' +
+                                '<td>' + fmtNum(f.avg_daily_usage, 2) + '</td>' +
+                                '<td>' + (f.days_remaining == null ? '—' : fmtNum(f.days_remaining, 2)) + '</td>' +
+                                '<td>' + fmtNum(f.reorder_point, 2) + '</td>' +
+                                '<td>' + restock + '</td>' +
+                                '<td><span class="forecast-lab__badge ' + urgencyClass(f.urgency) + '">' + esc(f.urgency) + '</span></td>' +
+                                '<td>' + esc(f.restock_by_date || '—') + '</td>' +
+                                '<td>' + esc(f.last_supply_date || '—') + '</td>' +
+                                '</tr>';
+                        }).join('') || '<tr><td colspan="12">No inventory items returned.</td></tr>';
+                        liveWrap.hidden = false;
+                    })
+                    .catch(function (err) {
+                        liveStatus.textContent = 'Network error: ' + (err && err.message ? err.message : String(err));
+                        liveSummary.hidden = true;
+                        liveWrap.hidden = true;
+                    });
+            });
+        }
+    })();
+    </script>
+</body>
+</html>

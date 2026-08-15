@@ -87,18 +87,21 @@
                 </article>
 
                 <article class="diag-column">
-                    <h2 class="diag-title">FORECASTING</h2>
+                    <div class="diag-title-row">
+                        <h2 class="diag-title">FORECASTING</h2>
+                        <a href="forecast_test.html" class="forecast-lab-link">Open forecast lab</a>
+                    </div>
                     <div class="diag-card">
                         <h3>Forecast Analysis</h3>
-                        <p id="forecast-analysis-text">Analyzes recent served orders, revenue trend, and item movement to estimate demand for the next <span>7 days</span>.</p>
+                        <p id="forecast-analysis-text">Loading inventory forecast (MA <span>2</span>d · lead time <span>2</span>d)…</p>
                     </div>
                     <div class="diag-card">
                         <h3>Predictive Suggestion: Sales</h3>
-                        <p id="forecast-sales-text">Predicts which menu categories are likely to rise next cycle so you can prepare staffing and promo timing early.</p>
+                        <p id="forecast-sales-text">Highest moving-average usage items will appear here once forecast data loads.</p>
                     </div>
                     <div class="diag-card">
                         <h3>Predictive Suggestion: Inventory</h3>
-                        <p id="forecast-inventory-text">Predicts restock priority from expected demand and consumption rate, highlighting <span>critical stock items</span> first.</p>
+                        <p id="forecast-inventory-text">Restock priority from days remaining and lead-time risk will appear here.</p>
                     </div>
                 </article>
             </section>
@@ -515,42 +518,93 @@
                 renderSlowMovingCategoryChips();
                 renderSlowMovingList();
 
-                // Forecasting cards: backend analysis -> predictive suggestions
-                var forecastAnalysisEl = document.getElementById('forecast-analysis-text');
-                var forecastSalesEl = document.getElementById('forecast-sales-text');
-                var forecastInventoryEl = document.getElementById('forecast-inventory-text');
-                var topToday = (d.top_items_today && d.top_items_today[0]) ? d.top_items_today[0] : null;
-                var slowFirst = (d.slow_items && d.slow_items[0]) ? d.slow_items[0] : null;
-                var pctRevenue = Number.isFinite(parseFloat(d.pct_revenue)) ? parseFloat(d.pct_revenue) : 0;
-                var trendWord = pctRevenue >= 0 ? 'up' : 'down';
-                var trendValue = Math.abs(pctRevenue).toFixed(1) + '%';
-                var topName = topToday && topToday.name ? topToday.name : 'Top item';
-                var topQty = topToday ? parseFloat(topToday.qty_sold || 0) : 0;
-                var slowName = slowFirst && slowFirst.name ? slowFirst.name : 'No-risk item';
-                var slowQty = slowFirst ? parseFloat(slowFirst.qty_sold_30d || 0) : 0;
-                var lowStockCount = parseInt(d.low_stock_count || 0, 10) || 0;
-
-                if (forecastAnalysisEl) {
-                    forecastAnalysisEl.innerHTML =
-                        'Backend analysis shows revenue trend is <span>' + trendWord + ' ' + trendValue +
-                        '</span> vs yesterday, based on served orders and category movement.';
-                }
-                if (forecastSalesEl) {
-                    forecastSalesEl.innerHTML =
-                        'Prediction: <span>' + esc(topName) + '</span> may stay busy next cycle (' + topQty +
-                        ' sold today), so prepare crew coverage for peak hours.';
-                }
-                if (forecastInventoryEl) {
-                    forecastInventoryEl.innerHTML =
-                        'Prediction: prioritize <span>' + esc(slowName) + '</span> review (' + slowQty +
-                        ' sold in 30d) and monitor <span>' + lowStockCount + ' low-stock item(s)</span> for restock.';
-                }
             })
             .catch(function (e) {
                 dashShowDebugPanel('(network/parse)', { success: false, error: e && e.message ? e.message : String(e) });
                 dashShowBanner('Dashboard load failed: ' + (e && e.message ? e.message : String(e)), true);
                 console.warn('[admin_dashboard] dashboard fetch', e);
             });
+
+            // Inventory forecast cards (shared engine: MA 2d / lead time 2d)
+            (function loadInventoryForecast() {
+                var forecastAnalysisEl = document.getElementById('forecast-analysis-text');
+                var forecastSalesEl = document.getElementById('forecast-sales-text');
+                var forecastInventoryEl = document.getElementById('forecast-inventory-text');
+
+                function fmtDays(n) {
+                    if (n === null || n === undefined || !Number.isFinite(Number(n))) return '—';
+                    return Number(n).toFixed(1);
+                }
+
+                fetch('api/forecast.php?ma_days=2&lead_time_days=2', { cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res || !res.success) {
+                            var err = (res && res.error) ? res.error : 'Forecast unavailable.';
+                            if (forecastAnalysisEl) forecastAnalysisEl.textContent = err;
+                            return;
+                        }
+                        var s = res.summary || {};
+                        var topUsage = (res.top_usage && res.top_usage[0]) ? res.top_usage[0] : null;
+                        var priority = (res.priority_restock && res.priority_restock[0]) ? res.priority_restock[0] : null;
+                        var alertPct = res.alert_percent != null ? res.alert_percent : '—';
+                        var median = s.median_days_remaining;
+
+                        if (forecastAnalysisEl) {
+                            forecastAnalysisEl.innerHTML =
+                                'Across <span>' + (s.item_count || 0) + '</span> inventory items (MA 2d · LT 2d, alert <span>' +
+                                esc(String(alertPct)) + '%</span>): <span>' + (s.critical_count || 0) +
+                                '</span> critical within lead time, <span>' + (s.low_count || 0) +
+                                '</span> at/below alert, <span>' + (s.out_count || 0) +
+                                '</span> out. Median days remaining: <span>' +
+                                (median == null ? '—' : fmtDays(median)) + '</span>.';
+                        }
+
+                        if (forecastSalesEl) {
+                            if (topUsage && Number(topUsage.avg_daily_usage || 0) > 0) {
+                                forecastSalesEl.innerHTML =
+                                    'Highest demand signal: <span>' + esc(topUsage.item_name || 'Item') +
+                                    '</span> at <span>' + fmtDays(topUsage.avg_daily_usage) +
+                                    '</span> units/day (window sold <span>' + fmtDays(topUsage.qty_sold_window) +
+                                    '</span>). Stock lasts about <span>' +
+                                    (topUsage.days_remaining == null ? '—' : fmtDays(topUsage.days_remaining)) +
+                                    '</span> days at this rate.';
+                            } else {
+                                forecastSalesEl.innerHTML =
+                                    'No recipe usage in the last <span>2</span> days yet — demand signal will appear once orders consume inventory.';
+                            }
+                        }
+
+                        if (forecastInventoryEl) {
+                            if (priority) {
+                                var restockQty = Number(priority.suggested_restock || 0);
+                                var restockBit = restockQty > 0
+                                    ? ' Suggest restocking <span>' + fmtDays(restockQty) + '</span> units'
+                                    : ' No ROP gap right now';
+                                var byBit = priority.restock_by_date
+                                    ? '; restock by <span>' + esc(priority.restock_by_date) + '</span>'
+                                    : '';
+                                forecastInventoryEl.innerHTML =
+                                    'Priority: <span>' + esc(priority.item_name || 'Item') +
+                                    '</span> (' + esc(priority.urgency || 'OK') + ') — ' +
+                                    (priority.days_remaining == null
+                                        ? 'no usage signal'
+                                        : '<span>' + fmtDays(priority.days_remaining) + '</span> days of cover') +
+                                    '. ROP <span>' + fmtDays(priority.reorder_point) + '</span>.' +
+                                    restockBit + byBit + '.';
+                            } else {
+                                forecastInventoryEl.innerHTML =
+                                    'No inventory SKUs available for restock forecasting yet.';
+                            }
+                        }
+                    })
+                    .catch(function (e) {
+                        if (forecastAnalysisEl) {
+                            forecastAnalysisEl.textContent = 'Forecast load failed: ' + (e && e.message ? e.message : String(e));
+                        }
+                        console.warn('[admin_dashboard] forecast fetch', e);
+                    });
+            })();
     })();
     </script>
 </body>

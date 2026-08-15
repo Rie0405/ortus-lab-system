@@ -437,6 +437,32 @@ body {
     gap: 14px;
 }
 
+.diag-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.diag-title-row .diag-title {
+    margin: 0;
+}
+
+.forecast-lab-link {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #f48c25;
+    border-bottom: 1px solid transparent;
+}
+
+.forecast-lab-link:hover {
+    border-bottom-color: #f48c25;
+}
+
 .diag-card {
     border: 1px solid #3d3025;
     border-radius: 12px;

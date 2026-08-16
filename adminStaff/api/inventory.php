@@ -824,12 +824,7 @@ foreach ($rows as $row) {
     $totalAvailableOrders = total_available_orders_for_inventory_row($row);
     $maxCapacity = max_capacity_for_inventory_row($row);
     $stockRatio = inventory_stock_ratio($row);
-    $status = 'in_stock';
-    if ($totalAvailableOrders <= 0) {
-        $status = 'out_of_stock';
-    } elseif (is_low_stock_for_inventory_row($row, $lowStockFractionDen)) {
-        $status = 'low_stock';
-    }
+    $status = inventory_computed_status_for_row($row, $lowStockFractionDen);
 
     $computedIds = $computedLinksByInv[(int)$row['id']] ?? [];
     $computedLinks = [];

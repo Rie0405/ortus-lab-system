@@ -183,6 +183,40 @@ function normalize_inventory_stock_status($status): string
     return in_array($s, ['good', 'low', 'critical'], true) ? $s : 'good';
 }
 
+function inventory_is_manual_entry(array $row): bool
+{
+    return normalize_inventory_entry_mode($row['entry_mode'] ?? 'automatic') === 'manual';
+}
+
+/**
+ * Dashboard/alert status.
+ * Manual items use the staff checklist (good/low/critical), not sealed quantity.
+ *
+ * @return 'in_stock'|'low_stock'|'out_of_stock'
+ */
+function inventory_computed_status_for_row(array $row, int $alertPercent): string
+{
+    if (inventory_is_manual_entry($row)) {
+        $manual = normalize_inventory_stock_status($row['stock_status'] ?? 'good');
+        if ($manual === 'critical') {
+            return 'out_of_stock';
+        }
+        if ($manual === 'low') {
+            return 'low_stock';
+        }
+        return 'in_stock';
+    }
+
+    $total = total_available_orders_for_inventory_row($row);
+    if ($total <= 0) {
+        return 'out_of_stock';
+    }
+    if (is_low_stock_for_inventory_row($row, $alertPercent)) {
+        return 'low_stock';
+    }
+    return 'in_stock';
+}
+
 function normalize_inventory_notes($notes): string
 {
     $value = trim((string)$notes);
@@ -662,7 +696,7 @@ function deduct_units_in_use_with_refill(PDO $pdo, int $invId, float $amount): v
     }
 
     $stmt = $pdo->prepare(
-        'SELECT stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, stock_type, category_name
+        'SELECT stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, stock_type, category_name, entry_mode
          FROM inventory_items
          WHERE id = :id
            AND menu_item_id IS NULL
@@ -672,6 +706,11 @@ function deduct_units_in_use_with_refill(PDO $pdo, int $invId, float $amount): v
     $stmt->execute([':id' => $invId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
+        return;
+    }
+
+    // Manual checklist items are not qty-tracked — staff marks good/low/critical instead.
+    if (inventory_is_manual_entry($row)) {
         return;
     }
 
@@ -1130,6 +1169,12 @@ function deduct_menu_sku_stock_for_order(PDO $pdo, int $orderId): void {
  */
 function inventory_sellable_units_for_row(array $row): float
 {
+    if (inventory_is_manual_entry($row)) {
+        $manual = normalize_inventory_stock_status($row['stock_status'] ?? 'good');
+        // critical = treat as empty; good/low = sellable (qty not tracked).
+        return $manual === 'critical' ? 0.0 : 999999.0;
+    }
+
     if (inventory_uses_batch_logic($row)) {
         return (float)(max(0, (int)($row['stock_units'] ?? 0)) + max(0, (float)($row['units_in_use'] ?? 0)));
     }
@@ -1314,7 +1359,7 @@ function check_inventory_shortages_for_cart(PDO $pdo, array $items): array
 
     $shortages = [];
     $stockStmt = $pdo->prepare(
-        'SELECT id, item_name, category_name, per_stock_unit, stock_units, units_in_use, open_items_count, orders_per_box, stock_type
+        'SELECT id, item_name, category_name, per_stock_unit, stock_units, units_in_use, open_items_count, orders_per_box, stock_type, entry_mode, stock_status
          FROM inventory_items
          WHERE id = :id
            AND is_active = 1

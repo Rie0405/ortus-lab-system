@@ -117,18 +117,21 @@ function compute_item_forecast(array $input): array
 
     if ($currentStock <= 0) {
         $urgency = 'OUT';
-        $why = 'Current stock is empty or non-positive; restock immediately.';
+        $why = 'This item looks empty — restock it now.';
     } elseif ($avgDailyUsage <= 0) {
         $urgency = 'NO_SIGNAL';
-        $why = 'No usage in the moving-average window; cannot estimate days remaining.';
+        $why = 'No recent sales/usage in the last ' . $maDays
+            . ' day(s), so we cannot estimate how long the stock will last yet.';
     } elseif ($daysRemaining !== null && $daysRemaining <= $leadTimeDays) {
         $urgency = 'CRITICAL';
-        $why = 'Projected stock lasts ' . round($daysRemaining, 2)
-            . ' day(s), which is within the ' . $leadTimeDays . '-day lead time.';
+        $why = 'Stock may only last about ' . round($daysRemaining, 2)
+            . ' day(s), which is shorter than the ' . $leadTimeDays . '-day supplier wait.';
     } elseif ($alertThreshold !== null && $currentStock <= $alertThreshold) {
         $urgency = 'LOW';
-        $why = 'Current stock is at or below the ' . $alertPercent
-            . '% alert threshold (' . round($alertThreshold, 2) . ').';
+        $why = 'Stock is at or below the ' . $alertPercent
+            . '% low-stock line (' . round($alertThreshold, 2) . ').';
+    } else {
+        $why = 'Stock looks fine for now based on recent usage and lead time.';
     }
 
     $restockByDate = null;
@@ -388,6 +391,26 @@ function build_live_inventory_forecasts(
             $forecast['suggested_restock_sealed'] = (int)ceil(((float)$forecast['suggested_restock']) / $ordersPerStock);
             $forecast['unit_basis'] = 'order_slots';
         }
+        $forecast['entry_mode'] = normalize_inventory_entry_mode($row['entry_mode'] ?? 'automatic');
+        $forecast['stock_status'] = normalize_inventory_stock_status($row['stock_status'] ?? 'good');
+
+        // Manual checklist items: staff Good/Low/Critical overrides qty-based OUT/urgency.
+        if (inventory_is_manual_entry($row)) {
+            $manual = $forecast['stock_status'];
+            if ($manual === 'good') {
+                $forecast['urgency'] = 'OK';
+                $forecast['why'] = 'Marked Good on the manual checklist — treating this as in stock.';
+                $forecast['suggested_restock'] = 0.0;
+                $forecast['suggested_restock_sealed'] = 0;
+            } elseif ($manual === 'low') {
+                $forecast['urgency'] = 'LOW';
+                $forecast['why'] = 'Marked Low on the manual checklist — plan a restock soon.';
+            } else {
+                $forecast['urgency'] = 'CRITICAL';
+                $forecast['why'] = 'Marked Critical on the manual checklist — restock this now.';
+            }
+        }
+
         $forecast['category_name'] = (string)($row['category_name'] ?? '');
         $forecast['supplier'] = (string)($row['supplier'] ?? '');
         $items[] = $forecast;

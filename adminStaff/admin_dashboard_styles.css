@@ -445,6 +445,10 @@ body {
     flex-wrap: wrap;
 }
 
+.diag-column > .diag-title {
+    margin-top: 4px;
+}
+
 .diag-title-row .diag-title {
     margin: 0;
 }
@@ -461,6 +465,133 @@ body {
 
 .forecast-lab-link:hover {
     border-bottom-color: #f48c25;
+}
+
+.forecast-warning-list {
+    margin: 10px 0 0;
+    padding-left: 1.15rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.55;
+}
+
+.forecast-warning-list li + li {
+    margin-top: 4px;
+}
+
+.forecast-warning-list span {
+    color: #f48c25;
+    font-weight: 700;
+}
+
+.forecast-warning-list small {
+    color: rgba(255, 255, 255, 0.42);
+    font-weight: 400;
+}
+
+.diag-card--clickable {
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.diag-card--clickable.diag-card--has-popup:hover,
+.diag-card--clickable.diag-card--has-popup:focus-visible {
+    border-color: #f48c25;
+    background: rgba(244, 140, 37, 0.08);
+    outline: none;
+}
+
+.diag-card--clickable[aria-disabled="true"] {
+    cursor: default;
+}
+
+.diag-card p.forecast-card-more {
+    margin: 10px 0 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+    color: #ff3b3b;
+    line-height: 1.4;
+}
+
+.diag-card p.forecast-card-more span {
+    color: #ff3b3b;
+    font-weight: 700;
+}
+
+.forecast-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(8, 6, 4, 0.72);
+}
+
+.forecast-modal-backdrop.is-visible {
+    display: flex;
+}
+
+.forecast-modal {
+    width: min(520px, 100%);
+    max-height: min(80vh, 640px);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #3d3025;
+    border-radius: 12px;
+    background: #1a1410;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.forecast-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #3d3025;
+}
+
+.forecast-modal__header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.forecast-modal__close {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.forecast-modal__close:hover {
+    color: #f48c25;
+}
+
+.forecast-modal__body {
+    padding: 16px 18px 20px;
+    overflow: auto;
+}
+
+.forecast-modal__intro {
+    margin: 0 0 12px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.55;
+}
+
+.forecast-modal__intro span {
+    color: #f48c25;
+    font-weight: 700;
+}
+
+.forecast-modal__list {
+    margin: 0;
 }
 
 .diag-card {

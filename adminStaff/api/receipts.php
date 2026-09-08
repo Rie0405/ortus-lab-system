@@ -448,7 +448,7 @@ try {
             (:receipt_id, :line_type, :item_name, :stocks, :in_use, :per_stock_amount, :unit_name, :unit_cost, :total_cost)'
     );
     $findInventoryStmt = $pdo->prepare(
-        'SELECT id, stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, stock_type, category_name
+        'SELECT id, stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, per_stock_unit, stock_type, category_name
          FROM inventory_items
          WHERE menu_item_id IS NULL
            AND is_active = 1
@@ -461,7 +461,6 @@ try {
          SET stock_units = :stock_units,
              units_in_use = :units_in_use,
              open_items_count = :open_items_count,
-             per_stock_unit = :per_stock_unit,
              supplier = :supplier,
              unit_cost = :unit_cost
          WHERE id = :id'
@@ -483,6 +482,26 @@ try {
     );
 
     foreach ($lines as $line) {
+        $incomingUnits = (int)round((float)$line['stocks']);
+        if ($incomingUnits < 0) $incomingUnits = 0;
+        $receiptOpenBoxes = (float)$line['in_use'];
+
+        $findInventoryStmt->execute([
+            ':item_name' => $line['item_name'],
+            ':category_name' => $line['line_type'],
+        ]);
+        $existingInventory = $findInventoryStmt->fetch();
+
+        // Stock log entries keep the registered unit label; do not overwrite it.
+        $lineUnit = (string)($line['unit'] ?? 'pcs');
+        if (!$registerMode && $existingInventory) {
+            $registeredUnit = trim((string)($existingInventory['per_stock_unit'] ?? ''));
+            if ($registeredUnit !== '') {
+                $lineUnit = $registeredUnit;
+            }
+        }
+        $line['unit'] = ($lineUnit !== '' ? substr($lineUnit, 0, 20) : 'pcs');
+
         $lineStmt->execute([
             ':receipt_id' => $receiptId,
             ':line_type' => $line['line_type'],
@@ -494,16 +513,6 @@ try {
             ':unit_cost' => $line['unit_cost'],
             ':total_cost' => $line['total_cost'],
         ]);
-
-        $incomingUnits = (int)round((float)$line['stocks']);
-        if ($incomingUnits < 0) $incomingUnits = 0;
-        $receiptOpenBoxes = (float)$line['in_use'];
-
-        $findInventoryStmt->execute([
-            ':item_name' => $line['item_name'],
-            ':category_name' => $line['line_type'],
-        ]);
-        $existingInventory = $findInventoryStmt->fetch();
 
         if ($existingInventory) {
             if ($registerMode) {
@@ -543,7 +552,6 @@ try {
                 ':stock_units' => $counts['stock_units'],
                 ':units_in_use' => $counts['units_in_use'],
                 ':open_items_count' => $counts['open_items_count'],
-                ':per_stock_unit' => $line['unit'],
                 ':supplier' => $supplier,
                 ':unit_cost' => $line['unit_cost'],
                 ':id' => (int)$existingInventory['id'],

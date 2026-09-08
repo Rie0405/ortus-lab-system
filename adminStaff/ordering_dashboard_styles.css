@@ -582,6 +582,131 @@ body.modal-open {
     gap: 12px;
 }
 
+.addon-register-modal {
+    width: min(520px, calc(100vw - 32px));
+    max-height: calc(100vh - 40px);
+    overflow: auto;
+}
+
+.addon-station-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.addon-station-btn {
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: #1a1510;
+    color: #94a3b8;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 14px;
+    cursor: pointer;
+}
+
+.addon-station-btn--active {
+    border-color: #f48c25;
+    background: rgba(244, 140, 37, 0.16);
+    color: #f8fafc;
+}
+
+.addon-station-hint {
+    margin: 0;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+.addon-register-list-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.addon-register-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.addon-register-empty {
+    margin: 0;
+    padding: 14px;
+    border: 1px dashed #3d3025;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 13px;
+    text-align: center;
+}
+
+.addon-register-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #3d3025;
+    background: #1a1510;
+}
+
+.addon-register-item__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.addon-register-item__name {
+    color: #f8fafc;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.addon-register-item__station {
+    width: fit-content;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.addon-register-item__station--bar { color: #60a5fa; }
+.addon-register-item__station--kitchen { color: #f48c25; }
+
+.addon-register-item__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.addon-register-item__price {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f48c25;
+}
+
+.addon-register-item__delete {
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
 @media (max-width: 900px) {
     .heading-actions { flex-direction: column; align-items: flex-start; }
 }

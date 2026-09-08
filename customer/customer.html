@@ -6,8 +6,8 @@
     <title>Ortus Lab Coffee and Lifestyle</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo+Narrow:wght@400;500&family=Lora:wght@700&family=Manrope:wght@400;500;700&family=Inter:wght@700&family=Roboto:wght@500&family=Roboto+Mono:wght@400&family=Alatsi&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="customer_styles.css?v=20260422c">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="customer_styles.css?v=20260908d">
 </head>
 <body>
 
@@ -267,8 +267,6 @@
             <div class="menu-grid-area">
                 <div class="menu-grid-header">
                     <div class="menu-grid-title-block">
-                        <h2 class="menu-grid-heading">Beverages</h2>
-                        <p class="menu-grid-sub">Select from our freshly brewed collection</p>
                         <div class="menu-group-switch">
                             <button class="menu-group-btn" data-menu-group="beverages">
                                 <span class="menu-group-btn__icon-wrap">
@@ -283,6 +281,8 @@
                                 <span class="menu-group-btn__label">Snacks &amp; Meals</span>
                             </button>
                         </div>
+                        <p class="menu-grid-sub">Select items then proceed to checkout</p>
+                        <h2 class="menu-grid-heading" hidden>Beverages</h2>
                     </div>
                     <div class="menu-header-actions">
                         <button class="menu-back-btn" id="btn-beverages-back">Back</button>
@@ -290,6 +290,7 @@
                 </div>
 
                 <div class="meals-layout beverages-layout">
+                    <div class="menu-category-pane">
                     <!-- Beverage Circles -->
                     <div class="menu-grid menu-grid--meals menu-choice-hidden" id="bev-circles">
                         <div class="menu-product menu-product--selected" data-bev-category="coffee" role="button" tabindex="0">
@@ -317,7 +318,9 @@
                             <span class="menu-product-name">Juice</span>
                         </div>
                     </div>
+                    </div>
 
+                    <div class="menu-products-pane">
                     <div id="bev-temp-filters" class="bev-temp-filters" hidden>
                         <button type="button" class="bev-temp-chip bev-temp-chip--active" data-drink-temp="all">All</button>
                         <button type="button" class="bev-temp-chip" data-drink-temp="hot">Hot</button>
@@ -400,6 +403,7 @@
                     </div>
 
                     </div>
+                    </div>
                 </div>
             </div>
 
@@ -419,36 +423,15 @@
                         <p class="order-type-value">Not selected</p>
                     </div>
 
+                    <div class="sidebar-section order-name-section" hidden>
+                        <h4 class="sidebar-section-title">ORDER NAME</h4>
+                        <input type="text" class="order-name-input" placeholder="Customer name for pickup" maxlength="100" autocomplete="name">
+                    </div>
+
                     <!-- Cart Items -->
-                    <div class="sidebar-items">
-                        <div class="cart-item">
-                            <div class="cart-item-row">
-                                <span class="cart-item-name">Cheddar Cheese Fries</span>
-                                <span class="cart-item-price">$4.75</span>
-                            </div>
-                            <div class="cart-item-row">
-                                <span class="cart-mods">Modifications</span>
-                                <div class="qty-ctrl">
-                                    <button class="qty-btn">−</button>
-                                    <span class="qty-val">1</span>
-                                    <button class="qty-btn">+</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="cart-item">
-                            <div class="cart-item-row">
-                                <span class="cart-item-name">Nachos</span>
-                                <span class="cart-item-price">$19.00</span>
-                            </div>
-                            <div class="cart-item-row">
-                                <span class="cart-mods">Modifications</span>
-                                <div class="qty-ctrl">
-                                    <button class="qty-btn">−</button>
-                                    <span class="qty-val">2</span>
-                                    <button class="qty-btn">+</button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="sidebar-cart-box sidebar-cart-box--dine-in" data-fulfillment-box="dine_in">
+                        <p class="sidebar-cart-group__label sidebar-cart-group__label--dine-in" hidden>Orders to dine in:</p>
+                        <div class="sidebar-items sidebar-items--dine-in"></div>
                     </div>
 
                     <div class="sidebar-section discount-section" hidden>
@@ -470,6 +453,14 @@
                         <div class="payment-btns">
                             <button class="payment-btn payment-btn--active">CASH</button>
                             <button class="payment-btn">GCASH</button>
+                        </div>
+                    </div>
+
+                    <div class="order-type-toggle-section" hidden>
+                        <button type="button" class="order-type-toggle-btn">Would you like to take out?</button>
+                        <div class="sidebar-cart-box sidebar-cart-box--take-out" data-fulfillment-box="take_out">
+                            <p class="order-type-target-label" hidden>Orders to take out:</p>
+                            <div class="sidebar-items sidebar-items--take-out"></div>
                         </div>
                     </div>
 
@@ -511,8 +502,6 @@
             <div class="menu-grid-area">
                 <div class="menu-grid-header">
                     <div class="menu-grid-title-block">
-                        <h2 class="menu-grid-heading">Snacks and Meals</h2>
-                        <p class="menu-grid-sub">Small bites or a hearty meal</p>
                         <div class="menu-group-switch">
                             <button class="menu-group-btn" data-menu-group="beverages">
                                 <span class="menu-group-btn__icon-wrap">
@@ -527,6 +516,8 @@
                                 <span class="menu-group-btn__label">Snacks &amp; Meals</span>
                             </button>
                         </div>
+                        <p class="menu-grid-sub">Select items then proceed to checkout</p>
+                        <h2 class="menu-grid-heading" hidden>Snacks and Meals</h2>
                     </div>
                     <div class="menu-header-actions">
                         <button class="menu-back-btn" id="btn-meals-back">Back</button>
@@ -536,6 +527,7 @@
                 <!-- Meals layout: circles left, product cards right -->
                 <div class="meals-layout">
 
+                    <div class="menu-category-pane">
                     <!-- Meal Circles (left column) -->
                     <div class="menu-grid menu-grid--meals" id="meal-circles">
                         <div class="menu-product" data-meal="snacks">
@@ -568,14 +560,11 @@
                             </div>
                             <span class="menu-product-circle-label">Pasta</span>
                         </div>
-                        <div class="menu-product" data-meal="Add More">
-                            <div class="menu-product-circle menu-product-circle--meal menu-product-circle--add">
-                                <img class="menu-product-icon menu-product-icon--meal-other" src="icons_customer/icon_customer_meals/other.svg" alt="Add More">
-                            </div>
-                        </div>
+                    </div>
                     </div>
 
                     <!-- Product Cards (right side) — hidden until a circle is clicked -->
+                    <div class="menu-products-pane">
                     <div class="prod-grid prod-grid--meals" id="meal-prod-grid">
 
                         <div class="prod-card">
@@ -651,6 +640,7 @@
                         </div>
 
                     </div>
+                    </div>
 
                 </div>
             </div>
@@ -671,36 +661,15 @@
                         <p class="order-type-value">Not selected</p>
                     </div>
 
+                    <div class="sidebar-section order-name-section" hidden>
+                        <h4 class="sidebar-section-title">ORDER NAME</h4>
+                        <input type="text" class="order-name-input" placeholder="Customer name for pickup" maxlength="100" autocomplete="name">
+                    </div>
+
                     <!-- Cart Items -->
-                    <div class="sidebar-items">
-                        <div class="cart-item">
-                            <div class="cart-item-row">
-                                <span class="cart-item-name">Cheddar Cheese Fries</span>
-                                <span class="cart-item-price">$4.75</span>
-                            </div>
-                            <div class="cart-item-row">
-                                <span class="cart-mods">Modifications</span>
-                                <div class="qty-ctrl">
-                                    <button class="qty-btn">−</button>
-                                    <span class="qty-val">1</span>
-                                    <button class="qty-btn">+</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="cart-item">
-                            <div class="cart-item-row">
-                                <span class="cart-item-name">Nachos</span>
-                                <span class="cart-item-price">$19.00</span>
-                            </div>
-                            <div class="cart-item-row">
-                                <span class="cart-mods">Modifications</span>
-                                <div class="qty-ctrl">
-                                    <button class="qty-btn">−</button>
-                                    <span class="qty-val">2</span>
-                                    <button class="qty-btn">+</button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="sidebar-cart-box sidebar-cart-box--dine-in" data-fulfillment-box="dine_in">
+                        <p class="sidebar-cart-group__label sidebar-cart-group__label--dine-in" hidden>Orders to dine in:</p>
+                        <div class="sidebar-items sidebar-items--dine-in"></div>
                     </div>
 
                     <div class="sidebar-section discount-section" hidden>
@@ -725,6 +694,14 @@
                         </div>
                     </div>
 
+                    <div class="order-type-toggle-section" hidden>
+                        <button type="button" class="order-type-toggle-btn">Would you like to take out?</button>
+                        <div class="sidebar-cart-box sidebar-cart-box--take-out" data-fulfillment-box="take_out">
+                            <p class="order-type-target-label" hidden>Orders to take out:</p>
+                            <div class="sidebar-items sidebar-items--take-out"></div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Footer Totals -->
@@ -744,39 +721,118 @@
 
     <!-- ── CASH Checkout Modal ── -->
     <div id="cash-checkout-modal" class="cash-modal-overlay" aria-hidden="true">
-        <div class="cash-modal" role="dialog" aria-modal="true" aria-labelledby="cash-modal-title">
-            <p class="cash-modal-note" id="cash-modal-title">Review your order before confirming:</p>
-            <p class="cash-modal-message cash-modal-message--pickup-only">Your order is ready within 15-20 mins.</p>
-            <input id="cash-order-name-input" class="gcash-ref-input" type="text" placeholder="Order name (e.g. your name)" autocomplete="off">
-            <div id="cash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
+        <div class="cash-modal cash-modal--checkout" role="dialog" aria-modal="true" aria-labelledby="cash-modal-title">
+            <div class="cash-modal-header">
+                <p class="cash-modal-eyebrow">Checkout</p>
+                <h2 class="cash-modal-heading" id="cash-modal-title">Review your order</h2>
+                <p class="cash-modal-lead">Confirm details before placing your order.</p>
+            </div>
+            <div class="cash-modal-body">
+                <p class="cash-modal-info cash-modal-message--pickup-only">Your order is ready within 15–20 mins.</p>
+                <label class="cash-modal-field">
+                    <span class="cash-modal-field-label">Customer name</span>
+                    <input id="cash-order-name-input" class="gcash-ref-input cash-modal-input" type="text" placeholder="e.g. customer name" autocomplete="off">
+                </label>
+                <div id="cash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
+                <button type="button" class="cash-modal-discount-btn" id="cash-request-pwd-sc-btn">
+                    Request PWD/SC Discount
+                </button>
+                <div class="cash-modal-discount-preview" id="cash-discount-preview" hidden></div>
+            </div>
             <div class="cash-modal-actions">
-                <button id="cash-modal-cancel" class="cash-modal-cancel-btn" type="button">CANCEL</button>
-                <button id="cash-modal-confirm" class="cash-modal-confirm-btn" type="button">CONFIRM</button>
+                <button id="cash-modal-cancel" class="cash-modal-cancel-btn" type="button">Cancel</button>
+                <button id="cash-modal-confirm" class="cash-modal-confirm-btn" type="button">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── PWD / SC Discount Request Modal ── -->
+    <div id="pwd-sc-request-modal" class="cash-modal-overlay" aria-hidden="true">
+        <div class="cash-modal cash-modal--checkout" role="dialog" aria-modal="true" aria-labelledby="pwd-sc-request-title">
+            <div class="cash-modal-header">
+                <p class="cash-modal-eyebrow">Discount</p>
+                <h2 class="cash-modal-heading" id="pwd-sc-request-title">Request PWD/SC Discount</h2>
+                <p class="cash-modal-lead">Select discount type. Staff will verify your ID at the counter.</p>
+            </div>
+            <div class="cash-modal-body">
+                <label class="cash-modal-field" for="pwd-sc-request-type">
+                    <span class="cash-modal-field-label">Discount type</span>
+                    <select id="pwd-sc-request-type" class="gcash-ref-input cash-modal-input">
+                        <option value="senior">Senior Citizen</option>
+                        <option value="pwd">PWD</option>
+                    </select>
+                </label>
+                <p class="cash-modal-field-hint" id="pwd-sc-request-error" hidden role="alert"></p>
+            </div>
+            <div class="cash-modal-actions">
+                <button id="pwd-sc-request-cancel" class="cash-modal-cancel-btn" type="button">Cancel</button>
+                <button id="pwd-sc-request-confirm" class="cash-modal-confirm-btn" type="button">Request</button>
             </div>
         </div>
     </div>
 
     <!-- ── GCASH Checkout Modal ── -->
     <div id="gcash-checkout-modal" class="cash-modal-overlay" aria-hidden="true">
-        <div class="cash-modal" role="dialog" aria-modal="true" aria-labelledby="gcash-modal-title">
-            <p id="gcash-modal-title" class="cash-modal-message cash-modal-message--gcash">
-                GCASH NO. <span id="gcash-number-display">09XXXXXXXXXX</span>
-                <button type="button" id="gcash-copy-number-btn" class="gcash-copy-number-btn" aria-label="Copy GCash number">COPY</button><br>
-                NAME: ***** ***<br><br>
-                Enter your GCash reference number, then confirm once the transaction is successful.
-            </p>
-                    <div class="gcash-qr-wrap" aria-label="GCash QR code">
-                        <img id="gcash-qr-img" class="gcash-qr-img" src="" alt="GCash QR Code" />
+        <div class="cash-modal cash-modal--checkout cash-modal--gcash" role="dialog" aria-modal="true" aria-labelledby="gcash-modal-title">
+            <div class="cash-modal-header">
+                <p class="cash-modal-eyebrow">GCash Payment</p>
+                <h2 class="cash-modal-heading" id="gcash-modal-title">Complete your payment</h2>
+            </div>
+            <div class="cash-modal-body">
+                <div class="cash-modal-gcash-info">
+                    <p class="cash-modal-gcash-line">
+                        <span class="cash-modal-gcash-label">GCash no.</span>
+                        <span class="cash-modal-gcash-value" id="gcash-number-display">09XXXXXXXXXX</span>
+                        <button type="button" id="gcash-copy-number-btn" class="gcash-copy-number-btn" aria-label="Copy GCash number">Copy</button>
+                    </p>
+                    <p class="cash-modal-gcash-line">
+                        <span class="cash-modal-gcash-label">Name</span>
+                        <span class="cash-modal-gcash-value" id="gcash-name-display">***** ***</span>
+                    </p>
+                </div>
+                <div class="gcash-qr-wrap" aria-label="GCash QR code">
+                    <img id="gcash-qr-img" class="gcash-qr-img" src="" alt="GCash QR Code" />
+                </div>
+                <p class="cash-modal-info cash-modal-message--pickup-only">Your order is ready within 15–20 mins.</p>
+                <p class="cash-modal-field-hint cash-modal-message--pickup-only">If much later, set your pickup time</p>
+                <div class="cash-modal-field cash-modal-message--pickup-only">
+                    <span class="cash-modal-field-label">Pickup time</span>
+                    <div class="pickup-alarm-picker" id="pickup-alarm-picker">
+                        <input type="hidden" id="pickup-later-time-input" value="">
+                        <div class="pickup-alarm-picker__frame">
+                            <div class="pickup-alarm-picker__highlight" aria-hidden="true"></div>
+                            <div class="pickup-alarm-picker__cols">
+                                <div class="pickup-alarm-picker__col">
+                                    <div class="pickup-alarm-picker__wheel" data-wheel="hour" role="listbox" aria-label="Hour"></div>
+                                </div>
+                                <div class="pickup-alarm-picker__colon" aria-hidden="true">:</div>
+                                <div class="pickup-alarm-picker__col">
+                                    <div class="pickup-alarm-picker__wheel" data-wheel="minute" role="listbox" aria-label="Minute"></div>
+                                </div>
+                                <div class="pickup-alarm-picker__col pickup-alarm-picker__col--ampm">
+                                    <div class="pickup-alarm-picker__wheel" data-wheel="ampm" role="listbox" aria-label="AM or PM"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-            <p class="cash-modal-message cash-modal-message--pickup-only">Your order is ready within 15-20 mins.</p>
-            <p class="cash-modal-pickup-time-note cash-modal-message--pickup-only">If much later, indicate time</p>
-            <input id="pickup-later-time-input" class="gcash-ref-input cash-modal-message--pickup-only" type="text" placeholder="e.g. 6:30 PM" autocomplete="off">
-            <input id="gcash-order-name-input" class="gcash-ref-input" type="text" placeholder="Order name (e.g. your name)" autocomplete="off">
-            <div id="gcash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
-            <input id="gcash-ref-input" class="gcash-ref-input" type="text" placeholder="GCash reference number" inputmode="numeric" autocomplete="off">
+                </div>
+                <label class="cash-modal-field">
+                    <span class="cash-modal-field-label">Customer name</span>
+                    <input id="gcash-order-name-input" class="gcash-ref-input cash-modal-input" type="text" placeholder="e.g. customer name" autocomplete="off">
+                </label>
+                <div id="gcash-modal-summary" class="cash-modal-summary" aria-live="polite"></div>
+                <button type="button" class="cash-modal-discount-btn" id="gcash-request-pwd-sc-btn">
+                    Request PWD/SC Discount
+                </button>
+                <div class="cash-modal-discount-preview" id="gcash-discount-preview" hidden></div>
+                <label class="cash-modal-field">
+                    <span class="cash-modal-field-label">GCash reference no. <span class="cash-modal-field-required" aria-hidden="true">*</span></span>
+                    <input id="gcash-ref-input" class="gcash-ref-input cash-modal-input" type="text" placeholder="Enter reference number" inputmode="numeric" autocomplete="off" required aria-required="true">
+                </label>
+            </div>
             <div class="cash-modal-actions">
-                <button id="gcash-modal-cancel" class="cash-modal-cancel-btn" type="button">CANCEL</button>
-                <button id="gcash-modal-confirm" class="cash-modal-confirm-btn" type="button">CONFIRM</button>
+                <button id="gcash-modal-cancel" class="cash-modal-cancel-btn" type="button">Cancel</button>
+                <button id="gcash-modal-confirm" class="cash-modal-confirm-btn" type="button">Confirm</button>
             </div>
         </div>
     </div>
@@ -804,6 +860,10 @@
             <h3 id="ingredient-modal-title" class="ingredient-modal-title">Add-ons</h3>
             <p id="ingredient-modal-sub" class="ingredient-modal-sub">Tap add-ons to select or deselect. Extra charges may apply at pickup.</p>
             <div id="ingredient-checklist" class="ingredient-checklist ingredient-checklist--addons" role="group" aria-label="Add-ons"></div>
+            <label class="ingredient-modal-note" for="ingredient-modal-note-input">
+                <span class="ingredient-modal-note-label">Note</span>
+                <input type="text" id="ingredient-modal-note-input" class="ingredient-modal-note-input" maxlength="160" placeholder="Note" autocomplete="off">
+            </label>
             <div class="ingredient-modal-actions">
                 <button id="ingredient-modal-cancel" class="ingredient-modal-btn ingredient-modal-btn--ghost">Cancel</button>
                 <button id="ingredient-modal-confirm" class="ingredient-modal-btn">Add to Order</button>
@@ -811,8 +871,26 @@
         </div>
     </div>
 
+    <!-- Payment success toast -->
+    <div class="payment-success-toast" id="payment-success-toast" aria-hidden="true" hidden>
+        <div class="payment-success-toast__card">
+            <div class="payment-success-toast__bar" aria-hidden="true">
+                <span class="payment-success-toast__bar-fill" id="payment-success-toast-bar"></span>
+            </div>
+            <div class="payment-success-toast__body">
+                <div class="payment-success-toast__check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none">
+                        <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M7 12.5l3.2 3.2L17 8.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <p class="payment-success-toast__title">Payment successful</p>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="customer_script.js?v=20260422g"></script>
+    <script src="customer_script.js?v=20260908f"></script>
 
 </body>
 </html>

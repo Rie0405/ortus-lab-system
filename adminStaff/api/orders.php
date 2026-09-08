@@ -165,6 +165,32 @@ function ensure_order_refund_reason_schema(PDO $pdo): void {
     );
 }
 
+function ensure_kitchen_returned_schema(PDO $pdo): void {
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM orders LIKE 'kitchen_returned'");
+    $stmt->execute();
+    if ($stmt->fetch()) {
+        return;
+    }
+
+    $pdo->exec(
+        "ALTER TABLE orders
+         ADD COLUMN kitchen_returned TINYINT(1) NOT NULL DEFAULT 0 AFTER status"
+    );
+}
+
+function ensure_kitchen_return_reason_schema(PDO $pdo): void {
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM orders LIKE 'kitchen_return_reason'");
+    $stmt->execute();
+    if ($stmt->fetch()) {
+        return;
+    }
+
+    $pdo->exec(
+        "ALTER TABLE orders
+         ADD COLUMN kitchen_return_reason VARCHAR(200) NULL DEFAULT NULL AFTER kitchen_returned"
+    );
+}
+
 // ─── GET  →  list orders (+ optional daily summary) ──────────────────────────
 if ($m === 'GET') {
     ensure_order_source_schema(db());
@@ -172,6 +198,8 @@ if ($m === 'GET') {
     ensure_order_customer_name_schema(db());
     ensure_order_refund_reason_schema(db());
     ensure_order_discount_schema(db());
+    ensure_kitchen_returned_schema(db());
+    ensure_kitchen_return_reason_schema(db());
     $type = $_GET['type'] ?? 'list';
     $date = $_GET['date'] ?? date('Y-m-d');
 
@@ -218,10 +246,11 @@ if ($m === 'GET') {
     $limit  = min((int)($_GET['limit'] ?? 50), 200);
     $offset = (int)($_GET['offset'] ?? 0);
 
-    $sql    = 'SELECT o.id, o.order_number, o.order_source, o.status, o.payment_method, o.order_type,
+    $sql    = 'SELECT o.id, o.order_number, o.order_source, o.status, o.kitchen_returned, o.kitchen_return_reason, o.payment_method, o.order_type,
                       o.staff_id,
-                      o.customer_name, o.refund_reason,
+                      o.customer_name, o.refund_reason, o.gcash_ref,
                       o.discount_type, o.discount_customer_name, o.discount_id_number,
+                      o.discount_requested, o.discount_request_type, o.discount_rate,
                       o.gross_amount, o.vat_exempt_amount, o.discount_amount, o.total_amount, o.created_at,
                       u.full_name AS staff_name
                  FROM orders o
@@ -246,6 +275,12 @@ if ($m === 'GET') {
     if (in_array($source, ['pos', 'kiosk'], true)) {
         $where[] = 'o.order_source = :src';
         $params[':src'] = $source;
+    }
+    $kitchenReturned = trim((string)($_GET['kitchen_returned'] ?? ''));
+    if ($kitchenReturned === '1') {
+        $where[] = 'o.kitchen_returned = 1';
+    } elseif ($kitchenReturned === '0') {
+        $where[] = 'o.kitchen_returned = 0';
     }
     if (!empty($where)) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -281,6 +316,8 @@ if ($m === 'GET') {
             $order['vat_exempt_amount'] = (float)$order['vat_exempt_amount'];
             $order['discount_amount'] = (float)$order['discount_amount'];
             $order['total_amount'] = (float)$order['total_amount'];
+            $order['discount_requested'] = !empty($order['discount_requested']) ? 1 : 0;
+            $order['kitchen_returned'] = !empty($order['kitchen_returned']) ? 1 : 0;
             $order['items'] = $itemMap[$order['id']] ?? [];
         }
         unset($order);
@@ -455,22 +492,256 @@ if ($m === 'POST') {
     }
 }
 
-// ─── PUT  →  update order status ─────────────────────────────────────────────
+// ─── PUT  →  update order status / pending order details ─────────────────────
 if ($m === 'PUT') {
     $b      = body();
     $id     = (int)($b['id'] ?? 0);
-    $status = $b['status'] ?? '';
+    $action = strtolower(trim((string)($b['action'] ?? '')));
 
     if (!$id) fail('Order ID required.');
-    if (!in_array($status, ['confirmed','served','voided'])) fail('Invalid status.');
 
     $pdo = db();
-    // Run schema guard outside explicit transaction. DDL (CREATE TABLE) can
-    // implicitly commit in MySQL and break transaction state.
+    ensure_order_discount_schema($pdo);
+    ensure_kitchen_returned_schema($pdo);
+    ensure_kitchen_return_reason_schema($pdo);
+
+    if ($action === 'return_to_queue') {
+        $returnReason = trim((string)($b['kitchen_return_reason'] ?? ''));
+        if ($returnReason === '') {
+            fail('Return reason is required.');
+        }
+        $prevStmt = $pdo->prepare('SELECT status, order_source FROM orders WHERE id = :id FOR UPDATE');
+        $pdo->beginTransaction();
+        try {
+            $prevStmt->execute([':id' => $id]);
+            $prev = $prevStmt->fetch();
+            if (!$prev) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                fail('Order not found.', 404);
+            }
+            if ((string)$prev['status'] !== 'confirmed') {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                fail('Only confirmed orders can be returned to the queue.');
+            }
+            $pdo->prepare('UPDATE orders SET status = :st, kitchen_returned = 1, kitchen_return_reason = :reason WHERE id = :id')
+                ->execute([
+                    ':st' => 'pending',
+                    ':reason' => substr($returnReason, 0, 200),
+                    ':id' => $id,
+                ]);
+            $pdo->commit();
+            publish_realtime_event('order_status_changed', [
+                'order_id' => $id,
+                'order_source' => strtolower((string)($prev['order_source'] ?? '')),
+                'from_status' => 'confirmed',
+                'status' => 'pending',
+            ]);
+            ok(['message' => 'Order returned to queue.']);
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            fail('Failed to return order: ' . $e->getMessage(), 500);
+        }
+    }
+
+    if ($action === 'discount' || $action === 'edit' || $action === 'update_cart') {
+        $prevStmt = $pdo->prepare('SELECT status, gross_amount, order_source FROM orders WHERE id = :id FOR UPDATE');
+        $pdo->beginTransaction();
+        try {
+            $prevStmt->execute([':id' => $id]);
+            $prev = $prevStmt->fetch();
+            if (!$prev) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                fail('Order not found.', 404);
+            }
+            if ((string)$prev['status'] !== 'pending') {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                fail('Only pending orders can be updated.');
+            }
+
+            if ($action === 'update_cart') {
+                ensure_order_items_cost_schema($pdo);
+                $items = $b['items'] ?? [];
+                if (!is_array($items) || empty($items)) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    fail('Order must have at least one item.');
+                }
+
+                $grossAmount = 0;
+                $itemRows = [];
+                foreach ($items as $item) {
+                    $menuId = (int)($item['menu_item_id'] ?? 0);
+                    $qty = max(1, (int)($item['quantity'] ?? 1));
+                    $notes = trim((string)($item['notes'] ?? ''));
+                    if (!$menuId) {
+                        if ($pdo->inTransaction()) $pdo->rollBack();
+                        fail('Invalid menu item in cart.');
+                    }
+
+                    $priceRow = $pdo->prepare('SELECT price, description FROM menu_items WHERE id = :id AND is_available = 1');
+                    $priceRow->execute([':id' => $menuId]);
+                    $row = $priceRow->fetch();
+                    if (!$row) {
+                        if ($pdo->inTransaction()) $pdo->rollBack();
+                        fail("Menu item #$menuId not found or unavailable.");
+                    }
+                    $clientUnitPrice = isset($item['unit_price']) ? (float)$item['unit_price'] : null;
+                    $unitPrice = resolve_menu_item_unit_price($row, $notes, $clientUnitPrice);
+                    $subtotal = $unitPrice * $qty;
+                    $grossAmount += $subtotal;
+                    $itemRows[] = [$menuId, $qty, $unitPrice, $subtotal, $notes];
+                }
+
+                $discount = normalize_order_discount_payload($b['discount'] ?? null);
+                validate_order_discount_payload($discount);
+                $pricing = calculate_order_discount_breakdown($grossAmount, $discount);
+
+                $pdo->prepare('DELETE FROM order_items WHERE order_id = :id')->execute([':id' => $id]);
+
+                $insItem = $pdo->prepare(
+                    'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
+                     VALUES (:oid, :mid, :qty, :up, :sub, :unit_cost, :line_cost, :notes)'
+                );
+                foreach ($itemRows as [$mid, $qty, $up, $sub, $notes]) {
+                    $costSnapshot = snapshot_order_line_cost($pdo, (int)$mid, (int)$qty, $notes);
+                    $insItem->execute([
+                        ':oid'   => $id,
+                        ':mid'   => $mid,
+                        ':qty'   => $qty,
+                        ':up'    => $up,
+                        ':sub'   => $sub,
+                        ':unit_cost' => $costSnapshot['unit_cost'],
+                        ':line_cost' => $costSnapshot['line_cost'],
+                        ':notes' => $notes ?: null,
+                    ]);
+                }
+
+                $customerName = array_key_exists('customer_name', $b)
+                    ? trim((string)$b['customer_name'])
+                    : null;
+                $orderType = array_key_exists('order_type', $b)
+                    ? trim((string)$b['order_type'])
+                    : null;
+
+                $sets = [
+                    'discount_type = :dtype',
+                    'discount_customer_name = :dname',
+                    'discount_id_number = :did',
+                    'gross_amount = :gross',
+                    'vat_exempt_amount = :vat_exempt',
+                    'discount_amount = :discount_amount',
+                    'discount_rate = :drate',
+                    'total_amount = :total',
+                ];
+                $params = [
+                    ':dtype' => $pricing['discount_type'],
+                    ':dname' => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['customer_name'] : null,
+                    ':did'   => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['id_number'] : null,
+                    ':gross' => $pricing['gross_amount'],
+                    ':vat_exempt' => $pricing['vat_exempt_amount'],
+                    ':discount_amount' => $pricing['discount_amount'],
+                    ':drate' => $discount['type'] === 'custom' ? $discount['rate'] : null,
+                    ':total' => $pricing['total_amount'],
+                    ':id'    => $id,
+                ];
+                if ($customerName !== null) {
+                    $sets[] = 'customer_name = :cname';
+                    $params[':cname'] = $customerName !== '' ? substr($customerName, 0, 100) : null;
+                }
+                if ($orderType !== null) {
+                    $sets[] = 'order_type = :otype';
+                    $params[':otype'] = substr($orderType, 0, 60);
+                }
+                $confirmOrder = !empty($b['confirm']);
+                if ($confirmOrder) {
+                    $sets[] = 'status = :status';
+                    $sets[] = 'kitchen_returned = 0';
+                    $sets[] = 'kitchen_return_reason = NULL';
+                    $params[':status'] = 'confirmed';
+                }
+                $pdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);
+            } elseif ($action === 'discount') {
+                $discount = normalize_order_discount_payload($b['discount'] ?? null);
+                validate_order_discount_payload($discount);
+                $gross = round((float)($prev['gross_amount'] ?? 0), 2);
+                if ($gross <= 0) {
+                    $sumStmt = $pdo->prepare('SELECT COALESCE(SUM(subtotal), 0) FROM order_items WHERE order_id = :id');
+                    $sumStmt->execute([':id' => $id]);
+                    $gross = round((float)$sumStmt->fetchColumn(), 2);
+                }
+                $pricing = calculate_order_discount_breakdown($gross, $discount);
+                $pdo->prepare(
+                    'UPDATE orders SET discount_type = :dtype, discount_customer_name = :dname, discount_id_number = :did,
+                     gross_amount = :gross, vat_exempt_amount = :vat_exempt, discount_amount = :discount_amount,
+                     discount_rate = :drate, total_amount = :total,
+                     discount_requested = :dreq, discount_request_type = :dreqtype
+                     WHERE id = :id'
+                )->execute([
+                    ':dtype' => $pricing['discount_type'],
+                    ':dname' => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['customer_name'] : null,
+                    ':did'   => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['id_number'] : null,
+                    ':gross' => $pricing['gross_amount'],
+                    ':vat_exempt' => $pricing['vat_exempt_amount'],
+                    ':discount_amount' => $pricing['discount_amount'],
+                    ':drate' => $discount['type'] === 'custom' ? $discount['rate'] : null,
+                    ':total' => $pricing['total_amount'],
+                    ':dreq' => 0,
+                    ':dreqtype' => null,
+                    ':id'    => $id,
+                ]);
+            } else {
+                $customerName = array_key_exists('customer_name', $b)
+                    ? trim((string)$b['customer_name'])
+                    : null;
+                $orderType = array_key_exists('order_type', $b)
+                    ? trim((string)$b['order_type'])
+                    : null;
+                if ($customerName === null && $orderType === null) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    fail('Nothing to update.');
+                }
+                $sets = [];
+                $params = [':id' => $id];
+                if ($customerName !== null) {
+                    $sets[] = 'customer_name = :cname';
+                    $params[':cname'] = $customerName !== '' ? substr($customerName, 0, 100) : null;
+                }
+                if ($orderType !== null) {
+                    $sets[] = 'order_type = :otype';
+                    $params[':otype'] = substr($orderType, 0, 60);
+                }
+                $pdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);
+            }
+
+            $pdo->commit();
+            if ($action === 'update_cart' && !empty($b['confirm'])) {
+                publish_realtime_event('order_status_changed', [
+                    'order_id' => $id,
+                    'order_source' => strtolower((string)($prev['order_source'] ?? '')),
+                    'from_status' => 'pending',
+                    'status' => 'confirmed',
+                ]);
+            } else {
+                publish_realtime_event('order_updated', ['order_id' => $id, 'action' => $action]);
+            }
+            $msg = 'Order updated.';
+            if ($action === 'discount') $msg = 'Order discount updated.';
+            if ($action === 'update_cart') $msg = !empty($b['confirm']) ? 'Order confirmed.' : 'Order cart updated.';
+            ok(['message' => $msg]);
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            fail('Failed to update order: ' . $e->getMessage(), 500);
+        }
+    }
+
+    $status = $b['status'] ?? '';
+    if (!$status) fail('Invalid request.');
+    if (!in_array($status, ['confirmed','served','voided'])) fail('Invalid status.');
+
     ensure_inventory_schema($pdo);
     ensure_inventory_applicable_menu_schema_orders($pdo);
     ensure_inventory_applicable_menu_variant_schema_orders($pdo);
     ensure_order_refund_reason_schema($pdo);
+    ensure_kitchen_returned_schema($pdo);
     $pdo->beginTransaction();
     try {
         $prevStmt = $pdo->prepare('SELECT status, order_source FROM orders WHERE id = :id FOR UPDATE');
@@ -496,8 +767,13 @@ if ($m === 'PUT') {
             $pdo->prepare('UPDATE orders SET status = :st, refund_reason = :reason WHERE id = :id')
                 ->execute([':st' => $status, ':reason' => $refundReason, ':id' => $id]);
         } else {
-            $pdo->prepare('UPDATE orders SET status = :st WHERE id = :id')
-                ->execute([':st' => $status, ':id' => $id]);
+            if ($status === 'confirmed') {
+                $pdo->prepare('UPDATE orders SET status = :st, kitchen_returned = 0, kitchen_return_reason = NULL WHERE id = :id')
+                    ->execute([':st' => $status, ':id' => $id]);
+            } else {
+                $pdo->prepare('UPDATE orders SET status = :st WHERE id = :id')
+                    ->execute([':st' => $status, ':id' => $id]);
+            }
         }
 
         $pdo->commit();

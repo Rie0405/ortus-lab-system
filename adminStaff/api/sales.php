@@ -112,6 +112,7 @@ $listStmt = $pdo->prepare(
         o.discount_type,
         o.total_amount,
         o.payment_method,
+        o.gcash_ref,
         o.status,
         COALESCE(u.full_name, "Unknown") AS staff_name,
         COALESCE(

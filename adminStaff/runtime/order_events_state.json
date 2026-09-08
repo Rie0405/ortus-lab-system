@@ -1,1 +1,1 @@
-{"id":1786872479121,"type":"order_created","ts":"2026-08-16T09:27:59+00:00","payload":{"order_id":222,"order_number":"GC-F1BC99","order_source":"pos","status":"confirmed"}}
+{"id":1788859252018,"type":"order_status_changed","ts":"2026-09-08T09:20:52+00:00","payload":{"order_id":259,"order_source":"kiosk","from_status":"pending","status":"confirmed"}}

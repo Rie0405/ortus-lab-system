@@ -98,6 +98,7 @@
                     <span class="inv-filter-btn__label">Filters</span>
                     <span class="inv-filter-btn__summary" id="inventory-filter-summary">All Items</span>
                 </button>
+                <button type="button" class="btn inv-edit-history-btn" id="btn-inventory-edit-history">Inventory Edit History</button>
             </section>
 
             <div class="inv-filter-backdrop" id="inventory-filter-backdrop" aria-hidden="true">
@@ -371,6 +372,41 @@
             </div>
         </div>
 
+        <div class="inv-modal-backdrop" id="inventory-edit-history-backdrop" aria-hidden="true">
+            <div class="inv-modal inv-modal--wide" role="dialog" aria-modal="true" aria-labelledby="inventory-edit-history-title">
+                <header class="inv-modal__header">
+                    <div>
+                        <p class="inv-edit-history__eyebrow">Shift End Summary</p>
+                        <h2 id="inventory-edit-history-title">Inventory Edit History</h2>
+                    </div>
+                    <button type="button" class="inv-modal__close" id="inventory-edit-history-close" aria-label="Close">×</button>
+                </header>
+                <div class="inv-modal__body inv-edit-history__body">
+                    <p class="app-modal__hint">Records of inventory stock changes made by staff during shift end summary.</p>
+                    <div class="inv-edit-history__table-wrap">
+                        <table class="inv-edit-history__table">
+                            <thead>
+                                <tr>
+                                    <th>Date / Time</th>
+                                    <th>Staff</th>
+                                    <th>Item</th>
+                                    <th>Old Stock</th>
+                                    <th>New Stock</th>
+                                    <th>Change</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-edit-history-tbody">
+                                <tr><td colspan="6" class="inv-edit-history__empty">Loading history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <footer class="inv-modal__footer">
+                    <button type="button" class="btn btn-primary" id="inventory-edit-history-done">Close</button>
+                </footer>
+            </div>
+        </div>
+
         <div class="inv-modal-backdrop" id="restock-notification-backdrop" aria-hidden="true">
             <div class="inv-modal" role="dialog" aria-modal="true" aria-labelledby="restock-notification-title">
                 <header class="inv-modal__header">
@@ -459,10 +495,15 @@
                             <span>Date Received</span>
                             <input type="date" id="receipt-expected-date">
                         </label>
-                        <label class="inv-field receipt-modal__supplier">
-                            <span>Supplier</span>
+                    </div>
+                    <div class="inv-field receipt-modal__supplier" id="receipt-supplier-wrap">
+                        <span>Supplier</span>
+                        <div class="receipt-supplier-row">
                             <input type="text" id="receipt-supplier" maxlength="140" placeholder="Supplier name">
-                        </label>
+                            <button type="button" class="btn btn-muted" id="receipt-supplier-save" title="Save supplier name">Save</button>
+                        </div>
+                        <div class="receipt-supplier-saved" id="receipt-supplier-saved" hidden></div>
+                        <p class="receipt-supplier-hint" id="receipt-supplier-hint">Save a name once, then click it next time.</p>
                     </div>
                     <div class="receipt-lines">
                         <div class="receipt-lines__head">
@@ -541,6 +582,11 @@
     (function () {
         var alertGrid = document.getElementById('inventory-alert-grid');
         var filterBtn = document.getElementById('btn-inventory-filter');
+        var editHistoryBtn = document.getElementById('btn-inventory-edit-history');
+        var editHistoryBackdrop = document.getElementById('inventory-edit-history-backdrop');
+        var editHistoryCloseBtn = document.getElementById('inventory-edit-history-close');
+        var editHistoryDoneBtn = document.getElementById('inventory-edit-history-done');
+        var editHistoryTbody = document.getElementById('inventory-edit-history-tbody');
         var filterSummary = document.getElementById('inventory-filter-summary');
         var filterBackdrop = document.getElementById('inventory-filter-backdrop');
         var filterCloseBtn = document.getElementById('inventory-filter-close');
@@ -631,6 +677,10 @@
         var receiptDate = document.getElementById('receipt-date');
         var receiptExpectedDate = document.getElementById('receipt-expected-date');
         var receiptSupplier = document.getElementById('receipt-supplier');
+        var receiptSupplierSaveBtn = document.getElementById('receipt-supplier-save');
+        var receiptSupplierSavedEl = document.getElementById('receipt-supplier-saved');
+        var receiptSupplierHint = document.getElementById('receipt-supplier-hint');
+        var savedSuppliers = [];
         var receiptLinesTitle = document.getElementById('receipt-lines-title');
         var receiptLinesRowHead = document.getElementById('receipt-lines-row-head');
         var receiptAddLineBtn = document.getElementById('receipt-add-line');
@@ -851,8 +901,13 @@
                 return 'Open item — set orders per stock item';
             }
             var left = Math.min(Math.round(ordersLeft), capacity);
+            // When multiple stock items are open, treat the extra open items as full capacity
+            // (they were just opened and not yet consumed). So total orders left becomes:
+            // left (remaining on 1st) + (openCount - 1) * capacity.
             if (openCount > 1) {
-                return left + ' of ' + capacity + ' on 1st item · ' + openCount + ' open ' + unit;
+                var totalLeft = left + (openCount - 1) * capacity;
+                var totalCap = openCount * capacity;
+                return totalLeft + ' of ' + totalCap + ' orders left';
             }
             return left + ' of ' + capacity + ' orders left';
         }
@@ -1155,6 +1210,11 @@
                     '<input type="number" class="receipt-stocks" min="0" step="1" value="0">' +
                     receiptUnitLabelFieldHtml('pcs') +
                     '<button type="button" class="receipt-line-remove">×</button>';
+                var unitEl = row.querySelector('.receipt-unit-label');
+                if (unitEl) {
+                    unitEl.disabled = true;
+                    unitEl.title = 'Unit is fixed from the registered inventory item';
+                }
                 return row;
             }
             row.innerHTML =
@@ -1202,34 +1262,208 @@
                 itemEl.value = prevValue;
             }
             syncReceiptUnitFieldFromRow(row);
+            syncReceiptSupplierFromSelectedItems();
+        }
+
+        function getReceiptLineMatchedItem(row) {
+            if (!row) return null;
+            var category = resolveLineCategory(row);
+            var itemEl = row.querySelector('.receipt-item-name');
+            var itemName = String(itemEl && itemEl.value || '').trim();
+            if (!itemName) return null;
+            return allItems.find(function (it) {
+                return String(it.category_name || '').trim() === category &&
+                    String(it.name || '').trim() === itemName;
+            }) || null;
+        }
+
+        function normalizeSupplierName(value) {
+            var supplier = String(value || '').trim().replace(/\s+/g, ' ');
+            if (!supplier) return '';
+            if (supplier.toLowerCase() === 'unassigned') return '';
+            if (supplier.toLowerCase().indexOf('restocked by ') === 0) return '';
+            return supplier;
+        }
+
+        function renderSavedSuppliers() {
+            if (!receiptSupplierSavedEl) return;
+            var activeName = normalizeSupplierName(receiptSupplier && receiptSupplier.value).toLowerCase();
+            if (!savedSuppliers.length) {
+                receiptSupplierSavedEl.hidden = true;
+                receiptSupplierSavedEl.innerHTML = '';
+                if (receiptSupplierHint) {
+                    receiptSupplierHint.textContent = 'Type a supplier name, then click Save to reuse it next time.';
+                }
+                return;
+            }
+            receiptSupplierSavedEl.hidden = false;
+            if (receiptSupplierHint) {
+                receiptSupplierHint.textContent = 'Click a saved supplier to use it, or Save a new name.';
+            }
+            receiptSupplierSavedEl.innerHTML = savedSuppliers.map(function (entry) {
+                var name = normalizeSupplierName(entry && entry.name);
+                if (!name) return '';
+                var isActive = name.toLowerCase() === activeName;
+                return (
+                    '<button type="button" class="receipt-supplier-chip' + (isActive ? ' is-active' : '') + '" data-supplier-pick="' + escAttr(name) + '">' +
+                        '<span>' + esc(name) + '</span>' +
+                        '<span class="receipt-supplier-chip__remove" data-supplier-remove="' + escAttr(String(entry.id || '')) + '" role="button" tabindex="0" aria-label="Remove ' + escAttr(name) + '">×</span>' +
+                    '</button>'
+                );
+            }).join('');
+        }
+
+        function setSavedSuppliers(list) {
+            savedSuppliers = (Array.isArray(list) ? list : []).map(function (entry) {
+                return {
+                    id: parseInt(entry && entry.id, 10) || 0,
+                    name: normalizeSupplierName(entry && entry.name)
+                };
+            }).filter(function (entry) {
+                return entry.name !== '';
+            });
+            renderSavedSuppliers();
+        }
+
+        function loadSavedSuppliers() {
+            return fetch('api/suppliers.php', { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) return;
+                    setSavedSuppliers(d.suppliers || []);
+                })
+                .catch(function () { /* ignore */ });
+        }
+
+        function saveSupplierName(name, opts) {
+            opts = opts || {};
+            var supplierName = normalizeSupplierName(name);
+            if (!supplierName) {
+                if (!opts.silent) setReceiptError('Enter a supplier name to save.');
+                return Promise.resolve(false);
+            }
+            if (receiptSupplierSaveBtn) receiptSupplierSaveBtn.disabled = true;
+            return fetch('api/suppliers.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: supplierName })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        if (!opts.silent) setReceiptError((d && d.error) || 'Failed to save supplier.');
+                        return false;
+                    }
+                    setSavedSuppliers(d.suppliers || []);
+                    if (receiptSupplier) {
+                        receiptSupplier.value = supplierName;
+                        receiptSupplier.dataset.autofilled = '0';
+                    }
+                    renderSavedSuppliers();
+                    if (!opts.silent) setReceiptError('');
+                    return true;
+                })
+                .catch(function () {
+                    if (!opts.silent) setReceiptError('Network error while saving supplier.');
+                    return false;
+                })
+                .finally(function () {
+                    if (receiptSupplierSaveBtn) receiptSupplierSaveBtn.disabled = false;
+                });
+        }
+
+        function removeSavedSupplier(id) {
+            var supplierId = parseInt(id, 10) || 0;
+            if (!supplierId) return;
+            fetch('api/suppliers.php', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: supplierId })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setReceiptError((d && d.error) || 'Failed to remove supplier.');
+                        return;
+                    }
+                    setSavedSuppliers(d.suppliers || []);
+                })
+                .catch(function () {
+                    setReceiptError('Network error while removing supplier.');
+                });
+        }
+
+        function applySavedSupplierName(name) {
+            if (!receiptSupplier) return;
+            var supplierName = normalizeSupplierName(name);
+            if (!supplierName) return;
+            receiptSupplier.value = supplierName;
+            receiptSupplier.dataset.autofilled = '0';
+            renderSavedSuppliers();
+        }
+
+        function syncReceiptSupplierFromSelectedItems() {
+            if (!receiptSupplier || receiptModalMode !== 'add_receipt' || !receiptLinesBody) return;
+            var found = '';
+            receiptLinesBody.querySelectorAll('.receipt-lines__row').forEach(function (row) {
+                if (found) return;
+                var match = getReceiptLineMatchedItem(row);
+                var supplier = normalizeSupplierName(match && match.supplier);
+                if (supplier) found = supplier;
+            });
+            var current = String(receiptSupplier.value || '').trim();
+            var wasAutofilled = receiptSupplier.dataset.autofilled === '1';
+            if (found && (!current || wasAutofilled)) {
+                receiptSupplier.value = found;
+                receiptSupplier.dataset.autofilled = '1';
+            }
+        }
+
+        function resolveSupplierFromSelectedItems() {
+            if (!receiptLinesBody) return '';
+            var found = '';
+            receiptLinesBody.querySelectorAll('.receipt-lines__row').forEach(function (row) {
+                if (found) return;
+                var match = getReceiptLineMatchedItem(row);
+                var supplier = normalizeSupplierName(match && match.supplier);
+                if (supplier) found = supplier;
+            });
+            return found;
         }
 
         function syncReceiptUnitFieldFromRow(row) {
             if (!row || receiptModalMode !== 'add_receipt') return;
             var unitEl = row.querySelector('.receipt-unit-label');
             if (!unitEl) return;
+            unitEl.disabled = true;
+            unitEl.title = 'Unit is fixed from the registered inventory item';
+
             var category = resolveLineCategory(row);
-            // Kitchen defaults to pcs (still editable). Bar uses the item's unit when available.
-            if (isKitchenCategory(category)) {
-                unitEl.value = 'pcs';
-                return;
-            }
             var itemEl = row.querySelector('.receipt-item-name');
             var itemName = String(itemEl && itemEl.value || '').trim();
             if (!itemName) {
-                if (!unitEl.value) unitEl.value = 'pcs';
+                unitEl.value = 'pcs';
                 return;
             }
             var match = allItems.find(function (it) {
                 return String(it.category_name || '').trim() === category &&
                     String(it.name || '').trim() === itemName;
             });
-            if (!match) return;
+            if (!match) {
+                unitEl.value = 'pcs';
+                return;
+            }
             var unit = normalizeDisplayUnit(match.per_stock_unit || 'pcs');
             var hasOption = Array.prototype.some.call(unitEl.options, function (opt) {
                 return String(opt.value) === unit;
             });
-            unitEl.value = hasOption ? unit : 'pcs';
+            if (!hasOption) {
+                var extra = document.createElement('option');
+                extra.value = unit;
+                extra.textContent = unit;
+                unitEl.appendChild(extra);
+            }
+            unitEl.value = unit;
         }
 
         function addReceiptLine() {
@@ -1263,7 +1497,10 @@
             setReceiptLayoutByMode();
             if (receiptDate) receiptDate.value = getTodayIsoDate();
             if (receiptExpectedDate) receiptExpectedDate.value = getTodayIsoDate();
-            if (receiptSupplier) receiptSupplier.value = '';
+            if (receiptSupplier) {
+                receiptSupplier.value = '';
+                receiptSupplier.dataset.autofilled = '0';
+            }
             if (receiptLinesBody) {
                 receiptLinesBody.innerHTML = '';
                 addReceiptLine();
@@ -1274,6 +1511,7 @@
         function openReceiptModal(mode) {
             receiptModalMode = (mode === 'add_receipt') ? 'add_receipt' : 'register';
             resetReceiptModal();
+            loadSavedSuppliers();
             if (receiptModalTitle) {
                 receiptModalTitle.textContent = receiptModalMode === 'add_receipt'
                     ? 'ADD STOCK ENTRY'
@@ -1307,8 +1545,18 @@
                 var stockTypeEl = row.querySelector('.receipt-stock-type');
                 var entryModeEl = row.querySelector('.receipt-entry-mode');
                 var categoryTypeEl = row.querySelector('.receipt-category-type');
-                var unitLabelEl = row.querySelector('.receipt-unit-label');
+                    var unitLabelEl = row.querySelector('.receipt-unit-label');
                 var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
+                var resolvedUnit = (unitLabelEl && unitLabelEl.value) || 'pcs';
+                if (receiptModalMode === 'add_receipt') {
+                    var matchItem = allItems.find(function (it) {
+                        return String(it.category_name || '').trim() === lineType &&
+                            String(it.name || '').trim() === (itemNameEl && itemNameEl.value || '').trim();
+                    });
+                    if (matchItem) {
+                        resolvedUnit = normalizeDisplayUnit(matchItem.per_stock_unit || 'pcs');
+                    }
+                }
                 var line = {
                     line_type: lineType,
                     item_name: (itemNameEl && itemNameEl.value || '').trim(),
@@ -1319,14 +1567,17 @@
                     category_type: (categoryTypeEl && categoryTypeEl.value) || 'main',
                     stock_status: 'good',
                     per_stock_amount: 1,
-                    unit: (unitLabelEl && unitLabelEl.value) || 'pcs',
+                    unit: resolvedUnit,
                     unit_cost: 0,
                     total_cost: 0
                 };
                 if (!line.item_name) return;
                 lines.push(line);
             });
-            var supplierName = (receiptSupplier && receiptSupplier.value || '').trim();
+            var supplierName = normalizeSupplierName(receiptSupplier && receiptSupplier.value);
+            if (!supplierName && receiptModalMode === 'add_receipt') {
+                supplierName = resolveSupplierFromSelectedItems();
+            }
             if (!supplierName && receiptModalMode !== 'add_receipt') {
                 supplierName = 'Unassigned';
             }
@@ -1387,6 +1638,9 @@
                         alert('Inventory item(s) registered' + (parts.length ? ' (' + parts.join(', ') + ')' : '') + '.');
                     } else {
                         alert('Stock entry saved. Entry #' + d.receipt_id);
+                    }
+                    if (payload.supplier) {
+                        saveSupplierName(payload.supplier, { silent: true });
                     }
                     loadInventory();
                 })
@@ -1900,6 +2154,72 @@
             filterBackdrop.classList.add('is-visible');
             filterBackdrop.setAttribute('aria-hidden', 'false');
             if (filterBtn) filterBtn.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeInventoryEditHistoryModal() {
+            if (!editHistoryBackdrop) return;
+            editHistoryBackdrop.classList.remove('is-visible');
+            editHistoryBackdrop.setAttribute('aria-hidden', 'true');
+        }
+
+        function formatEditHistoryDate(value) {
+            var dt = new Date(value || '');
+            if (isNaN(dt.getTime())) return '—';
+            return dt.toLocaleString('en-PH', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function renderInventoryEditHistory(entries) {
+            if (!editHistoryTbody) return;
+            var rows = entries || [];
+            if (!rows.length) {
+                editHistoryTbody.innerHTML = '<tr><td colspan="6" class="inv-edit-history__empty">No shift end inventory edits recorded yet.</td></tr>';
+                return;
+            }
+            editHistoryTbody.innerHTML = rows.map(function (entry) {
+                var oldStock = parseInt(entry.old_stock_units, 10) || 0;
+                var newStock = parseInt(entry.new_stock_units, 10) || 0;
+                var delta = newStock - oldStock;
+                var deltaLabel = (delta > 0 ? '+' : '') + String(delta);
+                var deltaClass = delta > 0 ? 'inv-edit-history__delta--up' : (delta < 0 ? 'inv-edit-history__delta--down' : 'inv-edit-history__delta--same');
+                return '<tr>' +
+                    '<td>' + esc(formatEditHistoryDate(entry.created_at)) + '</td>' +
+                    '<td><strong>' + esc(entry.staff_name || 'Unknown Staff') + '</strong></td>' +
+                    '<td>' + esc(entry.item_name || 'Unknown Item') + '</td>' +
+                    '<td>' + esc(String(oldStock)) + '</td>' +
+                    '<td>' + esc(String(newStock)) + '</td>' +
+                    '<td><span class="inv-edit-history__delta ' + deltaClass + '">' + esc(deltaLabel) + '</span></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function loadInventoryEditHistory() {
+            if (!editHistoryTbody) return;
+            editHistoryTbody.innerHTML = '<tr><td colspan="6" class="inv-edit-history__empty">Loading history...</td></tr>';
+            fetch('api/inventory.php?edit_history=1&limit=100&_=' + Date.now(), { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        editHistoryTbody.innerHTML = '<tr><td colspan="6" class="inv-edit-history__empty">Could not load edit history.</td></tr>';
+                        return;
+                    }
+                    renderInventoryEditHistory(d.entries || []);
+                })
+                .catch(function () {
+                    editHistoryTbody.innerHTML = '<tr><td colspan="6" class="inv-edit-history__empty">Network error while loading edit history.</td></tr>';
+                });
+        }
+
+        function openInventoryEditHistoryModal() {
+            if (!editHistoryBackdrop) return;
+            editHistoryBackdrop.classList.add('is-visible');
+            editHistoryBackdrop.setAttribute('aria-hidden', 'false');
+            loadInventoryEditHistory();
         }
 
         function closeInventoryFilterPopover() {
@@ -2936,6 +3256,33 @@
                 .catch(function (e) { console.warn('Inventory unavailable:', e.message); });
         }
 
+        function isInventoryBusyForAutoRefresh() {
+            // Avoid interrupting the user while editing/opening modals.
+            var activeBackdropIds = [
+                'inventory-modal-backdrop',
+                'inventory-filter-backdrop',
+                'inventory-edit-history-backdrop',
+                'restock-notification-backdrop',
+                'open-stock-used-backdrop',
+                'orders-per-box-modal',
+                'receipt-modal-backdrop',
+                'receipt-summary-backdrop',
+                'receipt-detail-backdrop'
+            ];
+            for (var i = 0; i < activeBackdropIds.length; i += 1) {
+                var el = document.getElementById(activeBackdropIds[i]);
+                if (el && el.classList && el.classList.contains('is-visible')) return true;
+            }
+            return !!editingId;
+        }
+
+        function refreshInventoryDataIfIdle() {
+            if (document.hidden) return;
+            if (isInventoryBusyForAutoRefresh()) return;
+            loadInventory();
+            loadStockMovement();
+        }
+
         if (tableWrap) tableWrap.addEventListener('click', handleRowAction);
         if (manualTableWrap) {
             manualTableWrap.addEventListener('click', function (e) {
@@ -2970,6 +3317,14 @@
             });
         }
         if (filterBtn) filterBtn.addEventListener('click', openInventoryFilterPopover);
+        if (editHistoryBtn) editHistoryBtn.addEventListener('click', openInventoryEditHistoryModal);
+        if (editHistoryCloseBtn) editHistoryCloseBtn.addEventListener('click', closeInventoryEditHistoryModal);
+        if (editHistoryDoneBtn) editHistoryDoneBtn.addEventListener('click', closeInventoryEditHistoryModal);
+        if (editHistoryBackdrop) {
+            editHistoryBackdrop.addEventListener('click', function (e) {
+                if (e.target === editHistoryBackdrop) closeInventoryEditHistoryModal();
+            });
+        }
         if (filterCloseBtn) filterCloseBtn.addEventListener('click', closeInventoryFilterPopover);
         if (filterDoneBtn) filterDoneBtn.addEventListener('click', closeInventoryFilterPopover);
         if (filterResetBtn) filterResetBtn.addEventListener('click', resetInventoryFilters);
@@ -3030,7 +3385,9 @@
                 }
                 var itemEl = e.target.closest('.receipt-item-name');
                 if (itemEl) {
-                    syncReceiptUnitFieldFromRow(itemEl.closest('.receipt-lines__row'));
+                    var itemRow = itemEl.closest('.receipt-lines__row');
+                    syncReceiptUnitFieldFromRow(itemRow);
+                    syncReceiptSupplierFromSelectedItems();
                 }
             });
             receiptLinesBody.addEventListener('click', function (e) {
@@ -3043,6 +3400,33 @@
                 }
                 var row = removeBtn.closest('.receipt-lines__row');
                 if (row) row.remove();
+                syncReceiptSupplierFromSelectedItems();
+            });
+        }
+        if (receiptSupplier) {
+            receiptSupplier.addEventListener('input', function () {
+                receiptSupplier.dataset.autofilled = '0';
+                renderSavedSuppliers();
+            });
+        }
+        if (receiptSupplierSaveBtn) {
+            receiptSupplierSaveBtn.addEventListener('click', function () {
+                saveSupplierName(receiptSupplier && receiptSupplier.value);
+            });
+        }
+        if (receiptSupplierSavedEl) {
+            receiptSupplierSavedEl.addEventListener('click', function (e) {
+                var removeEl = e.target.closest('[data-supplier-remove]');
+                if (removeEl) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeSavedSupplier(removeEl.getAttribute('data-supplier-remove'));
+                    return;
+                }
+                var pickEl = e.target.closest('[data-supplier-pick]');
+                if (pickEl) {
+                    applySavedSupplierName(pickEl.getAttribute('data-supplier-pick'));
+                }
             });
         }
         if (receiptAddLineBtn) receiptAddLineBtn.addEventListener('click', addReceiptLine);
@@ -3181,6 +3565,12 @@
 
         loadInventory();
         loadStockMovement();
+        loadSavedSuppliers();
+        window.setInterval(refreshInventoryDataIfIdle, 10000);
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) refreshInventoryDataIfIdle();
+        });
+        window.addEventListener('focus', refreshInventoryDataIfIdle);
         if (movementSourceTabs) {
             movementSourceTabs.addEventListener('click', function (e) {
                 var btn = e.target && e.target.closest ? e.target.closest('[data-movement-source]') : null;

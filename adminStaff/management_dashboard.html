@@ -55,15 +55,10 @@
                     <p class="mgmt-shift-filter-label">Login shift dates</p>
                     <span class="mgmt-shift-filter-count" id="mgmt-shift-filter-count" hidden></span>
                 </div>
-                <div class="mgmt-shift-filter-scroll" id="mgmt-shift-filter-scroll">
-                    <div class="mgmt-filter-row" id="mgmt-shift-filter-row">
-                        <p class="mgmt-filter-empty" id="mgmt-shift-filter-empty">Select a cashier to view login shifts.</p>
-                    </div>
-                </div>
-                <p class="mgmt-shift-filter-hint is-hidden" id="mgmt-shift-filter-hint">Scroll for older login dates.</p>
-                <label class="mgmt-shift-filter-picker is-hidden" id="mgmt-shift-filter-picker-wrap" for="mgmt-shift-filter-picker">
-                    <span>Jump to shift</span>
-                    <select id="mgmt-shift-filter-picker" aria-label="Jump to login shift date"></select>
+                <label class="mgmt-shift-filter-picker" id="mgmt-shift-filter-picker-wrap" for="mgmt-shift-filter-picker">
+                    <select id="mgmt-shift-filter-picker" aria-label="Login shift date">
+                        <option value="">Select a cashier to view login shifts</option>
+                    </select>
                 </label>
             </section>
 
@@ -286,13 +281,9 @@
         var staffShifts = [];
         var selectedShiftDate = '';
         var shiftOrdersCache = [];
-        var shiftFilterRow = document.getElementById('mgmt-shift-filter-row');
-        var shiftFilterScroll = document.getElementById('mgmt-shift-filter-scroll');
         var shiftFilterCount = document.getElementById('mgmt-shift-filter-count');
-        var shiftFilterHint = document.getElementById('mgmt-shift-filter-hint');
         var shiftFilterPickerWrap = document.getElementById('mgmt-shift-filter-picker-wrap');
         var shiftFilterPicker = document.getElementById('mgmt-shift-filter-picker');
-        var SHIFT_CHIP_PICKER_THRESHOLD = 10;
         var staffBriefText = document.getElementById('mgmt-staff-brief-text');
         var staffBriefGrid = document.getElementById('mgmt-staff-brief-grid');
         var staffBriefSub = document.getElementById('mgmt-staff-brief-sub');
@@ -348,64 +339,52 @@
         }
 
         function renderShiftFilters() {
-            if (!shiftFilterRow) return;
-            shiftFilterRow.innerHTML = '';
-            if (shiftFilterHint) shiftFilterHint.classList.add('is-hidden');
-            if (shiftFilterPickerWrap) shiftFilterPickerWrap.classList.add('is-hidden');
-            if (shiftFilterPicker) shiftFilterPicker.innerHTML = '';
+            if (!shiftFilterPicker) return;
+            shiftFilterPicker.innerHTML = '';
             if (shiftFilterCount) {
                 shiftFilterCount.hidden = true;
                 shiftFilterCount.textContent = '';
             }
+            if (shiftFilterPickerWrap) {
+                shiftFilterPickerWrap.classList.toggle('is-disabled', !cashierSelect || !cashierSelect.value);
+            }
 
             if (!cashierSelect || !cashierSelect.value) {
-                shiftFilterRow.innerHTML = '<p class="mgmt-filter-empty">Select a cashier to view login shifts.</p>';
+                var emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = 'Select a cashier to view login shifts';
+                shiftFilterPicker.appendChild(emptyOpt);
+                shiftFilterPicker.disabled = true;
                 return;
             }
             if (!staffShifts.length) {
-                shiftFilterRow.innerHTML = '<p class="mgmt-filter-empty">No login shifts yet for this cashier.</p>';
+                var noneOpt = document.createElement('option');
+                noneOpt.value = '';
+                noneOpt.textContent = 'No login shifts yet for this cashier';
+                shiftFilterPicker.appendChild(noneOpt);
+                shiftFilterPicker.disabled = true;
                 return;
             }
 
+            shiftFilterPicker.disabled = false;
             if (shiftFilterCount) {
                 shiftFilterCount.hidden = false;
                 shiftFilterCount.textContent = staffShifts.length + ' shift' + (staffShifts.length === 1 ? '' : 's');
             }
-            if (shiftFilterHint && staffShifts.length > 6) {
-                shiftFilterHint.classList.remove('is-hidden');
-            }
-            if (shiftFilterPickerWrap && shiftFilterPicker && staffShifts.length > SHIFT_CHIP_PICKER_THRESHOLD) {
-                shiftFilterPickerWrap.classList.remove('is-hidden');
-                staffShifts.forEach(function (shift) {
-                    var opt = document.createElement('option');
-                    opt.value = shift.shift_date;
-                    opt.textContent = formatShiftChipLabel(shift.shift_date);
-                    if (String(shift.shift_date) === String(selectedShiftDate)) opt.selected = true;
-                    shiftFilterPicker.appendChild(opt);
-                });
-            }
 
             staffShifts.forEach(function (shift) {
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'mgmt-filter-chip' +
-                    (String(shift.shift_date) === String(selectedShiftDate) ? ' mgmt-filter-chip--active' : '');
-                btn.textContent = formatShiftChipLabel(shift.shift_date);
-                btn.setAttribute('data-shift-date', shift.shift_date);
-                btn.addEventListener('click', function () {
-                    selectedShiftDate = String(shift.shift_date);
-                    renderShiftFilters();
-                    var user = findCashierById(cashierSelect.value);
-                    if (user) renderCashierForShift(user);
-                });
-                shiftFilterRow.appendChild(btn);
+                var opt = document.createElement('option');
+                opt.value = shift.shift_date;
+                opt.textContent = formatShiftChipLabel(shift.shift_date);
+                if (String(shift.shift_date) === String(selectedShiftDate)) opt.selected = true;
+                shiftFilterPicker.appendChild(opt);
             });
 
-            if (shiftFilterScroll && selectedShiftDate) {
-                var activeChip = shiftFilterRow.querySelector('.mgmt-filter-chip--active');
-                if (activeChip && typeof activeChip.scrollIntoView === 'function') {
-                    activeChip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                }
+            if (!selectedShiftDate && staffShifts.length) {
+                selectedShiftDate = String(staffShifts[0].shift_date);
+                shiftFilterPicker.value = selectedShiftDate;
+            } else if (selectedShiftDate) {
+                shiftFilterPicker.value = selectedShiftDate;
             }
         }
 

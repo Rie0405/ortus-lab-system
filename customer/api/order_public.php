@@ -54,10 +54,11 @@ if (!$orderType) fail('Order type is required.');
 
 if ($serviceType === 'remote') {
     if ($paymentMethod !== 'gcash') fail('Remote orders require GCash payment.');
-    if ($gcashRef === '') fail('GCash reference number is required for remote orders.');
 } else {
     if (!in_array($paymentMethod, ['cash', 'gcash'], true)) fail('Invalid payment method.');
-    // GCash reference is optional for onsite; staff may collect later
+}
+if ($paymentMethod === 'gcash' && $gcashRef === '') {
+    fail('GCash reference number is required.');
 }
 
 $pdo = db();
@@ -88,6 +89,23 @@ $pdo->beginTransaction();
 try {
     $orderNumber = 'CU-' . strtoupper(substr(uniqid(), -6));
     $discount = normalize_order_discount_payload($b['discount'] ?? null);
+    $discountRequested = !empty($b['discount_requested']);
+    $discountRequestType = strtolower(trim((string)($b['discount_request_type'] ?? '')));
+    if (!in_array($discountRequestType, ['senior', 'pwd'], true)) {
+        $discountRequestType = '';
+    }
+    if ($discountRequested && $discountRequestType === '') {
+        $discountRequestType = 'senior';
+    }
+    // Customer PWD/SC request is applied immediately (no staff confirm step).
+    if ($discountRequested && in_array($discountRequestType, ['senior', 'pwd'], true) && ($discount['type'] ?? 'none') === 'none') {
+        $discount = [
+            'type' => $discountRequestType,
+            'rate' => 0.0,
+            'customer_name' => $customerName !== '' ? $customerName : 'Customer',
+            'id_number' => 'KIOSK-REQUEST',
+        ];
+    }
 
     $grossAmount = 0.0;
     $itemRows = [];
@@ -161,6 +179,10 @@ try {
                 $notesParts[] = 'Add-ons: ' . implode(', ', $addonLines);
             }
         }
+        $itemNote = trim((string)($item['note'] ?? ''));
+        if ($itemNote !== '') {
+            $notesParts[] = 'Note: ' . mb_substr($itemNote, 0, 160);
+        }
         $notes = implode(' | ', $notesParts);
 
         $itemRows[] = [$menuId, $qty, $unitPrice, $subtotal, $notes];
@@ -169,12 +191,15 @@ try {
     validate_order_discount_payload($discount);
     $pricing = calculate_order_discount_breakdown($grossAmount, $discount);
     $total = (float)$pricing['total_amount'];
+    $discountAlreadyApplied = ($pricing['discount_type'] ?? 'none') !== 'none';
 
     $ins = $pdo->prepare(
         'INSERT INTO orders
             (order_number, receipt_token, order_source, staff_id, status, payment_method, order_type, customer_name, discount_type, discount_customer_name,
-             discount_id_number, gross_amount, vat_exempt_amount, discount_amount, total_amount, amount_received, change_due, gcash_ref)
-         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :cname, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref)'
+             discount_id_number, gross_amount, vat_exempt_amount, discount_amount, total_amount, amount_received, change_due, gcash_ref,
+             discount_requested, discount_request_type)
+         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :cname, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref,
+             :dreq, :dreqtype)'
     );
     $ins->execute([
         ':num' => $orderNumber,
@@ -191,6 +216,9 @@ try {
         ':discount_amount' => $pricing['discount_amount'],
         ':total' => $total,
         ':ref' => ($gcashRef !== '' ? $gcashRef : null),
+        // Already applied at create — no staff confirmation queue.
+        ':dreq' => 0,
+        ':dreqtype' => ($discountRequested && $discountAlreadyApplied) ? $discountRequestType : null,
     ]);
     $orderId = (int)$pdo->lastInsertId();
 

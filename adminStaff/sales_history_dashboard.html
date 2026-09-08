@@ -727,6 +727,13 @@
             renderSalesReportPagination(rows.length, totalPages);
         }
 
+        function formatPaymentCell(order) {
+            var pm = String(order.payment_method || 'cash').toLowerCase();
+            if (pm !== 'gcash') return (order.payment_method || 'cash').toUpperCase();
+            var ref = String(order.gcash_ref || '').trim();
+            return ref ? ('GCASH · Ref ' + ref) : 'GCASH';
+        }
+
         function renderRows() {
             if (!tableWrap) return;
             tableWrap.querySelectorAll('.table-row').forEach(function (r) { r.remove(); });
@@ -742,7 +749,7 @@
                     '<div>' + esc(o.staff_name) + '</div>' +
                     '<div>' + esc(shortItems(o.items_sold)) + '</div>' +
                     '<div class="amount">' + peso(o.total_amount) + '</div>' +
-                    '<div>' + esc((o.payment_method || 'cash').toUpperCase()) + '</div>' +
+                    '<div>' + esc(formatPaymentCell(o)) + '</div>' +
                     '<div><span class="status ' + status.cls + '">' + status.label + '</span></div>' +
                     '<div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>';
                 tableWrap.appendChild(row);

@@ -42,6 +42,9 @@
                 </div>
                 <div class="heading-actions">
                     <button class="cta-btn"><img src="icons_admin/plus_icon.svg" alt=""> Create New Product</button>
+                    <button type="button" class="gcash-config-btn" id="btn-register-addon">
+                        <img src="icons_admin/plus_icon.svg" alt=""> Register Addon
+                    </button>
                     <button type="button" class="gcash-config-btn" id="btn-set-kiosk-gcash">
                         <img src="icons_admin/message_icon.svg" alt=""> Set Kiosk GCash
                     </button>
@@ -514,6 +517,52 @@
             </div>
         </div>
 
+        <!-- ── Register Addon Modal ───────────────────────────────── -->
+        <div class="gcash-config-backdrop" id="addon-register-backdrop" aria-hidden="true">
+            <div class="gcash-config-modal addon-register-modal" role="dialog" aria-modal="true" aria-labelledby="addon-register-title">
+                <header class="gcash-config-modal__header">
+                    <div class="gcash-config-modal__title-block">
+                        <p class="gcash-config-modal__eyebrow">MENU ADD-ONS</p>
+                        <h2 id="addon-register-title">REGISTER ADDON</h2>
+                    </div>
+                    <button type="button" class="gcash-config-modal__close" id="addon-register-close" aria-label="Close">×</button>
+                </header>
+
+                <div class="gcash-config-modal__body">
+                    <p id="addon-register-error" class="gcash-config-error" hidden></p>
+
+                    <div class="gcash-config-field">
+                        <label for="addon-register-name" class="gcash-config-label">ADDON NAME</label>
+                        <input id="addon-register-name" class="gcash-config-input" type="text" placeholder="e.g. Extra Cheese" maxlength="120" autocomplete="off">
+                    </div>
+
+                    <div class="gcash-config-field">
+                        <label for="addon-register-price" class="gcash-config-label">PRICE (₱)</label>
+                        <input id="addon-register-price" class="gcash-config-input" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal">
+                    </div>
+
+                    <div class="gcash-config-field">
+                        <span class="gcash-config-label">SHOW IN</span>
+                        <div class="addon-station-toggle" role="group" aria-label="Addon station">
+                            <button type="button" class="addon-station-btn addon-station-btn--active" data-station="bar" id="addon-station-bar">Bar</button>
+                            <button type="button" class="addon-station-btn" data-station="kitchen" id="addon-station-kitchen">Kitchen</button>
+                        </div>
+                        <p class="addon-station-hint">Bar addons appear on beverage items. Kitchen addons appear on food items.</p>
+                    </div>
+
+                    <div class="addon-register-list-wrap">
+                        <p class="gcash-config-label">REGISTERED ADDONS</p>
+                        <div id="addon-register-list" class="addon-register-list" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <footer class="gcash-config-modal__footer">
+                    <button type="button" class="btn btn-muted" id="addon-register-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="addon-register-save">Save Addon</button>
+                </footer>
+            </div>
+        </div>
+
         <!-- ── GCash Kiosk Config Modal ───────────────────────────── -->
         <div class="gcash-config-backdrop" id="gcash-config-backdrop" aria-hidden="true">
             <div class="gcash-config-modal" role="dialog" aria-modal="true" aria-labelledby="gcash-config-title">
@@ -530,6 +579,11 @@
                     <div class="gcash-config-field">
                         <label for="gcash-config-number" class="gcash-config-label">GCASH NUMBER</label>
                         <input id="gcash-config-number" class="gcash-config-input" type="text" placeholder="e.g. 09XXXXXXXXXX" autocomplete="off">
+                    </div>
+
+                    <div class="gcash-config-field">
+                        <label for="gcash-config-name" class="gcash-config-label">GCASH NAME</label>
+                        <input id="gcash-config-name" class="gcash-config-input" type="text" placeholder="e.g. Juan Dela Cruz" maxlength="160" autocomplete="off">
                     </div>
 
                     <div class="gcash-config-field">
@@ -562,6 +616,199 @@
         <script src="dashboard_script.js?v=20260616-1540"></script>
         <script>
         (function () {
+            var btnOpen = document.getElementById('btn-register-addon');
+            var backdrop = document.getElementById('addon-register-backdrop');
+            var closeBtn = document.getElementById('addon-register-close');
+            var cancelBtn = document.getElementById('addon-register-cancel');
+            var saveBtn = document.getElementById('addon-register-save');
+            var errEl = document.getElementById('addon-register-error');
+            var nameInput = document.getElementById('addon-register-name');
+            var priceInput = document.getElementById('addon-register-price');
+            var listEl = document.getElementById('addon-register-list');
+            var stationBtns = document.querySelectorAll('.addon-station-btn');
+            if (!btnOpen || !backdrop || !saveBtn || !nameInput || !listEl) return;
+
+            var mainCategories = [];
+            var addons = [];
+            var selectedStation = 'bar';
+
+            function setErr(msg) {
+                if (!errEl) return;
+                if (!msg) {
+                    errEl.hidden = true;
+                    errEl.textContent = '';
+                    return;
+                }
+                errEl.textContent = msg;
+                errEl.hidden = false;
+            }
+
+            function escapeHtml(str) {
+                return String(str || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function formatPeso(n) {
+                return '₱' + (Number(n) || 0).toFixed(2);
+            }
+
+            function stationIdFor(station) {
+                var want = String(station || '').toLowerCase();
+                var found = mainCategories.find(function (c) {
+                    return String(c.name || '').trim().toLowerCase() === want;
+                });
+                return found ? parseInt(found.id, 10) || 0 : 0;
+            }
+
+            function syncStationButtons() {
+                stationBtns.forEach(function (btn) {
+                    var active = btn.getAttribute('data-station') === selectedStation;
+                    btn.classList.toggle('addon-station-btn--active', active);
+                });
+            }
+
+            function renderList() {
+                if (!addons.length) {
+                    listEl.innerHTML = '<p class="addon-register-empty">No addons registered yet.</p>';
+                    return;
+                }
+                listEl.innerHTML = addons.map(function (a) {
+                    var stationLabel = a.station === 'bar' ? 'Bar' : 'Kitchen';
+                    return '' +
+                        '<article class="addon-register-item" data-addon-id="' + a.id + '">' +
+                            '<div class="addon-register-item__meta">' +
+                                '<strong class="addon-register-item__name">' + escapeHtml(a.name) + '</strong>' +
+                                '<span class="addon-register-item__station addon-register-item__station--' + escapeHtml(a.station) + '">' + stationLabel + '</span>' +
+                            '</div>' +
+                            '<div class="addon-register-item__right">' +
+                                '<span class="addon-register-item__price">' + formatPeso(a.price) + '</span>' +
+                                '<button type="button" class="addon-register-item__delete" data-delete-addon="' + a.id + '">Delete</button>' +
+                            '</div>' +
+                        '</article>';
+                }).join('');
+            }
+
+            function loadAddons() {
+                return fetch('api/addons.php', { method: 'GET', cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) {
+                            throw new Error((d && d.error) || 'Failed to load addons.');
+                        }
+                        mainCategories = d.main_categories || [];
+                        addons = d.addons || [];
+                        renderList();
+                    });
+            }
+
+            function openModal() {
+                setErr('');
+                nameInput.value = '';
+                if (priceInput) priceInput.value = '';
+                selectedStation = 'bar';
+                syncStationButtons();
+                backdrop.classList.add('is-visible');
+                backdrop.setAttribute('aria-hidden', 'false');
+                loadAddons().catch(function (err) {
+                    setErr(err.message || 'Failed to load addons.');
+                    renderList();
+                });
+                nameInput.focus();
+            }
+
+            function closeModal() {
+                backdrop.classList.remove('is-visible');
+                backdrop.setAttribute('aria-hidden', 'true');
+            }
+
+            stationBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    selectedStation = btn.getAttribute('data-station') === 'kitchen' ? 'kitchen' : 'bar';
+                    syncStationButtons();
+                });
+            });
+
+            listEl.addEventListener('click', function (e) {
+                var del = e.target.closest('[data-delete-addon]');
+                if (!del) return;
+                var id = parseInt(del.getAttribute('data-delete-addon'), 10);
+                if (!id) return;
+                if (!window.confirm('Remove this addon?')) return;
+                setErr('');
+                fetch('api/addons.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ id: id })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) {
+                            setErr((d && d.error) || 'Failed to delete addon.');
+                            return;
+                        }
+                        addons = d.addons || [];
+                        renderList();
+                    })
+                    .catch(function () {
+                        setErr('Failed to delete addon.');
+                    });
+            });
+
+            btnOpen.addEventListener('click', openModal);
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+            backdrop.addEventListener('click', function (e) {
+                if (e.target === backdrop) closeModal();
+            });
+
+            saveBtn.addEventListener('click', function () {
+                setErr('');
+                var name = String(nameInput.value || '').trim();
+                var price = priceInput ? parseFloat(priceInput.value) : 0;
+                if (!name) return setErr('Addon name is required.');
+                if (!Number.isFinite(price) || price < 0) price = 0;
+                var mainCategoryId = stationIdFor(selectedStation);
+                if (!mainCategoryId) {
+                    return setErr('Bar/Kitchen stations are missing. Create them under products first.');
+                }
+
+                saveBtn.disabled = true;
+                fetch('api/addons.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        name: name,
+                        price: price,
+                        main_category_id: mainCategoryId
+                    })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) {
+                            setErr((d && d.error) || 'Failed to save addon.');
+                            return;
+                        }
+                        nameInput.value = '';
+                        if (priceInput) priceInput.value = '';
+                        addons = d.addons || [];
+                        renderList();
+                    })
+                    .catch(function () {
+                        setErr('Failed to save addon.');
+                    })
+                    .finally(function () {
+                        saveBtn.disabled = false;
+                    });
+            });
+        })();
+        </script>
+        <script>
+        (function () {
             var btnSet = document.getElementById('btn-set-kiosk-gcash');
             var backdrop = document.getElementById('gcash-config-backdrop');
             var closeBtn = document.getElementById('gcash-config-close');
@@ -569,6 +816,7 @@
             var saveBtn = document.getElementById('gcash-config-save');
             var errEl = document.getElementById('gcash-config-error');
             var numberInput = document.getElementById('gcash-config-number');
+            var nameInput = document.getElementById('gcash-config-name');
             var qrFileInput = document.getElementById('gcash-config-qr-file');
             var previewImg = document.getElementById('gcash-config-preview-img');
             var previewPlaceholder = document.getElementById('gcash-config-preview-placeholder');
@@ -596,6 +844,7 @@
                     .then(function (d) {
                         if (!d || !d.success) return;
                         numberInput.value = String(d.gcash_number || '');
+                        if (nameInput) nameInput.value = String(d.gcash_name || '');
                         if (previewImg) {
                             var dataUrl = d.qr_data_url;
                             if (dataUrl) {
@@ -651,6 +900,7 @@
 
                 var fd = new FormData();
                 fd.append('gcash_number', gcashNumber);
+                if (nameInput) fd.append('gcash_name', String(nameInput.value || '').trim());
                 if (qrFileInput.files && qrFileInput.files[0]) {
                     fd.append('qr_image', qrFileInput.files[0]);
                 }

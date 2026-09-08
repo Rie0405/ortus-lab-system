@@ -20,6 +20,19 @@ function ensure_order_discount_schema(PDO $pdo): void
         }
         $pdo->exec($sql);
     }
+
+    $reqCols = [
+        'discount_requested' => "ALTER TABLE orders ADD COLUMN discount_requested TINYINT(1) NOT NULL DEFAULT 0 AFTER discount_rate",
+        'discount_request_type' => "ALTER TABLE orders ADD COLUMN discount_request_type VARCHAR(20) NULL DEFAULT NULL AFTER discount_requested",
+    ];
+    foreach ($reqCols as $column => $sql) {
+        $quotedColumn = $pdo->quote($column);
+        $stmt = $pdo->query("SHOW COLUMNS FROM orders LIKE {$quotedColumn}");
+        if ($stmt && $stmt->fetch()) {
+            continue;
+        }
+        $pdo->exec($sql);
+    }
 }
 
 function normalize_order_discount_payload($raw): array

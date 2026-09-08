@@ -135,27 +135,43 @@
 }
 
 .mgmt-shift-filter-picker {
-    display: grid;
-    gap: 6px;
-    max-width: 280px;
-}
-
-.mgmt-shift-filter-picker span {
-    color: #94a3b8;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    display: block;
+    max-width: 320px;
 }
 
 .mgmt-shift-filter-picker select {
+    width: 100%;
     border: 1px solid #3d3025;
-    background: #2a2118;
+    background-color: #2a2118;
     color: #e2e8f0;
-    border-radius: 10px;
-    padding: 10px 12px;
+    border-radius: 999px;
+    padding: 10px 36px 10px 14px;
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #f48c25 50%),
+        linear-gradient(135deg, #f48c25 50%, transparent 50%);
+    background-position:
+        calc(100% - 18px) calc(50% - 3px),
+        calc(100% - 12px) calc(50% - 3px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+}
+
+.mgmt-shift-filter-picker select:focus {
+    outline: none;
+    border-color: rgba(244, 140, 37, 0.55);
+    box-shadow: 0 0 0 3px rgba(244, 140, 37, 0.12);
+}
+
+.mgmt-shift-filter-picker select:disabled,
+.mgmt-shift-filter-picker.is-disabled select {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .mgmt-shift-filter-picker.is-hidden,

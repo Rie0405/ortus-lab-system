@@ -148,6 +148,49 @@ function ensure_inventory_schema(PDO $pdo): void {
     }
 }
 
+function ensure_inventory_stock_edit_history_schema(PDO $pdo): void {
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS inventory_stock_edit_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            inventory_item_id INT NOT NULL,
+            item_name VARCHAR(140) NOT NULL,
+            staff_id INT NULL,
+            staff_name VARCHAR(140) NOT NULL,
+            old_stock_units INT NOT NULL DEFAULT 0,
+            new_stock_units INT NOT NULL DEFAULT 0,
+            edit_source VARCHAR(40) NOT NULL DEFAULT \'shift_end_summary\',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_inv_stock_edit_created (created_at),
+            INDEX idx_inv_stock_edit_item (inventory_item_id),
+            INDEX idx_inv_stock_edit_staff (staff_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+}
+
+function log_inventory_stock_edit(PDO $pdo, array $data): void {
+    ensure_inventory_stock_edit_history_schema($pdo);
+    $oldStock = max(0, (int)($data['old_stock_units'] ?? 0));
+    $newStock = max(0, (int)($data['new_stock_units'] ?? 0));
+    if ($oldStock === $newStock) {
+        return;
+    }
+    $stmt = $pdo->prepare(
+        'INSERT INTO inventory_stock_edit_history
+            (inventory_item_id, item_name, staff_id, staff_name, old_stock_units, new_stock_units, edit_source)
+         VALUES
+            (:inventory_item_id, :item_name, :staff_id, :staff_name, :old_stock_units, :new_stock_units, :edit_source)'
+    );
+    $stmt->execute([
+        ':inventory_item_id' => (int)($data['inventory_item_id'] ?? 0),
+        ':item_name' => trim((string)($data['item_name'] ?? 'Unknown Item')),
+        ':staff_id' => isset($data['staff_id']) && (int)$data['staff_id'] > 0 ? (int)$data['staff_id'] : null,
+        ':staff_name' => trim((string)($data['staff_name'] ?? 'Unknown Staff')) ?: 'Unknown Staff',
+        ':old_stock_units' => $oldStock,
+        ':new_stock_units' => $newStock,
+        ':edit_source' => trim((string)($data['edit_source'] ?? 'shift_end_summary')) ?: 'shift_end_summary',
+    ]);
+}
+
 function ensure_inventory_settings_schema(PDO $pdo): void {
     $pdo->exec(
         'CREATE TABLE IF NOT EXISTS inventory_settings (
@@ -431,6 +474,22 @@ if ($method === 'PUT') {
     $id = (int)($b['id'] ?? 0);
     if ($id <= 0) fail('Inventory item ID is required.');
 
+    $pendingStockEditLog = null;
+    $editSource = strtolower(trim((string)($b['edit_source'] ?? '')));
+    if ($editSource === 'shift_end_summary' && array_key_exists('stock_units', $b)) {
+        $pendingStockEditLog = [
+            'inventory_item_id' => $id,
+            'item_name' => '',
+            'staff_id' => isset($b['staff_id']) && (int)$b['staff_id'] > 0 ? (int)$b['staff_id'] : null,
+            'staff_name' => trim((string)($b['staff_name'] ?? '')) ?: 'Unknown Staff',
+            'old_stock_units' => array_key_exists('old_stock_units', $b)
+                ? max(0, (int)$b['old_stock_units'])
+                : null,
+            'new_stock_units' => max(0, (int)$b['stock_units']),
+            'edit_source' => 'shift_end_summary',
+        ];
+    }
+
     $fields = [];
     $params = [':id' => $id];
 
@@ -491,7 +550,7 @@ if ($method === 'PUT') {
 
     if ($countFieldsTouched) {
         $curStmt = $pdo->prepare(
-            'SELECT stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, stock_type, category_name
+            'SELECT item_name, stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, stock_type, category_name
              FROM inventory_items
              WHERE id = :id
              LIMIT 1'
@@ -500,6 +559,13 @@ if ($method === 'PUT') {
         $cur = $curStmt->fetch(PDO::FETCH_ASSOC);
         if (!$cur) {
             fail('Inventory item not found.', 404);
+        }
+
+        if ($pendingStockEditLog) {
+            $pendingStockEditLog['item_name'] = trim((string)($cur['item_name'] ?? '')) ?: 'Unknown Item';
+            if ($pendingStockEditLog['old_stock_units'] === null) {
+                $pendingStockEditLog['old_stock_units'] = (int)($cur['stock_units'] ?? 0);
+            }
         }
 
         $mergedRow = array_merge($cur, $b);
@@ -562,6 +628,10 @@ if ($method === 'PUT') {
         $params[':stock_units'] = $reconciled['stock_units'];
         $params[':units_in_use'] = $reconciled['units_in_use'];
         $params[':open_items_count'] = $reconciled['open_items_count'];
+
+        if ($pendingStockEditLog) {
+            $pendingStockEditLog['new_stock_units'] = (int)$reconciled['stock_units'];
+        }
     }
 
     if (array_key_exists('per_stock_amount', $b)) {
@@ -690,8 +760,20 @@ if ($method === 'PUT') {
         $sql = 'UPDATE inventory_items SET ' . implode(', ', $fields) . ' WHERE id = :id';
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-
     }
+
+    if ($pendingStockEditLog) {
+        if ($pendingStockEditLog['item_name'] === '') {
+            $nameStmt = $pdo->prepare('SELECT item_name FROM inventory_items WHERE id = :id LIMIT 1');
+            $nameStmt->execute([':id' => $id]);
+            $pendingStockEditLog['item_name'] = trim((string)$nameStmt->fetchColumn()) ?: 'Unknown Item';
+        }
+        if ($pendingStockEditLog['old_stock_units'] === null) {
+            $pendingStockEditLog['old_stock_units'] = 0;
+        }
+        log_inventory_stock_edit($pdo, $pendingStockEditLog);
+    }
+
     ok(['message' => 'Inventory item updated.']);
 }
 
@@ -717,6 +799,46 @@ if (isset($_GET['movement']) && strtolower(trim((string)$_GET['movement'])) === 
       'movement_date' => $movementDate,
       'items' => fetch_inventory_movement_for_date($pdo, $movementDate),
   ]);
+}
+
+if (isset($_GET['edit_history']) && trim((string)$_GET['edit_history']) === '1') {
+    ensure_inventory_stock_edit_history_schema($pdo);
+    $limit = (int)($_GET['limit'] ?? 100);
+    if ($limit < 1) $limit = 1;
+    if ($limit > 200) $limit = 200;
+
+    $stmt = $pdo->prepare(
+        'SELECT
+            id,
+            inventory_item_id,
+            item_name,
+            staff_id,
+            staff_name,
+            old_stock_units,
+            new_stock_units,
+            edit_source,
+            created_at
+         FROM inventory_stock_edit_history
+         WHERE edit_source = :edit_source
+         ORDER BY created_at DESC, id DESC
+         LIMIT ' . $limit
+    );
+    $stmt->execute([':edit_source' => 'shift_end_summary']);
+    $entries = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $entries[] = [
+            'id' => (int)$row['id'],
+            'inventory_item_id' => (int)$row['inventory_item_id'],
+            'item_name' => (string)$row['item_name'],
+            'staff_id' => $row['staff_id'] !== null ? (int)$row['staff_id'] : null,
+            'staff_name' => (string)$row['staff_name'],
+            'old_stock_units' => (int)$row['old_stock_units'],
+            'new_stock_units' => (int)$row['new_stock_units'],
+            'edit_source' => (string)$row['edit_source'],
+            'created_at' => (string)$row['created_at'],
+        ];
+    }
+    ok(['entries' => $entries]);
 }
 
 // Stock opening is now manual via the "Open" button only.

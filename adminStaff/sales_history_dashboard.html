@@ -121,9 +121,6 @@
                                 <option value="all" selected>All Dates</option>
                             </select>
                         </label>
-                        <button type="button" class="export-btn js-sales-export-btn">
-                            <img src="icons_admin/list_icon.svg" alt=""> Export Excel
-                        </button>
                     </div>
                 </div>
                 <div class="sales-report-table-wrap">
@@ -809,14 +806,26 @@
             });
         }
 
+        function startOfWeekLocal(dateLike) {
+            var d = dateLike instanceof Date ? new Date(dateLike.getTime()) : new Date(dateLike);
+            if (isNaN(d.getTime())) d = new Date();
+            // Monday as week start (Mon-Sun).
+            var day = d.getDay();
+            var diff = day === 0 ? -6 : (1 - day);
+            d.setDate(d.getDate() + diff);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
         function buildSalesExportUrl() {
             var params = new URLSearchParams();
             var range = salesReportRange ? salesReportRange.value : 'all';
             if (range && range !== 'all') {
                 params.set('date', range);
             } else {
-                params.set('from', '2020-01-01');
-                params.set('to', localYmd(new Date()));
+                var today = new Date();
+                params.set('from', localYmd(startOfWeekLocal(today)));
+                params.set('to', localYmd(today));
             }
             return 'api/sales_export.php?' + params.toString();
         }

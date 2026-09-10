@@ -1,1 +1,1 @@
-{"id":1788859252018,"type":"order_status_changed","ts":"2026-09-08T09:20:52+00:00","payload":{"order_id":259,"order_source":"kiosk","from_status":"pending","status":"confirmed"}}
+{"id":1789046952112,"type":"order_created","ts":"2026-09-10T13:29:12+00:00","payload":{"order_id":267,"order_number":"GC-81A2B4","order_source":"pos","status":"confirmed"}}

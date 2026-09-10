@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../adminStaff/api/discounts.php';
 require_once __DIR__ . '/../../adminStaff/api/receipt_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/recipe_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/cashflow_helpers.php';
+require_once __DIR__ . '/../../adminStaff/api/menu_helpers.php';
 
 $m = method();
 if ($m !== 'POST') fail('Method not allowed.', 405);
@@ -116,20 +117,22 @@ try {
         $addons = $item['addons'] ?? [];
         $temperature = $item['temperature'] ?? null;
         if (!$menuId) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) $pdo->rollBack();
             fail('Invalid menu_item_id.');
         }
 
-        $priceRow = $pdo->prepare('SELECT price FROM menu_items WHERE id = :id AND is_available = 1');
+        $priceRow = $pdo->prepare(
+            'SELECT id, name, price, description, is_available
+               FROM menu_items
+              WHERE id = :id AND is_available = 1
+              LIMIT 1'
+        );
         $priceRow->execute([':id' => $menuId]);
-        $row = $priceRow->fetch();
+        $row = $priceRow->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) $pdo->rollBack();
             fail("Menu item #$menuId not found or unavailable.");
         }
-        $unitPrice = (float)$row['price'];
-        $subtotal = $unitPrice * $qty;
-        $grossAmount += $subtotal;
 
         $notesParts = [];
         $notesParts[] = 'Service: ' . $serviceType;
@@ -184,6 +187,11 @@ try {
             $notesParts[] = 'Note: ' . mb_substr($itemNote, 0, 160);
         }
         $notes = implode(' | ', $notesParts);
+
+        $clientUnitPrice = array_key_exists('unit_price', $item) ? (float)$item['unit_price'] : null;
+        $unitPrice = resolve_menu_item_unit_price($row, $notes, $clientUnitPrice);
+        $subtotal = $unitPrice * $qty;
+        $grossAmount += $subtotal;
 
         $itemRows[] = [$menuId, $qty, $unitPrice, $subtotal, $notes];
     }
@@ -259,7 +267,9 @@ try {
         'total' => $total,
     ], 201);
 } catch (Exception $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     fail('Failed to create order: ' . $e->getMessage(), 500);
 }
 

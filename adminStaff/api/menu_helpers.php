@@ -109,13 +109,12 @@ function ensure_subcategories_schema(PDO $pdo): void
 
     $drinksId = $pdo->query("SELECT id FROM categories WHERE LOWER(name) = 'drinks' LIMIT 1")->fetchColumn();
     if ($drinksId) {
+        // Hot/Cold are temperatures (serve_hot / serve_cold), not food-group subcategories.
         $drinkSubs = [
-            ['Hot', 1],
-            ['Cold', 2],
-            ['Coffee', 3],
-            ['Non-Coffee', 4],
-            ['Frappe', 5],
-            ['Refreshers', 6],
+            ['Coffee', 1],
+            ['Non-Coffee', 2],
+            ['Frappe', 3],
+            ['Refreshers', 4],
         ];
         $seed = $pdo->prepare(
             'INSERT IGNORE INTO subcategories (category_id, name, display_order, is_active)
@@ -126,6 +125,47 @@ function ensure_subcategories_schema(PDO $pdo): void
         }
 
         migrate_menu_bev_sections_to_subcategories($pdo, (int)$drinksId);
+    }
+
+    // Soft-remove legacy Hot/Cold subcategory rows (temperatures, not categories).
+    try {
+        $pdo->exec(
+            "UPDATE subcategories
+                SET is_active = 0
+              WHERE is_active = 1
+                AND LOWER(TRIM(name)) IN ('hot', 'cold')"
+        );
+    } catch (Throwable $e) {
+        // Ignore on restricted environments.
+    }
+
+    ensure_catalog_icon_columns($pdo);
+}
+
+function ensure_catalog_icon_columns(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $catHas = (bool)$pdo->query("SHOW COLUMNS FROM categories LIKE 'icon_url'")->fetch();
+    if (!$catHas) {
+        try {
+            $pdo->exec('ALTER TABLE categories ADD COLUMN icon_url VARCHAR(500) NULL DEFAULT NULL AFTER name');
+        } catch (Throwable $e) {
+            // Ignore migration issues on restricted environments.
+        }
+    }
+
+    $subHas = (bool)$pdo->query("SHOW COLUMNS FROM subcategories LIKE 'icon_url'")->fetch();
+    if (!$subHas) {
+        try {
+            $pdo->exec('ALTER TABLE subcategories ADD COLUMN icon_url VARCHAR(500) NULL DEFAULT NULL AFTER name');
+        } catch (Throwable $e) {
+            // Ignore migration issues on restricted environments.
+        }
     }
 }
 
@@ -183,13 +223,24 @@ function migrate_menu_bev_sections_to_subcategories(PDO $pdo, int $drinksCategor
 
 function fetch_active_subcategories(PDO $pdo): array
 {
-    return $pdo->query(
-        'SELECT s.id, s.category_id, c.name AS category_name, s.name, s.display_order
+    ensure_catalog_icon_columns($pdo);
+    $rows = $pdo->query(
+        'SELECT s.id, s.category_id, c.name AS category_name, s.name, s.icon_url, s.display_order
            FROM subcategories s
            JOIN categories c ON c.id = s.category_id
           WHERE s.is_active = 1 AND c.is_active = 1
           ORDER BY c.display_order, s.display_order, s.name'
     )->fetchAll();
+    foreach ($rows as &$row) {
+        $row['id'] = (int)$row['id'];
+        $row['category_id'] = (int)$row['category_id'];
+        $row['display_order'] = (int)$row['display_order'];
+        $row['icon_url'] = isset($row['icon_url']) && $row['icon_url'] !== null && $row['icon_url'] !== ''
+            ? (string)$row['icon_url']
+            : null;
+    }
+    unset($row);
+    return $rows;
 }
 
 function ensure_main_categories_schema(PDO $pdo): void
@@ -320,6 +371,9 @@ function cast_menu_item_row(array &$item): void
         $item['main_category_name'] = $item['main_category_name'] !== null
             ? (string)$item['main_category_name']
             : null;
+    }
+    if (array_key_exists('is_addon_card', $item)) {
+        $item['is_addon_card'] = !empty($item['is_addon_card']);
     }
 }
 

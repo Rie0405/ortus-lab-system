@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20260910-stocklog-total">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -522,6 +522,24 @@
                             <div id="receipt-lines-body"></div>
                         </div>
                     </div>
+                    <div class="inv-field receipt-modal__category-types" id="receipt-category-types-wrap">
+                        <span>Category Types</span>
+                        <div class="receipt-cat-type-select-wrap">
+                            <select id="receipt-category-type-select" aria-label="Category type"></select>
+                            <span class="receipt-cat-type-caret" aria-hidden="true">▾</span>
+                        </div>
+                        <button type="button" class="receipt-cat-type-link" id="receipt-category-type-toggle-new" aria-expanded="false">+ New category type</button>
+                        <div id="receipt-category-type-new-panel" class="receipt-cat-type-panel" hidden>
+                            <div class="receipt-cat-type-new-row">
+                                <input type="text" id="receipt-category-type-name" maxlength="80" placeholder="Category type name">
+                                <button type="button" class="btn btn-muted btn-compact" id="receipt-category-type-add">Add</button>
+                            </div>
+                        </div>
+                        <div class="receipt-cat-type-actions">
+                            <button type="button" class="receipt-cat-type-action receipt-cat-type-action--edit" id="receipt-category-type-rename">Edit</button>
+                            <button type="button" class="receipt-cat-type-action receipt-cat-type-action--delete" id="receipt-category-type-delete">Delete</button>
+                        </div>
+                    </div>
                 </div>
                 <footer class="receipt-modal__footer">
                     <button type="button" class="btn btn-muted" id="receipt-modal-cancel">Cancel</button>
@@ -538,9 +556,31 @@
                 </header>
                 <div class="receipt-summary-modal__body">
                     <p class="inv-modal__error" id="receipt-summary-error" hidden></p>
-                    <div class="receipt-summary-tabs" id="receipt-summary-tabs">
-                        <button type="button" class="receipt-summary-tab receipt-summary-tab--active" data-stock-log-tab="admin">Admin</button>
-                        <button type="button" class="receipt-summary-tab" data-stock-log-tab="staff">Staff</button>
+                    <div class="receipt-summary-toolbar">
+                        <div class="receipt-summary-tabs" id="receipt-summary-tabs">
+                            <button type="button" class="receipt-summary-tab receipt-summary-tab--active" data-stock-log-tab="admin">Admin</button>
+                            <button type="button" class="receipt-summary-tab" data-stock-log-tab="staff">Staff</button>
+                        </div>
+                        <button type="button" class="btn btn-muted btn-compact" id="receipt-summary-date-toggle" aria-expanded="false">Filter dates</button>
+                    </div>
+                    <div class="receipt-summary-calendar" id="receipt-summary-calendar" hidden>
+                        <div class="receipt-summary-calendar__head">
+                            <button type="button" class="receipt-summary-calendar__nav" id="receipt-summary-cal-prev" aria-label="Previous month">‹</button>
+                            <strong id="receipt-summary-cal-label">Month</strong>
+                            <button type="button" class="receipt-summary-calendar__nav" id="receipt-summary-cal-next" aria-label="Next month">›</button>
+                        </div>
+                        <div class="receipt-summary-calendar__weekdays" aria-hidden="true">
+                            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                        </div>
+                        <div class="receipt-summary-calendar__grid" id="receipt-summary-cal-grid"></div>
+                        <div class="receipt-summary-calendar__footer">
+                            <p class="receipt-summary-calendar__hint" id="receipt-summary-cal-hint">Default shows this week. Tap days to change.</p>
+                            <button type="button" class="btn btn-muted btn-compact" id="receipt-summary-cal-clear">This week</button>
+                        </div>
+                    </div>
+                    <div class="receipt-summary-totals" id="receipt-summary-totals" hidden>
+                        <span id="receipt-summary-totals-label">Listed costs</span>
+                        <strong id="receipt-summary-totals-amount">PHP 0.00</strong>
                     </div>
                     <div class="receipt-summary-list" id="receipt-summary-list"></div>
                 </div>
@@ -677,6 +717,7 @@
         var receiptDate = document.getElementById('receipt-date');
         var receiptExpectedDate = document.getElementById('receipt-expected-date');
         var receiptSupplier = document.getElementById('receipt-supplier');
+        var receiptSupplierWrap = document.getElementById('receipt-supplier-wrap');
         var receiptSupplierSaveBtn = document.getElementById('receipt-supplier-save');
         var receiptSupplierSavedEl = document.getElementById('receipt-supplier-saved');
         var receiptSupplierHint = document.getElementById('receipt-supplier-hint');
@@ -693,8 +734,23 @@
         var receiptSummaryError = document.getElementById('receipt-summary-error');
         var receiptSummaryList = document.getElementById('receipt-summary-list');
         var receiptSummaryTabs = document.getElementById('receipt-summary-tabs');
+        var receiptSummaryTotals = document.getElementById('receipt-summary-totals');
+        var receiptSummaryTotalsLabel = document.getElementById('receipt-summary-totals-label');
+        var receiptSummaryTotalsAmount = document.getElementById('receipt-summary-totals-amount');
+        var receiptSummaryDateToggle = document.getElementById('receipt-summary-date-toggle');
+        var receiptSummaryCalendar = document.getElementById('receipt-summary-calendar');
+        var receiptSummaryCalPrev = document.getElementById('receipt-summary-cal-prev');
+        var receiptSummaryCalNext = document.getElementById('receipt-summary-cal-next');
+        var receiptSummaryCalLabel = document.getElementById('receipt-summary-cal-label');
+        var receiptSummaryCalGrid = document.getElementById('receipt-summary-cal-grid');
+        var receiptSummaryCalHint = document.getElementById('receipt-summary-cal-hint');
+        var receiptSummaryCalClear = document.getElementById('receipt-summary-cal-clear');
         var stockLogTab = 'admin';
         var allReceiptSummaries = [];
+        var stockLogSelectedDates = {};
+        var stockLogCalendarMonth = new Date();
+        stockLogCalendarMonth.setDate(1);
+        stockLogCalendarMonth.setHours(0, 0, 0, 0);
         var receiptDetailBackdrop = document.getElementById('receipt-detail-backdrop');
         var receiptDetailClose = document.getElementById('receipt-detail-close');
         var receiptDetailDone = document.getElementById('receipt-detail-done');
@@ -714,18 +770,19 @@
         var openStockCurrentOpenCount = 0;
         var openStockQtyMax = 1;
         var REGISTER_CATEGORY_TYPES = [
-            { value: 'main', label: 'Main' },
-            { value: 'ice', label: 'Ice' },
-            { value: 'sauce', label: 'Sauce' },
-            { value: 'chocolate', label: 'Chocolate' },
-            { value: 'syrup', label: 'Syrup' },
-            { value: 'powder', label: 'Powder' },
-            { value: 'sinkers', label: 'Sinkers' },
-            { value: 'toppings', label: 'Toppings' },
-            { value: 'packaging', label: 'Packaging' },
-            { value: 'cashier_area', label: 'Cashier Area' }
+            { id: 0, value: 'main', label: 'Main' },
+            { id: 0, value: 'ice', label: 'Ice' },
+            { id: 0, value: 'sauce', label: 'Sauce' },
+            { id: 0, value: 'chocolate', label: 'Chocolate' },
+            { id: 0, value: 'syrup', label: 'Syrup' },
+            { id: 0, value: 'powder', label: 'Powder' },
+            { id: 0, value: 'sinkers', label: 'Sinkers' },
+            { id: 0, value: 'toppings', label: 'Toppings' },
+            { id: 0, value: 'packaging', label: 'Packaging' },
+            { id: 0, value: 'cashier_area', label: 'Cashier Area' }
         ];
         var REGISTER_LINE_GRID_REGISTER = 'minmax(90px, 0.95fr) minmax(110px, 1fr) minmax(130px, 1.35fr) minmax(80px, 0.85fr) minmax(110px, 1fr) minmax(100px, 0.95fr)';
+        var ADD_RECEIPT_LINE_GRID = 'minmax(90px, 1fr) minmax(140px, 1.6fr) 72px 90px 80px 34px';
         var REGISTER_UNIT_OPTIONS = [
             { value: 'pcs', label: 'pcs' },
             { value: 'g', label: 'g' },
@@ -753,6 +810,15 @@
         var lowStockFractionOptions = [75, 50, 25];
         var lastLowAlerts = [];
         var restockNotificationLastShownKey = 'restock_notification_last_shown_date';
+        var receiptCategoryTypesWrap = document.getElementById('receipt-category-types-wrap');
+        var receiptCategoryTypeSelect = document.getElementById('receipt-category-type-select');
+        var receiptCategoryTypeNameInput = document.getElementById('receipt-category-type-name');
+        var receiptCategoryTypeAddBtn = document.getElementById('receipt-category-type-add');
+        var receiptCategoryTypeRenameBtn = document.getElementById('receipt-category-type-rename');
+        var receiptCategoryTypeDeleteBtn = document.getElementById('receipt-category-type-delete');
+        var receiptCategoryTypeToggleNewBtn = document.getElementById('receipt-category-type-toggle-new');
+        var receiptCategoryTypeNewPanel = document.getElementById('receipt-category-type-new-panel');
+        var selectedCategoryTypeId = null;
 
         function esc(s) {
             return String(s || '')
@@ -1117,12 +1183,45 @@
             return '<select class="receipt-line-type">' + buildMainCategoryOptionsHtml(mainCategories[0] || 'Kitchen') + '</select>';
         }
 
+        function setRegisterCategoryTypes(list) {
+            var fallback = [
+                { id: 0, value: 'main', label: 'Main' },
+                { id: 0, value: 'ice', label: 'Ice' },
+                { id: 0, value: 'sauce', label: 'Sauce' },
+                { id: 0, value: 'chocolate', label: 'Chocolate' },
+                { id: 0, value: 'syrup', label: 'Syrup' },
+                { id: 0, value: 'powder', label: 'Powder' },
+                { id: 0, value: 'sinkers', label: 'Sinkers' },
+                { id: 0, value: 'toppings', label: 'Toppings' },
+                { id: 0, value: 'packaging', label: 'Packaging' },
+                { id: 0, value: 'cashier_area', label: 'Cashier Area' }
+            ];
+            var mapped = (Array.isArray(list) ? list : []).map(function (opt) {
+                var value = String(opt && (opt.value || opt.slug) || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                var label = String(opt && (opt.label || opt.name) || '').trim();
+                if (!value) return null;
+                if (!label) label = value.replace(/_/g, ' ').replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+                return {
+                    id: parseInt(opt && opt.id, 10) || 0,
+                    value: value,
+                    label: label
+                };
+            }).filter(Boolean);
+            REGISTER_CATEGORY_TYPES = mapped.length ? mapped : fallback;
+            renderManagedCategoryTypes();
+            refreshAllReceiptCategoryTypeSelects();
+        }
+
         function buildRegisterCategoryTypeOptionsHtml(selected) {
             var current = String(selected || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            return REGISTER_CATEGORY_TYPES.map(function (opt) {
+            var html = REGISTER_CATEGORY_TYPES.map(function (opt) {
                 var sel = opt.value === current ? ' selected' : '';
                 return '<option value="' + escAttr(opt.value) + '"' + sel + '>' + esc(opt.label) + '</option>';
             }).join('');
+            if (current && !REGISTER_CATEGORY_TYPES.some(function (opt) { return opt.value === current; })) {
+                html += '<option value="' + escAttr(current) + '" selected>' + esc(formatCategoryTypeLabel(current)) + '</option>';
+            }
+            return html;
         }
 
         function receiptCategoryTypeFieldHtml(selected) {
@@ -1146,23 +1245,38 @@
         function formatCategoryTypeLabel(type) {
             var key = String(type || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
             var match = REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.value === key; });
-            return match ? match.label : 'Main';
+            if (match) return match.label;
+            if (!key) return 'Main';
+            return key.replace(/_/g, ' ').replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
         }
 
         function normalizeCategoryType(item) {
             var key = String(item && item.category_type || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            var match = REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.value === key; });
-            return match ? match.value : 'main';
+            if (!key) return 'main';
+            return key;
         }
 
         function groupItemsByCategoryType(items) {
             var groups = [];
+            var seen = {};
             REGISTER_CATEGORY_TYPES.forEach(function (opt) {
                 var matches = (items || []).filter(function (item) {
                     return normalizeCategoryType(item) === opt.value;
                 });
                 if (matches.length) {
+                    seen[opt.value] = true;
                     groups.push({ type: opt.value, label: opt.label, items: matches });
+                }
+            });
+            (items || []).forEach(function (item) {
+                var key = normalizeCategoryType(item);
+                if (seen[key]) return;
+                seen[key] = true;
+                var matches = (items || []).filter(function (it) {
+                    return normalizeCategoryType(it) === key;
+                });
+                if (matches.length) {
+                    groups.push({ type: key, label: formatCategoryTypeLabel(key), items: matches });
                 }
             });
             return groups;
@@ -1187,6 +1301,186 @@
             });
         }
 
+        function refreshAllReceiptCategoryTypeSelects() {
+            if (!receiptLinesBody) return;
+            receiptLinesBody.querySelectorAll('.receipt-category-type').forEach(function (selectEl) {
+                var current = String(selectEl.value || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                selectEl.innerHTML = buildRegisterCategoryTypeOptionsHtml(current || 'main');
+                if (current) selectEl.value = current;
+            });
+        }
+
+        function setCategoryTypeNewPanelOpen(open) {
+            var isOpen = !!open;
+            if (receiptCategoryTypeNewPanel) receiptCategoryTypeNewPanel.hidden = !isOpen;
+            if (receiptCategoryTypeToggleNewBtn) {
+                receiptCategoryTypeToggleNewBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                receiptCategoryTypeToggleNewBtn.textContent = isOpen ? 'Hide new category type' : '+ New category type';
+            }
+            if (!isOpen && receiptCategoryTypeNameInput) receiptCategoryTypeNameInput.value = '';
+            if (isOpen && receiptCategoryTypeNameInput) {
+                receiptCategoryTypeNameInput.focus();
+            }
+        }
+
+        function resetCategoryTypeEditor() {
+            selectedCategoryTypeId = null;
+            setCategoryTypeNewPanelOpen(false);
+            renderManagedCategoryTypes();
+            syncCategoryTypeCrudButtons();
+        }
+
+        function getSelectedManagedCategoryType() {
+            var id = parseInt(receiptCategoryTypeSelect && receiptCategoryTypeSelect.value, 10) || 0;
+            if (!id) return null;
+            return REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.id === id; }) || null;
+        }
+
+        function syncCategoryTypeCrudButtons() {
+            var selected = getSelectedManagedCategoryType();
+            var canDelete = !!(selected && selected.value !== 'main');
+            if (receiptCategoryTypeRenameBtn) receiptCategoryTypeRenameBtn.disabled = !selected;
+            if (receiptCategoryTypeDeleteBtn) receiptCategoryTypeDeleteBtn.disabled = !canDelete;
+        }
+
+        function renderManagedCategoryTypes() {
+            if (!receiptCategoryTypeSelect) return;
+            var preferredId = selectedCategoryTypeId
+                || (parseInt(receiptCategoryTypeSelect.value, 10) || 0);
+            if (!REGISTER_CATEGORY_TYPES.length) {
+                receiptCategoryTypeSelect.innerHTML = '<option value="">No category types</option>';
+                selectedCategoryTypeId = null;
+                syncCategoryTypeCrudButtons();
+                return;
+            }
+            receiptCategoryTypeSelect.innerHTML = REGISTER_CATEGORY_TYPES.map(function (opt) {
+                return '<option value="' + escAttr(String(opt.id || '')) + '">' + esc(opt.label) + '</option>';
+            }).join('');
+            var hasPreferred = REGISTER_CATEGORY_TYPES.some(function (opt) { return opt.id === preferredId; });
+            if (hasPreferred) {
+                receiptCategoryTypeSelect.value = String(preferredId);
+                selectedCategoryTypeId = preferredId;
+            } else {
+                selectedCategoryTypeId = parseInt(receiptCategoryTypeSelect.value, 10) || null;
+            }
+            syncCategoryTypeCrudButtons();
+        }
+
+        function addManagedCategoryType() {
+            var name = String(receiptCategoryTypeNameInput && receiptCategoryTypeNameInput.value || '').trim();
+            if (!name) {
+                setReceiptError('Enter a name for the new category type.');
+                return Promise.resolve(false);
+            }
+            if (receiptCategoryTypeAddBtn) receiptCategoryTypeAddBtn.disabled = true;
+            return fetch('api/inventory_category_types.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setReceiptError((d && d.error) || 'Failed to add category type.');
+                        return false;
+                    }
+                    selectedCategoryTypeId = parseInt(d.id, 10) || null;
+                    setRegisterCategoryTypes(d.category_types || []);
+                    setCategoryTypeNewPanelOpen(false);
+                    setReceiptError('');
+                    return true;
+                })
+                .catch(function () {
+                    setReceiptError('Network error while adding category type.');
+                    return false;
+                })
+                .finally(function () {
+                    if (receiptCategoryTypeAddBtn) receiptCategoryTypeAddBtn.disabled = false;
+                    syncCategoryTypeCrudButtons();
+                });
+        }
+
+        function renameManagedCategoryType() {
+            var selected = getSelectedManagedCategoryType();
+            if (!selected) {
+                setReceiptError('Select a category type to edit.');
+                return Promise.resolve(false);
+            }
+            var next = window.prompt('Rename category type:', selected.label || '');
+            if (next === null) return Promise.resolve(false);
+            var name = String(next || '').trim();
+            if (!name) {
+                setReceiptError('Category type name is required.');
+                return Promise.resolve(false);
+            }
+            if (name === selected.label) return Promise.resolve(false);
+            if (receiptCategoryTypeRenameBtn) receiptCategoryTypeRenameBtn.disabled = true;
+            return fetch('api/inventory_category_types.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: selected.id, name: name })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setReceiptError((d && d.error) || 'Failed to rename category type.');
+                        return false;
+                    }
+                    selectedCategoryTypeId = selected.id;
+                    setRegisterCategoryTypes(d.category_types || []);
+                    setReceiptError('');
+                    return true;
+                })
+                .catch(function () {
+                    setReceiptError('Network error while renaming category type.');
+                    return false;
+                })
+                .finally(function () {
+                    syncCategoryTypeCrudButtons();
+                });
+        }
+
+        function removeManagedCategoryType(id) {
+            var selected = id
+                ? (REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.id === (parseInt(id, 10) || 0); }) || null)
+                : getSelectedManagedCategoryType();
+            if (!selected) {
+                setReceiptError('Select a category type to delete.');
+                return Promise.resolve(false);
+            }
+            if (selected.value === 'main') {
+                setReceiptError('The Main category type cannot be deleted.');
+                return Promise.resolve(false);
+            }
+            if (!window.confirm('Delete category type "' + selected.label + '"?')) {
+                return Promise.resolve(false);
+            }
+            if (receiptCategoryTypeDeleteBtn) receiptCategoryTypeDeleteBtn.disabled = true;
+            return fetch('api/inventory_category_types.php', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: selected.id })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setReceiptError((d && d.error) || 'Failed to delete category type.');
+                        return false;
+                    }
+                    selectedCategoryTypeId = null;
+                    setRegisterCategoryTypes(d.category_types || []);
+                    setReceiptError('');
+                    return true;
+                })
+                .catch(function () {
+                    setReceiptError('Network error while deleting category type.');
+                    return false;
+                })
+                .finally(function () {
+                    syncCategoryTypeCrudButtons();
+                });
+        }
+
         function resolveLineCategory(row) {
             if (!row) return '';
             var typeEl = row.querySelector('.receipt-line-type');
@@ -1207,7 +1501,8 @@
                 row.innerHTML =
                     receiptMainCategoryFieldHtml() +
                     '<select class="receipt-item-name"><option value="">Select item</option></select>' +
-                    '<input type="number" class="receipt-stocks" min="0" step="1" value="0">' +
+                    '<input type="number" class="receipt-stocks" min="0" step="1" value="0" aria-label="Stocks">' +
+                    '<input type="number" class="receipt-unit-cost" min="0" step="0.01" value="0" placeholder="0.00" aria-label="Item cost">' +
                     receiptUnitLabelFieldHtml('pcs') +
                     '<button type="button" class="receipt-line-remove">×</button>';
                 var unitEl = row.querySelector('.receipt-unit-label');
@@ -1262,6 +1557,7 @@
                 itemEl.value = prevValue;
             }
             syncReceiptUnitFieldFromRow(row);
+            syncReceiptCostFieldFromRow(row);
             syncReceiptSupplierFromSelectedItems();
         }
 
@@ -1466,11 +1762,26 @@
             unitEl.value = unit;
         }
 
+        function syncReceiptCostFieldFromRow(row) {
+            if (!row || receiptModalMode !== 'add_receipt') return;
+            var costEl = row.querySelector('.receipt-unit-cost');
+            if (!costEl) return;
+            var match = getReceiptLineMatchedItem(row);
+            if (!match) {
+                if (!String(costEl.value || '').trim()) costEl.value = '0';
+                return;
+            }
+            var cost = Number(match.unit_cost);
+            if (!Number.isFinite(cost) || cost < 0) cost = 0;
+            // Prefill from last saved item cost when switching items.
+            costEl.value = String(Math.round(cost * 100) / 100);
+        }
+
         function addReceiptLine() {
             if (!receiptLinesBody) return;
             var row = createReceiptLineRow(receiptModalMode);
             row.style.gridTemplateColumns = receiptModalMode === 'add_receipt'
-                ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
+                ? ADD_RECEIPT_LINE_GRID
                 : REGISTER_LINE_GRID_REGISTER;
             receiptLinesBody.appendChild(row);
             fillReceiptItemOptions(row);
@@ -1479,17 +1790,22 @@
         function setReceiptLayoutByMode() {
             var isAddReceiptMode = receiptModalMode === 'add_receipt';
             if (receiptDateGrid) receiptDateGrid.style.display = isAddReceiptMode ? 'grid' : 'none';
+            if (receiptSupplierWrap) receiptSupplierWrap.style.display = isAddReceiptMode ? '' : 'none';
+            if (receiptCategoryTypesWrap) receiptCategoryTypesWrap.style.display = isAddReceiptMode ? 'none' : '';
             if (receiptAddLineBtn) receiptAddLineBtn.style.display = isAddReceiptMode ? '' : 'none';
             if (receiptLinesTitle) receiptLinesTitle.textContent = isAddReceiptMode ? 'Line Items' : 'Register Inventory Item';
             var headWrap = receiptLinesTitle ? receiptLinesTitle.parentElement : null;
             if (headWrap) headWrap.style.justifyContent = isAddReceiptMode ? 'space-between' : 'flex-start';
             if (receiptLinesRowHead) {
                 receiptLinesRowHead.innerHTML = isAddReceiptMode
-                    ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>Unit</span><span></span>'
+                    ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>Cost (₱)</span><span>Unit</span><span></span>'
                     : '<span>Main Category</span><span>Category Type</span><span>Item</span><span>Unit Label</span><span>Stock Type</span><span>Mode</span>';
                 receiptLinesRowHead.style.gridTemplateColumns = isAddReceiptMode
-                    ? 'minmax(100px, 1fr) minmax(160px, 1.8fr) 90px 90px 34px'
+                    ? ADD_RECEIPT_LINE_GRID
                     : REGISTER_LINE_GRID_REGISTER;
+            }
+            if (!isAddReceiptMode) {
+                resetCategoryTypeEditor();
             }
         }
 
@@ -1545,8 +1861,11 @@
                 var stockTypeEl = row.querySelector('.receipt-stock-type');
                 var entryModeEl = row.querySelector('.receipt-entry-mode');
                 var categoryTypeEl = row.querySelector('.receipt-category-type');
-                    var unitLabelEl = row.querySelector('.receipt-unit-label');
+                var unitLabelEl = row.querySelector('.receipt-unit-label');
+                var unitCostEl = row.querySelector('.receipt-unit-cost');
                 var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
+                var unitCostVal = parseFloat((unitCostEl && unitCostEl.value) || '0');
+                if (!Number.isFinite(unitCostVal) || unitCostVal < 0) unitCostVal = 0;
                 var resolvedUnit = (unitLabelEl && unitLabelEl.value) || 'pcs';
                 if (receiptModalMode === 'add_receipt') {
                     var matchItem = allItems.find(function (it) {
@@ -1557,6 +1876,7 @@
                         resolvedUnit = normalizeDisplayUnit(matchItem.per_stock_unit || 'pcs');
                     }
                 }
+                var totalCostVal = Math.round(unitCostVal * Math.max(0, stocksVal) * 100) / 100;
                 var line = {
                     line_type: lineType,
                     item_name: (itemNameEl && itemNameEl.value || '').trim(),
@@ -1568,8 +1888,8 @@
                     stock_status: 'good',
                     per_stock_amount: 1,
                     unit: resolvedUnit,
-                    unit_cost: 0,
-                    total_cost: 0
+                    unit_cost: Math.round(unitCostVal * 100) / 100,
+                    total_cost: totalCostVal
                 };
                 if (!line.item_name) return;
                 lines.push(line);
@@ -1664,6 +1984,142 @@
             return 'PHP ' + num.toFixed(2);
         }
 
+        function pad2(n) {
+            return String(n).padStart(2, '0');
+        }
+
+        function toIsoDateLocal(dateObj) {
+            return dateObj.getFullYear() + '-' + pad2(dateObj.getMonth() + 1) + '-' + pad2(dateObj.getDate());
+        }
+
+        function normalizeReceiptDate(value) {
+            var raw = String(value || '').trim();
+            if (!raw) return '';
+            var match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+            return match ? match[1] : raw;
+        }
+
+        function getCurrentWeekDateIsos(throughTodayOnly) {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            var day = today.getDay(); // 0=Sun ... 6=Sat
+            var diffToMonday = day === 0 ? -6 : (1 - day);
+            var monday = new Date(today.getTime());
+            monday.setDate(today.getDate() + diffToMonday);
+            var dates = [];
+            var i;
+            for (i = 0; i < 7; i += 1) {
+                var d = new Date(monday.getTime());
+                d.setDate(monday.getDate() + i);
+                if (throughTodayOnly && d > today) break;
+                dates.push(toIsoDateLocal(d));
+            }
+            return dates;
+        }
+
+        function applyStockLogWeekDefault() {
+            var weekDates = getCurrentWeekDateIsos(false);
+            stockLogSelectedDates = {};
+            weekDates.forEach(function (iso) {
+                stockLogSelectedDates[iso] = true;
+            });
+            stockLogCalendarMonth = new Date();
+            stockLogCalendarMonth.setDate(1);
+            stockLogCalendarMonth.setHours(0, 0, 0, 0);
+        }
+
+        function getSelectedStockLogDates() {
+            return Object.keys(stockLogSelectedDates).filter(function (key) {
+                return !!stockLogSelectedDates[key];
+            }).sort();
+        }
+
+        function updateStockLogDateFilterUi() {
+            var selected = getSelectedStockLogDates();
+            var weekDates = getCurrentWeekDateIsos(false);
+            var isCurrentWeek = selected.length === weekDates.length &&
+                weekDates.every(function (iso) { return !!stockLogSelectedDates[iso]; });
+            if (receiptSummaryDateToggle) {
+                if (isCurrentWeek) {
+                    receiptSummaryDateToggle.textContent = 'This week';
+                } else if (selected.length) {
+                    receiptSummaryDateToggle.textContent = 'Dates (' + selected.length + ')';
+                } else {
+                    receiptSummaryDateToggle.textContent = 'Filter dates';
+                }
+                receiptSummaryDateToggle.classList.toggle('is-active', selected.length > 0);
+            }
+            if (receiptSummaryCalHint) {
+                if (isCurrentWeek) {
+                    receiptSummaryCalHint.textContent = 'Showing this week (' + weekDates[0] + ' to ' + weekDates[weekDates.length - 1] + '). Tap days to change.';
+                } else if (!selected.length) {
+                    receiptSummaryCalHint.textContent = 'No days selected - showing all entries. Use This week to reset.';
+                } else if (selected.length === 1) {
+                    receiptSummaryCalHint.textContent = 'Showing entries for ' + selected[0] + '.';
+                } else {
+                    receiptSummaryCalHint.textContent = 'Showing entries for ' + selected.length + ' selected days.';
+                }
+            }
+            if (receiptSummaryCalClear) {
+                receiptSummaryCalClear.textContent = 'This week';
+                receiptSummaryCalClear.disabled = isCurrentWeek;
+            }
+        }
+
+        function setStockLogCalendarOpen(open) {
+            var isOpen = !!open;
+            if (receiptSummaryCalendar) receiptSummaryCalendar.hidden = !isOpen;
+            if (receiptSummaryDateToggle) {
+                receiptSummaryDateToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+            if (isOpen) renderStockLogCalendar();
+        }
+
+        function renderStockLogCalendar() {
+            if (!receiptSummaryCalGrid || !receiptSummaryCalLabel) return;
+            var year = stockLogCalendarMonth.getFullYear();
+            var month = stockLogCalendarMonth.getMonth();
+            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            receiptSummaryCalLabel.textContent = monthNames[month] + ' ' + year;
+
+            var firstDay = new Date(year, month, 1);
+            var startWeekday = firstDay.getDay();
+            var daysInMonth = new Date(year, month + 1, 0).getDate();
+            var todayIso = toIsoDateLocal(new Date());
+            var html = '';
+            var i;
+            for (i = 0; i < startWeekday; i += 1) {
+                html += '<span class="receipt-summary-calendar__day is-empty"></span>';
+            }
+            for (i = 1; i <= daysInMonth; i += 1) {
+                var iso = year + '-' + pad2(month + 1) + '-' + pad2(i);
+                var classes = ['receipt-summary-calendar__day'];
+                if (stockLogSelectedDates[iso]) classes.push('is-selected');
+                if (iso === todayIso) classes.push('is-today');
+                html += '<button type="button" class="' + classes.join(' ') + '" data-cal-date="' + escAttr(iso) + '">' + i + '</button>';
+            }
+            receiptSummaryCalGrid.innerHTML = html;
+            updateStockLogDateFilterUi();
+        }
+
+        function toggleStockLogDate(isoDate) {
+            var key = normalizeReceiptDate(isoDate);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+            if (stockLogSelectedDates[key]) {
+                delete stockLogSelectedDates[key];
+            } else {
+                stockLogSelectedDates[key] = true;
+            }
+            renderStockLogCalendar();
+            loadReceiptSummaries();
+        }
+
+        function clearStockLogDates() {
+            applyStockLogWeekDefault();
+            renderStockLogCalendar();
+            loadReceiptSummaries();
+        }
+
         function getReceiptEntrySource(receipt) {
             var source = String(receipt && receipt.entry_source || '').trim().toLowerCase();
             if (source === 'staff' || source === 'admin') return source;
@@ -1673,8 +2129,13 @@
         }
 
         function getReceiptsForStockLogTab(tab) {
+            var selectedDates = getSelectedStockLogDates();
+            var dateSet = {};
+            selectedDates.forEach(function (d) { dateSet[d] = true; });
             return (allReceiptSummaries || []).filter(function (receipt) {
-                return getReceiptEntrySource(receipt) === tab;
+                if (getReceiptEntrySource(receipt) !== tab) return false;
+                if (!selectedDates.length) return true;
+                return !!dateSet[normalizeReceiptDate(receipt.date)];
             });
         }
 
@@ -1688,14 +2149,37 @@
 
         function renderReceiptSummaryList(items) {
             if (!receiptSummaryList) return;
-            if (!items || !items.length) {
-                var emptyLabel = stockLogTab === 'staff'
-                    ? 'No staff stock log entries yet.'
-                    : 'No admin stock log entries yet.';
+            var list = Array.isArray(items) ? items : [];
+            var totalCost = list.reduce(function (sum, it) {
+                return sum + (parseFloat(it && it.total_amount) || 0);
+            }, 0);
+            if (receiptSummaryTotals) {
+                receiptSummaryTotals.hidden = false;
+            }
+            if (receiptSummaryTotalsLabel) {
+                var countLabel = list.length === 1 ? '1 entry' : (list.length + ' entries');
+                receiptSummaryTotalsLabel.textContent = 'Total listed costs · ' + countLabel;
+            }
+            if (receiptSummaryTotalsAmount) {
+                receiptSummaryTotalsAmount.textContent = formatMoney(totalCost);
+            }
+
+            if (!list.length) {
+                var selectedDates = getSelectedStockLogDates();
+                var emptyLabel;
+                if (selectedDates.length) {
+                    emptyLabel = stockLogTab === 'staff'
+                        ? 'No staff entries on the selected days.'
+                        : 'No admin entries on the selected days.';
+                } else {
+                    emptyLabel = stockLogTab === 'staff'
+                        ? 'No staff stock log entries yet.'
+                        : 'No admin stock log entries yet.';
+                }
                 receiptSummaryList.innerHTML = '<p class="receipt-summary-empty">' + emptyLabel + '</p>';
                 return;
             }
-            receiptSummaryList.innerHTML = items.map(function (it) {
+            receiptSummaryList.innerHTML = list.map(function (it) {
                 return '' +
                     '<article class="receipt-summary-item" data-receipt-id="' + it.receipt_id + '">' +
                         '<div class="receipt-summary-item__main">' +
@@ -1794,25 +2278,33 @@
         function loadReceiptSummaries() {
             setReceiptSummaryError('');
             if (receiptSummaryRefresh) receiptSummaryRefresh.disabled = true;
-            fetch('api/receipts.php')
+            var selectedDates = getSelectedStockLogDates();
+            var url = 'api/receipts.php';
+            if (selectedDates.length) {
+                url += '?dates=' + encodeURIComponent(selectedDates.join(','));
+            }
+            fetch(url)
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (!d.success) {
                         setReceiptSummaryError(d.error || 'Could not load stock log.');
                         allReceiptSummaries = [];
                         renderReceiptSummaryTabs();
+                        updateStockLogDateFilterUi();
                         renderReceiptSummaryList([]);
                         closeReceiptDetailModal();
                         return;
                     }
                     allReceiptSummaries = d.receipts || [];
                     renderReceiptSummaryTabs();
+                    updateStockLogDateFilterUi();
                     renderReceiptSummaryList(getReceiptsForStockLogTab(stockLogTab));
                 })
                 .catch(function () {
                     setReceiptSummaryError('Network error while loading stock log.');
                     allReceiptSummaries = [];
                     renderReceiptSummaryTabs();
+                    updateStockLogDateFilterUi();
                     renderReceiptSummaryList([]);
                 })
                 .finally(function () {
@@ -1825,6 +2317,9 @@
                 receiptSummaryBackdrop.classList.add('is-visible');
                 receiptSummaryBackdrop.setAttribute('aria-hidden', 'false');
             }
+            applyStockLogWeekDefault();
+            setStockLogCalendarOpen(false);
+            renderStockLogCalendar();
             loadReceiptSummaries();
         }
 
@@ -3240,6 +3735,9 @@
                     }
                     mainCategories = (d.categories || []).slice();
                     if (!mainCategories.length) mainCategories = ['Bar', 'Kitchen'];
+                    if (Array.isArray(d.category_types)) {
+                        setRegisterCategoryTypes(d.category_types);
+                    }
                     populateMainCategorySelect(fldCategory, mainCategories[0] || 'Kitchen');
                     renderAlerts(d.low_alerts || []);
                     maybeAutoOpenRestockNotification();
@@ -3248,6 +3746,7 @@
                     renderMovementChips();
                     renderRows();
                     refreshAllReceiptCategorySelects();
+                    refreshAllReceiptCategoryTypeSelects();
                     if (lowTitle) {
                         var alertCount = (d.low_alerts || []).length;
                         lowTitle.textContent = 'Low-stock alerts (' + alertCount + ')';
@@ -3387,6 +3886,7 @@
                 if (itemEl) {
                     var itemRow = itemEl.closest('.receipt-lines__row');
                     syncReceiptUnitFieldFromRow(itemRow);
+                    syncReceiptCostFieldFromRow(itemRow);
                     syncReceiptSupplierFromSelectedItems();
                 }
             });
@@ -3426,6 +3926,43 @@
                 var pickEl = e.target.closest('[data-supplier-pick]');
                 if (pickEl) {
                     applySavedSupplierName(pickEl.getAttribute('data-supplier-pick'));
+                }
+            });
+        }
+        if (receiptCategoryTypeAddBtn) {
+            receiptCategoryTypeAddBtn.addEventListener('click', function () {
+                addManagedCategoryType();
+            });
+        }
+        if (receiptCategoryTypeRenameBtn) {
+            receiptCategoryTypeRenameBtn.addEventListener('click', function () {
+                renameManagedCategoryType();
+            });
+        }
+        if (receiptCategoryTypeDeleteBtn) {
+            receiptCategoryTypeDeleteBtn.addEventListener('click', function () {
+                removeManagedCategoryType();
+            });
+        }
+        if (receiptCategoryTypeToggleNewBtn) {
+            receiptCategoryTypeToggleNewBtn.addEventListener('click', function () {
+                var open = !(receiptCategoryTypeNewPanel && !receiptCategoryTypeNewPanel.hidden);
+                setCategoryTypeNewPanelOpen(open);
+                setReceiptError('');
+            });
+        }
+        if (receiptCategoryTypeSelect) {
+            receiptCategoryTypeSelect.addEventListener('change', function () {
+                selectedCategoryTypeId = parseInt(receiptCategoryTypeSelect.value, 10) || null;
+                syncCategoryTypeCrudButtons();
+                setReceiptError('');
+            });
+        }
+        if (receiptCategoryTypeNameInput) {
+            receiptCategoryTypeNameInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addManagedCategoryType();
                 }
             });
         }
@@ -3521,6 +4058,36 @@
                 stockLogTab = tabBtn.getAttribute('data-stock-log-tab') || 'admin';
                 renderReceiptSummaryTabs();
                 renderReceiptSummaryList(getReceiptsForStockLogTab(stockLogTab));
+            });
+        }
+        if (receiptSummaryDateToggle) {
+            receiptSummaryDateToggle.addEventListener('click', function () {
+                var open = !(receiptSummaryCalendar && !receiptSummaryCalendar.hidden);
+                setStockLogCalendarOpen(open);
+            });
+        }
+        if (receiptSummaryCalPrev) {
+            receiptSummaryCalPrev.addEventListener('click', function () {
+                stockLogCalendarMonth.setMonth(stockLogCalendarMonth.getMonth() - 1);
+                renderStockLogCalendar();
+            });
+        }
+        if (receiptSummaryCalNext) {
+            receiptSummaryCalNext.addEventListener('click', function () {
+                stockLogCalendarMonth.setMonth(stockLogCalendarMonth.getMonth() + 1);
+                renderStockLogCalendar();
+            });
+        }
+        if (receiptSummaryCalGrid) {
+            receiptSummaryCalGrid.addEventListener('click', function (e) {
+                var dayBtn = e.target.closest('[data-cal-date]');
+                if (!dayBtn) return;
+                toggleStockLogDate(dayBtn.getAttribute('data-cal-date'));
+            });
+        }
+        if (receiptSummaryCalClear) {
+            receiptSummaryCalClear.addEventListener('click', function () {
+                clearStockLogDates();
             });
         }
         if (receiptSummaryList) {

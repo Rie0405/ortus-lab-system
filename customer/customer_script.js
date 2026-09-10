@@ -18,14 +18,20 @@ let activeFulfillmentBucket = 'dine_in';
 let ingredientModalResolver = null;
 let ingredientModalCurrentItemName = '';
 
-let menuData = { categories: [], items: [] };
+let menuData = { categories: [], items: [], subcategories: [] };
 let fastMovingItemIds = [];
-let selectedMenuGroup = null; // 'beverages' | 'meals'
-/** Beverage circle filter: matches data-bev-category on #bev-circles (aligned with staff POS beverage sections). */
-let selectedBevCategory = 'coffee';
+/** Top tab key: 'beverages' | 'cat-{id}' (same category chips as POS). */
+let selectedMenuGroup = null;
+/** Category ids merged into the Beverages tab (POS-aligned). */
+let beverageCategoryIds = [];
+var BEVERAGES_MERGED_KEY = 'beverages';
+/** Side circle key: 'sub-{id}' | '_other'. */
+let selectedBevCategory = '';
 /** Hot / cold subcategory filter for drinks. */
 let selectedDrinkTemp = 'all';
-let selectedMealCategory = 'all';
+let selectedMealCategory = '';
+/** When set, meals screen shows only this category_id (POS-style tab). */
+let selectedKioskCategoryId = null;
 const PICKUP_START_HOUR = 20; // 8:00 PM
 const PICKUP_END_HOUR = 24; // 12:00 MN
 const VAT_RATE = 0.12;
@@ -864,8 +870,19 @@ function isBeverageCategoryName(name) {
         n.indexOf('beverage') !== -1 ||
         n.indexOf('drink') !== -1 ||
         n.indexOf('coffee') !== -1 ||
-        n.indexOf('tea') !== -1
+        n.indexOf('tea') !== -1 ||
+        n.indexOf('latte') !== -1 ||
+        n.indexOf('smoothie') !== -1 ||
+        n.indexOf('milktea') !== -1 ||
+        n.indexOf('milk tea') !== -1
     );
+}
+
+function isBeverageItem(item) {
+    var mc = String(item && item.main_category_name || '').trim().toLowerCase();
+    if (mc === 'bar') return true;
+    if (mc === 'kitchen') return false;
+    return isBeverageCategoryName(item && item.category_name);
 }
 
 /** Same beverage bucketing as adminStaff/staff_dashboard.html (POS), then mapped to customer circles. */
@@ -953,7 +970,39 @@ function getBeverageSectionKey(item) {
     return 'other';
 }
 
+function mapCategoryNameToBevPreset(name) {
+    var n = String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!n) return '';
+    if (n.indexOf('frappe') !== -1) return 'frappe';
+    if (/\bjuice\b/.test(n) || /\brefresher/.test(n)) return 'juice';
+    if (/\bnon[\s-]*coffee\b/.test(n) || n === 'noncoffee' || n === 'non coffee') return 'nonCoffee';
+    if (n === 'coffee' || (n.indexOf('coffee') !== -1 && n.indexOf('non') === -1)) return 'coffee';
+    return '';
+}
+
+function mapCategoryNameToMealPreset(name) {
+    var c = normalizeMealCategoryName(name);
+    if (!c) return '';
+    if (c.indexOf('snack') !== -1 || c.indexOf('starter') !== -1 || c.indexOf('nacho') !== -1) return 'snacks';
+    if (c.indexOf('pastr') !== -1 || c.indexOf('toast') !== -1 || c.indexOf('dessert') !== -1) return 'pastries';
+    if (c.indexOf('wing') !== -1 || c.indexOf('chicken') !== -1) return 'wings';
+    if (c.indexOf('pasta') !== -1) return 'pasta';
+    if (c === 'meals' || c === 'meal' || c.indexOf('rice') !== -1) return 'meal';
+    return '';
+}
+
+function dynamicCategoryCircleKey(categoryId) {
+    var id = parseInt(categoryId, 10);
+    return id > 0 ? 'cat-' + id : '';
+}
+
 function getCustomerBevCircleKey(item) {
+    var presetFromCat = mapCategoryNameToBevPreset(item && item.category_name);
+    if (!presetFromCat) {
+        var dyn = dynamicCategoryCircleKey(item && item.category_id);
+        if (dyn) return dyn;
+    }
+
     var staffKey = getBeverageSectionKey(item);
     var nm = String(item.name || '').toLowerCase();
 
@@ -974,10 +1023,128 @@ function getCustomerBevCircleKey(item) {
     return 'nonCoffee';
 }
 
+/** Same merge rule as adminStaff/staff_dashboard.html POS category chips. */
+function categoryNameMergesIntoBeverages(name) {
+    var n = String(name || '').trim().toLowerCase();
+    if (!n) return false;
+    if (n === 'drinks') return true;
+    if (/\brefresher/.test(n)) return true;
+    if (n.indexOf('frappe') !== -1) return true;
+    if (/\bnon[\s-]*coffee\b/.test(n) || n === 'noncoffee' || n === 'non coffee') return true;
+    if (n === 'coffee') return true;
+    return false;
+}
+
+function isAddonCategoryName(name) {
+    var n = String(name || '').trim().toLowerCase();
+    return n === 'add-ons' || n === 'addons' || n === 'add ons';
+}
+
+function isAddonCardItem(it) {
+    if (!it) return false;
+    if (it.is_addon_card) return true;
+    return isAddonCategoryName(it.category_name);
+}
+
+function getKioskTabCategories() {
+    beverageCategoryIds = [];
+    var cats = menuData.categories || [];
+    var tabs = [];
+    var insertedBev = false;
+    cats.forEach(function (c) {
+        var id = parseInt(c.id, 10);
+        if (categoryNameMergesIntoBeverages(c.name)) {
+            if (id > 0) beverageCategoryIds.push(id);
+            if (!insertedBev) {
+                tabs.push({ key: BEVERAGES_MERGED_KEY, id: null, name: 'Beverages' });
+                insertedBev = true;
+            }
+            return;
+        }
+        if (!(id > 0)) return;
+        tabs.push({
+            key: dynamicCategoryCircleKey(id),
+            id: id,
+            name: c.name || ('Category ' + id)
+        });
+    });
+    if (!insertedBev && (menuData.items || []).some(isBeverageItem)) {
+        tabs.unshift({ key: BEVERAGES_MERGED_KEY, id: null, name: 'Beverages' });
+    }
+    return tabs;
+}
+
+function getKioskTabIcon(tab) {
+    if (!tab) return '';
+    if (tab.key === BEVERAGES_MERGED_KEY) return 'icons_customer/icon_startup/beverage.svg';
+    var n = String(tab.name || '').toLowerCase();
+    if (isAddonCategoryName(n)) return '';
+    if (/\bmeal|\bsnack|\bstarter|\bnacho/.test(n)) return 'icons_customer/icon_startup/meals.svg';
+    if (/\bpastr|\bdessert|\bbakery/.test(n)) return 'icons_customer/icon_startup/meals.svg';
+    return '';
+}
+
+function buildMenuGroupTabHtml(tab, activeKey) {
+    var active = tab.key === activeKey ? ' menu-group-btn--active' : '';
+    var addonTab = isAddonCategoryName(tab && tab.name) ? ' menu-group-btn--addons' : '';
+    var icon = getKioskTabIcon(tab);
+    var iconHtml = icon
+        ? '<span class="menu-group-btn__icon-wrap"><img src="' + escapeHtmlAttr(icon) + '" alt="" class="menu-group-btn__icon"></span>'
+        : '<span class="menu-group-btn__icon-wrap menu-group-btn__icon-wrap--empty" aria-hidden="true"></span>';
+    return (
+        '<button type="button" class="menu-group-btn' + active + addonTab + '" data-menu-group="' + escapeHtmlAttr(tab.key) + '">' +
+            iconHtml +
+            '<span class="menu-group-btn__label">' + escapeHtmlText(tab.name) + '</span>' +
+        '</button>'
+    );
+}
+
+function rebuildMenuGroupTabs(activeKey) {
+    var tabs = getKioskTabCategories();
+    var key = activeKey || (tabs[0] && tabs[0].key) || BEVERAGES_MERGED_KEY;
+    var html = tabs.map(function (tab) {
+        return buildMenuGroupTabHtml(tab, key);
+    }).join('');
+    document.querySelectorAll('.menu-group-switch').forEach(function (wrap) {
+        wrap.innerHTML = html || (
+            '<button type="button" class="menu-group-btn menu-group-btn--active" data-menu-group="beverages">' +
+                '<span class="menu-group-btn__icon-wrap"><img src="icons_customer/icon_startup/beverage.svg" alt="" class="menu-group-btn__icon"></span>' +
+                '<span class="menu-group-btn__label">Beverages</span>' +
+            '</button>'
+        );
+    });
+    return tabs;
+}
+
+function firstFoodTabKey() {
+    var tabs = getKioskTabCategories();
+    for (var i = 0; i < tabs.length; i++) {
+        if (tabs[i].key !== BEVERAGES_MERGED_KEY) return tabs[i].key;
+    }
+    return null;
+}
+
+function parseKioskCategoryIdFromTabKey(key) {
+    var m = String(key || '').match(/^cat-(\d+)$/i);
+    return m ? parseInt(m[1], 10) : null;
+}
+
 function getItemsForGroup(group) {
+    if (group === 'beverages') {
+        if (beverageCategoryIds.length) {
+            return (menuData.items || []).filter(function (it) {
+                return beverageCategoryIds.indexOf(parseInt(it.category_id, 10)) !== -1;
+            });
+        }
+        return (menuData.items || []).filter(isBeverageItem);
+    }
+    if (selectedKioskCategoryId) {
+        return (menuData.items || []).filter(function (it) {
+            return parseInt(it.category_id, 10) === selectedKioskCategoryId;
+        });
+    }
     return (menuData.items || []).filter(function (it) {
-        var isBev = isBeverageCategoryName(it.category_name || '');
-        return group === 'beverages' ? isBev : !isBev;
+        return !isBeverageItem(it);
     });
 }
 
@@ -1038,21 +1205,29 @@ function renderMenuItemsInto(gridEl, items) {
             escapeHtml(it.name) +
             '">';
         var isBestSeller = isFastMovingMenuItem(it.id);
+        var isAddonCard = isAddonCardItem(it);
         var bestSellerBadge = isBestSeller
             ? '<span class="prod-card-bestseller-badge">BEST SELLER</span>'
             : '';
+        var addonBadge = isAddonCard
+            ? '<span class="prod-card-addon-badge">ADD-ON</span>'
+            : '';
+        var cardMods =
+            (isAvailable ? '' : ' prod-card--soldout') +
+            (isBestSeller ? ' prod-card--bestseller' : '') +
+            (isAddonCard ? ' prod-card--addon' : '');
         return (
-            '<div class="prod-card ' + (isAvailable ? '' : 'prod-card--soldout') + (isBestSeller ? ' prod-card--bestseller' : '') + '" data-menu-id="' + it.id + '">' +
-            '  <div class="prod-card-img-wrap">' + bestSellerBadge + imgHtml + '</div>' +
+            '<div class="prod-card' + cardMods + '" data-menu-id="' + it.id + '">' +
+            '  <div class="prod-card-img-wrap">' + addonBadge + bestSellerBadge + imgHtml + '</div>' +
             '  <div class="prod-card-body">' +
             '    <div class="prod-card-name-row">' +
             '      <span class="prod-card-name">' + escapeHtml(it.name) + '</span>' +
             '      <span class="prod-card-price">' + formatPeso(it.price) + '</span>' +
             '    </div>' +
             (isAvailable ? '' : '    <span class="prod-card-soldout-badge">SOLD OUT</span>') +
-            '    <p class="prod-card-desc">' + escapeHtml(stripPosBevSectionForDisplay(it.description) || '—') + '</p>' +
+            '    <p class="prod-card-desc">' + escapeHtml(isAddonCard ? 'Add on its own' : (stripPosBevSectionForDisplay(it.description) || '—')) + '</p>' +
             '  </div>' +
-            '  <button class="prod-add-btn" data-add-menu-id="' + it.id + '" ' + (isAvailable ? '' : 'disabled') + '>' + (isAvailable ? 'ADD ORDER' : 'SOLD OUT') + '</button>' +
+            '  <button class="prod-add-btn' + (isAddonCard ? ' prod-add-btn--addon' : '') + '" data-add-menu-id="' + it.id + '" ' + (isAvailable ? '' : 'disabled') + '>' + (isAvailable ? (isAddonCard ? 'ADD ADD-ON' : 'ADD ORDER') : 'SOLD OUT') + '</button>' +
             '</div>'
         );
     }).join('');
@@ -1069,6 +1244,20 @@ function attachAddHandlers(scopeEl, opts) {
             var id = parseInt(btn.getAttribute('data-add-menu-id'), 10);
             var it = (menuData.items || []).find(function (x) { return x.id === id; });
             if (!it) return;
+            if (isAddonCardItem(it)) {
+                addItemToCart({
+                    menu_item_id: it.id,
+                    name: it.name,
+                    price: it.price,
+                    // price:0 so cart unit stays menu price; notes still trigger inventory deduct
+                    addons: [{ name: it.name, price: 0 }],
+                    temperature: null,
+                    note: '',
+                    removed: []
+                });
+                renderAllSidebars();
+                return;
+            }
             var quickVariants = getKioskTemperatureVariants(it, !!opts.temperatureFallback);
             var quickAddons = getAddonOptionsForItem(it.name, it.category_name || '');
             if (!quickVariants.length && !quickAddons.length) {
@@ -1133,7 +1322,7 @@ function renderBeverageProductGrid() {
     var q = getBeverageSearchQuery();
     var base = getItemsForGroup('beverages').filter(itemMatchesDrinkTempFilter);
     var byCat = base.filter(function (it) {
-        return getCustomerBevCircleKey(it) === selectedBevCategory;
+        return itemMatchesSideSubKey(it, selectedBevCategory);
     });
     var filtered = !q
         ? byCat
@@ -1148,7 +1337,7 @@ function renderBeverageProductGrid() {
 }
 
 function setSelectedBevCategory(cat) {
-    selectedBevCategory = cat || 'coffee';
+    selectedBevCategory = cat || 'all';
     var wrap = document.getElementById('bev-circles');
     if (wrap) {
         wrap.querySelectorAll('.menu-product').forEach(function (p) {
@@ -1179,24 +1368,23 @@ function wireBevTempFilters() {
 
 function wireBevCategoryCircles() {
     var wrap = document.getElementById('bev-circles');
-    if (!wrap) return;
+    if (!wrap || wrap.dataset.wired === '1') return;
+    wrap.dataset.wired = '1';
 
-    wrap.querySelectorAll('[data-bev-category]').forEach(function (el) {
-        function activate() {
-            var cat = el.getAttribute('data-bev-category');
-            if (!cat) return;
-            setSelectedBevCategory(cat);
-        }
-        el.addEventListener('click', function (e) {
-            e.preventDefault();
-            activate();
-        });
-        el.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                activate();
-            }
-        });
+    wrap.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-bev-category]') : null;
+        if (!el || !wrap.contains(el)) return;
+        e.preventDefault();
+        var cat = el.getAttribute('data-bev-category');
+        if (cat) setSelectedBevCategory(cat);
+    });
+    wrap.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var el = e.target && e.target.closest ? e.target.closest('[data-bev-category]') : null;
+        if (!el || !wrap.contains(el)) return;
+        e.preventDefault();
+        var cat = el.getAttribute('data-bev-category');
+        if (cat) setSelectedBevCategory(cat);
     });
 }
 
@@ -1205,20 +1393,244 @@ function normalizeMealCategoryName(name) {
 }
 
 function inferMealCategoryKey(item) {
-    var c = normalizeMealCategoryName(item && item.category_name);
-    if (!c) return 'other';
-    if (c.indexOf('snack') !== -1 || c.indexOf('starter') !== -1 || c.indexOf('nacho') !== -1) return 'snacks';
-    if (c.indexOf('pastr') !== -1 || c.indexOf('toast') !== -1 || c.indexOf('dessert') !== -1) return 'pastries';
-    if (c.indexOf('wing') !== -1 || c.indexOf('chicken') !== -1) return 'wings';
-    if (c.indexOf('pasta') !== -1) return 'pasta';
-    if (c === 'meals' || c === 'meal' || c.indexOf('rice') !== -1) return 'meal';
+    var preset = mapCategoryNameToMealPreset(item && item.category_name);
+    if (preset) return preset;
+    var dyn = dynamicCategoryCircleKey(item && item.category_id);
+    if (dyn) return dyn;
     return 'other';
 }
 
 function mealCategoryKeyFromCircleToken(token) {
-    var t = String(token || '').trim().toLowerCase();
-    if (t === 'snacks' || t === 'pastries' || t === 'meal' || t === 'wings' || t === 'pasta') return t;
+    var t = String(token || '').trim();
+    if (/^cat-\d+$/i.test(t)) return t.toLowerCase();
+    var low = t.toLowerCase();
+    if (low === 'snacks' || low === 'pastries' || low === 'meal' || low === 'wings' || low === 'pasta') return low;
     return '';
+}
+
+function escapeHtmlAttr(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function escapeHtmlText(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function categoryBelongsToGroup(cat, group) {
+    var id = parseInt(cat && cat.id, 10);
+    var items = (menuData.items || []).filter(function (it) {
+        return parseInt(it.category_id, 10) === id;
+    });
+    if (items.length) {
+        var bevCount = 0;
+        for (var i = 0; i < items.length; i++) {
+            if (isBeverageItem(items[i])) bevCount++;
+        }
+        if (group === 'beverages') return bevCount > 0;
+        return bevCount < items.length || bevCount === 0;
+    }
+    var isBev = isBeverageCategoryName(cat && cat.name);
+    return group === 'beverages' ? isBev : !isBev;
+}
+
+function getCategoriesForGroup(group) {
+    if (group === 'beverages') {
+        if (!beverageCategoryIds.length) getKioskTabCategories();
+        return (menuData.categories || []).filter(function (cat) {
+            var id = parseInt(cat && cat.id, 10);
+            return beverageCategoryIds.indexOf(id) !== -1 || categoryNameMergesIntoBeverages(cat && cat.name);
+        });
+    }
+    return (menuData.categories || []).filter(function (cat) {
+        return categoryBelongsToGroup(cat, group);
+    });
+}
+
+function subcategoryCircleKey(subId) {
+    var id = parseInt(subId, 10);
+    return id > 0 ? 'sub-' + id : '';
+}
+
+function parseSubcategoryIdFromCircleKey(key) {
+    var m = String(key || '').match(/^sub-(\d+)$/i);
+    return m ? parseInt(m[1], 10) : null;
+}
+
+function getDbSubcategoriesForCategoryIds(categoryIds) {
+    var idSet = {};
+    (categoryIds || []).forEach(function (id) {
+        var n = parseInt(id, 10);
+        if (n > 0) idSet[n] = true;
+    });
+    return (menuData.subcategories || []).filter(function (s) {
+        var name = String(s && s.name || '').trim().toLowerCase();
+        if (name === 'hot' || name === 'cold') return false;
+        return idSet[parseInt(s.category_id, 10)];
+    }).sort(function (a, b) {
+        var ao = parseInt(a.display_order, 10) || 0;
+        var bo = parseInt(b.display_order, 10) || 0;
+        if (ao !== bo) return ao - bo;
+        return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+}
+
+function getSideCircleIconForSubName(name) {
+    var n = String(name || '').trim().toLowerCase();
+    if (!n) return { icon: '', iconClass: '' };
+    if (n.indexOf('frappe') !== -1) {
+        return { icon: 'icons_customer/icon_customer_meals/bev3.svg', iconClass: 'menu-product-icon--bev3' };
+    }
+    if (/\bjuice\b/.test(n) || /\brefresher/.test(n)) {
+        return { icon: 'icons_customer/icon_customer_meals/bev4.svg', iconClass: 'menu-product-icon--bev4' };
+    }
+    if (/\bnon[\s-]*coffee\b/.test(n) || n === 'noncoffee') {
+        return { icon: 'icons_customer/icon_customer_meals/bev2.svg', iconClass: 'menu-product-icon--bev2' };
+    }
+    if (n === 'coffee' || (n.indexOf('coffee') !== -1 && n.indexOf('non') === -1)) {
+        return { icon: 'icons_customer/icon_customer_meals/bev1.svg', iconClass: 'menu-product-icon--bev1' };
+    }
+    if (n.indexOf('snack') !== -1 || n.indexOf('starter') !== -1 || n.indexOf('nacho') !== -1) {
+        return { icon: 'icons_customer/icon_customer_meals/nacho.svg', iconClass: 'menu-product-icon--meal-nacho' };
+    }
+    if (n.indexOf('pastr') !== -1 || n.indexOf('toast') !== -1 || n.indexOf('dessert') !== -1) {
+        return { icon: 'icons_customer/icon_customer_meals/pastries.svg', iconClass: 'menu-product-icon--meal-pastries' };
+    }
+    if (n.indexOf('wing') !== -1 || n.indexOf('chicken') !== -1) {
+        return { icon: 'icons_customer/icon_customer_meals/chicken.svg', iconClass: 'menu-product-icon--meal-chicken' };
+    }
+    if (n.indexOf('pasta') !== -1) {
+        return { icon: 'icons_customer/icon_customer_meals/pasta.svg', iconClass: 'menu-product-icon--meal-pasta' };
+    }
+    if (n === 'meals' || n === 'meal' || n.indexOf('rice') !== -1) {
+        return { icon: 'icons_customer/icon_customer_meals/rice_meal.svg', iconClass: 'menu-product-icon--meal-rice' };
+    }
+    return { icon: '', iconClass: '' };
+}
+
+function itemMatchesSideSubKey(item, sideKey) {
+    var key = String(sideKey || '');
+    if (!key || key === 'all') return true;
+    if (key === '_other') return !(parseInt(item && item.subcategory_id, 10) > 0);
+    var sid = parseSubcategoryIdFromCircleKey(key);
+    if (sid) return parseInt(item && item.subcategory_id, 10) === sid;
+    return true;
+}
+
+function buildSideSubSections(items, categoryIds) {
+    var subs = getDbSubcategoriesForCategoryIds(categoryIds);
+    var buckets = {};
+    var sections = [];
+    subs.forEach(function (sub) {
+        var key = subcategoryCircleKey(sub.id);
+        if (!key) return;
+        buckets[key] = [];
+        sections.push({
+            key: key,
+            label: sub.name || 'Subcategory',
+            subId: parseInt(sub.id, 10)
+        });
+    });
+    buckets._other = [];
+    (items || []).forEach(function (item) {
+        var sid = parseInt(item && item.subcategory_id, 10);
+        var key = sid > 0 ? subcategoryCircleKey(sid) : '';
+        if (key && buckets[key]) buckets[key].push(item);
+        else buckets._other.push(item);
+    });
+    sections = sections.filter(function (sec) {
+        return (buckets[sec.key] || []).length > 0;
+    });
+    if (buckets._other.length && sections.length) {
+        sections.push({ key: '_other', label: 'Other', subId: null });
+    }
+    return { buckets: buckets, sections: sections };
+}
+
+function buildBevCircleHtml(key, label, icon, iconClass, selected) {
+    var sel = selected ? ' menu-product--selected' : '';
+    var iconHtml = icon
+        ? '<img class="menu-product-icon ' + escapeHtmlAttr(iconClass || '') + '" src="' + escapeHtmlAttr(icon) + '" alt="">'
+        : '';
+    return (
+        '<div class="menu-product' + sel + '" data-bev-category="' + escapeHtmlAttr(key) + '" role="button" tabindex="0">' +
+            '<div class="menu-product-circle' + (icon ? '' : ' menu-product-circle--empty') + '">' + iconHtml + '</div>' +
+            '<span class="menu-product-name">' + escapeHtmlText(label) + '</span>' +
+        '</div>'
+    );
+}
+
+function buildMealCircleHtml(key, label, icon, iconClass, selected) {
+    var sel = selected ? ' menu-product--selected' : '';
+    var iconHtml = icon
+        ? '<img class="menu-product-icon ' + escapeHtmlAttr(iconClass || '') + '" src="' + escapeHtmlAttr(icon) + '" alt="' + escapeHtmlAttr(label) + '">'
+        : '';
+    return (
+        '<div class="menu-product' + sel + '" data-meal="' + escapeHtmlAttr(key) + '" role="button" tabindex="0">' +
+            '<div class="menu-product-circle menu-product-circle--meal' + (icon ? '' : ' menu-product-circle--empty') + '">' + iconHtml + '</div>' +
+            '<span class="menu-product-circle-label">' + escapeHtmlText(label) + '</span>' +
+        '</div>'
+    );
+}
+
+function setSideCirclesVisible(isBeverage, visible) {
+    var bevWrap = document.getElementById('bev-circles');
+    var mealWrap = document.getElementById('meal-circles');
+    var bevLayout = screenBeverages ? screenBeverages.querySelector('.meals-layout') : null;
+    var mealLayout = screenMeals ? screenMeals.querySelector('.meals-layout') : null;
+    if (isBeverage) {
+        if (bevWrap) {
+            bevWrap.hidden = !visible;
+            if (visible) bevWrap.classList.remove('menu-choice-hidden');
+            else bevWrap.classList.add('menu-choice-hidden');
+        }
+        if (bevLayout) bevLayout.classList.toggle('meals-layout--category-tab', !visible);
+    } else {
+        if (mealWrap) mealWrap.hidden = !visible;
+        if (mealLayout) mealLayout.classList.toggle('meals-layout--category-tab', !visible);
+    }
+}
+
+function rebuildBevCategoryCircles(selectedKey) {
+    var wrap = document.getElementById('bev-circles');
+    if (!wrap) return '';
+    if (!beverageCategoryIds.length) getKioskTabCategories();
+    var items = getItemsForGroup('beverages');
+    var built = buildSideSubSections(items, beverageCategoryIds);
+    var html = '';
+    var i;
+    for (i = 0; i < built.sections.length; i++) {
+        var sec = built.sections[i];
+        var ic = getSideCircleIconForSubName(sec.label);
+        html += buildBevCircleHtml(sec.key, sec.label, ic.icon, ic.iconClass, selectedKey === sec.key);
+    }
+    wrap.innerHTML = html;
+    setSideCirclesVisible(true, built.sections.length > 0);
+    return built.sections.length ? (selectedKey && built.buckets[selectedKey] && built.buckets[selectedKey].length ? selectedKey : built.sections[0].key) : 'all';
+}
+
+function rebuildMealCategoryCircles(selectedKey) {
+    var wrap = document.getElementById('meal-circles');
+    if (!wrap) return '';
+    var catIds = selectedKioskCategoryId ? [selectedKioskCategoryId] : [];
+    var items = getItemsForGroup('meals');
+    var built = buildSideSubSections(items, catIds);
+    var html = '';
+    var i;
+    for (i = 0; i < built.sections.length; i++) {
+        var sec = built.sections[i];
+        var ic = getSideCircleIconForSubName(sec.label);
+        html += buildMealCircleHtml(sec.key, sec.label, ic.icon, ic.iconClass, selectedKey === sec.key);
+    }
+    wrap.innerHTML = html;
+    setSideCirclesVisible(false, built.sections.length > 0);
+    return built.sections.length ? (selectedKey && built.buckets[selectedKey] && built.buckets[selectedKey].length ? selectedKey : built.sections[0].key) : 'all';
 }
 
 function renderMealProductGrid() {
@@ -1227,9 +1639,9 @@ function renderMealProductGrid() {
     var input = screenMeals.querySelector('.menu-search-input');
     var q = input ? String(input.value || '').toLowerCase().trim() : '';
     var base = getItemsForGroup('meals');
-    var byCat = selectedMealCategory === 'all'
-        ? base
-        : base.filter(function (it) { return inferMealCategoryKey(it) === selectedMealCategory; });
+    var byCat = base.filter(function (it) {
+        return itemMatchesSideSubKey(it, selectedMealCategory);
+    });
     var filtered = !q
         ? byCat
         : byCat.filter(function (it) {
@@ -1247,7 +1659,7 @@ function setSelectedMealCategory(cat) {
     var wrap = document.getElementById('meal-circles');
     if (wrap) {
         wrap.querySelectorAll('[data-meal]').forEach(function (el) {
-            var key = mealCategoryKeyFromCircleToken(el.getAttribute('data-meal'));
+            var key = el.getAttribute('data-meal') || '';
             el.classList.toggle('menu-product--selected', key === selectedMealCategory);
         });
     }
@@ -1256,63 +1668,66 @@ function setSelectedMealCategory(cat) {
 
 function wireMealCategoryCircles() {
     var wrap = document.getElementById('meal-circles');
-    if (!wrap) return;
-    wrap.querySelectorAll('[data-meal]').forEach(function (el) {
-        function activate() {
-            var key = mealCategoryKeyFromCircleToken(el.getAttribute('data-meal'));
-            if (!key) return;
-            setSelectedMealCategory(key);
-        }
-        el.addEventListener('click', function (e) {
-            e.preventDefault();
-            activate();
-        });
-        el.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                activate();
-            }
-        });
+    if (!wrap || wrap.dataset.wired === '1') return;
+    wrap.dataset.wired = '1';
+
+    wrap.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-meal]') : null;
+        if (!el || !wrap.contains(el)) return;
+        e.preventDefault();
+        var key = el.getAttribute('data-meal');
+        if (key) setSelectedMealCategory(key);
+    });
+    wrap.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var el = e.target && e.target.closest ? e.target.closest('[data-meal]') : null;
+        if (!el || !wrap.contains(el)) return;
+        e.preventDefault();
+        var key = el.getAttribute('data-meal');
+        if (key) setSelectedMealCategory(key);
     });
 }
 
-function firstBevCategoryWithItems() {
-    var order = ['coffee', 'nonCoffee', 'frappe', 'juice'];
-    var base = getItemsForGroup('beverages');
-    for (var i = 0; i < order.length; i++) {
-        var key = order[i];
-        if (base.some(function (it) { return getCustomerBevCircleKey(it) === key; })) {
-            return key;
-        }
-    }
-    return 'coffee';
-}
-
 function showMenuForGroup(group) {
-    selectedMenuGroup = group;
-    var isBeverage = group === 'beverages';
+    var tabs = rebuildMenuGroupTabs(group);
+    var tabKey = group;
+    if (tabKey === 'meals') {
+        tabKey = firstFoodTabKey() || BEVERAGES_MERGED_KEY;
+    }
+    if (!tabKey) tabKey = BEVERAGES_MERGED_KEY;
+
+    var known = tabs.some(function (t) { return t.key === tabKey; });
+    if (!known && tabKey !== BEVERAGES_MERGED_KEY) {
+        tabKey = (tabs[0] && tabs[0].key) || BEVERAGES_MERGED_KEY;
+        rebuildMenuGroupTabs(tabKey);
+    }
+
+    selectedMenuGroup = tabKey;
+    var isBeverage = tabKey === BEVERAGES_MERGED_KEY;
+    var catId = isBeverage ? null : parseKioskCategoryIdFromTabKey(tabKey);
+    selectedKioskCategoryId = catId;
     var page = isBeverage ? screenBeverages : screenMeals;
-    var items = getItemsForGroup(group);
 
     var heading = page.querySelector('.menu-grid-heading');
     var sub = page.querySelector('.menu-grid-sub');
-    if (heading) heading.textContent = isBeverage ? 'Beverages' : 'Snacks and Meals';
+    var activeTab = tabs.filter(function (t) { return t.key === tabKey; })[0];
+    if (heading) heading.textContent = activeTab ? activeTab.name : (isBeverage ? 'Beverages' : 'Menu');
     if (sub) sub.textContent = 'Select items then proceed to checkout';
 
     var grid = isBeverage ? document.getElementById('prod-grid') : document.getElementById('meal-prod-grid');
     if (grid) grid.classList.add('prod-grid--visible');
     if (isBeverage) {
-        var bevCircles = document.getElementById('bev-circles');
-        if (bevCircles) bevCircles.classList.remove('menu-choice-hidden');
         selectedDrinkTemp = 'all';
-        setSelectedBevCategory(firstBevCategoryWithItems());
+        var bevKey = rebuildBevCategoryCircles(selectedBevCategory);
+        setSelectedBevCategory(bevKey);
     } else {
-        setSelectedMealCategory('snacks');
+        var mealKey = rebuildMealCategoryCircles(selectedMealCategory);
+        setSelectedMealCategory(mealKey);
     }
 
     document.querySelectorAll('.menu-group-btn').forEach(function (btn) {
         var g = btn.getAttribute('data-menu-group');
-        btn.classList.toggle('menu-group-btn--active', g === group);
+        btn.classList.toggle('menu-group-btn--active', g === tabKey);
     });
 
     showScreen(page);
@@ -1321,17 +1736,19 @@ function showMenuForGroup(group) {
 
 function openMenuSelection() {
     // Land on Beverages with products visible (not a blank menu shell).
-    showMenuForGroup('beverages');
+    showMenuForGroup(BEVERAGES_MERGED_KEY);
 }
 
 function wireMenuGroupButtons() {
-    document.querySelectorAll('.menu-group-btn').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
+    document.querySelectorAll('.menu-group-switch').forEach(function (wrap) {
+        if (wrap.dataset.wired === '1') return;
+        wrap.dataset.wired = '1';
+        wrap.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('[data-menu-group]') : null;
+            if (!btn || !wrap.contains(btn)) return;
             e.preventDefault();
             var group = btn.getAttribute('data-menu-group');
-            if (group === 'beverages' || group === 'meals') {
-                showMenuForGroup(group);
-            }
+            if (group) showMenuForGroup(group);
         });
     });
 }
@@ -1361,9 +1778,9 @@ function wireFixedCategoryButtons() {
             var title = card.querySelector('.ro-card-title');
             var text = title ? title.textContent.trim().toLowerCase() : '';
             if (text.indexOf('beverage') !== -1) {
-                showMenuForGroup('beverages');
+                showMenuForGroup(BEVERAGES_MERGED_KEY);
             } else {
-                showMenuForGroup('meals');
+                showMenuForGroup(firstFoodTabKey() || 'meals');
             }
         });
     });
@@ -1379,20 +1796,22 @@ function loadMenuData() {
             var res = results[0];
             if (!res || !res.success) throw new Error((res && res.error) || 'Failed to load menu');
             menuData.categories = res.categories || [];
+            menuData.subcategories = res.subcategories || [];
             menuData.items = res.items || [];
             applyFastMovingIds(res.fast_moving_item_ids || []);
+            rebuildMenuGroupTabs(selectedMenuGroup || BEVERAGES_MERGED_KEY);
             wireSearch();
-            if (selectedMenuGroup === 'beverages' || selectedMenuGroup === 'meals') {
+            if (selectedMenuGroup) {
                 showMenuForGroup(selectedMenuGroup);
             } else if (screenBeverages && !screenBeverages.classList.contains('page--hidden')) {
-                showMenuForGroup('beverages');
+                showMenuForGroup(BEVERAGES_MERGED_KEY);
             }
         })
         .catch(function () {
-            // Keep UI usable even if API is down
-            menuData = { categories: [], items: [] };
+            menuData = { categories: [], items: [], subcategories: [] };
+            beverageCategoryIds = [];
             fastMovingItemIds = [];
-            if (selectedMenuGroup === 'beverages' || selectedMenuGroup === 'meals') {
+            if (selectedMenuGroup) {
                 showMenuForGroup(selectedMenuGroup);
             }
         });
@@ -2176,6 +2595,7 @@ function mapCartItemsForSubmit(items) {
         return {
             menu_item_id: ci.menu_item_id,
             quantity: ci.qty,
+            unit_price: Number(ci.price) || 0,
             removed: ci.removed || [],
             addons: normalizeAddonsList(ci.addons).map(function (a) {
                 return { name: a.name, price: a.price };

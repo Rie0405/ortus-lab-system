@@ -229,8 +229,100 @@ function normalize_inventory_notes($notes): string
     return substr($value, 0, 500);
 }
 
+function ensure_inventory_category_types_schema(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS inventory_category_types (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            slug VARCHAR(40) NOT NULL,
+            name VARCHAR(80) NOT NULL,
+            display_order INT NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_inv_cat_type_slug (slug)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+
+    $seeds = [
+        ['main', 'Main', 1],
+        ['ice', 'Ice', 2],
+        ['sauce', 'Sauce', 3],
+        ['chocolate', 'Chocolate', 4],
+        ['syrup', 'Syrup', 5],
+        ['powder', 'Powder', 6],
+        ['sinkers', 'Sinkers', 7],
+        ['toppings', 'Toppings', 8],
+        ['packaging', 'Packaging', 9],
+        ['cashier_area', 'Cashier Area', 10],
+    ];
+    $ins = $pdo->prepare(
+        'INSERT IGNORE INTO inventory_category_types (slug, name, display_order, is_active)
+         VALUES (:slug, :name, :ord, 1)'
+    );
+    foreach ($seeds as $row) {
+        $ins->execute([
+            ':slug' => $row[0],
+            ':name' => $row[1],
+            ':ord' => $row[2],
+        ]);
+    }
+}
+
+function slugify_inventory_category_type(string $name): string
+{
+    $slug = strtolower(trim($name));
+    $slug = preg_replace('/[\s-]+/', '_', $slug) ?? '';
+    $slug = preg_replace('/[^a-z0-9_]/', '', $slug) ?? '';
+    $slug = trim($slug, '_');
+    if ($slug === '') {
+        return '';
+    }
+    return substr($slug, 0, 40);
+}
+
+function fetch_active_inventory_category_types(PDO $pdo): array
+{
+    ensure_inventory_category_types_schema($pdo);
+    $rows = $pdo->query(
+        'SELECT id, slug, name, display_order
+           FROM inventory_category_types
+          WHERE is_active = 1
+          ORDER BY display_order, name'
+    )->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $out[] = [
+            'id' => (int)$row['id'],
+            'value' => (string)$row['slug'],
+            'slug' => (string)$row['slug'],
+            'label' => (string)$row['name'],
+            'name' => (string)$row['name'],
+            'display_order' => (int)$row['display_order'],
+        ];
+    }
+    return $out;
+}
+
 function inventory_category_types(): array
 {
+    try {
+        $rows = fetch_active_inventory_category_types(db());
+        $slugs = array_values(array_filter(array_map(static function ($row) {
+            return (string)($row['slug'] ?? '');
+        }, $rows)));
+        if ($slugs) {
+            return $slugs;
+        }
+    } catch (Throwable $e) {
+        // Fall through to defaults if DB is unavailable during bootstrap.
+    }
     return ['main', 'ice', 'sauce', 'chocolate', 'syrup', 'powder', 'sinkers', 'toppings', 'packaging', 'cashier_area'];
 }
 
@@ -238,7 +330,20 @@ function normalize_inventory_category_type($type): string
 {
     $t = strtolower(trim((string)$type));
     $t = str_replace(['-', ' '], '_', $t);
-    return in_array($t, inventory_category_types(), true) ? $t : 'main';
+    $t = preg_replace('/[^a-z0-9_]/', '', $t) ?? '';
+    $t = trim($t, '_');
+    if ($t === '') {
+        return 'main';
+    }
+    $allowed = inventory_category_types();
+    if (in_array($t, $allowed, true)) {
+        return $t;
+    }
+    // Keep unknown legacy slugs readable instead of forcing everything to main.
+    if (preg_match('/^[a-z][a-z0-9_]{0,39}$/', $t)) {
+        return $t;
+    }
+    return 'main';
 }
 
 function is_non_consumable_inventory_row(array $row): bool
@@ -490,6 +595,11 @@ function ensure_order_inventory_deduction_schema(PDO $pdo): void {
     ensure_inventory_items_base_schema($pdo);
     ensure_recipe_schema_shared($pdo);
     ensure_order_inventory_deducted_schema($pdo);
+    // Addon inventory links are deducted from order notes — migrate schema outside txn.
+    if (!function_exists('ensure_addons_schema')) {
+        require_once __DIR__ . '/addons_helpers.php';
+    }
+    ensure_addons_schema($pdo);
 }
 
 function ensure_order_inventory_deducted_schema(PDO $pdo): void {
@@ -1551,9 +1661,77 @@ function apply_order_inventory_deduction(PDO $pdo, int $orderId): void {
     $recipeMenuIds = deduct_recipe_ingredients_for_order($pdo, $orderId);
     deduct_linked_materials_for_order($pdo, $orderId, $recipeMenuIds);
     deduct_menu_sku_stock_for_order($pdo, $orderId);
+    deduct_addon_inventory_for_order($pdo, $orderId);
 
     $pdo->prepare('UPDATE orders SET inventory_deducted = 1 WHERE id = :id')
         ->execute([':id' => $orderId]);
+}
+
+/**
+ * Deduct inventory linked to sold add-ons (parsed from order_items.notes).
+ */
+function deduct_addon_inventory_for_order(PDO $pdo, int $orderId): void
+{
+    // Do NOT run ensure_addons_schema() here — DDL inside an open order transaction
+    // causes MySQL to implicitly commit and then commit() fails with
+    // "There is no active transaction". Schema is ensured before beginTransaction().
+    if (!function_exists('parse_addon_names_from_order_notes')) {
+        require_once __DIR__ . '/addons_helpers.php';
+    }
+
+    $rows = $pdo->prepare(
+        'SELECT quantity, notes
+           FROM order_items
+          WHERE order_id = :oid'
+    );
+    $rows->execute([':oid' => $orderId]);
+    $lineRows = $rows->fetchAll(PDO::FETCH_ASSOC);
+    if (!$lineRows) {
+        return;
+    }
+
+    $addonMapStmt = $pdo->query(
+        'SELECT id, name, inventory_item_id, inventory_qty
+           FROM addons
+          WHERE is_active = 1
+            AND inventory_item_id IS NOT NULL
+            AND inventory_item_id > 0'
+    );
+    $addonByName = [];
+    foreach ($addonMapStmt->fetchAll(PDO::FETCH_ASSOC) as $addon) {
+        $key = strtolower(trim((string)($addon['name'] ?? '')));
+        if ($key === '') {
+            continue;
+        }
+        $addonByName[$key] = [
+            'inventory_item_id' => (int)$addon['inventory_item_id'],
+            'inventory_qty' => normalize_addon_inventory_qty($addon['inventory_qty'] ?? 1),
+        ];
+    }
+    if (!$addonByName) {
+        return;
+    }
+
+    foreach ($lineRows as $line) {
+        $orderQty = max(1, (int)($line['quantity'] ?? 1));
+        $names = parse_addon_names_from_order_notes((string)($line['notes'] ?? ''));
+        if (!$names) {
+            continue;
+        }
+        foreach ($names as $name) {
+            $key = strtolower(trim($name));
+            if ($key === '' || !isset($addonByName[$key])) {
+                continue;
+            }
+            $invId = (int)$addonByName[$key]['inventory_item_id'];
+            $perAddonQty = (float)$addonByName[$key]['inventory_qty'];
+            $deductQty = $orderQty * $perAddonQty;
+            if ($invId <= 0 || $deductQty <= 0) {
+                continue;
+            }
+            deduct_units_in_use_with_refill($pdo, $invId, $deductQty);
+        }
+    }
 }
 
 /**

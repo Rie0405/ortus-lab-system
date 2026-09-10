@@ -57,6 +57,12 @@
                     <p class="kpi-value" id="sales-kpi-net">₱0.00</p>
                     <div class="kpi-track"><span class="fill-70"></span></div>
                 </article>
+                <article class="kpi-card kpi-card--highlight" title="Weekly: Actual sales minus stock log / stock entry costs">
+                    <h3>Net Cash Flow</h3>
+                    <p class="kpi-value" id="sales-kpi-net-cashflow">₱0.00</p>
+                    <p class="kpi-sub" id="sales-kpi-net-cashflow-sub">This week · Sales - Stock costs</p>
+                    <div class="kpi-track"><span class="fill-82" id="sales-kpi-net-cashflow-fill"></span></div>
+                </article>
             </section>
 
             <section class="grid-main">
@@ -64,11 +70,11 @@
                     <div class="panel-head">
                         <div>
                             <h2>SALES</h2>
-                            <p>Sales analytics report (last 7 days)</p>
+                            <p>Sales analytics report (this week)</p>
                         </div>
                         <div class="sales-analytics-head sales-analytics-head--inline">
                             <div class="sales-analytics-item">
-                                <span>7D Revenue</span>
+                                <span>Week Revenue</span>
                                 <strong id="sales-analytics-revenue">₱0.00</strong>
                             </div>
                             <div class="sales-analytics-item">
@@ -87,10 +93,7 @@
                 </article>
 
                 <article class="diag-column">
-                    <div class="diag-title-row">
-                        <h2 class="diag-title">FORECASTING</h2>
-                        <a href="forecast_test.html" class="forecast-lab-link">Open forecast lab</a>
-                    </div>
+                    <h2 class="diag-title">FORECASTING</h2>
                     <div class="diag-card diag-card--clickable" id="forecast-warning-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="forecast-modal" title="Click to view full list">
                         <h3>Stock at risk (next 2 days)</h3>
                         <p id="forecast-warning-text">Checking which items may run out soon…</p>
@@ -168,6 +171,16 @@
         }
         function peso(v) {
             return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function pad2(n) {
+            return String(n).padStart(2, '0');
+        }
+
+        function localYmd(dateLike) {
+            var d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+            if (isNaN(d.getTime())) return '';
+            return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
         }
 
         var topSellingItems = [];
@@ -343,10 +356,14 @@
 
         function loadSalesHistoryKpis() {
             var todayObj = new Date();
-            var toDate = todayObj.toISOString().slice(0, 10);
+            todayObj.setHours(0, 0, 0, 0);
+            // Calendar week: Monday → today (same weekly basis as Stock Log / sales export).
+            var day = todayObj.getDay();
+            var diffToMonday = day === 0 ? -6 : (1 - day);
             var fromObj = new Date(todayObj.getTime());
-            fromObj.setDate(fromObj.getDate() - 6);
-            var fromDate = fromObj.toISOString().slice(0, 10);
+            fromObj.setDate(todayObj.getDate() + diffToMonday);
+            var toDate = localYmd(todayObj);
+            var fromDate = localYmd(fromObj);
             var cacheBust = Date.now();
             fetch('api/sales.php?from=' + encodeURIComponent(fromDate) + '&to=' + encodeURIComponent(toDate) + '&limit=200&_=' + cacheBust, { cache: 'no-store' })
                 .then(function (r) { return r.json(); })
@@ -355,12 +372,20 @@
                     var refunds = 0;
                     var discounts = 0;
                     var grossProfit = 0;
+                    var stockCosts = 0;
+                    var netCashFlow = 0;
                     var orders = [];
                     if (summaryRes && summaryRes.success && summaryRes.summary) {
                         rev = parseFloat(summaryRes.summary.net_sales || summaryRes.summary.total_revenue || 0);
                         refunds = parseFloat(summaryRes.summary.refunds_total || 0);
                         discounts = parseFloat(summaryRes.summary.discounts_total || 0);
                         grossProfit = parseFloat(summaryRes.summary.gross_profit || 0);
+                        stockCosts = parseFloat(summaryRes.summary.receipt_expense_total || 0);
+                        if (summaryRes.summary.net_cash_flow != null) {
+                            netCashFlow = parseFloat(summaryRes.summary.net_cash_flow || 0);
+                        } else {
+                            netCashFlow = rev - stockCosts;
+                        }
                         orders = Array.isArray(summaryRes.orders) ? summaryRes.orders : [];
                     }
 
@@ -368,6 +393,8 @@
                     var refundsEl = document.getElementById('sales-kpi-refunds');
                     var discountsEl = document.getElementById('sales-kpi-discounts');
                     var netEl = document.getElementById('sales-kpi-net');
+                    var netCashEl = document.getElementById('sales-kpi-net-cashflow');
+                    var netCashSubEl = document.getElementById('sales-kpi-net-cashflow-sub');
                     var analyticsRevEl = document.getElementById('sales-analytics-revenue');
                     var analyticsDailyEl = document.getElementById('sales-analytics-daily');
                     var analyticsBarsEl = document.getElementById('sales-analytics-bars');
@@ -375,22 +402,29 @@
                     if (refundsEl) refundsEl.textContent = peso(refunds);
                     if (discountsEl) discountsEl.textContent = peso(discounts);
                     if (netEl) netEl.textContent = peso(grossProfit);
+                    if (netCashEl) {
+                        netCashEl.textContent = peso(netCashFlow);
+                        netCashEl.classList.toggle('is-negative', netCashFlow < 0);
+                    }
+                    if (netCashSubEl) {
+                        netCashSubEl.textContent = 'This week · Sales ' + peso(rev) + ' - Stock ' + peso(stockCosts);
+                    }
                     if (analyticsRevEl) analyticsRevEl.textContent = peso(rev);
-                    if (analyticsDailyEl) analyticsDailyEl.textContent = peso(rev / 7);
+                    var weekDays = Math.max(1, Math.round((todayObj - fromObj) / 86400000) + 1);
+                    if (analyticsDailyEl) analyticsDailyEl.textContent = peso(rev / weekDays);
                     if (analyticsBarsEl) {
                         var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                         var buckets = {};
-                        for (var i = 6; i >= 0; i--) {
-                            var d = new Date(todayObj.getTime());
-                            d.setDate(todayObj.getDate() - i);
-                            var key = d.toISOString().slice(0, 10);
-                            buckets[key] = { label: dayNames[d.getDay()], amount: 0 };
+                        var cursor = new Date(fromObj.getTime());
+                        while (cursor <= todayObj) {
+                            var key = localYmd(cursor);
+                            buckets[key] = { label: dayNames[cursor.getDay()], amount: 0 };
+                            cursor.setDate(cursor.getDate() + 1);
                         }
 
                         orders.forEach(function (order) {
-                            var created = String(order && order.created_at || '');
-                            var key = created.slice(0, 10);
-                            if (!buckets[key]) return;
+                            var key = localYmd(order && order.created_at);
+                            if (!key || !buckets[key]) return;
                             buckets[key].amount += parseFloat(order.total_amount || 0);
                         });
 

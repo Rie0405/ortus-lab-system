@@ -261,6 +261,224 @@ function apiCall(method, url, body) {
     wireProductVisualDropzone('prod');
     wireProductVisualDropzone('edit');
 
+    // ── Category / subcategory icon uploads ─────────────────────────────────
+    function setCatalogIconPreview(prefix, url) {
+        var dropzone = document.getElementById(prefix + '-dropzone');
+        var preview = document.getElementById(prefix + '-preview');
+        if (!dropzone || !preview) return;
+        if (url) {
+            preview.hidden = false;
+            preview.src = url;
+            dropzone.classList.add('has-preview');
+        } else {
+            preview.hidden = true;
+            preview.removeAttribute('src');
+            dropzone.classList.remove('has-preview');
+            dropzone.classList.remove('is-dragover');
+        }
+    }
+
+    function setCatalogIconEnabled(prefix, enabled, hintText) {
+        var dropzone = document.getElementById(prefix + '-dropzone');
+        var hint = document.getElementById(prefix + '-hint');
+        if (dropzone) {
+            dropzone.classList.toggle('is-disabled', !enabled);
+            dropzone.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+            if (!enabled) dropzone.classList.remove('is-dragover');
+        }
+        if (hint) {
+            if (enabled) {
+                hint.hidden = true;
+            } else {
+                hint.hidden = false;
+                hint.textContent = hintText || 'Select an option first';
+            }
+        }
+    }
+
+    function syncCatalogIconDropzone(prefix, kind) {
+        var isCreate = prefix.indexOf('prod-') === 0;
+        var catSel = document.getElementById(isCreate ? 'prod-category' : 'edit-prod-category');
+        var subSel = document.getElementById(isCreate ? 'prod-subcategory' : 'edit-prod-subcategory');
+        if (kind === 'cat') {
+            var catId = catSel && catSel.value ? parseInt(catSel.value, 10) : 0;
+            var cat = findCategoryById(catId);
+            setCatalogIconEnabled(prefix, !!cat, 'Select a category first');
+            setCatalogIconPreview(prefix, cat && cat.icon_url ? cat.icon_url : '');
+            return;
+        }
+        var subId = subSel && subSel.value ? parseInt(subSel.value, 10) : 0;
+        var sub = findSubcategoryById(subId);
+        setCatalogIconEnabled(prefix, !!sub, 'Select a subcategory first');
+        setCatalogIconPreview(prefix, sub && sub.icon_url ? sub.icon_url : '');
+    }
+
+    function syncAllCatalogIconDropzones() {
+        syncCatalogIconDropzone('prod-cat-icon', 'cat');
+        syncCatalogIconDropzone('prod-sub-icon', 'sub');
+        syncCatalogIconDropzone('edit-cat-icon', 'cat');
+        syncCatalogIconDropzone('edit-sub-icon', 'sub');
+    }
+
+    function saveCatalogIconUrl(kind, id, url) {
+        var endpoint = kind === 'cat' ? 'api/categories.php' : 'api/subcategories.php';
+        return apiCall('PUT', endpoint, { id: id, icon_url: url || '' }).then(function (res) {
+            if (!res || !res.success) throw new Error((res && res.error) || 'Failed to save icon');
+            var nextUrl = res.icon_url || null;
+            if (kind === 'cat') {
+                var cat = findCategoryById(id);
+                if (cat) cat.icon_url = nextUrl;
+            } else {
+                var sub = findSubcategoryById(id);
+                if (sub) sub.icon_url = nextUrl;
+            }
+            return nextUrl;
+        });
+    }
+
+    function handleCatalogIconFile(prefix, kind, file) {
+        if (!file) return;
+        var isCreate = prefix.indexOf('prod-') === 0;
+        var catSel = document.getElementById(isCreate ? 'prod-category' : 'edit-prod-category');
+        var subSel = document.getElementById(isCreate ? 'prod-subcategory' : 'edit-prod-subcategory');
+        var targetId = kind === 'cat'
+            ? (catSel && catSel.value ? parseInt(catSel.value, 10) : 0)
+            : (subSel && subSel.value ? parseInt(subSel.value, 10) : 0);
+        if (!targetId) {
+            alert(kind === 'cat' ? 'Select a category first.' : 'Select a subcategory first.');
+            return;
+        }
+        if (!PRODUCT_IMAGE_TYPES[file.type]) {
+            alert('Only PNG, JPG, or WEBP images are allowed.');
+            return;
+        }
+        if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+            alert('Image must be PNG/JPG up to 5MB.');
+            return;
+        }
+
+        var entity = kind === 'cat' ? findCategoryById(targetId) : findSubcategoryById(targetId);
+        var previousUrl = entity && entity.icon_url ? entity.icon_url : '';
+        var localUrl = URL.createObjectURL(file);
+        setCatalogIconPreview(prefix, localUrl);
+
+        var dropzone = document.getElementById(prefix + '-dropzone');
+        var titleEl = document.getElementById(prefix + '-title');
+        var prevTitle = titleEl ? titleEl.textContent : '';
+        if (titleEl) titleEl.textContent = 'UPLOADING…';
+        if (dropzone) dropzone.style.pointerEvents = 'none';
+
+        uploadProductImage(file).then(function (res) {
+            if (!(res && res.success && res.url)) {
+                throw new Error((res && res.error) || 'Upload failed');
+            }
+            return saveCatalogIconUrl(kind, targetId, res.url).then(function (savedUrl) {
+                setCatalogIconPreview(prefix, savedUrl || '');
+                if (previousUrl && previousUrl !== savedUrl) {
+                    deleteProductImageFile(previousUrl);
+                }
+            });
+        }).catch(function (err) {
+            console.error('Catalog icon upload failed:', err);
+            alert(err && err.message ? err.message : 'Icon upload failed. Please try again.');
+            setCatalogIconPreview(prefix, previousUrl || '');
+        }).finally(function () {
+            URL.revokeObjectURL(localUrl);
+            if (titleEl) titleEl.textContent = prevTitle || 'UPLOAD ICON';
+            if (dropzone) dropzone.style.pointerEvents = '';
+        });
+    }
+
+    function wireCatalogIconDropzone(prefix, kind) {
+        var dropzone = document.getElementById(prefix + '-dropzone');
+        var fileInput = document.getElementById(prefix + '-file');
+        var updateBtn = document.getElementById(prefix + '-update');
+        var deleteBtn = document.getElementById(prefix + '-delete');
+        if (!dropzone || !fileInput) return;
+
+        function openPicker() {
+            if (dropzone.classList.contains('is-disabled')) return;
+            fileInput.click();
+        }
+
+        dropzone.addEventListener('click', function (e) {
+            if (e.target === fileInput) return;
+            if (e.target.closest('.product-upload-action')) return;
+            if (dropzone.classList.contains('is-disabled')) return;
+            if (dropzone.classList.contains('has-preview')) return;
+            openPicker();
+        });
+        dropzone.addEventListener('keydown', function (e) {
+            if (dropzone.classList.contains('is-disabled') || dropzone.classList.contains('has-preview')) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openPicker();
+            }
+        });
+        fileInput.addEventListener('change', function () {
+            var file = fileInput.files && fileInput.files[0];
+            handleCatalogIconFile(prefix, kind, file);
+            fileInput.value = '';
+        });
+        if (updateBtn) {
+            updateBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openPicker();
+            });
+        }
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (dropzone.classList.contains('is-disabled')) return;
+                var isCreate = prefix.indexOf('prod-') === 0;
+                var catSel = document.getElementById(isCreate ? 'prod-category' : 'edit-prod-category');
+                var subSel = document.getElementById(isCreate ? 'prod-subcategory' : 'edit-prod-subcategory');
+                var targetId = kind === 'cat'
+                    ? (catSel && catSel.value ? parseInt(catSel.value, 10) : 0)
+                    : (subSel && subSel.value ? parseInt(subSel.value, 10) : 0);
+                var entity = kind === 'cat' ? findCategoryById(targetId) : findSubcategoryById(targetId);
+                var currentUrl = entity && entity.icon_url ? entity.icon_url : '';
+                if (!currentUrl) {
+                    setCatalogIconPreview(prefix, '');
+                    return;
+                }
+                if (!confirm(kind === 'cat' ? 'Remove this category icon?' : 'Remove this subcategory icon?')) return;
+                saveCatalogIconUrl(kind, targetId, '').then(function () {
+                    setCatalogIconPreview(prefix, '');
+                    deleteProductImageFile(currentUrl);
+                }).catch(function (err) {
+                    alert(err && err.message ? err.message : 'Could not remove icon.');
+                });
+            });
+        }
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!dropzone.classList.contains('is-disabled')) dropzone.classList.add('is-dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+        dropzone.addEventListener('drop', function (e) {
+            if (dropzone.classList.contains('is-disabled')) return;
+            var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            handleCatalogIconFile(prefix, kind, file);
+        });
+    }
+
+    wireCatalogIconDropzone('prod-cat-icon', 'cat');
+    wireCatalogIconDropzone('prod-sub-icon', 'sub');
+    wireCatalogIconDropzone('edit-cat-icon', 'cat');
+    wireCatalogIconDropzone('edit-sub-icon', 'sub');
+
     // ── Customizable ingredients tags (ordering_dashboard.html only) ──
     var customizableTagsWrap = null;
     var customizableTagsList = null;
@@ -540,6 +758,75 @@ function apiCall(method, url, body) {
     function fillMainCategorySelects(selectedId) {
         populateMainCategorySelect(prodMainCategorySelect, selectedId || null);
         populateMainCategorySelect(editMainCategorySelect, selectedId || null);
+        var manageSelected = manageMainCategorySelect && manageMainCategorySelect.value
+            ? manageMainCategorySelect.value
+            : null;
+        populateMainCategorySelect(manageMainCategorySelect, selectedId || manageSelected);
+    }
+
+    function findMainCategoryById(id) {
+        var want = parseInt(id, 10) || 0;
+        if (!want) return null;
+        for (var i = 0; i < (mainCategories || []).length; i++) {
+            if (parseInt(mainCategories[i].id, 10) === want) return mainCategories[i];
+        }
+        return null;
+    }
+
+    function selectedManageMainCategory() {
+        return manageMainCategorySelect && manageMainCategorySelect.value ? manageMainCategorySelect.value : '';
+    }
+
+    function promptRenameMainCategory() {
+        var selectedId = selectedManageMainCategory();
+        if (!selectedId) {
+            alert('Select a main category first.');
+            return;
+        }
+        var cat = findMainCategoryById(selectedId);
+        if (!cat) {
+            alert('Main category not found.');
+            return;
+        }
+        var next = window.prompt('Rename main category:', cat.name || '');
+        if (next === null) return;
+        next = String(next).trim();
+        if (!next) {
+            alert('Name is required.');
+            return;
+        }
+        apiCall('PUT', 'api/main_categories.php', { id: parseInt(cat.id, 10), name: next })
+            .then(function (res) {
+                if (!res.success) throw new Error(res.error || 'Rename failed');
+                return loadItems();
+            })
+            .then(function () {
+                if (manageMainCategorySelect) manageMainCategorySelect.value = String(selectedId);
+            })
+            .catch(function (err) { alert('Error: ' + err.message); });
+    }
+
+    function promptDeleteMainCategory() {
+        var selectedId = selectedManageMainCategory();
+        if (!selectedId) {
+            alert('Select a main category first.');
+            return;
+        }
+        var cat = findMainCategoryById(selectedId);
+        if (!cat) {
+            alert('Main category not found.');
+            return;
+        }
+        if (!window.confirm('Delete main category "' + cat.name + '"? Only allowed when it has no menu items.')) {
+            return;
+        }
+        apiCall('DELETE', 'api/main_categories.php', { id: parseInt(cat.id, 10) })
+            .then(function (res) {
+                if (!res.success) throw new Error(res.error || 'Delete failed');
+                if (manageMainCategorySelect) manageMainCategorySelect.value = '';
+                return loadItems();
+            })
+            .catch(function (err) { alert('Error: ' + err.message); });
     }
 
     function createMainCategoryFromModal() {
@@ -608,7 +895,10 @@ function apiCall(method, url, body) {
     var prodSubcategorySelect = createBackdrop ? createBackdrop.querySelector('#prod-subcategory') : null;
     var prodCategorySelect = createBackdrop ? createBackdrop.querySelector('#prod-category') : null;
     var manageCategorySelect = createBackdrop ? createBackdrop.querySelector('#manage-category-select') : null;
+    var manageMainCategorySelect = createBackdrop ? createBackdrop.querySelector('#manage-main-category-select') : null;
     var manageSubcategorySelect = createBackdrop ? createBackdrop.querySelector('#manage-subcategory-select') : null;
+    var renameMainCategoryBtn = document.getElementById('prod-rename-main-category-btn');
+    var deleteMainCategoryBtn = document.getElementById('prod-delete-main-category-btn');
     var renameCategoryBtn = document.getElementById('prod-rename-category-btn');
     var deleteCategoryBtn = document.getElementById('prod-delete-category-btn');
     var renameSubcategoryBtn = document.getElementById('prod-rename-subcategory-btn');
@@ -649,12 +939,18 @@ function apiCall(method, url, body) {
         return null;
     }
 
+    function isTemperatureSubcategoryName(name) {
+        var n = String(name || '').trim().toLowerCase();
+        return n === 'hot' || n === 'cold';
+    }
+
     function fillSubcategorySelectForCategory(sel, categoryId, selectedId) {
         if (!sel) return;
         sel.innerHTML = '<option value="">Select Subcategory</option>';
         if (!categoryId) return;
         (subcategories || []).forEach(function (s) {
             if (parseInt(s.category_id, 10) !== parseInt(categoryId, 10)) return;
+            if (isTemperatureSubcategoryName(s.name)) return;
             var o = document.createElement('option');
             o.value = String(s.id);
             o.textContent = s.name;
@@ -840,12 +1136,14 @@ function apiCall(method, url, body) {
             if (currentCat && subcategoryParentSelect) {
                 subcategoryParentSelect.value = String(currentCat);
             }
+            syncAllCatalogIconDropzones();
         });
     }
 
     if (prodSubcategorySelect) {
         prodSubcategorySelect.addEventListener('change', function () {
             applyServeFlagsFromSubcategory('prod');
+            syncAllCatalogIconDropzones();
         });
     }
     if (manageCategorySelect) {
@@ -962,6 +1260,12 @@ function apiCall(method, url, body) {
             .catch(function (err) { alert('Error: ' + err.message); });
     }
 
+    if (renameMainCategoryBtn) {
+        renameMainCategoryBtn.addEventListener('click', function () { promptRenameMainCategory(); });
+    }
+    if (deleteMainCategoryBtn) {
+        deleteMainCategoryBtn.addEventListener('click', function () { promptDeleteMainCategory(); });
+    }
     if (renameCategoryBtn) {
         renameCategoryBtn.addEventListener('click', function () { promptRenameCategory(); });
     }
@@ -980,11 +1284,13 @@ function apiCall(method, url, body) {
         editCategorySelect.addEventListener('change', function () {
             syncEditSubcategoryOptions();
             syncBevSubVisibility();
+            syncAllCatalogIconDropzones();
         });
     }
     if (editProdSubcategorySelect) {
         editProdSubcategorySelect.addEventListener('change', function () {
             applyServeFlagsFromSubcategory('edit');
+            syncAllCatalogIconDropzones();
         });
     }
 
@@ -1035,6 +1341,7 @@ function apiCall(method, url, body) {
             if (basePrice) basePrice.value = '';
             syncBevSubVisibility();
             clearProductVisual('prod');
+            syncAllCatalogIconDropzones();
         }
     }
     function closeModal(backdrop) {
@@ -1096,11 +1403,25 @@ function apiCall(method, url, body) {
         syncEditSubcategoryOptions();
         syncManageSubcategoryOptions();
         syncBevSubVisibility();
+        syncAllCatalogIconDropzones();
     }
 
     ['prod-category', 'edit-prod-category'].forEach(function (id) {
         var s = document.getElementById(id);
-        if (s) s.addEventListener('change', syncBevSubVisibility);
+        if (s) {
+            s.addEventListener('change', function () {
+                syncBevSubVisibility();
+                syncAllCatalogIconDropzones();
+            });
+        }
+    });
+    ['prod-subcategory', 'edit-prod-subcategory'].forEach(function (id) {
+        var s = document.getElementById(id);
+        if (s) {
+            s.addEventListener('change', function () {
+                syncAllCatalogIconDropzones();
+            });
+        }
     });
 
     // ── Render table rows from items array ───────────────────────────────────
@@ -1355,12 +1676,16 @@ function apiCall(method, url, body) {
         if (selectedCategoryChipKey === 'all') return [];
         if (selectedCategoryChipKey === 'bev') {
             return subcategories.filter(function (s) {
+                if (isTemperatureSubcategoryName(s.name)) return false;
                 return beverageMergedCategoryIds.indexOf(parseInt(s.category_id, 10)) !== -1;
             });
         }
         var catId = parseInt(String(selectedCategoryChipKey).replace('cat-', ''), 10);
         if (!catId) return [];
-        return subcategories.filter(function (s) { return parseInt(s.category_id, 10) === catId; });
+        return subcategories.filter(function (s) {
+            if (isTemperatureSubcategoryName(s.name)) return false;
+            return parseInt(s.category_id, 10) === catId;
+        });
     }
 
     function applyChipFilters() {
@@ -1514,7 +1839,10 @@ function apiCall(method, url, body) {
         return apiCall('GET', 'api/menu.php').then(function (res) {
             if (!res.success) { console.error(res.error); return; }
             categories = res.categories || [];
-            subcategories = res.subcategories || [];
+            subcategories = (res.subcategories || []).filter(function (s) {
+                var n = String(s && s.name || '').trim().toLowerCase();
+                return n !== 'hot' && n !== 'cold';
+            });
             mainCategories = res.main_categories || [];
             allItems   = res.items;
             fillCategorySelects(categories);
@@ -1542,8 +1870,8 @@ function apiCall(method, url, body) {
     }
 
     // ── Create item ───────────────────────────────────────────────────────────
-    var createPrimaryBtn = createBackdrop.querySelector('.product-btn--primary');
-    var createGhostBtn   = createBackdrop.querySelector('.product-btn--ghost');
+    var createPrimaryBtn = createBackdrop.querySelector('.product-modal__footer .product-btn--primary');
+    var createGhostBtn   = createBackdrop.querySelector('.product-modal__footer .product-btn--ghost');
 
     if (createGhostBtn) createGhostBtn.addEventListener('click', function () { closeModal(createBackdrop); });
 
@@ -1637,7 +1965,7 @@ function apiCall(method, url, body) {
 
             var subcategoryId = prodSubcategorySelect ? prodSubcategorySelect.value : '';
             if (isBeverageCreate && !subcategoryId) {
-                alert('Select a subcategory (e.g. Coffee, Frappe, Hot, Cold).');
+                alert('Select a subcategory (e.g. Coffee, Frappe, Refreshers).');
                 return;
             }
 
@@ -1646,14 +1974,10 @@ function apiCall(method, url, body) {
             var serveHot = 0;
             var serveCold = 0;
             if (isBeverageCreate) {
-                applyServeFlagsFromSubcategory('prod');
-                var serveFlags = readServeFlagsFromForm('prod');
+                var serveFlags = inferServeFlagsFromVariantRows(variantsListEl);
+                setServeFlagsOnForm('prod', serveFlags);
                 if (!serveFlags.hot && !serveFlags.cold) {
-                    serveFlags = inferServeFlagsFromVariantRows(variantsListEl);
-                    setServeFlagsOnForm('prod', serveFlags);
-                }
-                if (!serveFlags.hot && !serveFlags.cold) {
-                    alert('Pick Hot or Cold as the subcategory, or add a variant with temperature.');
+                    alert('Add at least one variant with Hot or Cold temperature.');
                     return;
                 }
                 serveHot = serveFlags.hot ? 1 : 0;
@@ -1777,13 +2101,14 @@ function apiCall(method, url, body) {
 
         editImageUrl = (item.image_url && String(item.image_url).trim()) || '';
         setDropzonePreview('edit', editImageUrl);
+        syncAllCatalogIconDropzones();
 
         openModal(editBackdrop);
     }
 
     if (editBackdrop) {
-        var editGhostBtn   = editBackdrop.querySelector('.product-btn--ghost');
-        var editPrimaryBtn = editBackdrop.querySelector('.product-btn--primary');
+        var editGhostBtn   = editBackdrop.querySelector('.product-modal__footer .product-btn--ghost');
+        var editPrimaryBtn = editBackdrop.querySelector('.product-modal__footer .product-btn--primary');
 
         if (editGhostBtn)   editGhostBtn.addEventListener('click', function () { closeModal(editBackdrop); });
 
@@ -1873,14 +2198,14 @@ function apiCall(method, url, body) {
                 var serveHot = 0;
                 var serveCold = 0;
                 if (isBeverageEdit) {
-                    applyServeFlagsFromSubcategory('edit');
-                    var serveFlagsEdit = readServeFlagsFromForm('edit');
+                    var serveFlagsEdit = inferServeFlagsFromVariantRows(editVariantsListEl);
+                    setServeFlagsOnForm('edit', serveFlagsEdit);
                     if (!serveFlagsEdit.hot && !serveFlagsEdit.cold) {
-                        serveFlagsEdit = inferServeFlagsFromVariantRows(editVariantsListEl);
-                        setServeFlagsOnForm('edit', serveFlagsEdit);
+                        // Keep previously saved serve flags if variants don't encode temp.
+                        serveFlagsEdit = readServeFlagsFromForm('edit');
                     }
                     if (!serveFlagsEdit.hot && !serveFlagsEdit.cold) {
-                        alert('Choose a Hot or Cold subcategory, or add a variant with temperature.');
+                        alert('Add at least one variant with Hot or Cold temperature.');
                         return;
                     }
                     serveHot = serveFlagsEdit.hot ? 1 : 0;
@@ -1889,7 +2214,7 @@ function apiCall(method, url, body) {
 
                 var editSubcategoryId = editProdSubcategorySelect ? editProdSubcategorySelect.value : '';
                 if (isBeverageEdit && !editSubcategoryId) {
-                    alert('Select a subcategory (e.g. Coffee, Frappe, Hot, Cold).');
+                    alert('Select a subcategory (e.g. Coffee, Frappe, Refreshers).');
                     return;
                 }
 

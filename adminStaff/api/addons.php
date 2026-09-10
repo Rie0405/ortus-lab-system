@@ -5,8 +5,24 @@ require_once __DIR__ . '/addons_helpers.php';
 ensure_addons_schema(db());
 $m = method();
 
+function resolve_addon_inventory_link(PDO $pdo, $inventoryItemIdRaw, $inventoryQtyRaw): array
+{
+    $inventoryItemId = (int)($inventoryItemIdRaw ?? 0);
+    $inventoryQty = normalize_addon_inventory_qty($inventoryQtyRaw ?? 1);
+    if ($inventoryItemId <= 0) {
+        return [null, 1.0];
+    }
+    $chk = $pdo->prepare('SELECT id FROM inventory_items WHERE id = :id AND is_active = 1 LIMIT 1');
+    $chk->execute([':id' => $inventoryItemId]);
+    if (!$chk->fetch()) {
+        fail('Linked inventory item not found.');
+    }
+    return [$inventoryItemId, $inventoryQty];
+}
+
 if ($m === 'GET') {
     require_auth();
+    ensure_addon_menu_items_synced(db());
     $mainCategoryId = isset($_GET['main_category_id']) ? (int)$_GET['main_category_id'] : null;
     $includeInactive = isset($_GET['include_inactive']) && (string)$_GET['include_inactive'] === '1';
     ok([
@@ -34,6 +50,12 @@ if ($m === 'POST') {
     $mainCategoryId = resolve_main_category_id(db(), $mainCategoryId);
 
     $pdo = db();
+    [$inventoryItemId, $inventoryQty] = resolve_addon_inventory_link(
+        $pdo,
+        $b['inventory_item_id'] ?? null,
+        $b['inventory_qty'] ?? 1
+    );
+
     $dup = $pdo->prepare(
         'SELECT id FROM addons
           WHERE main_category_id = :mcid AND LOWER(TRIM(name)) = LOWER(:name) AND is_active = 1
@@ -49,17 +71,20 @@ if ($m === 'POST') {
     )->fetchColumn();
 
     $ins = $pdo->prepare(
-        'INSERT INTO addons (name, price, main_category_id, display_order, is_active)
-         VALUES (:name, :price, :mcid, :ord, 1)'
+        'INSERT INTO addons (name, price, main_category_id, inventory_item_id, inventory_qty, display_order, is_active)
+         VALUES (:name, :price, :mcid, :inv, :qty, :ord, 1)'
     );
     $ins->execute([
         ':name' => $name,
         ':price' => round($price, 2),
         ':mcid' => $mainCategoryId,
+        ':inv' => $inventoryItemId,
+        ':qty' => $inventoryQty,
         ':ord' => $nextOrder,
     ]);
 
     $id = (int)$pdo->lastInsertId();
+    sync_addon_menu_item($pdo, $id);
     ok(['id' => $id, 'message' => 'Addon created.', 'addons' => fetch_addons_rows($pdo)], 201);
 }
 
@@ -92,6 +117,12 @@ if ($m === 'PUT') {
         fail('Addon not found.', 404);
     }
 
+    [$inventoryItemId, $inventoryQty] = resolve_addon_inventory_link(
+        $pdo,
+        $b['inventory_item_id'] ?? null,
+        $b['inventory_qty'] ?? 1
+    );
+
     $dup = $pdo->prepare(
         'SELECT id FROM addons
           WHERE main_category_id = :mcid AND LOWER(TRIM(name)) = LOWER(:name) AND is_active = 1 AND id <> :id
@@ -104,16 +135,23 @@ if ($m === 'PUT') {
 
     $upd = $pdo->prepare(
         'UPDATE addons
-            SET name = :name, price = :price, main_category_id = :mcid
+            SET name = :name,
+                price = :price,
+                main_category_id = :mcid,
+                inventory_item_id = :inv,
+                inventory_qty = :qty
           WHERE id = :id'
     );
     $upd->execute([
         ':name' => $name,
         ':price' => round($price, 2),
         ':mcid' => $mainCategoryId,
+        ':inv' => $inventoryItemId,
+        ':qty' => $inventoryQty,
         ':id' => $id,
     ]);
 
+    sync_addon_menu_item($pdo, $id);
     ok(['id' => $id, 'message' => 'Addon updated.', 'addons' => fetch_addons_rows($pdo)]);
 }
 
@@ -132,6 +170,7 @@ if ($m === 'DELETE') {
         fail('Addon not found.', 404);
     }
 
+    hide_addon_menu_item($pdo, $id);
     $pdo->prepare('UPDATE addons SET is_active = 0 WHERE id = :id')->execute([':id' => $id]);
     ok(['id' => $id, 'message' => 'Addon removed.', 'addons' => fetch_addons_rows($pdo)]);
 }

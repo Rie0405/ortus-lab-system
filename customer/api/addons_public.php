@@ -24,6 +24,8 @@ if ($station === 'bar' || $station === 'kitchen') {
     }
 }
 
+ensure_addon_menu_items_synced(db());
+
 ok([
     'addons' => fetch_addons_rows(db(), $mainCategoryId, true),
 ]);

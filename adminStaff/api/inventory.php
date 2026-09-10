@@ -1013,11 +1013,13 @@ $mainCategories = fetch_active_main_categories($pdo);
 $categoryNames = array_map(static function ($row) {
     return (string)$row['name'];
 }, $mainCategories);
+$categoryTypes = fetch_active_inventory_category_types($pdo);
 
 ok([
     'items'         => $items,
     'categories'    => $categoryNames,
     'main_categories' => $mainCategories,
+    'category_types' => $categoryTypes,
     'low_alerts'    => $lowAlerts,
     'low_stock_fraction_den' => $lowStockFractionDen,
     'total_items'   => count($items),

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/menu_helpers.php';
+require_once __DIR__ . '/addons_helpers.php';
 
 ensure_menu_serve_schema(db());
 ensure_subcategories_schema(db());
@@ -13,10 +14,21 @@ if ($m === 'GET') {
     require_auth();   // admin or staff
     $categoryId = isset($_GET['category_id']) ? (int)$_GET['category_id'] : null;
 
+    ensure_catalog_icon_columns(db());
+    ensure_addon_menu_items_synced(db());
+
     // Fetch categories
     $cats = db()->query(
-        'SELECT id, name, display_order FROM categories WHERE is_active = 1 ORDER BY display_order'
+        'SELECT id, name, icon_url, display_order FROM categories WHERE is_active = 1 ORDER BY display_order'
     )->fetchAll();
+    foreach ($cats as &$cat) {
+        $cat['id'] = (int)$cat['id'];
+        $cat['display_order'] = (int)$cat['display_order'];
+        $cat['icon_url'] = isset($cat['icon_url']) && $cat['icon_url'] !== null && $cat['icon_url'] !== ''
+            ? (string)$cat['icon_url']
+            : null;
+    }
+    unset($cat);
 
     // Fetch items
     $subcats = fetch_active_subcategories(db());
@@ -47,6 +59,7 @@ if ($m === 'GET') {
         cast_menu_item_row($item);
     }
     unset($item);
+    annotate_menu_items_addon_flags(db(), $items);
 
     $fastMoving = fetch_fast_moving_items(db(), 100, 5);
 
@@ -98,7 +111,7 @@ if ($m === 'POST') {
             $serveCold = $serveCold ?? (int)$inferred['cold'];
         }
         if (!$serveHot && !$serveCold) {
-            fail('Select at least one drink subcategory: Hot or Cold.');
+            fail('Add a Hot or Cold temperature variant for drink items.');
         }
     } else {
         $serveHot = 0;
@@ -207,7 +220,7 @@ if ($m === 'PUT') {
             $nextHot = isset($b['serve_hot']) ? (bool)$b['serve_hot'] : (bool)$row['serve_hot'];
             $nextCold = isset($b['serve_cold']) ? (bool)$b['serve_cold'] : (bool)$row['serve_cold'];
             if (!$nextHot && !$nextCold) {
-                fail('Select at least one drink subcategory: Hot or Cold.');
+                fail('Add a Hot or Cold temperature variant for drink items.');
             }
         }
     }

@@ -1,5 +1,12 @@
 {
     "require": {
-        "phpoffice/phpspreadsheet": "^5.8"
+        "php": ">=8.0",
+        "phpoffice/phpspreadsheet": "^1.29"
+    },
+    "config": {
+        "platform": {
+            "php": "8.0.30"
+        },
+        "sort-packages": true
     }
 }

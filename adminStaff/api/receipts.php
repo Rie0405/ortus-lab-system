@@ -319,23 +319,65 @@ if (method() === 'GET') {
         ]);
     }
 
-    $stmt = $pdo->query(
-        'SELECT
-            r.ReceiptID,
-            r.`Date`,
-            r.OrderedDate,
-            r.ExpectedReceiveDate,
-            r.Supplier,
-            r.EntrySource,
-            r.TotalAmount,
-            r.CreatedAt,
-            COUNT(rl.ReceiptLineID) AS line_count
-         FROM Receipts r
-         LEFT JOIN ReceiptLines rl ON rl.ReceiptID = r.ReceiptID
-         GROUP BY r.ReceiptID
-         ORDER BY r.`Date` DESC, r.ReceiptID DESC
-         LIMIT 100'
-    );
+    $datesRaw = trim((string)($_GET['dates'] ?? ''));
+    $dateList = [];
+    if ($datesRaw !== '') {
+        foreach (explode(',', $datesRaw) as $piece) {
+            $piece = trim($piece);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $piece)) {
+                $dateList[] = $piece;
+            }
+        }
+        $dateList = array_values(array_unique($dateList));
+    }
+
+    if ($dateList) {
+        $placeholders = [];
+        $params = [];
+        foreach ($dateList as $i => $dateValue) {
+            $key = ':d' . $i;
+            $placeholders[] = $key;
+            $params[$key] = $dateValue;
+        }
+        $inClause = implode(', ', $placeholders);
+        $stmt = $pdo->prepare(
+            "SELECT
+                r.ReceiptID,
+                r.`Date`,
+                r.OrderedDate,
+                r.ExpectedReceiveDate,
+                r.Supplier,
+                r.EntrySource,
+                r.TotalAmount,
+                r.CreatedAt,
+                COUNT(rl.ReceiptLineID) AS line_count
+             FROM Receipts r
+             LEFT JOIN ReceiptLines rl ON rl.ReceiptID = r.ReceiptID
+             WHERE r.`Date` IN ($inClause)
+             GROUP BY r.ReceiptID
+             ORDER BY r.`Date` DESC, r.ReceiptID DESC
+             LIMIT 500"
+        );
+        $stmt->execute($params);
+    } else {
+        $stmt = $pdo->query(
+            'SELECT
+                r.ReceiptID,
+                r.`Date`,
+                r.OrderedDate,
+                r.ExpectedReceiveDate,
+                r.Supplier,
+                r.EntrySource,
+                r.TotalAmount,
+                r.CreatedAt,
+                COUNT(rl.ReceiptLineID) AS line_count
+             FROM Receipts r
+             LEFT JOIN ReceiptLines rl ON rl.ReceiptID = r.ReceiptID
+             GROUP BY r.ReceiptID
+             ORDER BY r.`Date` DESC, r.ReceiptID DESC
+             LIMIT 100'
+        );
+    }
     $receipts = [];
     foreach ($stmt->fetchAll() as $row) {
         $receipts[] = [
@@ -350,7 +392,7 @@ if (method() === 'GET') {
             'created_at' => $row['CreatedAt'],
         ];
     }
-    ok(['receipts' => $receipts]);
+    ok(['receipts' => $receipts, 'dates' => $dateList]);
 }
 
 if (method() !== 'POST') {

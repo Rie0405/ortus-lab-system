@@ -670,6 +670,10 @@ body {
     padding: 0;
     border-bottom: 0;
     flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
 }
 
 .menu-group-btn {
@@ -693,6 +697,7 @@ body {
     white-space: nowrap;
     position: relative;
     transition: background 0.15s ease, color 0.15s ease;
+    flex: 0 0 auto;
 }
 
 .menu-group-btn:hover {
@@ -716,6 +721,20 @@ body {
     content: none;
 }
 
+.menu-group-btn--addons {
+    border: 1.5px dashed rgba(45, 212, 191, 0.45);
+    background: linear-gradient(180deg, rgba(15, 45, 40, 0.55) 0%, rgba(12, 28, 26, 0.35) 100%);
+}
+
+.menu-group-btn--addons.menu-group-btn--active {
+    border-color: rgba(45, 212, 191, 0.85);
+    box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.28);
+}
+
+.menu-group-btn--addons.menu-group-btn--active .menu-group-btn__label {
+    color: #5eead4;
+}
+
 .menu-group-btn__icon-wrap {
     width: 28px;
     height: 28px;
@@ -726,8 +745,19 @@ body {
     flex-shrink: 0;
 }
 
+.menu-group-btn__icon-wrap--empty {
+    background: #2a221a;
+    border: 1px dashed rgba(255, 255, 255, 0.22);
+    box-sizing: border-box;
+}
+
 .menu-group-btn--active .menu-group-btn__icon-wrap {
     background: rgba(21, 17, 13, 0.22);
+}
+
+.menu-group-btn--active .menu-group-btn__icon-wrap--empty {
+    border-color: rgba(21, 17, 13, 0.35);
+    background: rgba(21, 17, 13, 0.18);
 }
 
 .menu-group-btn__icon {
@@ -1461,6 +1491,58 @@ body {
     transform: translateY(-3px);
 }
 
+.prod-card--addon {
+    width: 292px;
+    border-radius: 28px;
+    background:
+        linear-gradient(165deg, #16352f 0%, #12241f 48%, #101a1c 100%);
+    border: 2px dashed rgba(45, 212, 191, 0.55);
+    box-shadow:
+        0px 4px 4px 2px rgba(0, 0, 0, 0.22),
+        inset 0 0 0 1px rgba(20, 184, 166, 0.18);
+}
+
+.prod-card--addon:hover {
+    border-color: rgba(94, 234, 212, 0.8);
+    transform: translateY(-4px);
+}
+
+.prod-card--addon .prod-card-img-wrap {
+    border-radius: 22px 22px 10px 10px;
+    margin: 14px 14px 0;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 2px rgba(45, 212, 191, 0.28);
+}
+
+.prod-card--addon .prod-card-price {
+    color: #5eead4;
+}
+
+.prod-card-addon-badge {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #2dd4bf 0%, #0f766e 100%);
+    color: #042f2e;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 2px 10px rgba(13, 148, 136, 0.45);
+}
+
+.prod-add-btn--addon {
+    background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
+    color: #042f2e;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
 .prod-card--soldout {
     opacity: 0.72;
     cursor: not-allowed;
@@ -1629,6 +1711,18 @@ body {
     overflow: hidden;
 }
 
+.meals-layout--category-tab {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.meals-layout--category-tab .menu-category-pane {
+    display: none;
+}
+
+.meals-layout--category-tab .menu-products-pane {
+    grid-column: 1;
+}
+
 .menu-category-pane {
     grid-column: 1;
     width: 168px;
@@ -1706,6 +1800,21 @@ body {
     box-shadow:
         0px 4px 4px 0px rgba(0, 0, 0, 0.25),
         0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+/* Admin-added categories without a preset icon */
+.menu-product-circle--empty {
+    background: linear-gradient(160deg, #2a221a 0%, #1a1510 100%);
+    border: 1px dashed #5a4a3a;
+}
+
+.menu-product-circle--empty::after {
+    content: '';
+    width: 28%;
+    height: 28%;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    box-sizing: border-box;
 }
 
 .menu-product-circle--meal img {

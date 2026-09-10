@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260910-icons">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -176,7 +176,7 @@
                             <div class="product-manage-mode-help" data-catalog-role="manage" hidden>
                                 <h3 style="margin: 0 0 8px; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #e5e5e5;">MANAGE CATEGORIES</h3>
                                 <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.4;">
-                                    Rename or delete categories/subcategories. Deleting is only allowed when the category/subcategory is not used by any menu items.
+                                    Rename or delete main categories, categories, and subcategories. Deleting is only allowed when they are not used by any menu items.
                                 </p>
                             </div>
 
@@ -186,7 +186,10 @@
                             </div>
 
                             <div class="product-field-group" data-catalog-role="create">
-                                <label class="product-field-label" for="prod-main-category">Main Category</label>
+                                <label class="product-field-label" for="prod-main-category">
+                                    Main Category
+                                    <span class="product-field-label__note">(Bar / Kitchen station)</span>
+                                </label>
                                 <div class="product-select-wrap">
                                     <select id="prod-main-category" class="product-select">
                                         <option value="">Select main category</option>
@@ -209,7 +212,10 @@
 
                             <div class="product-catalog-row" data-catalog-role="create">
                                 <div class="product-field-group">
-                                    <label class="product-field-label" for="prod-category">Category</label>
+                                    <label class="product-field-label" for="prod-category">
+                                        Category
+                                        <span class="product-field-label__note">(Main Food group: e.g. Beverages, Rice Meal, etc.)</span>
+                                    </label>
                                     <div class="product-select-wrap">
                                         <select id="prod-category" class="product-select">
                                             <option value="">Select category</option>
@@ -231,7 +237,10 @@
                                 </div>
 
                                 <div class="product-field-group">
-                                    <label class="product-field-label" for="prod-subcategory">Subcategory</label>
+                                    <label class="product-field-label" for="prod-subcategory">
+                                        Subcategory
+                                        <span class="product-field-label__note">(Food types inside a food group. e.g. Beverage: Coffee, Refreshers, Frappe, etc.)</span>
+                                    </label>
                                     <div class="product-select-wrap">
                                         <select id="prod-subcategory" class="product-select">
                                             <option value="">Select subcategory</option>
@@ -261,6 +270,19 @@
                             </div>
 
                             <div class="product-catalog-panel" data-catalog-role="manage" hidden>
+                                <div class="product-field-group">
+                                    <label class="product-field-label" for="manage-main-category-select">Main Category</label>
+                                    <div class="product-select-wrap">
+                                        <select id="manage-main-category-select" class="product-select">
+                                            <option value="">Select main category</option>
+                                        </select>
+                                        <span class="product-select-caret">▾</span>
+                                    </div>
+                                    <div class="product-manage-row">
+                                        <button type="button" class="manage-action-btn manage-action-btn--edit" id="prod-rename-main-category-btn">Edit main category</button>
+                                        <button type="button" class="manage-action-btn manage-action-btn--delete" id="prod-delete-main-category-btn">Delete main category</button>
+                                    </div>
+                                </div>
                                 <div class="product-field-group">
                                     <label class="product-field-label" for="manage-category-select">Category</label>
                                     <div class="product-select-wrap">
@@ -319,26 +341,47 @@
                                     <button type="button" class="product-upload-action product-upload-action--delete" id="prod-visual-delete">Delete</button>
                                 </div>
                             </div>
+
+                            <div class="product-icon-uploads">
+                                <div class="product-icon-upload">
+                                    <p class="product-field-label">CATEGORY ICON</p>
+                                    <div class="product-upload-dropzone product-upload-dropzone--icon is-disabled" id="prod-cat-icon-dropzone" role="button" tabindex="0" aria-label="Upload category icon" aria-disabled="true">
+                                        <input type="file" id="prod-cat-icon-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                        <div class="product-upload-empty">
+                                            <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
+                                            <p class="product-upload-title" id="prod-cat-icon-title">UPLOAD ICON</p>
+                                            <p class="product-upload-sub">PNG, JPG · Max 5MB</p>
+                                        </div>
+                                        <img alt="" class="product-upload-preview" id="prod-cat-icon-preview" hidden>
+                                        <div class="product-upload-actions">
+                                            <button type="button" class="product-upload-action product-upload-action--update" id="prod-cat-icon-update">Update</button>
+                                            <button type="button" class="product-upload-action product-upload-action--delete" id="prod-cat-icon-delete">Delete</button>
+                                        </div>
+                                    </div>
+                                    <p class="product-icon-upload-hint" id="prod-cat-icon-hint">Select a category first</p>
+                                </div>
+                                <div class="product-icon-upload">
+                                    <p class="product-field-label">SUBCATEGORY ICON</p>
+                                    <div class="product-upload-dropzone product-upload-dropzone--icon is-disabled" id="prod-sub-icon-dropzone" role="button" tabindex="0" aria-label="Upload subcategory icon" aria-disabled="true">
+                                        <input type="file" id="prod-sub-icon-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                        <div class="product-upload-empty">
+                                            <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
+                                            <p class="product-upload-title" id="prod-sub-icon-title">UPLOAD ICON</p>
+                                            <p class="product-upload-sub">PNG, JPG · Max 5MB</p>
+                                        </div>
+                                        <img alt="" class="product-upload-preview" id="prod-sub-icon-preview" hidden>
+                                        <div class="product-upload-actions">
+                                            <button type="button" class="product-upload-action product-upload-action--update" id="prod-sub-icon-update">Update</button>
+                                            <button type="button" class="product-upload-action product-upload-action--delete" id="prod-sub-icon-delete">Delete</button>
+                                        </div>
+                                    </div>
+                                    <p class="product-icon-upload-hint" id="prod-sub-icon-hint">Select a subcategory first</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="product-modal__lower">
-                        <div class="product-section" data-catalog-role="create">
-                            <div class="product-section__head">
-                                <span class="product-section__title">Removable ingredients</span>
-                            </div>
-                            <div class="product-section__body">
-                                <p class="product-upload-sub">Type + Enter to add multiple removable ingredients.</p>
-                                <div class="customizable-tags" id="prod-customizable-tags">
-                                        <div id="prod-customizable-tags-list" class="customizable-tags__list"></div>
-                                    <input type="text"
-                                               id="prod-customizable-ingredients-input"
-                                               class="product-input product-input--ghost"
-                                               placeholder="e.g. Sugar, Milk, Honey">
-                                </div>
-                            </div>
-                        </div>
-
                         <div id="prod-variants-section" class="product-section" data-catalog-role="create">
                             <div class="product-section__head">
                                 <span class="product-section__title">Variants (temperature &amp; size)</span>
@@ -399,7 +442,10 @@
                             </div>
 
                             <div class="product-field-group">
-                                <label class="product-field-label" for="edit-prod-main-category">Main Category</label>
+                                <label class="product-field-label" for="edit-prod-main-category">
+                                    Main Category
+                                    <span class="product-field-label__note">(Bar / Kitchen station)</span>
+                                </label>
                                 <div class="product-select-wrap">
                                     <select id="edit-prod-main-category" class="product-select">
                                         <option value="">Select main category</option>
@@ -410,7 +456,10 @@
 
                             <div class="product-catalog-row">
                                 <div class="product-field-group">
-                                    <label class="product-field-label" for="edit-prod-category">Category</label>
+                                    <label class="product-field-label" for="edit-prod-category">
+                                        Category
+                                        <span class="product-field-label__note">(Main Food group: e.g. Beverages, Rice Meal, etc.)</span>
+                                    </label>
                                     <div class="product-select-wrap">
                                         <select id="edit-prod-category" class="product-select">
                                             <option value="">Select category</option>
@@ -419,7 +468,10 @@
                                     </div>
                                 </div>
                                 <div class="product-field-group">
-                                    <label class="product-field-label" for="edit-prod-subcategory">Subcategory</label>
+                                    <label class="product-field-label" for="edit-prod-subcategory">
+                                        Subcategory
+                                        <span class="product-field-label__note">(Food types inside a food group. e.g. Beverage: Coffee, Refreshers, Frappe, etc.)</span>
+                                    </label>
                                     <div class="product-select-wrap">
                                         <select id="edit-prod-subcategory" class="product-select">
                                             <option value="">Select subcategory</option>
@@ -459,26 +511,47 @@
                                     <button type="button" class="product-upload-action product-upload-action--delete" id="edit-visual-delete">Delete</button>
                                 </div>
                             </div>
+
+                            <div class="product-icon-uploads">
+                                <div class="product-icon-upload">
+                                    <p class="product-field-label">CATEGORY ICON</p>
+                                    <div class="product-upload-dropzone product-upload-dropzone--icon is-disabled" id="edit-cat-icon-dropzone" role="button" tabindex="0" aria-label="Upload category icon" aria-disabled="true">
+                                        <input type="file" id="edit-cat-icon-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                        <div class="product-upload-empty">
+                                            <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
+                                            <p class="product-upload-title" id="edit-cat-icon-title">UPLOAD ICON</p>
+                                            <p class="product-upload-sub">PNG, JPG · Max 5MB</p>
+                                        </div>
+                                        <img alt="" class="product-upload-preview" id="edit-cat-icon-preview" hidden>
+                                        <div class="product-upload-actions">
+                                            <button type="button" class="product-upload-action product-upload-action--update" id="edit-cat-icon-update">Update</button>
+                                            <button type="button" class="product-upload-action product-upload-action--delete" id="edit-cat-icon-delete">Delete</button>
+                                        </div>
+                                    </div>
+                                    <p class="product-icon-upload-hint" id="edit-cat-icon-hint">Select a category first</p>
+                                </div>
+                                <div class="product-icon-upload">
+                                    <p class="product-field-label">SUBCATEGORY ICON</p>
+                                    <div class="product-upload-dropzone product-upload-dropzone--icon is-disabled" id="edit-sub-icon-dropzone" role="button" tabindex="0" aria-label="Upload subcategory icon" aria-disabled="true">
+                                        <input type="file" id="edit-sub-icon-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                        <div class="product-upload-empty">
+                                            <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
+                                            <p class="product-upload-title" id="edit-sub-icon-title">UPLOAD ICON</p>
+                                            <p class="product-upload-sub">PNG, JPG · Max 5MB</p>
+                                        </div>
+                                        <img alt="" class="product-upload-preview" id="edit-sub-icon-preview" hidden>
+                                        <div class="product-upload-actions">
+                                            <button type="button" class="product-upload-action product-upload-action--update" id="edit-sub-icon-update">Update</button>
+                                            <button type="button" class="product-upload-action product-upload-action--delete" id="edit-sub-icon-delete">Delete</button>
+                                        </div>
+                                    </div>
+                                    <p class="product-icon-upload-hint" id="edit-sub-icon-hint">Select a subcategory first</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="product-modal__lower">
-                        <div class="product-section">
-                            <div class="product-section__head">
-                                <span class="product-section__title">REMOVABLE INGREDIENTS</span>
-                            </div>
-                            <div class="product-section__body">
-                                <p class="product-upload-sub">Type + Enter to add multiple removable ingredients.</p>
-                                <div class="customizable-tags" id="edit-customizable-tags">
-                                    <div id="edit-customizable-tags-list" class="customizable-tags__list"></div>
-                                    <input type="text"
-                                           id="edit-customizable-ingredients-input"
-                                           class="product-input product-input--ghost"
-                                           placeholder="e.g. Sugar, Milk, Honey">
-                                </div>
-                            </div>
-                        </div>
-
                         <div id="edit-variants-section" class="product-section">
                             <div class="product-section__head">
                                 <span class="product-section__title">VARIANTS / TEMPERATURE &amp; OUNCE</span>
@@ -550,6 +623,17 @@
                         <p class="addon-station-hint">Bar addons appear on beverage items. Kitchen addons appear on food items.</p>
                     </div>
 
+                    <div class="gcash-config-field addon-inventory-link">
+                        <span class="gcash-config-label">LINK TO INVENTORY</span>
+                        <div class="addon-inventory-link__row">
+                            <select id="addon-register-inventory" class="gcash-config-input" aria-label="Inventory item">
+                                <option value="">No inventory link</option>
+                            </select>
+                            <input id="addon-register-inventory-qty" class="gcash-config-input addon-inventory-qty" type="number" min="0.01" step="0.01" value="1" title="Qty used per sold addon" aria-label="Inventory qty per addon">
+                        </div>
+                        <p class="addon-station-hint">Optional. When this addon is sold, deduct this inventory qty × order quantity.</p>
+                    </div>
+
                     <div class="addon-register-list-wrap">
                         <p class="gcash-config-label">REGISTERED ADDONS</p>
                         <div id="addon-register-list" class="addon-register-list" aria-live="polite"></div>
@@ -613,7 +697,7 @@
         </footer>
         </div>
 
-        <script src="dashboard_script.js?v=20260616-1540"></script>
+        <script src="dashboard_script.js?v=20260910-no-hotcold"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');
@@ -624,13 +708,17 @@
             var errEl = document.getElementById('addon-register-error');
             var nameInput = document.getElementById('addon-register-name');
             var priceInput = document.getElementById('addon-register-price');
+            var invSelect = document.getElementById('addon-register-inventory');
+            var invQtyInput = document.getElementById('addon-register-inventory-qty');
             var listEl = document.getElementById('addon-register-list');
             var stationBtns = document.querySelectorAll('.addon-station-btn');
             if (!btnOpen || !backdrop || !saveBtn || !nameInput || !listEl) return;
 
             var mainCategories = [];
             var addons = [];
+            var inventoryItems = [];
             var selectedStation = 'bar';
+            var editingAddonId = null;
 
             function setErr(msg) {
                 if (!errEl) return;
@@ -670,6 +758,37 @@
                 });
             }
 
+            function syncSaveButtonLabel() {
+                if (!saveBtn) return;
+                saveBtn.textContent = editingAddonId ? 'Update Addon' : 'Save Addon';
+            }
+
+            function resetForm() {
+                editingAddonId = null;
+                nameInput.value = '';
+                if (priceInput) priceInput.value = '';
+                if (invSelect) invSelect.value = '';
+                if (invQtyInput) invQtyInput.value = '1';
+                selectedStation = 'bar';
+                syncStationButtons();
+                syncSaveButtonLabel();
+            }
+
+            function populateInventorySelect(selectedId) {
+                if (!invSelect) return;
+                var html = '<option value="">No inventory link</option>';
+                inventoryItems.forEach(function (it) {
+                    var id = parseInt(it.id, 10) || 0;
+                    if (!id) return;
+                    var label = String(it.name || '').trim() || ('Item #' + id);
+                    var cat = String(it.category_name || '').trim();
+                    if (cat) label += ' (' + cat + ')';
+                    html += '<option value="' + id + '">' + escapeHtml(label) + '</option>';
+                });
+                invSelect.innerHTML = html;
+                if (selectedId) invSelect.value = String(selectedId);
+            }
+
             function renderList() {
                 if (!addons.length) {
                     listEl.innerHTML = '<p class="addon-register-empty">No addons registered yet.</p>';
@@ -677,18 +796,61 @@
                 }
                 listEl.innerHTML = addons.map(function (a) {
                     var stationLabel = a.station === 'bar' ? 'Bar' : 'Kitchen';
+                    var linked = a.inventory_item_id
+                        ? ('Linked: ' + (a.inventory_item_name || ('Item #' + a.inventory_item_id)) +
+                            ' × ' + (Number(a.inventory_qty) || 1))
+                        : 'Not linked to inventory';
+                    var linkedClass = a.inventory_item_id ? ' is-linked' : '';
                     return '' +
-                        '<article class="addon-register-item" data-addon-id="' + a.id + '">' +
+                        '<article class="addon-register-item' + (editingAddonId === a.id ? ' is-editing' : '') + '" data-addon-id="' + a.id + '">' +
                             '<div class="addon-register-item__meta">' +
                                 '<strong class="addon-register-item__name">' + escapeHtml(a.name) + '</strong>' +
                                 '<span class="addon-register-item__station addon-register-item__station--' + escapeHtml(a.station) + '">' + stationLabel + '</span>' +
+                                '<span class="addon-register-item__inv' + linkedClass + '">' + escapeHtml(linked) + '</span>' +
                             '</div>' +
                             '<div class="addon-register-item__right">' +
                                 '<span class="addon-register-item__price">' + formatPeso(a.price) + '</span>' +
+                                '<button type="button" class="addon-register-item__link" data-link-addon="' + a.id + '">Link</button>' +
                                 '<button type="button" class="addon-register-item__delete" data-delete-addon="' + a.id + '">Delete</button>' +
                             '</div>' +
                         '</article>';
                 }).join('');
+            }
+
+            function beginLinkAddon(id) {
+                var addon = addons.find(function (a) { return a.id === id; });
+                if (!addon) return;
+                editingAddonId = id;
+                nameInput.value = addon.name || '';
+                if (priceInput) priceInput.value = String(addon.price != null ? addon.price : '');
+                selectedStation = addon.station === 'kitchen' ? 'kitchen' : 'bar';
+                syncStationButtons();
+                populateInventorySelect(addon.inventory_item_id || '');
+                if (invQtyInput) invQtyInput.value = String(addon.inventory_qty || 1);
+                syncSaveButtonLabel();
+                renderList();
+                if (invSelect) invSelect.focus();
+                setErr('Editing "' + addon.name + '". Pick inventory, then Update Addon.');
+            }
+
+            function loadInventoryOptions() {
+                return fetch('api/inventory.php', { method: 'GET', cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) {
+                            inventoryItems = [];
+                            populateInventorySelect('');
+                            return;
+                        }
+                        inventoryItems = (d.items || []).slice().sort(function (a, b) {
+                            return String(a.name || '').localeCompare(String(b.name || ''));
+                        });
+                        populateInventorySelect(invSelect && invSelect.value ? invSelect.value : '');
+                    })
+                    .catch(function () {
+                        inventoryItems = [];
+                        populateInventorySelect('');
+                    });
             }
 
             function loadAddons() {
@@ -706,22 +868,21 @@
 
             function openModal() {
                 setErr('');
-                nameInput.value = '';
-                if (priceInput) priceInput.value = '';
-                selectedStation = 'bar';
-                syncStationButtons();
+                resetForm();
                 backdrop.classList.add('is-visible');
                 backdrop.setAttribute('aria-hidden', 'false');
-                loadAddons().catch(function (err) {
-                    setErr(err.message || 'Failed to load addons.');
-                    renderList();
-                });
+                Promise.all([loadAddons(), loadInventoryOptions()])
+                    .catch(function (err) {
+                        setErr(err.message || 'Failed to load addons.');
+                        renderList();
+                    });
                 nameInput.focus();
             }
 
             function closeModal() {
                 backdrop.classList.remove('is-visible');
                 backdrop.setAttribute('aria-hidden', 'true');
+                resetForm();
             }
 
             stationBtns.forEach(function (btn) {
@@ -732,6 +893,12 @@
             });
 
             listEl.addEventListener('click', function (e) {
+                var linkBtn = e.target.closest('[data-link-addon]');
+                if (linkBtn) {
+                    var linkId = parseInt(linkBtn.getAttribute('data-link-addon'), 10);
+                    if (linkId) beginLinkAddon(linkId);
+                    return;
+                }
                 var del = e.target.closest('[data-delete-addon]');
                 if (!del) return;
                 var id = parseInt(del.getAttribute('data-delete-addon'), 10);
@@ -750,6 +917,7 @@
                             setErr((d && d.error) || 'Failed to delete addon.');
                             return;
                         }
+                        if (editingAddonId === id) resetForm();
                         addons = d.addons || [];
                         renderList();
                     })
@@ -775,17 +943,26 @@
                 if (!mainCategoryId) {
                     return setErr('Bar/Kitchen stations are missing. Create them under products first.');
                 }
+                var inventoryItemId = invSelect ? (parseInt(invSelect.value, 10) || 0) : 0;
+                var inventoryQty = invQtyInput ? parseFloat(invQtyInput.value) : 1;
+                if (!Number.isFinite(inventoryQty) || inventoryQty <= 0) inventoryQty = 1;
+
+                var payload = {
+                    name: name,
+                    price: price,
+                    main_category_id: mainCategoryId,
+                    inventory_item_id: inventoryItemId > 0 ? inventoryItemId : null,
+                    inventory_qty: inventoryQty
+                };
+                var isEdit = !!editingAddonId;
+                if (isEdit) payload.id = editingAddonId;
 
                 saveBtn.disabled = true;
                 fetch('api/addons.php', {
-                    method: 'POST',
+                    method: isEdit ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
-                    body: JSON.stringify({
-                        name: name,
-                        price: price,
-                        main_category_id: mainCategoryId
-                    })
+                    body: JSON.stringify(payload)
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
@@ -793,10 +970,10 @@
                             setErr((d && d.error) || 'Failed to save addon.');
                             return;
                         }
-                        nameInput.value = '';
-                        if (priceInput) priceInput.value = '';
+                        resetForm();
                         addons = d.addons || [];
                         renderList();
+                        setErr('');
                     })
                     .catch(function () {
                         setErr('Failed to save addon.');

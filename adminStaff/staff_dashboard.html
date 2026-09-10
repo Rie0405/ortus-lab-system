@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20260910-pos-icons">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -737,16 +737,15 @@
                                     <label class="pay-modal__field-label">REFERENCE NUMBER</label>
                                     <input type="text" class="pay-modal__input gcash-ref-input" id="gcash-ref-number" placeholder="e.g. 0023 948 129481">
                                 </div>
-                                <div class="gcash-status gcash-status--matched" id="gcash-status">
-                                    <span class="gcash-status__dot"></span>
-                                    <span class="gcash-status__text">AMOUNT MATCHED</span>
-                                </div>
                             </div>
 
                             <!-- Right: kiosk GCash QR (same config as customer kiosk) -->
                             <div class="gcash-right">
                                 <label class="pay-modal__field-label">GCASH QR CODE</label>
-                                <p class="gcash-qr-number" id="gcash-number-display-staff"></p>
+                                <div class="gcash-qr-meta">
+                                    <p class="gcash-qr-number" id="gcash-number-display-staff" hidden></p>
+                                    <p class="gcash-qr-name" id="gcash-name-display-staff" hidden></p>
+                                </div>
                                 <div class="gcash-qr-panel" id="gcash-qr-panel">
                                     <div class="gcash-qr-wrap" id="gcash-qr-wrap">
                                         <img src="" alt="GCash QR Code" id="gcash-qr-img" class="gcash-qr-img gcash-qr-img--hidden">
@@ -1373,6 +1372,22 @@
                 return false;
             }
 
+            function isAddonCategoryName(name) {
+                var n = String(name || '').trim().toLowerCase();
+                return n === 'add-ons' || n === 'addons' || n === 'add ons';
+            }
+
+            function isAddonCardItem(item) {
+                if (!item) return false;
+                if (item.is_addon_card) return true;
+                return isAddonCategoryName(item.category_name);
+            }
+
+            function formatStandaloneAddonNotes(name) {
+                var n = String(name || '').trim();
+                return n ? ('Add-ons: ' + n) : '';
+            }
+
             var POS_DISCOUNT_RATE_KEY = "staff_pos_discount_rate";
 
             function migrateDiscountRateStorage() {
@@ -1693,16 +1708,27 @@
                 return null;
             }
 
-            /** Cyclic icon fix: meals → beverage art, beverages → pastry art, pastries → meal art. */
-            function getPosCategoryIcon(cat) {
-                if (!cat) return 'Icon-4.svg';
+            /** Prefer uploaded category icon; otherwise orange preset art (never grey Icon-4). */
+            function getPosCategoryIconFile(cat) {
+                if (!cat) return 'Icon-1.svg';
                 var raw = String(cat.name || '').trim();
                 var n = raw.toLowerCase();
                 if (cat.id === BEVERAGES_MERGED_ID) return 'Icon-2.svg';
                 if (n === 'beverages' || categoryNameMergesIntoBeverages(raw)) return 'Icon-2.svg';
                 if (/\bpastries?\b|pastry|\bbakery\b|\bbaked\b/i.test(raw)) return 'Icon-3.svg';
-                if (/\bmeals?\b|snacks\s+and\s+meals?|snacks?\s*&\s*meals?|^\s*snacks\s*$/i.test(n)) return 'Icon-1.svg';
-                return 'Icon-4.svg';
+                if (/\bpasta\b|\bnoodle|\bspaghetti|\bpenne|\blinguine/i.test(n)) return 'Icon-5.svg';
+                if (/\bwings?\b|\bchicken\b/i.test(n)) return 'Icon-1.svg';
+                if (/\bmeals?\b|snacks\s+and\s+meals?|snacks?\s*&\s*meals?|^\s*snacks\s*$|\bstarter|\bnacho/i.test(n)) {
+                    return 'Icon-1.svg';
+                }
+                if (/\bother/i.test(n)) return 'Icon-5.svg';
+                return 'Icon-1.svg';
+            }
+
+            function getPosCategoryIconSrc(cat) {
+                var custom = cat && cat.icon_url ? String(cat.icon_url).trim() : '';
+                if (custom) return custom;
+                return 'icons_admin/' + getPosCategoryIconFile(cat);
             }
 
             function applyBeverageCategoryMerge() {
@@ -1710,11 +1736,17 @@
                 var cats = menuData.categories || [];
                 var mergedList = [];
                 var inserted = false;
+                var bevIconUrl = '';
                 cats.forEach(function (c) {
                     if (categoryNameMergesIntoBeverages(c.name)) {
                         beverageCategoryIds.push(c.id);
+                        if (!bevIconUrl && c.icon_url) bevIconUrl = String(c.icon_url).trim();
                         if (!inserted) {
-                            mergedList.push({ id: BEVERAGES_MERGED_ID, name: 'Beverages' });
+                            mergedList.push({
+                                id: BEVERAGES_MERGED_ID,
+                                name: 'Beverages',
+                                icon_url: null
+                            });
                             inserted = true;
                         }
                     } else {
@@ -1722,6 +1754,12 @@
                     }
                 });
                 if (inserted) {
+                    for (var i = 0; i < mergedList.length; i++) {
+                        if (mergedList[i].id === BEVERAGES_MERGED_ID) {
+                            mergedList[i].icon_url = bevIconUrl || null;
+                            break;
+                        }
+                    }
                     menuData.categories = mergedList;
                 }
             }
@@ -1812,14 +1850,25 @@
             function posMenuCardHtml(item) {
                 var img = (item.image_url && item.image_url.trim()) ? item.image_url : placeholderImg;
                 var price = formatPHP(item.price);
-                var descShow = stripPosBevSectionForDisplay(item.description || '');
+                var isAddonCard = isAddonCardItem(item);
+                var descShow = isAddonCard
+                    ? 'Add on its own'
+                    : stripPosBevSectionForDisplay(item.description || '');
                 var isAvailable = item.is_available !== false;
                 var isBestSeller = fastMovingItemIds.indexOf(parseInt(item.id, 10)) !== -1;
                 var bestSellerChip = isBestSeller
                     ? "<span class=\"bestseller-chip\">BEST SELLER</span>"
                     : "";
-                return "<article class=\"menu-card " + (isAvailable ? "" : "menu-card--soldout") + (isBestSeller ? " menu-card--bestseller" : "") + "\" data-menu-id=\"" + item.id + "\" data-menu-name=\"" + (item.name || "").replace(/"/g, "&quot;") + "\" data-menu-price=\"" + item.price + "\" data-menu-available=\"" + (isAvailable ? "1" : "0") + "\">" +
-                    "<div class=\"image-wrap\"><img src=\"" + img + "\" alt=\"" + (item.name || "").replace(/"/g, "&quot;") + "\">" + bestSellerChip + "<span class=\"price-tag\">" + price + "</span>" + (isAvailable ? "" : "<span class=\"soldout-chip\">SOLD OUT</span>") + "</div>" +
+                var addonChip = isAddonCard
+                    ? "<span class=\"addon-chip\">ADD-ON</span>"
+                    : "";
+                var cardClass =
+                    "menu-card" +
+                    (isAvailable ? "" : " menu-card--soldout") +
+                    (isBestSeller ? " menu-card--bestseller" : "") +
+                    (isAddonCard ? " menu-card--addon" : "");
+                return "<article class=\"" + cardClass + "\" data-menu-id=\"" + item.id + "\" data-menu-name=\"" + (item.name || "").replace(/"/g, "&quot;") + "\" data-menu-price=\"" + item.price + "\" data-menu-available=\"" + (isAvailable ? "1" : "0") + "\" data-addon-card=\"" + (isAddonCard ? "1" : "0") + "\">" +
+                    "<div class=\"image-wrap\">" + addonChip + "<img src=\"" + img + "\" alt=\"" + (item.name || "").replace(/"/g, "&quot;") + "\">" + bestSellerChip + "<span class=\"price-tag\">" + price + "</span>" + (isAvailable ? "" : "<span class=\"soldout-chip\">SOLD OUT</span>") + "</div>" +
                     "<h3>" + (item.name || "Item") + "</h3>" +
                     "<p>" + descShow + "</p></article>";
             }
@@ -1834,6 +1883,10 @@
                         var price = parseFloat(card.getAttribute("data-menu-price")) || 0;
                         var item = (menuData.items || []).find(function (x) { return x.id === id; }) || {};
                         var categoryName = item.category_name || "";
+                        if (isAddonCardItem(item) || card.getAttribute("data-addon-card") === "1") {
+                            addToCart(id, name, price, formatStandaloneAddonNotes(name));
+                            return;
+                        }
                         if (!categoryNameMergesIntoBeverages(categoryName)) {
                             addToCart(id, name, price, "");
                             return;
@@ -2078,10 +2131,6 @@
                         menuData.subcategories = data.subcategories || [];
                         applyFastMovingIds(data.fast_moving_item_ids || []);
                         applyBeverageCategoryMerge();
-                        // Hide "Others" category chip on POS (still in API; items stay in data for other flows).
-                        menuData.categories = (menuData.categories || []).filter(function (c) {
-                            return String(c && c.name || '').trim().toLowerCase() !== 'others';
-                        });
                         if (selectedCategoryId !== null && beverageCategoryIds.indexOf(selectedCategoryId) !== -1) {
                             selectedCategoryId = BEVERAGES_MERGED_ID;
                         }
@@ -2120,13 +2169,14 @@
                 var html = "";
                 var first = true;
                 menuData.categories.forEach(function (cat) {
-                    var icon = getPosCategoryIcon(cat);
+                    var iconSrc = getPosCategoryIconSrc(cat);
+                    var hasCustom = !!(cat && cat.icon_url);
                     if (first && selectedCategoryId === null) selectedCategoryId = cat.id;
                     var active = selectedCategoryId === cat.id;
                     first = false;
-                    html += "<button type=\"button\" class=\"category-card" + (active ? " category-card--active" : "") + "\" data-cat-id=\"" + cat.id + "\">" +
-                        "<span class=\"category-icon\"><img src=\"icons_admin/" + icon + "\" alt=\"\"></span>" +
-                        (cat.name || "Category") + "</button>";
+                    html += "<button type=\"button\" class=\"category-card" + (active ? " category-card--active" : "") + (hasCustom ? " category-card--custom-icon" : "") + (isAddonCategoryName(cat.name) ? " category-card--addons" : "") + "\" data-cat-id=\"" + cat.id + "\">" +
+                        "<span class=\"category-icon\"><img src=\"" + escHtml(iconSrc) + "\" alt=\"\"></span>" +
+                        escHtml(cat.name || "Category") + "</button>";
                 });
                 var discountActive = isDiscountViewActive();
                 var shiftRate = getShiftDiscountRate();
@@ -2758,6 +2808,7 @@
             var gcashQrImg = document.getElementById("gcash-qr-img");
             var gcashQrPlaceholder = document.getElementById("gcash-qr-placeholder");
             var gcashNumberDisplayStaff = document.getElementById("gcash-number-display-staff");
+            var gcashNameDisplayStaff = document.getElementById("gcash-name-display-staff");
             var gcashEnlargeBtn = document.getElementById("gcash-enlarge-btn");
             var gcashQrConfigLoaded = false;
             var lightbox      = document.getElementById("gcash-lightbox");
@@ -2893,9 +2944,14 @@
             function applyGcashQrConfig(cfg) {
                 if (!cfg) return;
                 var number = String(cfg.gcash_number || "").trim();
+                var name = String(cfg.gcash_name || "").trim();
                 if (gcashNumberDisplayStaff) {
                     gcashNumberDisplayStaff.textContent = number ? "GCash No. " + number : "";
                     gcashNumberDisplayStaff.hidden = !number;
+                }
+                if (gcashNameDisplayStaff) {
+                    gcashNameDisplayStaff.textContent = name ? "Name: " + name : "";
+                    gcashNameDisplayStaff.hidden = !name;
                 }
                 var dataUrl = cfg.qr_data_url;
                 if (gcashQrImg) {

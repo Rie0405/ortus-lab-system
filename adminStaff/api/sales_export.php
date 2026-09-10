@@ -52,8 +52,13 @@ function sales_receipt_expense_between(PDO $pdo, string $fromDate, string $toDat
 
 function sales_parse_date_range(): array
 {
-    $from = $_GET['from'] ?? date('Y-m-01');
-    $to = $_GET['to'] ?? date('Y-m-d');
+    // Default: current week (Monday → today), not month start / all-time.
+    $today = new DateTimeImmutable('today');
+    $daysFromMonday = ((int)$today->format('N')) - 1; // N: 1=Mon ... 7=Sun
+    $weekStart = $today->modify('-' . $daysFromMonday . ' days');
+
+    $from = $_GET['from'] ?? $weekStart->format('Y-m-d');
+    $to = $_GET['to'] ?? $today->format('Y-m-d');
     $fromDate = date('Y-m-d', strtotime((string)$from));
     $toDate = date('Y-m-d', strtotime((string)$to));
 

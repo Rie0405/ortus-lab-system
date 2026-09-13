@@ -3197,17 +3197,17 @@ button {
 
 .cash-mgmt-btn {
     width: 100%;
-    margin: 8px 0 12px;
+    margin: 0;
     border: 1px solid rgba(244, 140, 37, 0.35);
     border-radius: 8px;
     background: rgba(244, 140, 37, 0.05);
     color: #f48c25;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    padding: 10px 12px;
+    padding: 10px 10px;
     cursor: pointer;
     transition: filter 0.15s ease, transform 0.15s ease;
 }
@@ -3218,6 +3218,189 @@ button {
 
 .cash-mgmt-btn:active {
     transform: translateY(1px);
+}
+
+.sales-cash-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.cash-mgmt-btn--records {
+    border-color: rgba(148, 163, 184, 0.35);
+    background: rgba(148, 163, 184, 0.06);
+    color: #e2e8f0;
+}
+
+.cash-inout-records-modal {
+    width: min(440px, 100%);
+    max-height: none;
+}
+
+.cash-inout-records-modal .cash-mgmt-modal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: none;
+    overflow: visible;
+}
+
+.cash-inout-records-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cash-inout-records-summary__item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #3d3025;
+    background: #1a1510;
+}
+
+.cash-inout-records-summary__item span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.cash-inout-records-summary__item strong {
+    font-size: 16px;
+    color: #f8fafc;
+}
+
+.cash-inout-records-summary__item--in strong {
+    color: #4ade80;
+}
+
+.cash-inout-records-summary__item--out strong {
+    color: #f87171;
+}
+
+.cash-inout-records-list {
+    /* Show up to 3 record cards; scroll only this list when there are more */
+    --cash-inout-record-gap: 8px;
+    --cash-inout-record-max-h: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cash-inout-record-gap);
+    padding-right: 4px;
+    min-height: 0;
+    max-height: calc(
+        (3 * var(--cash-inout-record-max-h)) +
+        (2 * var(--cash-inout-record-gap))
+    );
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #5c3f24 transparent;
+}
+
+.cash-inout-records-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.cash-inout-records-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cash-inout-records-list::-webkit-scrollbar-thumb {
+    background: #5c3f24;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.cash-inout-records-list::-webkit-scrollbar-thumb:hover {
+    background: #7a5532;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.cash-inout-records-empty {
+    margin: 18px 0;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.cash-inout-record {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #3d3025;
+    background: #231a12;
+    flex: 0 0 auto;
+}
+
+.cash-inout-record__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    grid-column: 1 / -1;
+}
+
+.cash-inout-record__type {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.cash-inout-record__type--in {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.cash-inout-record__type--out {
+    background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+}
+
+.cash-inout-record__amount {
+    font-size: 15px;
+    font-weight: 800;
+    color: #f8fafc;
+    font-variant-numeric: tabular-nums;
+}
+
+.cash-inout-record__amount--out {
+    color: #f87171;
+}
+
+.cash-inout-record__amount--in {
+    color: #4ade80;
+}
+
+.cash-inout-record__reason {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #e2e8f0;
+    font-size: 13px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.cash-inout-record__time {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #94a3b8;
+    font-size: 11px;
 }
 
 .cash-mgmt-backdrop {
@@ -3617,6 +3800,36 @@ button {
 
 .order-refund-submit:hover {
     filter: brightness(1.08);
+}
+
+.order-refund-confirm-lead {
+    margin: 0 0 12px;
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.order-refund-confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.order-refund-confirm-btn {
+    margin: 0;
+}
+
+.order-refund-confirm-btn--cancel {
+    background: #3d3025;
+    color: #f8fafc;
+}
+
+.order-refund-confirm-btn--cancel:hover {
+    filter: brightness(1.08);
+}
+
+#order-refund-confirm-modal {
+    z-index: 220;
 }
 
 .sales-detail-card--drawer .sales-detail-card__title--inline {
@@ -5947,7 +6160,7 @@ button {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
 }
 .ses-overlay.is-visible {
     opacity: 1;
@@ -5963,7 +6176,7 @@ button {
     align-items: center;
     justify-content: center;
     padding: 24px;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
 }
 .ses-dialog.is-visible {
     display: flex;
@@ -6066,7 +6279,7 @@ button {
     border: 1px solid rgba(244, 140, 37, 0.35);
     border-radius: 8px;
     color: #f5f5f5;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 15px;
     padding: 11px 12px;
     appearance: none;
@@ -6079,6 +6292,16 @@ button {
     outline: none;
     border-color: #f48c25;
     box-shadow: 0 0 0 2px rgba(244, 140, 37, 0.18);
+}
+.ses-dialog__input {
+    appearance: none;
+    background-image: none !important;
+    cursor: text;
+}
+.ses-dialog__input[readonly] {
+    color: #f5f5f5;
+    cursor: default;
+    opacity: 1;
 }
 .ses-dialog__error {
     margin: 0 0 12px;
@@ -6094,7 +6317,7 @@ button {
 .ses-dialog__btn {
     border-radius: 8px;
     padding: 10px 16px;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -6154,7 +6377,7 @@ button {
     border-radius: 6px;
     background: rgba(244, 140, 37, 0.08);
     color: #f48c25;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 14px;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -6185,10 +6408,12 @@ button {
     margin: 0 0 4px;
 }
 .ses-subtitle {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 14px;
-    color: #9ca3af;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #e5e7eb;
     margin: 0;
+    letter-spacing: 0.02em;
 }
 .ses-header-right {
     text-align: right;
@@ -6203,7 +6428,7 @@ button {
     letter-spacing: 0.5px;
 }
 .ses-date-val {
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 18px;
     color: #e5e5e5;
 }
@@ -6254,7 +6479,7 @@ button {
     color: #9ca3af;
 }
 .ses-stat-val {
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 20px;
     color: #e5e5e5;
 }
@@ -6265,7 +6490,7 @@ button {
 .ses-orange{ color: #fb923c; }
 .ses-muted { color: #9ca3af; }
 .ses-bold  { font-weight: 700; }
-.ses-mono  { font-family: 'Roboto Mono', monospace; font-size: 14px; color: #e5e5e5; }
+.ses-mono  { font-family: "Space Grotesk", sans-serif; font-size: 14px; color: #e5e5e5; }
 
 /* Transaction status summary */
 .ses-txn-section {
@@ -6313,7 +6538,7 @@ button {
     text-transform: uppercase;
 }
 .ses-calc-val {
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 30px;
     font-weight: 700;
     color: #e5e5e5;
@@ -6370,7 +6595,7 @@ button {
     gap: 8px;
 }
 .ses-cash-prefix {
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 24px;
     font-weight: 700;
     color: #e5e5e5;
@@ -6380,7 +6605,7 @@ button {
     background: transparent;
     border: none;
     outline: none;
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 30px;
     color: #6b7280;
     flex: 1;
@@ -6403,7 +6628,7 @@ button {
     text-transform: uppercase;
 }
 .ses-diff-val {
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 24px;
     color: #6b7280;
     transition: color 0.2s;
@@ -6437,7 +6662,7 @@ button {
 .ses-section-title--yellow { border-left: 4px solid #facc15; }
 .ses-section-title--red    { border-left: 4px solid #ef4444; }
 .ses-section-meta {
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 12px;
     color: #6b7280;
     text-transform: uppercase;
@@ -6454,7 +6679,7 @@ button {
     top: 18px;
 }
 .ses-loss-badge {
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 12px;
     color: #ef4444;
     background: rgba(239,68,68,0.1);
@@ -6467,7 +6692,7 @@ button {
 .ses-table {
     width: 100%;
     border-collapse: collapse;
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 14px;
     color: #e5e5e5;
 }
@@ -6487,6 +6712,24 @@ button {
 }
 .ses-table tbody tr:first-child td { border-top: none; }
 .ses-table-right { text-align: right; }
+
+.ses-link-btn {
+    margin-left: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #f48c25;
+    cursor: pointer;
+    font: inherit;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    vertical-align: baseline;
+}
+
+.ses-link-btn:hover {
+    color: #fb923c;
+}
 .ses-inventory-actions {
     margin-top: 12px;
     display: flex;
@@ -6497,7 +6740,7 @@ button {
     border: 1px solid rgba(244, 140, 37, 0.45);
     background: rgba(244, 140, 37, 0.12);
     color: #facc15;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 12px;
     letter-spacing: 0.4px;
     border-radius: 6px;
@@ -6520,7 +6763,7 @@ button {
     border-radius: 6px;
     padding: 5px 8px;
     text-align: right;
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 13px;
 }
 .ses-stock-input:focus {
@@ -6534,6 +6777,35 @@ button {
     gap: 24px;
     align-items: flex-end;
     padding-top: 16px;
+}
+.ses-footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.ses-export-btn {
+    background: transparent;
+    border: 1px solid rgba(244, 140, 37, 0.55);
+    border-radius: 4px;
+    color: #f48c25;
+    cursor: pointer;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 12px 28px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ses-export-btn:hover {
+    background: rgba(244, 140, 37, 0.12);
+    border-color: #f48c25;
+}
+.ses-export-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 .ses-notes-wrap {
     flex: 1;
@@ -6552,7 +6824,7 @@ button {
     border: 1px solid #333;
     border-radius: 6px;
     color: #9ca3af;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 14px;
     padding: 9px 13px;
     resize: none;
@@ -6562,26 +6834,6 @@ button {
 .ses-notes-input::placeholder { color: #6b7280; }
 .ses-notes-input:focus { outline: 1px solid #f48c25; color: #e5e5e5; }
 
-.ses-expenses-input {
-    width: 100%;
-    margin-top: 6px;
-    background: #111;
-    border: 1px solid #333;
-    border-radius: 6px;
-    color: #e5e5e5;
-    font-family: 'Roboto Mono', monospace;
-    font-size: 18px;
-    padding: 10px 12px;
-}
-
-.ses-expenses-input::placeholder {
-    color: #6b7280;
-}
-
-.ses-expenses-input:focus {
-    outline: 1px solid #f48c25;
-}
-
 .ses-confirm-btn {
     background: #f48c25;
     border: none;
@@ -6589,14 +6841,14 @@ button {
     box-shadow: 0 4px 0 #a16207;
     color: #000;
     cursor: pointer;
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 1.8px;
     text-transform: uppercase;
     text-align: center;
-    line-height: 28px;
-    padding: 20px 48px;
+    line-height: 1.2;
+    padding: 18px 48px;
     flex-shrink: 0;
     transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
 }
@@ -6611,6 +6863,8 @@ button {
     .ses-section--inventory-used { position: static; }
     .ses-revenue-row { grid-template-columns: 1fr; }
     .ses-footer { flex-direction: column; align-items: stretch; }
+    .ses-footer-actions { width: 100%; }
+    .ses-export-btn,
     .ses-confirm-btn { width: 100%; }
 }
 
@@ -6674,7 +6928,7 @@ button {
 }
 .payment-success-toast__title {
     margin: 0;
-    font-family: "Chakra Petch", sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: 0.04em;

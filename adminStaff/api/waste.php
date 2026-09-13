@@ -42,20 +42,16 @@ function build_waste_variant_context(?string $variantNotes, ?string $notes): str
     return $variantNotes . ' ' . $notes;
 }
 
-function resolve_waste_menu_selling_value(array $menu, int $qty, ?string $variantNotes, ?string $notes, ?float $clientUnitPrice = null): float
+function resolve_waste_menu_cost_value(array $menu, int $qty): float
 {
-    $variantContext = build_waste_variant_context($variantNotes, $notes);
-    $unitPrice = resolve_menu_item_unit_price(
-        $menu,
-        $variantContext !== '' ? $variantContext : null,
-        $clientUnitPrice
-    );
-    return round(max(0, $unitPrice) * max(1, $qty), 2);
+    $unitCost = max(0, (float)($menu['cost_price'] ?? 0));
+    return round($unitCost * max(1, $qty), 2);
 }
 
 $pdo = db();
 ensure_recipe_schema_shared($pdo);
 ensure_inventory_items_base_schema($pdo);
+ensure_menu_cost_price_schema($pdo);
 
 $pdo->exec(
     'CREATE TABLE IF NOT EXISTS inventory_items (
@@ -213,10 +209,6 @@ if ($m === 'POST') {
     $qty = max(1, (int)($b['quantity'] ?? 1));
     $reason = trim($b['reason'] ?? 'wasted');
     $notes = trim($b['notes'] ?? '');
-    $clientUnitPrice = null;
-    if (array_key_exists('unit_price', $b) && $b['unit_price'] !== '' && $b['unit_price'] !== null) {
-        $clientUnitPrice = round(max(0, (float)$b['unit_price']), 2);
-    }
     $staffId = (int)($_SESSION['user_id'] ?? 0);
 
     $allowedReasons = ['wasted', 'rejected', 'unclaimed', 'spillage', 'expired', 'damaged', 'mistake'];
@@ -245,7 +237,7 @@ if ($m === 'POST') {
         $menu = null;
         if ($menuItemId > 0) {
             $menuStmt = $pdo->prepare(
-                'SELECT id, name, description, price
+                'SELECT id, name, description, price, cost_price
                  FROM menu_items
                  WHERE id = :id
                  LIMIT 1'
@@ -258,7 +250,7 @@ if ($m === 'POST') {
         }
         if (!$menu && $itemName !== '') {
             $menuStmt = $pdo->prepare(
-                'SELECT id, name, description, price
+                'SELECT id, name, description, price, cost_price
                  FROM menu_items
                  WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))
                  LIMIT 1'
@@ -271,7 +263,7 @@ if ($m === 'POST') {
             $menuId = (int)$menu['id'];
             $menuDescription = (string)($menu['description'] ?? '');
             $variantContext = build_waste_variant_context($variantNotes, $notes);
-            $menuSellingValue = resolve_waste_menu_selling_value($menu, $qty, $variantNotes, $notes, $clientUnitPrice);
+            $menuCostValue = resolve_waste_menu_cost_value($menu, $qty);
             $recipeLines = fetch_recipe_lines_for_menu_waste($pdo, $menuId, $menuDescription, $variantContext);
 
             if (!empty($recipeLines)) {
@@ -286,7 +278,7 @@ if ($m === 'POST') {
                     ':qty' => $qty,
                     ':reason' => strtoupper($reason),
                     ':notes' => $parentWasteNotes,
-                    ':val' => $menuSellingValue,
+                    ':val' => $menuCostValue,
                     ':staff_id' => $staffId ?: null,
                 ]);
                 $parentWasteId = (int)$pdo->lastInsertId();
@@ -344,7 +336,7 @@ if ($m === 'POST') {
                     'waste_id' => $parentWasteId,
                     'source_menu_item_id' => $menuId,
                     'source_menu_item_name' => $menu['name'],
-                    'estimated_value' => $menuSellingValue,
+                    'estimated_value' => $menuCostValue,
                     'breakdown' => $breakdown,
                 ], 201);
             }
@@ -373,7 +365,7 @@ if ($m === 'POST') {
                     ':qty' => $qty,
                     ':reason' => strtoupper($reason),
                     ':notes' => $parentWasteNotes,
-                    ':val' => $menuSellingValue,
+                    ':val' => $menuCostValue,
                     ':staff_id' => $staffId ?: null,
                 ]);
                 $parentWasteId = (int)$pdo->lastInsertId();
@@ -420,7 +412,7 @@ if ($m === 'POST') {
                     'waste_id' => $parentWasteId,
                     'source_menu_item_id' => $menuId,
                     'source_menu_item_name' => $menu['name'],
-                    'estimated_value' => $menuSellingValue,
+                    'estimated_value' => $menuCostValue,
                     'breakdown' => $breakdown,
                 ], 201);
             }
@@ -435,7 +427,7 @@ if ($m === 'POST') {
                 ':qty' => $qty,
                 ':reason' => strtoupper($reason),
                 ':notes' => $parentWasteNotes,
-                ':val' => $menuSellingValue,
+                ':val' => $menuCostValue,
                 ':staff_id' => $staffId ?: null,
             ]);
             $parentWasteId = (int)$pdo->lastInsertId();
@@ -445,7 +437,7 @@ if ($m === 'POST') {
                 'waste_id' => $parentWasteId,
                 'source_menu_item_id' => $menuId,
                 'source_menu_item_name' => $menu['name'],
-                'estimated_value' => $menuSellingValue,
+                'estimated_value' => $menuCostValue,
             ], 201);
         }
 

@@ -37,7 +37,7 @@ if ($m === 'GET') {
     $sql = 'SELECT m.id, m.category_id, m.main_category_id, mc.name AS main_category_name,
                    m.subcategory_id, sc.name AS subcategory_name,
                    c.name AS category_name,
-                   m.name, m.description, m.price, m.image_url, m.is_available,
+                   m.name, m.description, m.price, m.cost_price, m.image_url, m.is_available,
                    m.serve_hot, m.serve_cold,
                    m.created_at, m.updated_at
               FROM menu_items m
@@ -82,6 +82,7 @@ if ($m === 'POST') {
     $name        = trim($b['name'] ?? '');
     $categoryId  = (int)($b['category_id'] ?? 0);
     $price       = (float)($b['price'] ?? 0);
+    $costPrice   = max(0, (float)($b['cost_price'] ?? 0));
     $description = trim($b['description'] ?? '');
     $imageUrl    = trim($b['image_url'] ?? '');
     $isAvailable = isset($b['is_available']) ? (int)(bool)$b['is_available'] : 1;
@@ -142,8 +143,8 @@ if ($m === 'POST') {
     }
 
     $stmt = db()->prepare(
-        'INSERT INTO menu_items (category_id, main_category_id, subcategory_id, name, description, price, image_url, is_available, serve_hot, serve_cold)
-         VALUES (:cid, :mcid, :scid, :name, :desc, :price, :img, :avail, :shot, :scold)'
+        'INSERT INTO menu_items (category_id, main_category_id, subcategory_id, name, description, price, cost_price, image_url, is_available, serve_hot, serve_cold)
+         VALUES (:cid, :mcid, :scid, :name, :desc, :price, :cost, :img, :avail, :shot, :scold)'
     );
     $stmt->execute([
         ':cid'   => $categoryId,
@@ -152,6 +153,7 @@ if ($m === 'POST') {
         ':name'  => $name,
         ':desc'  => $description ?: null,
         ':price' => $price,
+        ':cost'  => $costPrice,
         ':img'   => $imageUrl ?: null,
         ':avail' => $isAvailable,
         ':shot'  => $serveHot,
@@ -179,6 +181,7 @@ if ($m === 'PUT') {
         $params[':mcid'] = resolve_main_category_id(db(), (int)$b['main_category_id']);
     }
     if (isset($b['price']))        { $fields[] = 'price = :price';        $params[':price'] = (float)$b['price']; }
+    if (isset($b['cost_price']))   { $fields[] = 'cost_price = :cost';   $params[':cost']  = max(0, (float)$b['cost_price']); }
     if (isset($b['description']))  { $fields[] = 'description = :desc';   $params[':desc']  = trim($b['description']); }
     if (isset($b['image_url']))    { $fields[] = 'image_url = :img';      $params[':img']   = trim($b['image_url']); }
     if (isset($b['is_available'])) { $fields[] = 'is_available = :avail'; $params[':avail'] = (int)(bool)$b['is_available']; }

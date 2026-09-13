@@ -541,7 +541,6 @@
                             <p class="sales-starting-money__total" id="sales-report-starting-money-total" style="display:none">₱0.00</p>
                         </div>
                         <h3 class="sales-detail-card__title">CASH DRAWER</h3>
-                        <button type="button" class="cash-mgmt-btn" id="cash-management-btn">CASH MANAGEMENT</button>
                         <div class="sales-detail-card__rows">
                             <div class="sales-detail-card__row">
                                 <span>Starting Money</span>
@@ -556,6 +555,11 @@
                             <div class="sales-detail-card__row">
                                 <span>GCash Payments</span>
                                 <strong id="cash-drawer-gcash-payments">₱0.00</strong>
+                            </div>
+                            <div class="sales-detail-card__divider"></div>
+                            <div class="sales-detail-card__row sales-detail-card__row--total">
+                                <span>Total Payments</span>
+                                <strong id="cash-drawer-total-payments">₱0.00</strong>
                             </div>
                             <div class="sales-detail-card__divider"></div>
                             <div class="sales-detail-card__row">
@@ -584,6 +588,10 @@
                             </div>
                         </div>
                     </section>
+                    <div class="sales-cash-actions" aria-label="Cash drawer actions">
+                        <button type="button" class="cash-mgmt-btn" id="cash-management-btn">CASH MANAGEMENT</button>
+                        <button type="button" class="cash-mgmt-btn cash-mgmt-btn--records" id="cash-inout-records-btn">CASH IN/OUT RECORDS</button>
+                    </div>
                     <section class="sales-detail-card" aria-label="Sales accuracy check">
                         <h3 class="sales-detail-card__title">SALES ACCURACY CHECK</h3>
                         <div class="sales-accuracy">
@@ -610,10 +618,6 @@
                                 <div class="opq-summary-row">
                                     <span>Total Orders Processed</span>
                                     <strong id="staff-shift-orders">0</strong>
-                                </div>
-                                <div class="opq-summary-row">
-                                    <span>Current Drawer Total</span>
-                                    <strong class="opq-green" id="staff-shift-drawer">₱0.00</strong>
                                 </div>
                                 <div class="opq-summary-row">
                                     <span>Waste Adjustments</span>
@@ -728,7 +732,7 @@
                                 </div>
                                 <div class="pay-modal__field">
                                     <label class="pay-modal__field-label">REFERENCE NUMBER</label>
-                                    <input type="text" class="pay-modal__input gcash-ref-input" id="gcash-ref-number" placeholder="e.g. 0023 948 129481">
+                                    <input type="text" class="pay-modal__input gcash-ref-input js-gcash-ref-digits" id="gcash-ref-number" placeholder="e.g. 0023948129481" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
                                 </div>
                             </div>
 
@@ -862,6 +866,31 @@
             </div>
         </div>
 
+        <!-- Cash In/Out Records Modal -->
+        <div class="cash-mgmt-backdrop" id="cash-inout-records-modal" aria-hidden="true">
+            <div class="cash-mgmt-modal cash-inout-records-modal" role="dialog" aria-modal="true" aria-labelledby="cash-inout-records-title">
+                <header class="cash-mgmt-modal__header">
+                    <h2 class="cash-mgmt-modal__title" id="cash-inout-records-title">CASH IN/OUT RECORDS</h2>
+                    <button type="button" class="cash-mgmt-modal__close" id="cash-inout-records-close" aria-label="Close cash in/out records">×</button>
+                </header>
+                <div class="cash-mgmt-modal__body">
+                    <div class="cash-inout-records-summary" aria-label="Cash movement totals">
+                        <div class="cash-inout-records-summary__item cash-inout-records-summary__item--in">
+                            <span>Paid In</span>
+                            <strong id="cash-inout-records-total-in">₱0.00</strong>
+                        </div>
+                        <div class="cash-inout-records-summary__item cash-inout-records-summary__item--out">
+                            <span>Paid Out</span>
+                            <strong id="cash-inout-records-total-out">₱0.00</strong>
+                        </div>
+                    </div>
+                    <div class="cash-inout-records-list" id="cash-inout-records-list">
+                        <p class="cash-inout-records-empty">No cash in/out records yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Order Refund Modal -->
         <div class="cash-mgmt-backdrop" id="order-refund-modal" aria-hidden="true">
             <div class="cash-mgmt-modal order-refund-modal" role="dialog" aria-modal="true" aria-labelledby="order-refund-title">
@@ -879,6 +908,10 @@
                         <div class="order-refund-summary__row">
                             <span>Payment</span>
                             <strong id="order-refund-payment">—</strong>
+                        </div>
+                        <div class="order-refund-summary__row">
+                            <span>Order Type</span>
+                            <strong id="order-refund-order-type">—</strong>
                         </div>
                         <div class="order-refund-summary__row">
                             <span>Customer Name</span>
@@ -899,6 +932,55 @@
                     </label>
                     <p class="cash-mgmt-modal__error" id="order-refund-error" hidden role="alert"></p>
                     <button type="button" class="cash-mgmt-modal__submit order-refund-submit" id="order-refund-submit">REFUND ORDER</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Refund Modal -->
+        <div class="cash-mgmt-backdrop" id="order-refund-confirm-modal" aria-hidden="true">
+            <div class="cash-mgmt-modal order-refund-modal" role="dialog" aria-modal="true" aria-labelledby="order-refund-confirm-title">
+                <header class="cash-mgmt-modal__header">
+                    <h2 class="cash-mgmt-modal__title" id="order-refund-confirm-title">CONFIRM REFUND</h2>
+                    <button type="button" class="cash-mgmt-modal__close" id="order-refund-confirm-close" aria-label="Close confirm refund dialog">×</button>
+                </header>
+                <div class="cash-mgmt-modal__body">
+                    <p class="order-refund-confirm-lead">Please review this refund before confirming.</p>
+                    <div class="order-refund-summary">
+                        <div class="order-refund-items-block">
+                            <span class="order-refund-items-block__label">Ordered Items</span>
+                            <div class="order-refund-items-list" id="order-refund-confirm-items-list"></div>
+                            <p class="order-refund-order-meta" id="order-refund-confirm-number"></p>
+                        </div>
+                        <div class="order-refund-summary__row">
+                            <span>Payment</span>
+                            <strong id="order-refund-confirm-payment">—</strong>
+                        </div>
+                        <div class="order-refund-summary__row">
+                            <span>Order Type</span>
+                            <strong id="order-refund-confirm-order-type">—</strong>
+                        </div>
+                        <div class="order-refund-summary__row">
+                            <span>Customer Name</span>
+                            <strong id="order-refund-confirm-customer-name">—</strong>
+                        </div>
+                        <div class="order-refund-summary__row" id="order-refund-confirm-gcash-ref-row" hidden>
+                            <span>GCash Ref. No.</span>
+                            <strong id="order-refund-confirm-gcash-ref">—</strong>
+                        </div>
+                        <div class="order-refund-summary__row">
+                            <span>Refund Reason</span>
+                            <strong id="order-refund-confirm-reason">—</strong>
+                        </div>
+                        <div class="order-refund-summary__row order-refund-summary__row--total">
+                            <span>Refund Amount</span>
+                            <strong id="order-refund-confirm-amount">₱0.00</strong>
+                        </div>
+                    </div>
+                    <p class="cash-mgmt-modal__error" id="order-refund-confirm-error" hidden role="alert"></p>
+                    <div class="order-refund-confirm-actions">
+                        <button type="button" class="cash-mgmt-modal__submit order-refund-confirm-btn order-refund-confirm-btn--cancel" id="order-refund-confirm-cancel">CANCEL</button>
+                        <button type="button" class="cash-mgmt-modal__submit order-refund-submit order-refund-confirm-btn" id="order-refund-confirm-submit">CONFIRM REFUND</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1029,7 +1111,7 @@
                 <header class="ses-header">
                     <div class="ses-header-left">
                         <h1 class="ses-title">SHIFT END SUMMARY</h1>
-                        <p class="ses-subtitle">Station: Main Counter &nbsp;|&nbsp; Shift: Evening &nbsp;|&nbsp; ID: #GB-4921</p>
+                        <p class="ses-subtitle" id="ses-subtitle">—</p>
                     </div>
                     <div class="ses-header-right">
                         <span class="ses-date-label">CURRENT DATE</span>
@@ -1104,7 +1186,7 @@
 
                         <div class="ses-calc-cash">
                             <span class="ses-calc-label">SYSTEM CALCULATED CASH</span>
-                            <span class="ses-calc-val">₱842.00</span>
+                            <span class="ses-calc-val" id="ses-calc-val">₱0.00</span>
                         </div>
                             </div>
 
@@ -1178,12 +1260,13 @@
                     <div class="ses-notes-wrap">
                         <label class="ses-notes-label">MANAGER NOTES / DISCREPANCY EXPLANATION</label>
                         <textarea class="ses-notes-input" id="ses-notes-input" rows="3" placeholder="Enter any notes regarding today's cash count..."></textarea>
-                        <label class="ses-notes-label" for="ses-expenses-input" style="margin-top:10px;">EXPENSES</label>
-                        <input type="number" min="0" step="0.01" class="ses-expenses-input" id="ses-expenses-input" placeholder="0.00">
                     </div>
-                    <button type="button" class="ses-confirm-btn" id="ses-confirm-btn">
-                        CONFIRM &amp;<br>CLOSE SHIFT
-                    </button>
+                    <div class="ses-footer-actions">
+                        <button type="button" class="ses-export-btn" id="ses-export-btn">EXPORT TO EXCEL</button>
+                        <button type="button" class="ses-confirm-btn" id="ses-confirm-btn">
+                            CLOSE SHIFT
+                        </button>
+                    </div>
                 </div>
 
             </div>
@@ -1202,6 +1285,34 @@
                     <div class="ses-dialog__actions">
                         <button type="button" class="ses-dialog__btn ses-dialog__btn--ghost" id="ses-inventory-edit-cancel">Cancel</button>
                         <button type="button" class="ses-dialog__btn ses-dialog__btn--primary" id="ses-inventory-edit-yes">Continue</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ses-dialog" id="ses-close-verify-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="ses-close-verify-title">
+                <div class="ses-dialog__backdrop" data-ses-close-verify-dismiss aria-hidden="true"></div>
+                <div class="ses-dialog__panel ses-dialog__panel--staff">
+                    <div class="ses-dialog__icon ses-dialog__icon--staff" aria-hidden="true">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                            <path d="M20 21a8 8 0 1 0-16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
+                        </svg>
+                    </div>
+                    <p class="ses-dialog__eyebrow">Staff Verification</p>
+                    <h3 class="ses-dialog__title" id="ses-close-verify-title">Confirm close shift</h3>
+                    <p class="ses-dialog__message">Enter your password to close this shift.</p>
+                    <label class="ses-dialog__field" for="ses-close-verify-name">
+                        <span class="ses-dialog__field-label">Staff Name</span>
+                        <input type="text" class="ses-dialog__select ses-dialog__input" id="ses-close-verify-name" readonly tabindex="-1" value="">
+                    </label>
+                    <label class="ses-dialog__field" for="ses-close-verify-password">
+                        <span class="ses-dialog__field-label">Password</span>
+                        <input type="password" class="ses-dialog__select ses-dialog__input" id="ses-close-verify-password" autocomplete="current-password" placeholder="Enter password">
+                    </label>
+                    <p class="ses-dialog__error" id="ses-close-verify-error" hidden role="alert"></p>
+                    <div class="ses-dialog__actions">
+                        <button type="button" class="ses-dialog__btn ses-dialog__btn--ghost" id="ses-close-verify-cancel">Cancel</button>
+                        <button type="button" class="ses-dialog__btn ses-dialog__btn--primary" id="ses-close-verify-submit">Verify &amp; Close</button>
                     </div>
                 </div>
             </div>
@@ -1283,6 +1394,7 @@
             </div>
         </footer>
     </div>
+    <script src="../shared/gcash_ref_digits.js"></script>
     <script>
         /* ─── POS: Dynamic menu, cart, totals, confirm payment ─── */
         (function () {
@@ -2987,6 +3099,12 @@
                 if (currentMethod === "cash") {
                     var received = parseFloat((payReceived && payReceived.value) || "");
                     allow = Number.isFinite(received) && received >= orderTotal;
+                } else if (currentMethod === "gcash") {
+                    var refRaw = gcashRef ? String(gcashRef.value || "") : "";
+                    var refDigits = typeof window.sanitizeGcashRefDigits === "function"
+                        ? window.sanitizeGcashRefDigits(refRaw)
+                        : refRaw.replace(/\D+/g, "");
+                    allow = !!refDigits;
                 }
                 payComplete.disabled = !allow;
                 payComplete.classList.toggle("pay-modal__btn--disabled", !allow);
@@ -3505,7 +3623,15 @@
                     if (!isNaN(amt)) payload.amount_received = amt;
                 }
                 if (currentMethod === "gcash" && gcashRef) {
-                    payload.gcash_ref = gcashRef.value.trim();
+                    var refVal = gcashRef.value.trim();
+                    if (typeof window.sanitizeGcashRefDigits === "function") {
+                        refVal = window.sanitizeGcashRefDigits(refVal);
+                        gcashRef.value = refVal;
+                    } else {
+                        refVal = String(refVal || "").replace(/\D+/g, "");
+                        gcashRef.value = refVal;
+                    }
+                    payload.gcash_ref = refVal;
                 }
                 if (typeof window.getPosActingStaffId === "function") {
                     var actingStaffId = window.getPosActingStaffId();
@@ -3541,6 +3667,18 @@
 
             function completeTransaction() {
                 if (payComplete && payComplete.disabled) return;
+                if (currentMethod === "gcash" && gcashRef) {
+                    var refCheck = typeof window.sanitizeGcashRefDigits === "function"
+                        ? window.sanitizeGcashRefDigits(gcashRef.value)
+                        : String(gcashRef.value || "").replace(/\D+/g, "");
+                    gcashRef.value = refCheck;
+                    if (!refCheck) {
+                        alert("Please enter the GCash reference number (numbers only).");
+                        gcashRef.focus();
+                        updateCompleteButtonState();
+                        return;
+                    }
+                }
                 if (posCartData) {
                     var jobs = [];
                     if (posCartData.cartBuckets) {
@@ -3656,6 +3794,9 @@
             if (payReceived) {
                 payReceived.addEventListener("input", updateChangeDue);
             }
+            if (gcashRef) {
+                gcashRef.addEventListener("input", updateCompleteButtonState);
+            }
 
             loadGcashQrConfig(true);
 
@@ -3710,6 +3851,7 @@
             var sesOverlay   = document.getElementById("shift-end-overlay");
             var sesConfirm   = document.getElementById("ses-confirm-btn");
             var sesDateEl    = document.getElementById("ses-current-date");
+            var sesSubtitleEl = document.getElementById("ses-subtitle");
             var sesTotalOrdersEl = document.getElementById("ses-total-orders");
             var sesTodaySalesEl = document.getElementById("ses-today-sales");
             var sesWeeklySalesEl = document.getElementById("ses-weekly-sales");
@@ -3821,12 +3963,26 @@
             function updateDate() {
                 var now = new Date();
                 var pad = function (n) { return n < 10 ? "0" + n : n; };
-                sesDateEl.textContent =
-                    now.getFullYear() + "-" +
-                    pad(now.getMonth() + 1) + "-" +
-                    pad(now.getDate()) + " " +
-                    pad(now.getHours()) + ":" +
-                    pad(now.getMinutes());
+                if (sesDateEl) {
+                    sesDateEl.textContent =
+                        now.getFullYear() + "-" +
+                        pad(now.getMonth() + 1) + "-" +
+                        pad(now.getDate()) + " " +
+                        pad(now.getHours()) + ":" +
+                        pad(now.getMinutes());
+                }
+            }
+
+            function getCurrentShiftStaffName() {
+                var nameEl = document.getElementById("staff-user-name");
+                var name = nameEl ? String(nameEl.textContent || "").trim() : "";
+                if (!name || name === "—") return "Unknown Staff";
+                return name;
+            }
+
+            function updateSesShiftMeta() {
+                if (!sesSubtitleEl) return;
+                sesSubtitleEl.textContent = getCurrentShiftStaffName();
             }
 
             function peso(v) {
@@ -4103,44 +4259,73 @@
             }
             function loadSesSummary() {
                 var now = new Date();
-                // Use UTC date strings to match the rest of the dashboard's API calls
-                // (prevents "off by one day" timezone issues).
                 var today = now.toISOString().slice(0, 10);
-                var todayLocal = dateYmd(now);
                 var weekStart = new Date(startOfWeekMonday(now)).toISOString().slice(0, 10);
                 var cacheBust = Date.now();
+                var calcEl = document.getElementById('ses-calc-val') || document.querySelector('.ses-calc-val');
+
+                function inCurrentShift(row, timeKey) {
+                    if (typeof window.orderCreatedAfterShiftClear === 'function') {
+                        return window.orderCreatedAfterShiftClear({ created_at: row && row[timeKey] });
+                    }
+                    return true;
+                }
+
                 Promise.all([
-                    fetch('api/orders.php?type=daily_summary&date=' + encodeURIComponent(today) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                    fetch('api/revenue_verification.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                    fetch('api/waste.php?type=daily_summary&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                    fetch('api/sales.php?from=' + encodeURIComponent(weekStart) + '&to=' + encodeURIComponent(today) + '&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                    fetch('api/orders.php?limit=5&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                    fetch('api/waste.php?limit=5&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
+                    fetch('api/orders.php?date=' + encodeURIComponent(today) + '&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                    fetch('api/waste.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                    fetch('api/sales.php?from=' + encodeURIComponent(weekStart) + '&to=' + encodeURIComponent(today) + '&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
                 ]).then(function (res) {
-                    var dailyRes = res[0];
-                    var verifyRes = res[1];
-                    var wasteSummaryRes = res[2];
-                    var weeklyRes = res[3];
-                    var recentOrdersRes = res[4];
-                    var recentWasteRes = res[5];
-                    var daily = (dailyRes && dailyRes.success && dailyRes.summary) ? dailyRes.summary : {};
-                    var verify = (verifyRes && verifyRes.success && verifyRes.summary) ? verifyRes.summary : {};
-                    var wasteSummary = (wasteSummaryRes && wasteSummaryRes.success && wasteSummaryRes.summary) ? wasteSummaryRes.summary : {};
+                    var ordersRes = res[0];
+                    var wasteRes = res[1];
+                    var weeklyRes = res[2];
+                    var allOrders = (ordersRes && ordersRes.success) ? (ordersRes.orders || []) : [];
+                    var allWaste = (wasteRes && wasteRes.success) ? (wasteRes.entries || []) : [];
                     var weekly = (weeklyRes && weeklyRes.success && weeklyRes.summary) ? weeklyRes.summary : {};
 
-                    if (sesTotalOrdersEl) sesTotalOrdersEl.textContent = String(daily.total_orders || 0);
-                    if (sesTodaySalesEl) sesTodaySalesEl.textContent = peso(daily.total_revenue || 0);
-                    if (sesWeeklySalesEl) sesWeeklySalesEl.textContent = peso(weekly.total_revenue || 0);
-                    if (sesDigitalPaymentsEl) sesDigitalPaymentsEl.textContent = peso(daily.digital_revenue || 0);
-                    if (sesConfirmedSummaryEl) sesConfirmedSummaryEl.textContent = String(daily.confirmed_count || 0) + ' / ' + peso(daily.total_revenue || 0);
-                    if (sesVoidedSummaryEl) sesVoidedSummaryEl.textContent = String(daily.voided_count || 0) + ' / ' + peso(0);
-                    if (sesLossBadgeEl) sesLossBadgeEl.textContent = 'Shift Total Loss: ' + peso(wasteSummary.total_estimated_value || 0);
-                    if (verify && verify.expected_revenue != null) {
-                        var calcEl = document.querySelector('.ses-calc-val');
-                        if (calcEl) calcEl.textContent = peso(verify.expected_revenue || 0);
-                    }
+                    var shiftOrders = typeof window.filterOrdersForCurrentShift === 'function'
+                        ? window.filterOrdersForCurrentShift(allOrders)
+                        : allOrders;
+                    var shiftSummary = typeof window.computeShiftSummaryFromOrders === 'function'
+                        ? window.computeShiftSummaryFromOrders(allOrders)
+                        : {
+                            total_orders: 0,
+                            total_revenue: 0,
+                            digital_revenue: 0,
+                            cash_revenue: 0,
+                            confirmed_count: 0
+                        };
 
-                    if (sesAllStaffDateRangeEl) sesAllStaffDateRangeEl.textContent = 'TODAY';
+                    var voidedShift = shiftOrders.filter(function (o) {
+                        return String(o && o.status || '').toLowerCase() === 'voided';
+                    });
+                    var voidedTotal = voidedShift.reduce(function (sum, o) {
+                        return sum + (parseFloat(o && o.total_amount) || 0);
+                    }, 0);
+
+                    var shiftWaste = allWaste.filter(function (w) {
+                        return inCurrentShift(w, 'logged_at') || inCurrentShift(w, 'created_at');
+                    });
+                    var wasteTotal = shiftWaste.reduce(function (sum, w) {
+                        return sum + (parseFloat(w && w.estimated_value) || 0);
+                    }, 0);
+
+                    if (sesTotalOrdersEl) sesTotalOrdersEl.textContent = String(shiftSummary.total_orders || 0);
+                    if (sesTodaySalesEl) sesTodaySalesEl.textContent = peso(shiftSummary.total_revenue || 0);
+                    if (sesWeeklySalesEl) sesWeeklySalesEl.textContent = peso(weekly.total_revenue || 0);
+                    if (sesDigitalPaymentsEl) sesDigitalPaymentsEl.textContent = peso(shiftSummary.digital_revenue || 0);
+                    if (sesConfirmedSummaryEl) {
+                        sesConfirmedSummaryEl.textContent =
+                            String(shiftSummary.confirmed_count || 0) + ' / ' + peso(shiftSummary.total_revenue || 0);
+                    }
+                    if (sesVoidedSummaryEl) {
+                        sesVoidedSummaryEl.textContent =
+                            String(voidedShift.length) + ' / ' + peso(voidedTotal);
+                    }
+                    if (sesLossBadgeEl) sesLossBadgeEl.textContent = 'Shift Total Loss: ' + peso(wasteTotal);
+                    if (calcEl) calcEl.textContent = peso(shiftSummary.total_revenue || 0);
+
+                    if (sesAllStaffDateRangeEl) sesAllStaffDateRangeEl.textContent = 'CURRENT SHIFT';
                     if (sesAllStaffStartingMoneyEl) sesAllStaffStartingMoneyEl.textContent = copyText('sales-report-starting-money-saved');
                     if (sesAllStaffCashPaymentsEl) sesAllStaffCashPaymentsEl.textContent = copyText('cash-drawer-cash-payments');
                     if (sesAllStaffGcashPaymentsEl) sesAllStaffGcashPaymentsEl.textContent = copyText('cash-drawer-gcash-payments');
@@ -4149,18 +4334,18 @@
                     if (sesAllStaffPaidInEl) sesAllStaffPaidInEl.textContent = copyText('cash-drawer-paid-in');
                     if (sesAllStaffPaidOutEl) sesAllStaffPaidOutEl.textContent = copyText('cash-drawer-paid-out');
                     if (sesAllStaffExpectedCashEl) sesAllStaffExpectedCashEl.textContent = copyText('cash-drawer-expected-cash');
-                    renderSesRecentOrders((recentOrdersRes && recentOrdersRes.success) ? (recentOrdersRes.orders || []) : []);
-                    renderSesWasteLogs((recentWasteRes && recentWasteRes.success) ? (recentWasteRes.entries || []) : []);
-                }).catch(function (err) {
-                    if (sesAllStaffDateRangeEl) sesAllStaffDateRangeEl.textContent = 'TODAY';
-                    if (sesAllStaffStartingMoneyEl) sesAllStaffStartingMoneyEl.textContent = copyText('sales-report-starting-money-saved');
-                    if (sesAllStaffCashPaymentsEl) sesAllStaffCashPaymentsEl.textContent = copyText('cash-drawer-cash-payments');
-                    if (sesAllStaffGcashPaymentsEl) sesAllStaffGcashPaymentsEl.textContent = copyText('cash-drawer-gcash-payments');
-                    if (sesAllStaffDiscountsEl) sesAllStaffDiscountsEl.textContent = copyText('cash-drawer-discounts');
-                    if (sesAllStaffCashRefundsEl) sesAllStaffCashRefundsEl.textContent = copyText('cash-drawer-cash-refunds');
-                    if (sesAllStaffPaidInEl) sesAllStaffPaidInEl.textContent = copyText('cash-drawer-paid-in');
-                    if (sesAllStaffPaidOutEl) sesAllStaffPaidOutEl.textContent = copyText('cash-drawer-paid-out');
-                    if (sesAllStaffExpectedCashEl) sesAllStaffExpectedCashEl.textContent = copyText('cash-drawer-expected-cash');
+
+                    renderSesRecentOrders(shiftOrders.slice(0, 5));
+                    renderSesWasteLogs(shiftWaste.slice(0, 5));
+                }).catch(function () {
+                    if (sesTotalOrdersEl) sesTotalOrdersEl.textContent = '0';
+                    if (sesTodaySalesEl) sesTodaySalesEl.textContent = peso(0);
+                    if (sesDigitalPaymentsEl) sesDigitalPaymentsEl.textContent = peso(0);
+                    if (sesConfirmedSummaryEl) sesConfirmedSummaryEl.textContent = '0 / ' + peso(0);
+                    if (sesVoidedSummaryEl) sesVoidedSummaryEl.textContent = '0 / ' + peso(0);
+                    if (sesLossBadgeEl) sesLossBadgeEl.textContent = 'Shift Total Loss: ' + peso(0);
+                    if (calcEl) calcEl.textContent = peso(0);
+                    if (sesAllStaffDateRangeEl) sesAllStaffDateRangeEl.textContent = 'CURRENT SHIFT';
                     renderSesRecentOrders([]);
                     renderSesWasteLogs([]);
                 });
@@ -4171,6 +4356,7 @@
 
             function openSES() {
                 updateDate();
+                updateSesShiftMeta();
                 sesOverlay.setAttribute("aria-hidden", "false");
                 sesOverlay.classList.add("is-visible");
                 document.body.classList.add("pos-modal-open");
@@ -4180,6 +4366,11 @@
             function closeSES() {
                 closeSesInventoryEditModal();
                 closeSesInventoryStaffModal();
+                var closeVerify = document.getElementById("ses-close-verify-modal");
+                if (closeVerify) {
+                    closeVerify.classList.remove("is-visible");
+                    closeVerify.setAttribute("aria-hidden", "true");
+                }
                 setSesInventoryEditMode(false);
                 sesOverlay.classList.remove("is-visible");
                 sesOverlay.setAttribute("aria-hidden", "true");
@@ -4235,6 +4426,14 @@
         }
 
         window.getPosActingStaffId = getActingStaffId;
+        window.getCurrentShiftStaffInfo = function () {
+            var nameEl = document.getElementById('staff-user-name');
+            var name = nameEl ? String(nameEl.textContent || '').trim() : '';
+            if (!name || name === '—') name = (currentUser && currentUser.name) ? currentUser.name : 'Staff';
+            var id = getActingStaffId();
+            if (!id && currentUser) id = parseInt(currentUser.id, 10) || null;
+            return { id: id, name: name };
+        };
 
         function showStaffName(name) {
             if (staffNameEl) {
@@ -4383,12 +4582,12 @@
         var salesReportAccuracyNote = document.getElementById('sales-report-accuracy-note');
         var salesReportAccuracyExpected = document.getElementById('sales-report-accuracy-expected');
         var shiftOrdersEl = document.getElementById('staff-shift-orders');
-        var shiftDrawerEl = document.getElementById('staff-shift-drawer');
         var shiftWasteEl = document.getElementById('staff-shift-waste');
         var lastActionsEl = document.getElementById('staff-last-actions');
 
         var cashDrawerCashPaymentsEl = document.getElementById('cash-drawer-cash-payments');
         var cashDrawerGcashPaymentsEl = document.getElementById('cash-drawer-gcash-payments');
+        var cashDrawerTotalPaymentsEl = document.getElementById('cash-drawer-total-payments');
         var cashDrawerDiscountsEl = document.getElementById('cash-drawer-discounts');
         var cashDrawerCashRefundsEl = document.getElementById('cash-drawer-cash-refunds');
         var cashDrawerPaidInEl = document.getElementById('cash-drawer-paid-in');
@@ -4405,6 +4604,12 @@
         var cashMgmtSubmit = document.getElementById('cash-management-submit');
         var cashMgmtError = document.getElementById('cash-mgmt-error');
         var cashMgmtType = 'paid_in';
+        var cashInOutRecordsBtn = document.getElementById('cash-inout-records-btn');
+        var cashInOutRecordsModal = document.getElementById('cash-inout-records-modal');
+        var cashInOutRecordsClose = document.getElementById('cash-inout-records-close');
+        var cashInOutRecordsList = document.getElementById('cash-inout-records-list');
+        var cashInOutRecordsTotalIn = document.getElementById('cash-inout-records-total-in');
+        var cashInOutRecordsTotalOut = document.getElementById('cash-inout-records-total-out');
         var lastBaseExpectedCash = 0;
         var accuracyLocked = false;
 
@@ -4415,12 +4620,29 @@
         var refundItemsListEl = document.getElementById('order-refund-items-list');
         var refundNumberEl = document.getElementById('order-refund-number');
         var refundPaymentEl = document.getElementById('order-refund-payment');
+        var refundOrderTypeEl = document.getElementById('order-refund-order-type');
         var refundCustomerNameEl = document.getElementById('order-refund-customer-name');
         var refundGcashRefRow = document.getElementById('order-refund-gcash-ref-row');
         var refundGcashRefEl = document.getElementById('order-refund-gcash-ref');
         var refundAmountEl = document.getElementById('order-refund-amount');
         var refundReasonInput = document.getElementById('order-refund-reason');
         var selectedRefundOrder = null;
+        var pendingRefundReason = '';
+
+        var refundConfirmModal = document.getElementById('order-refund-confirm-modal');
+        var refundConfirmClose = document.getElementById('order-refund-confirm-close');
+        var refundConfirmCancel = document.getElementById('order-refund-confirm-cancel');
+        var refundConfirmSubmit = document.getElementById('order-refund-confirm-submit');
+        var refundConfirmError = document.getElementById('order-refund-confirm-error');
+        var refundConfirmItemsListEl = document.getElementById('order-refund-confirm-items-list');
+        var refundConfirmNumberEl = document.getElementById('order-refund-confirm-number');
+        var refundConfirmPaymentEl = document.getElementById('order-refund-confirm-payment');
+        var refundConfirmOrderTypeEl = document.getElementById('order-refund-confirm-order-type');
+        var refundConfirmCustomerNameEl = document.getElementById('order-refund-confirm-customer-name');
+        var refundConfirmGcashRefRow = document.getElementById('order-refund-confirm-gcash-ref-row');
+        var refundConfirmGcashRefEl = document.getElementById('order-refund-confirm-gcash-ref');
+        var refundConfirmReasonEl = document.getElementById('order-refund-confirm-reason');
+        var refundConfirmAmountEl = document.getElementById('order-refund-confirm-amount');
 
         var kitchenReturnModal = document.getElementById('kitchen-return-modal');
         var kitchenReturnClose = document.getElementById('kitchen-return-close');
@@ -4491,7 +4713,7 @@
 
         var sesConfirm = document.getElementById('ses-confirm-btn');
         var sesNotes = document.getElementById('ses-notes-input');
-        var sesExpensesInput = document.getElementById('ses-expenses-input');
+        var sesExportBtn = document.getElementById('ses-export-btn');
         var sesCalcVal = document.querySelector('.ses-calc-val');
         var sesOverlay = document.getElementById('shift-end-overlay');
 
@@ -4984,10 +5206,6 @@
         function getShiftHistoryClearKey() {
             return 'staff_shift_history_clear_after_ms';
         }
-        function getShiftExpensesStorageKey(dateKey) {
-            var d = dateKey || new Date().toISOString().slice(0, 10);
-            return 'staff_shift_expenses_' + d;
-        }
         function getCashMgmtStorageKey() {
             return 'staff_cash_management_' + new Date().toISOString().slice(0, 10);
         }
@@ -5260,6 +5478,69 @@
             updateCashMgmtDrawerDisplay();
             closeCashMgmtModal();
         }
+
+        function formatCashInOutRecordTime(iso) {
+            var dt = new Date(iso || '');
+            if (isNaN(dt.getTime())) return '—';
+            return dt.toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function renderCashInOutRecordsList() {
+            var entries = getCashMgmtEntries().slice().sort(function (a, b) {
+                var ta = new Date(a && a.created_at ? a.created_at : 0).getTime();
+                var tb = new Date(b && b.created_at ? b.created_at : 0).getTime();
+                return tb - ta;
+            });
+            var totals = computeCashMgmtTotals();
+            if (cashInOutRecordsTotalIn) cashInOutRecordsTotalIn.textContent = peso(totals.paidIn);
+            if (cashInOutRecordsTotalOut) cashInOutRecordsTotalOut.textContent = peso(totals.paidOut);
+            if (!cashInOutRecordsList) return;
+            if (!entries.length) {
+                cashInOutRecordsList.innerHTML = '<p class="cash-inout-records-empty">No cash in/out records yet.</p>';
+                return;
+            }
+            cashInOutRecordsList.innerHTML = entries.map(function (entry) {
+                var isOut = String(entry && entry.type || '') === 'paid_out';
+                var typeLabel = isOut ? 'Paid Out' : 'Paid In';
+                var typeClass = isOut ? 'cash-inout-record__type--out' : 'cash-inout-record__type--in';
+                var amountClass = isOut ? 'cash-inout-record__amount--out' : 'cash-inout-record__amount--in';
+                var amountPrefix = isOut ? '-' : '+';
+                return (
+                    '<article class="cash-inout-record">' +
+                        '<div class="cash-inout-record__top">' +
+                            '<span class="cash-inout-record__type ' + typeClass + '">' + typeLabel + '</span>' +
+                            '<strong class="cash-inout-record__amount ' + amountClass + '">' +
+                                amountPrefix + peso(entry && entry.amount) +
+                            '</strong>' +
+                        '</div>' +
+                        '<p class="cash-inout-record__reason">' + esc(entry && entry.reason ? entry.reason : 'No reason') + '</p>' +
+                        '<p class="cash-inout-record__time">' + esc(formatCashInOutRecordTime(entry && entry.created_at)) + '</p>' +
+                    '</article>'
+                );
+            }).join('');
+        }
+
+        function openCashInOutRecordsModal() {
+            if (!cashInOutRecordsModal) return;
+            renderCashInOutRecordsList();
+            cashInOutRecordsModal.classList.add('is-visible');
+            cashInOutRecordsModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('pos-modal-open');
+        }
+
+        function closeCashInOutRecordsModal() {
+            if (!cashInOutRecordsModal) return;
+            cashInOutRecordsModal.classList.remove('is-visible');
+            cashInOutRecordsModal.setAttribute('aria-hidden', 'true');
+            if (!(cashMgmtModal && cashMgmtModal.classList.contains('is-visible'))) {
+                document.body.classList.remove('pos-modal-open');
+            }
+        }
         function showRefundError(msg) {
             if (!refundError) {
                 alert(msg);
@@ -5274,14 +5555,35 @@
                 refundError.hidden = true;
             }
         }
-        function renderRefundItemsList(order) {
-            if (!refundItemsListEl) return;
-            var items = (order && order.items) || [];
-            if (!items.length) {
-                refundItemsListEl.innerHTML = '<p class="order-refund-items-empty">No items found for this order.</p>';
+        function showRefundConfirmError(msg) {
+            if (!refundConfirmError) {
+                if (msg) alert(msg);
                 return;
             }
-            refundItemsListEl.innerHTML = items.map(function (item) {
+            refundConfirmError.textContent = msg || '';
+            refundConfirmError.hidden = !msg;
+        }
+        function getRefundOrderTypeLabel(order) {
+            var orderTypeLabel = '';
+            if (typeof getOrderTypeDisplayFromOrder === 'function') {
+                orderTypeLabel = getOrderTypeDisplayFromOrder(order) || '';
+            }
+            if (!orderTypeLabel) {
+                var rawType = String(order && order.order_type || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                if (rawType === 'take_out' || rawType === 'takeout') orderTypeLabel = 'Take out';
+                else if (rawType === 'pickup' || rawType === 'pick_up') orderTypeLabel = 'Pick up';
+                else if (rawType === 'dine_in' || rawType === 'dinein') orderTypeLabel = 'Dine in';
+            }
+            return orderTypeLabel || '—';
+        }
+        function renderRefundItemsListInto(targetEl, order) {
+            if (!targetEl) return;
+            var items = (order && order.items) || [];
+            if (!items.length) {
+                targetEl.innerHTML = '<p class="order-refund-items-empty">No items found for this order.</p>';
+                return;
+            }
+            targetEl.innerHTML = items.map(function (item) {
                 var qty = parseInt(item && item.quantity, 10) || 0;
                 var name = esc(item && item.name || 'Item');
                 var notes = item && item.notes ? '<span class="order-refund-item__notes">' + esc(item.notes) + '</span>' : '';
@@ -5296,10 +5598,15 @@
                 );
             }).join('');
         }
+        function renderRefundItemsList(order) {
+            renderRefundItemsListInto(refundItemsListEl, order);
+        }
         function openRefundModal(order) {
             if (!refundModal || !order) return;
             selectedRefundOrder = order;
+            pendingRefundReason = '';
             clearRefundError();
+            closeRefundConfirmModal(false);
             var orderNumber = order.order_number || ('#' + order.id);
             var paymentMethod = String(order.payment_method || 'cash').toLowerCase() === 'gcash' ? 'GCash' : 'Cash';
             var isGcash = paymentMethod === 'GCash';
@@ -5309,6 +5616,7 @@
             renderRefundItemsList(order);
             if (refundNumberEl) refundNumberEl.textContent = 'Order ' + orderNumber;
             if (refundPaymentEl) refundPaymentEl.textContent = paymentMethod;
+            if (refundOrderTypeEl) refundOrderTypeEl.textContent = getRefundOrderTypeLabel(order);
             if (refundCustomerNameEl) refundCustomerNameEl.textContent = customerName || '—';
             if (refundGcashRefRow) refundGcashRefRow.hidden = !isGcash;
             if (refundGcashRefEl) refundGcashRefEl.textContent = gcashRef || '—';
@@ -5319,12 +5627,47 @@
             document.body.classList.add('pos-modal-open');
             if (refundReasonInput) refundReasonInput.focus();
         }
+        function closeRefundConfirmModal(keepBodyLock) {
+            if (!refundConfirmModal) return;
+            refundConfirmModal.classList.remove('is-visible');
+            refundConfirmModal.setAttribute('aria-hidden', 'true');
+            showRefundConfirmError('');
+            if (!keepBodyLock && !(refundModal && refundModal.classList.contains('is-visible'))) {
+                document.body.classList.remove('pos-modal-open');
+            }
+        }
+        function openRefundConfirmModal(order, refundReason) {
+            if (!refundConfirmModal || !order) return;
+            pendingRefundReason = String(refundReason || '').trim();
+            showRefundConfirmError('');
+            var orderNumber = order.order_number || ('#' + order.id);
+            var paymentMethod = String(order.payment_method || 'cash').toLowerCase() === 'gcash' ? 'GCash' : 'Cash';
+            var isGcash = paymentMethod === 'GCash';
+            var gcashRef = String(order.gcash_ref || '').trim();
+            var customerName = String(order.customer_name || '').trim();
+            var refundAmount = toMoney(order.total_amount);
+            renderRefundItemsListInto(refundConfirmItemsListEl, order);
+            if (refundConfirmNumberEl) refundConfirmNumberEl.textContent = 'Order ' + orderNumber;
+            if (refundConfirmPaymentEl) refundConfirmPaymentEl.textContent = paymentMethod;
+            if (refundConfirmOrderTypeEl) refundConfirmOrderTypeEl.textContent = getRefundOrderTypeLabel(order);
+            if (refundConfirmCustomerNameEl) refundConfirmCustomerNameEl.textContent = customerName || '—';
+            if (refundConfirmGcashRefRow) refundConfirmGcashRefRow.hidden = !isGcash;
+            if (refundConfirmGcashRefEl) refundConfirmGcashRefEl.textContent = gcashRef || '—';
+            if (refundConfirmReasonEl) refundConfirmReasonEl.textContent = pendingRefundReason || '—';
+            if (refundConfirmAmountEl) refundConfirmAmountEl.textContent = peso(refundAmount);
+            refundConfirmModal.classList.add('is-visible');
+            refundConfirmModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('pos-modal-open');
+            if (refundConfirmSubmit) refundConfirmSubmit.focus();
+        }
         function closeRefundModal() {
+            closeRefundConfirmModal(false);
             if (!refundModal) return;
             refundModal.classList.remove('is-visible');
             refundModal.setAttribute('aria-hidden', 'true');
             document.body.classList.remove('pos-modal-open');
             selectedRefundOrder = null;
+            pendingRefundReason = '';
             if (refundReasonInput) refundReasonInput.value = '';
         }
 
@@ -5815,8 +6158,22 @@
                 showRefundError('Refund reason is required.');
                 return;
             }
-            if (!window.confirm('Refund ' + peso(refundAmount) + ' for order ' + (order.order_number || orderId) + '?')) {
+            openRefundConfirmModal(order, refundReason);
+        }
+
+        function executeOrderRefund() {
+            if (!selectedRefundOrder) return;
+            var order = selectedRefundOrder;
+            var orderId = parseInt(order.id, 10) || 0;
+            var refundAmount = toMoney(order.total_amount);
+            var refundReason = pendingRefundReason || (refundReasonInput ? String(refundReasonInput.value || '').trim() : '');
+            if (!orderId || !refundAmount || !refundReason) {
+                showRefundConfirmError('Missing refund details. Go back and try again.');
                 return;
+            }
+            if (refundConfirmSubmit) {
+                refundConfirmSubmit.disabled = true;
+                refundConfirmSubmit.textContent = 'PROCESSING…';
             }
             if (refundSubmit) {
                 refundSubmit.disabled = true;
@@ -5830,7 +6187,7 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data.success) {
-                    showRefundError(data.error || 'Refund failed.');
+                    showRefundConfirmError(data.error || 'Refund failed.');
                     return;
                 }
                 var paymentMethod = String(order.payment_method || 'cash').toLowerCase();
@@ -5852,19 +6209,18 @@
                 loadStaffData();
             })
             .catch(function () {
-                showRefundError('Cannot reach server. Make sure XAMPP is running.');
+                showRefundConfirmError('Cannot reach server. Make sure XAMPP is running.');
             })
             .finally(function () {
+                if (refundConfirmSubmit) {
+                    refundConfirmSubmit.disabled = false;
+                    refundConfirmSubmit.textContent = 'CONFIRM REFUND';
+                }
                 if (refundSubmit) {
                     refundSubmit.disabled = false;
                     refundSubmit.textContent = 'REFUND ORDER';
                 }
             });
-        }
-        function saveShiftExpensesForDate(dateKey, amount) {
-            try {
-                localStorage.setItem(getShiftExpensesStorageKey(dateKey), String(toMoney(amount)));
-            } catch (e) {}
         }
         function getShiftHistoryClearAfterMs() {
             var raw = localStorage.getItem(getShiftHistoryClearKey());
@@ -5903,7 +6259,7 @@
         function getOutstandingShiftWorkCount() {
             var ids = {};
             function add(list) {
-                (list || []).forEach(function (order) {
+                filterOrdersForCurrentShift(list || []).forEach(function (order) {
                     var id = parseInt(order && order.id, 10) || 0;
                     if (id) ids[id] = true;
                 });
@@ -5944,7 +6300,6 @@
 
         function resetShiftSalesDisplays() {
             if (shiftOrdersEl) shiftOrdersEl.textContent = '0';
-            if (shiftDrawerEl) shiftDrawerEl.textContent = peso(0);
             if (shiftWasteEl) shiftWasteEl.textContent = '-' + peso(0);
             if (salesReportDailyTotalSideEl) salesReportDailyTotalSideEl.textContent = 'TODAY SALES: ' + peso(0);
             if (salesReportTotalLineEl) salesReportTotalLineEl.textContent = peso(0);
@@ -5952,6 +6307,7 @@
             if (salesReportStartingMoneySaved) salesReportStartingMoneySaved.textContent = peso(0);
             if (cashDrawerCashPaymentsEl) cashDrawerCashPaymentsEl.textContent = peso(0);
             if (cashDrawerGcashPaymentsEl) cashDrawerGcashPaymentsEl.textContent = peso(0);
+            if (cashDrawerTotalPaymentsEl) cashDrawerTotalPaymentsEl.textContent = peso(0);
             if (cashDrawerDiscountsEl) cashDrawerDiscountsEl.textContent = peso(0);
             if (cashDrawerCashRefundsEl) cashDrawerCashRefundsEl.textContent = peso(0);
             if (cashDrawerPaidInEl) cashDrawerPaidInEl.textContent = peso(0);
@@ -6007,6 +6363,11 @@
 
         window.getOutstandingShiftWorkCount = getOutstandingShiftWorkCount;
         window.resetShiftSessionState = resetShiftSessionState;
+        window.getShiftHistoryClearAfterMs = getShiftHistoryClearAfterMs;
+        window.filterOrdersForCurrentShift = filterOrdersForCurrentShift;
+        window.computeShiftSummaryFromOrders = computeShiftSummaryFromOrders;
+        window.orderCountsAsSale = orderCountsAsSale;
+        window.orderCreatedAfterShiftClear = orderCreatedAfterShiftClear;
 
         function computeStartingMoneyTotal() {
             var base = toMoney(salesReportStartingMoneyInput && salesReportStartingMoneyInput.value);
@@ -7348,6 +7709,22 @@
             return name + ' (' + qty + 'x)';
         }
 
+        function formatWasteReasonDisplay(entry) {
+            var notes = String(entry && entry.notes || '').trim();
+            var reason = String(entry && entry.reason || '').trim();
+            var fromNotes = notes.match(/(?:^|\|\s*)Reason:\s*(.+)$/i);
+            if (fromNotes && fromNotes[1]) {
+                return fromNotes[1].trim();
+            }
+            if (notes && !/^Menu waste entry/i.test(notes) && !/^Waste breakdown/i.test(notes)) {
+                return notes;
+            }
+            if (reason) {
+                return reason.replace(/_/g, ' ');
+            }
+            return 'No reason provided';
+        }
+
         function renderLastActions(orders, wasteEntries) {
             if (!lastActionsEl) return;
             var actions = [];
@@ -7362,6 +7739,7 @@
                     text: 'Logged waste: ' + w.quantity + 'x ' + w.item_name,
                     time: new Date(w.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     cls: 'opq-activity-item--red',
+                    reason: formatWasteReasonDisplay(w),
                     breakdown: breakdown
                 });
             });
@@ -7370,16 +7748,29 @@
             }
             lastActionsEl.innerHTML = actions.map(function (a, idx) {
                 var hasBreakdown = Array.isArray(a.breakdown) && a.breakdown.length > 0;
-                var detailsHtml = '';
+                var hasReason = !!(a.reason && a.text.indexOf('No waste logs') !== 0);
+                var togglesHtml = '';
+                if (hasReason) {
+                    togglesHtml += ' <button type="button" class="opq-activity-item__toggle" data-waste-reason-toggle="' + idx + '">View reason</button>';
+                }
                 if (hasBreakdown) {
-                    detailsHtml = '<div class="opq-activity-item__breakdown is-hidden" data-waste-action-detail="' + idx + '">' +
+                    togglesHtml += ' <button type="button" class="opq-activity-item__toggle" data-waste-action-toggle="' + idx + '">View ingredients</button>';
+                }
+                var detailsHtml = '';
+                if (hasReason) {
+                    detailsHtml += '<div class="opq-activity-item__breakdown is-hidden" data-waste-reason-detail="' + idx + '">' +
+                        '<div>Reason: ' + esc(a.reason) + '</div>' +
+                        '</div>';
+                }
+                if (hasBreakdown) {
+                    detailsHtml += '<div class="opq-activity-item__breakdown is-hidden" data-waste-action-detail="' + idx + '">' +
                         a.breakdown.map(function (b) {
                             return '<div>- ' + esc(formatWasteBreakdownLine(b)) + '</div>';
                         }).join('') +
                         '</div>';
                 }
                 return '<div class="opq-activity-item ' + a.cls + '">' +
-                    '<p>' + esc(a.text) + (hasBreakdown ? ' <button type="button" class="opq-activity-item__toggle" data-waste-action-toggle="' + idx + '">View ingredients</button>' : '') + '</p>' +
+                    '<p>' + esc(a.text) + togglesHtml + '</p>' +
                     '<span>' + esc(a.time) + '</span>' +
                     detailsHtml +
                     '</div>';
@@ -7387,6 +7778,17 @@
         }
         if (lastActionsEl) {
             lastActionsEl.addEventListener('click', function (e) {
+                var reasonBtn = e.target.closest('[data-waste-reason-toggle]');
+                if (reasonBtn && lastActionsEl.contains(reasonBtn)) {
+                    e.preventDefault();
+                    var reasonItem = reasonBtn.closest('.opq-activity-item');
+                    if (!reasonItem) return;
+                    var reasonDetails = reasonItem.querySelector('[data-waste-reason-detail]');
+                    if (!reasonDetails) return;
+                    reasonDetails.classList.toggle('is-hidden');
+                    reasonBtn.textContent = reasonDetails.classList.contains('is-hidden') ? 'View reason' : 'Hide reason';
+                    return;
+                }
                 var btn = e.target.closest('[data-waste-action-toggle]');
                 if (!btn || !lastActionsEl.contains(btn)) return;
                 e.preventDefault();
@@ -7505,7 +7907,6 @@
                         s = computeShiftSummaryFromOrders(allForHistory);
                     }
                     if (shiftOrdersEl) shiftOrdersEl.textContent = String(s.total_orders || 0);
-                    if (shiftDrawerEl) shiftDrawerEl.textContent = peso(s.cash_revenue || 0);
                     if (salesReportDailyTotalSideEl) salesReportDailyTotalSideEl.textContent = 'TODAY SALES: ' + peso(s.total_revenue || 0);
                     if (salesReportTotalLineEl) salesReportTotalLineEl.textContent = peso(s.total_revenue || 0);
                     staffSalesBrief.total_orders = s.total_orders || 0;
@@ -7519,6 +7920,7 @@
                     var gcashPayments = Math.max(0, totalRevenue - cashPayments);
                     if (cashDrawerCashPaymentsEl) cashDrawerCashPaymentsEl.textContent = peso(cashPayments);
                     if (cashDrawerGcashPaymentsEl) cashDrawerGcashPaymentsEl.textContent = peso(gcashPayments);
+                    if (cashDrawerTotalPaymentsEl) cashDrawerTotalPaymentsEl.textContent = peso(cashPayments + gcashPayments);
                     if (cashDrawerDiscountsEl) cashDrawerDiscountsEl.textContent = peso(discountTotal);
                     updateCashMgmtDrawerDisplay();
                 }
@@ -8003,18 +8405,128 @@
         if (salesReportOverUnderInput) {
             salesReportOverUnderInput.addEventListener('input', evaluateAccuracyFromInput);
         }
+        if (sesExportBtn) {
+            sesExportBtn.addEventListener('click', function () {
+                function moneyFromEl(el) {
+                    if (!el) return 0;
+                    var s = String(el.textContent || '').replace(/,/g, '');
+                    var m = s.match(/-?\d+(?:\.\d+)?/);
+                    return m ? toMoney(m[0]) : 0;
+                }
+                var cashMgmtTotals = computeCashMgmtTotals();
+                var payload = {
+                    date: new Date().toISOString().slice(0, 10),
+                    after_ms: getShiftHistoryClearAfterMs() || 0,
+                    shift_staff: (function () {
+                        var nameEl = document.getElementById('staff-user-name');
+                        var name = nameEl ? String(nameEl.textContent || '').trim() : '';
+                        return (!name || name === '—') ? 'Unknown Staff' : name;
+                    })(),
+                    drawer: {
+                        starting_money: typeof getSavedStartingMoneyTotal === 'function'
+                            ? getSavedStartingMoneyTotal()
+                            : moneyFromEl(salesReportStartingMoneySaved),
+                        cash_payments: moneyFromEl(cashDrawerCashPaymentsEl),
+                        gcash_payments: moneyFromEl(cashDrawerGcashPaymentsEl),
+                        paid_in: cashMgmtTotals.paidIn,
+                        paid_out: cashMgmtTotals.paidOut,
+                        cash_refunds: typeof computeCashRefundsTotal === 'function'
+                            ? computeCashRefundsTotal()
+                            : moneyFromEl(cashDrawerCashRefundsEl),
+                        expected_cash: typeof getExpectedCashDrawerAmount === 'function'
+                            ? getExpectedCashDrawerAmount()
+                            : moneyFromEl(cashDrawerExpectedCashEl),
+                        counted_cash: toMoney(salesReportOverUnderInput && salesReportOverUnderInput.value)
+                    },
+                    cash_mgmt: getCashMgmtEntries(),
+                    cash_refunds: getCashRefundEntries()
+                };
+
+                sesExportBtn.disabled = true;
+                sesExportBtn.textContent = 'EXPORTING…';
+                fetch('api/shift_export.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(payload)
+                }).then(function (r) {
+                    var disposition = r.headers.get('Content-Disposition') || '';
+                    var match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+                    var filename = match && match[1] ? match[1] : ('Ortus_Shift_' + payload.date + '.xlsx');
+                    if (!r.ok) {
+                        return r.json().catch(function () { return {}; }).then(function (d) {
+                            throw new Error((d && d.error) || ('Export failed (' + r.status + ')'));
+                        });
+                    }
+                    return r.blob().then(function (blob) {
+                        return { blob: blob, filename: filename };
+                    });
+                }).then(function (pack) {
+                    var url = URL.createObjectURL(pack.blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = pack.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+                }).catch(function (err) {
+                    alert(err && err.message ? err.message : 'Failed to export shift Excel.');
+                }).finally(function () {
+                    sesExportBtn.disabled = false;
+                    sesExportBtn.textContent = 'EXPORT TO EXCEL';
+                });
+            });
+        }
+
         if (sesConfirm) {
-            sesConfirm.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                var cashDeclared = toMoney(salesReportOverUnderInput && salesReportOverUnderInput.value);
-                if (!cashDeclared) {
-                    alert('Enter the counted cash in Sales Accuracy Check before finalizing the shift.');
+            var sesCloseVerifyModal = document.getElementById('ses-close-verify-modal');
+            var sesCloseVerifyName = document.getElementById('ses-close-verify-name');
+            var sesCloseVerifyPassword = document.getElementById('ses-close-verify-password');
+            var sesCloseVerifyError = document.getElementById('ses-close-verify-error');
+            var sesCloseVerifyCancel = document.getElementById('ses-close-verify-cancel');
+            var sesCloseVerifySubmit = document.getElementById('ses-close-verify-submit');
+            var pendingCloseShiftCash = 0;
+
+            function showSesCloseVerifyError(msg) {
+                if (!sesCloseVerifyError) {
+                    if (msg) alert(msg);
                     return;
                 }
-                var expenses = toMoney(sesExpensesInput && sesExpensesInput.value);
+                sesCloseVerifyError.textContent = msg || '';
+                sesCloseVerifyError.hidden = !msg;
+            }
+
+            function openSesCloseVerifyModal() {
+                if (!sesCloseVerifyModal) return;
+                var info = typeof window.getCurrentShiftStaffInfo === 'function'
+                    ? window.getCurrentShiftStaffInfo()
+                    : { id: null, name: 'Staff' };
+                if (sesCloseVerifyName) sesCloseVerifyName.value = info.name || 'Staff';
+                if (sesCloseVerifyPassword) sesCloseVerifyPassword.value = '';
+                showSesCloseVerifyError('');
+                sesCloseVerifyModal.classList.add('is-visible');
+                sesCloseVerifyModal.setAttribute('aria-hidden', 'false');
+                setTimeout(function () {
+                    if (sesCloseVerifyPassword) sesCloseVerifyPassword.focus();
+                }, 30);
+            }
+
+            function closeSesCloseVerifyModal() {
+                if (!sesCloseVerifyModal) return;
+                sesCloseVerifyModal.classList.remove('is-visible');
+                sesCloseVerifyModal.setAttribute('aria-hidden', 'true');
+                if (sesCloseVerifyPassword) sesCloseVerifyPassword.value = '';
+                showSesCloseVerifyError('');
+                if (sesCloseVerifySubmit) {
+                    sesCloseVerifySubmit.disabled = false;
+                    sesCloseVerifySubmit.textContent = 'Verify & Close';
+                }
+            }
+
+            function finalizeCloseShift(cashDeclared) {
                 var reportDate = new Date().toISOString().slice(0, 10);
-                fetch('api/revenue_verification.php', {
+                return fetch('api/revenue_verification.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -8025,24 +8537,104 @@
                     })
                 }).then(function (r) { return r.json(); })
                   .then(function (d) {
-                      if (!d.success) { alert(d.error || 'Failed to save verification.'); return; }
+                      if (!d.success) throw new Error(d.error || 'Failed to save verification.');
                       applyAccuracyState({
                           mode: d.status || 'accurate',
                           counted: cashDeclared,
                           over_under: Math.abs(toSignedMoney(d.difference)),
                           locked: true
                       });
-                      saveShiftExpensesForDate(reportDate, expenses);
                       markShiftHistoryClearedNow();
                       if (typeof window.resetShiftSessionState === 'function') {
                           window.resetShiftSessionState();
                       } else {
                           clearStartingMoneyForToday();
                       }
+                      closeSesCloseVerifyModal();
                       closeSesOverlay();
                       loadStaffData();
                   });
+            }
+
+            sesConfirm.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                var cashDeclared = toMoney(salesReportOverUnderInput && salesReportOverUnderInput.value);
+                if (!cashDeclared) {
+                    alert('Enter the counted cash in Sales Accuracy Check before finalizing the shift.');
+                    return;
+                }
+                pendingCloseShiftCash = cashDeclared;
+                openSesCloseVerifyModal();
             }, true);
+
+            if (sesCloseVerifyCancel) {
+                sesCloseVerifyCancel.addEventListener('click', closeSesCloseVerifyModal);
+            }
+            if (sesCloseVerifyModal) {
+                sesCloseVerifyModal.addEventListener('click', function (e) {
+                    if (e.target && e.target.hasAttribute('data-ses-close-verify-dismiss')) {
+                        closeSesCloseVerifyModal();
+                    }
+                });
+            }
+            if (sesCloseVerifyPassword) {
+                sesCloseVerifyPassword.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (sesCloseVerifySubmit) sesCloseVerifySubmit.click();
+                    }
+                });
+            }
+            if (sesCloseVerifySubmit) {
+                sesCloseVerifySubmit.addEventListener('click', function () {
+                    var info = typeof window.getCurrentShiftStaffInfo === 'function'
+                        ? window.getCurrentShiftStaffInfo()
+                        : { id: null, name: 'Staff' };
+                    var password = sesCloseVerifyPassword ? String(sesCloseVerifyPassword.value || '') : '';
+                    if (!password) {
+                        showSesCloseVerifyError('Enter your password.');
+                        if (sesCloseVerifyPassword) sesCloseVerifyPassword.focus();
+                        return;
+                    }
+                    if (!info.id) {
+                        showSesCloseVerifyError('Current staff account was not found.');
+                        return;
+                    }
+                    showSesCloseVerifyError('');
+                    sesCloseVerifySubmit.disabled = true;
+                    sesCloseVerifySubmit.textContent = 'VERIFYING…';
+                    fetch('api/auth.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            action: 'verify',
+                            staff_id: info.id,
+                            password: password
+                        })
+                    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                      .then(function (pack) {
+                          if (!pack.ok || !pack.d || !pack.d.success) {
+                              throw new Error((pack.d && pack.d.error) || 'Incorrect password.');
+                          }
+                          return finalizeCloseShift(pendingCloseShiftCash);
+                      })
+                      .catch(function (err) {
+                          showSesCloseVerifyError(err && err.message ? err.message : 'Verification failed.');
+                          if (sesCloseVerifyPassword) {
+                              sesCloseVerifyPassword.value = '';
+                              sesCloseVerifyPassword.focus();
+                          }
+                      })
+                      .finally(function () {
+                          if (sesCloseVerifySubmit) {
+                              sesCloseVerifySubmit.disabled = false;
+                              sesCloseVerifySubmit.textContent = 'Verify & Close';
+                          }
+                      });
+                });
+            }
         }
 
         if (orderHistoryTabs && orderHistoryTabs.length) {
@@ -8074,9 +8666,24 @@
                 if (e.target === cashMgmtModal) closeCashMgmtModal();
             });
         }
+        if (cashInOutRecordsBtn) cashInOutRecordsBtn.addEventListener('click', openCashInOutRecordsModal);
+        if (cashInOutRecordsClose) cashInOutRecordsClose.addEventListener('click', closeCashInOutRecordsModal);
+        if (cashInOutRecordsModal) {
+            cashInOutRecordsModal.addEventListener('click', function (e) {
+                if (e.target === cashInOutRecordsModal) closeCashInOutRecordsModal();
+            });
+        }
         document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && cashInOutRecordsModal && cashInOutRecordsModal.classList.contains('is-visible')) {
+                closeCashInOutRecordsModal();
+                return;
+            }
             if (e.key === 'Escape' && cashMgmtModal && cashMgmtModal.classList.contains('is-visible')) {
                 closeCashMgmtModal();
+            }
+            if (e.key === 'Escape' && refundConfirmModal && refundConfirmModal.classList.contains('is-visible')) {
+                closeRefundConfirmModal(true);
+                return;
             }
             if (e.key === 'Escape' && refundModal && refundModal.classList.contains('is-visible')) {
                 closeRefundModal();
@@ -8100,6 +8707,18 @@
 
         if (refundClose) refundClose.addEventListener('click', closeRefundModal);
         if (refundSubmit) refundSubmit.addEventListener('click', processOrderRefund);
+        if (refundConfirmClose) {
+            refundConfirmClose.addEventListener('click', function () { closeRefundConfirmModal(true); });
+        }
+        if (refundConfirmCancel) {
+            refundConfirmCancel.addEventListener('click', function () { closeRefundConfirmModal(true); });
+        }
+        if (refundConfirmSubmit) refundConfirmSubmit.addEventListener('click', executeOrderRefund);
+        if (refundConfirmModal) {
+            refundConfirmModal.addEventListener('click', function (e) {
+                if (e.target === refundConfirmModal) closeRefundConfirmModal(true);
+            });
+        }
         if (refundModal) {
             refundModal.addEventListener('click', function (e) {
                 if (e.target === refundModal) closeRefundModal();

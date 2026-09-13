@@ -50,6 +50,28 @@
         return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
     }
 
+    /** Once set for today (any staff on this device), skip the popup until shift reset/next day. */
+    function hasStartingMoneyForToday() {
+        if (localStorage.getItem(getStartingMoneyLockedKey()) === '1') {
+            return true;
+        }
+        try {
+            var raw = localStorage.getItem(getStartingMoneyStorageKey());
+            if (!raw) return false;
+            var parsed = JSON.parse(raw);
+            var total = parseFloat(
+                parsed && (parsed.total != null ? parsed.total : parsed.base)
+            );
+            return Number.isFinite(total) && total > 0;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function continueStaffRedirect() {
+        window.location.href = loginNext || pendingStaffRedirect || 'staff_dashboard.html';
+    }
+
     function showMoneyError(msg) {
         if (!moneyError) {
             alert(msg);
@@ -106,7 +128,7 @@
             if (!saveStartingMoney()) return;
             hideStartingMoneyOverlay();
             if (pendingStaffRedirect) {
-                window.location.href = loginNext || pendingStaffRedirect;
+                continueStaffRedirect();
             }
         });
     }
@@ -152,6 +174,11 @@
 
                 if (isStaff) {
                     pendingStaffRedirect = loginNext || redirect || 'staff_dashboard.html';
+                    // Shared float for the day — only prompt on the first staff login / shift open.
+                    if (hasStartingMoneyForToday()) {
+                        continueStaffRedirect();
+                        return;
+                    }
                     showStartingMoneyOverlay();
                     btn.disabled    = false;
                     btn.textContent = 'LOGIN';

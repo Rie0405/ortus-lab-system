@@ -2010,6 +2010,7 @@ var pickupLaterTimeInput = document.getElementById('pickup-later-time-input');
 var pickupOnlyModalMessages = document.querySelectorAll('.cash-modal-message--pickup-only');
 var pickupAlarmPickerEl = document.getElementById('pickup-alarm-picker');
 var pickupAlarmState = { hour: 6, minute: 30, ampm: 'PM', wheelsBuilt: false, snapTimer: null };
+var PICKUP_MIN_LEAD_MINUTES = 15;
 
 function padPickupMinute(n) {
     return n < 10 ? '0' + n : String(n);
@@ -2019,15 +2020,62 @@ function formatPickupAlarmTime(hour, minute, ampm) {
     return hour + ':' + padPickupMinute(minute) + ' ' + ampm;
 }
 
-function getDefaultPickupAlarmTime() {
-    var now = new Date();
-    now.setMinutes(now.getMinutes() + 20);
-    var h24 = now.getHours();
-    var minute = now.getMinutes();
+function getPickupAlarmMinDate() {
+    var min = new Date();
+    min.setSeconds(0, 0);
+    min.setMinutes(min.getMinutes() + PICKUP_MIN_LEAD_MINUTES);
+    return min;
+}
+
+function dateToPickupAlarmParts(dateObj) {
+    var h24 = dateObj.getHours();
+    var minute = dateObj.getMinutes();
     var ampm = h24 >= 12 ? 'PM' : 'AM';
     var hour = h24 % 12;
     if (hour === 0) hour = 12;
     return { hour: hour, minute: minute, ampm: ampm };
+}
+
+function pickupAlarmPartsToDate(hour, minute, ampm) {
+    var h24 = hour % 12;
+    if (ampm === 'PM') h24 += 12;
+    if (ampm === 'AM' && hour === 12) h24 = 0;
+    var d = new Date();
+    d.setSeconds(0, 0);
+    d.setHours(h24, minute, 0, 0);
+    return d;
+}
+
+function getDefaultPickupAlarmTime() {
+    return dateToPickupAlarmParts(getPickupAlarmMinDate());
+}
+
+function clampPickupAlarmParts(hour, minute, ampm) {
+    var selected = pickupAlarmPartsToDate(hour, minute, ampm);
+    var min = getPickupAlarmMinDate();
+    if (selected.getTime() < min.getTime()) {
+        return dateToPickupAlarmParts(min);
+    }
+    return { hour: hour, minute: minute, ampm: ampm };
+}
+
+function enforcePickupAlarmMinimum(behavior) {
+    var clamped = clampPickupAlarmParts(
+        pickupAlarmState.hour,
+        pickupAlarmState.minute,
+        pickupAlarmState.ampm
+    );
+    if (
+        clamped.hour !== pickupAlarmState.hour ||
+        clamped.minute !== pickupAlarmState.minute ||
+        clamped.ampm !== pickupAlarmState.ampm
+    ) {
+        setPickupAlarmSelection(clamped.hour, clamped.minute, clamped.ampm, behavior || 'smooth');
+        return true;
+    }
+    syncPickupAlarmHiddenInput();
+    updatePickupAlarmActiveStates();
+    return false;
 }
 
 function syncPickupAlarmHiddenInput() {
@@ -2095,25 +2143,26 @@ function scrollPickupAlarmWheelToValue(wheelEl, value, behavior) {
 }
 
 function setPickupAlarmSelection(hour, minute, ampm, behavior) {
-    pickupAlarmState.hour = hour;
-    pickupAlarmState.minute = minute;
-    pickupAlarmState.ampm = ampm;
+    var clamped = clampPickupAlarmParts(hour, minute, ampm);
+    pickupAlarmState.hour = clamped.hour;
+    pickupAlarmState.minute = clamped.minute;
+    pickupAlarmState.ampm = clamped.ampm;
     syncPickupAlarmHiddenInput();
     updatePickupAlarmActiveStates();
     if (!pickupAlarmPickerEl) return;
     scrollPickupAlarmWheelToValue(
         pickupAlarmPickerEl.querySelector('.pickup-alarm-picker__wheel[data-wheel="hour"]'),
-        String(hour),
+        String(clamped.hour),
         behavior
     );
     scrollPickupAlarmWheelToValue(
         pickupAlarmPickerEl.querySelector('.pickup-alarm-picker__wheel[data-wheel="minute"]'),
-        String(minute),
+        String(clamped.minute),
         behavior
     );
     scrollPickupAlarmWheelToValue(
         pickupAlarmPickerEl.querySelector('.pickup-alarm-picker__wheel[data-wheel="ampm"]'),
-        ampm,
+        clamped.ampm,
         behavior
     );
 }
@@ -2139,8 +2188,10 @@ function snapPickupAlarmWheel(wheelEl) {
     if (type === 'hour') pickupAlarmState.hour = parseInt(raw, 10) || 12;
     else if (type === 'minute') pickupAlarmState.minute = parseInt(raw, 10) || 0;
     else pickupAlarmState.ampm = raw === 'AM' ? 'AM' : 'PM';
-    syncPickupAlarmHiddenInput();
-    updatePickupAlarmActiveStates();
+    if (!enforcePickupAlarmMinimum('smooth')) {
+        syncPickupAlarmHiddenInput();
+        updatePickupAlarmActiveStates();
+    }
 }
 
 function initPickupAlarmPicker() {
@@ -2632,6 +2683,14 @@ function submitOnePublicOrder(paymentMethod, gcashRef, orderTypeLabel, items, ap
     if (paymentMethod === 'gcash' && !String(gcashRef || '').trim()) {
         return Promise.reject(new Error('Please enter your GCash reference number.'));
     }
+    if (paymentMethod === 'gcash') {
+        gcashRef = typeof window.sanitizeGcashRefDigits === 'function'
+            ? window.sanitizeGcashRefDigits(gcashRef)
+            : String(gcashRef || '').replace(/\D+/g, '');
+        if (!gcashRef) {
+            return Promise.reject(new Error('Please enter your GCash reference number.'));
+        }
+    }
     var payload = {
         service_type: selectedServiceType || 'onsite',
         order_type: orderTypeLabel || selectedOrderType || 'Not selected',
@@ -2787,8 +2846,17 @@ if (gcashModalConfirmBtn) {
             return;
         }
         var ref = gcashRefInput ? String(gcashRefInput.value || '').trim() : '';
+        if (typeof window.sanitizeGcashRefDigits === 'function') {
+            ref = window.sanitizeGcashRefDigits(ref);
+            if (gcashRefInput) gcashRefInput.value = ref;
+        }
         if (!ref) {
             window.alert('Please enter your GCash reference number.');
+            if (gcashRefInput) gcashRefInput.focus();
+            return;
+        }
+        if (!/^\d+$/.test(ref)) {
+            window.alert('GCash reference number must contain numbers only.');
             if (gcashRefInput) gcashRefInput.focus();
             return;
         }

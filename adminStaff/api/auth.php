@@ -4,9 +4,59 @@ require_once __DIR__ . '/staff_shifts_helpers.php';
 
 $m = method();
 
-// ─── POST /api/auth.php  →  login ────────────────────────────────────────────
+// ─── POST /api/auth.php  →  login or verify ───────────────────────────────────
 if ($m === 'POST') {
-    $b        = body();
+    $b = body();
+    $action = strtolower(trim((string)($b['action'] ?? 'login')));
+
+    // Re-auth check for sensitive actions (e.g. close shift) without logging in again.
+    if ($action === 'verify') {
+        if (empty($_SESSION['user_id'])) {
+            fail('Not authenticated.', 401);
+        }
+        $password = (string)($b['password'] ?? '');
+        if ($password === '') {
+            fail('Password is required.');
+        }
+
+        $staffId = (int)($b['staff_id'] ?? 0);
+        if ($staffId <= 0) {
+            $staffId = (int)$_SESSION['user_id'];
+        }
+
+        $sessionId = (int)$_SESSION['user_id'];
+        $sessionRole = strtolower(trim((string)($_SESSION['user_role'] ?? '')));
+        if ($staffId !== $sessionId && $sessionRole !== 'admin') {
+            fail('Not allowed to verify another account.', 403);
+        }
+
+        $stmt = db()->prepare(
+            'SELECT id, full_name, username, email, password, role, is_active
+               FROM users
+              WHERE id = :id
+              LIMIT 1'
+        );
+        $stmt->execute([':id' => $staffId]);
+        $user = $stmt->fetch();
+
+        if (!$user || !password_verify($password, $user['password'])) {
+            fail('Incorrect password.', 401);
+        }
+        if (!$user['is_active']) {
+            fail('Account is deactivated. Contact administrator.', 403);
+        }
+
+        ok([
+            'verified' => true,
+            'user' => [
+                'id' => (int)$user['id'],
+                'full_name' => $user['full_name'],
+                'username' => $user['username'],
+                'role' => strtolower(trim((string)($user['role'] ?? 'staff'))),
+            ],
+        ]);
+    }
+
     $login    = trim($b['username'] ?? '');
     $password = $b['password'] ?? '';
 

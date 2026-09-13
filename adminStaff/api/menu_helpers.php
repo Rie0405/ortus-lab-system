@@ -46,6 +46,8 @@ function ensure_menu_serve_schema(PDO $pdo): void
         );
     }
 
+    ensure_menu_cost_price_schema($pdo);
+
     $rows = $pdo->query(
         "SELECT m.id, m.description, m.serve_hot, m.serve_cold
            FROM menu_items m
@@ -70,6 +72,23 @@ function ensure_menu_serve_schema(PDO $pdo): void
             ':cold' => $flags['cold'] ? 1 : 0,
             ':id' => (int)$row['id'],
         ]);
+    }
+}
+
+function ensure_menu_cost_price_schema(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $hasCost = (bool)$pdo->query("SHOW COLUMNS FROM menu_items LIKE 'cost_price'")->fetch();
+    if (!$hasCost) {
+        $pdo->exec(
+            'ALTER TABLE menu_items
+                ADD COLUMN cost_price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER price'
+        );
     }
 }
 
@@ -361,6 +380,9 @@ function cast_menu_item_row(array &$item): void
             : null;
     }
     $item['price'] = (float)$item['price'];
+    if (array_key_exists('cost_price', $item)) {
+        $item['cost_price'] = (float)$item['cost_price'];
+    }
     $item['is_available'] = (bool)$item['is_available'];
     $item['serve_hot'] = (bool)($item['serve_hot'] ?? false);
     $item['serve_cold'] = (bool)($item['serve_cold'] ?? false);

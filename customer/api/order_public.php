@@ -49,6 +49,7 @@ $serviceType = strtolower(trim($b['service_type'] ?? ''));
 $orderType = trim($b['order_type'] ?? '');
 $paymentMethod = strtolower(trim($b['payment_method'] ?? 'cash'));
 $gcashRef = trim($b['gcash_ref'] ?? '');
+$gcashRef = preg_replace('/\D+/', '', $gcashRef);
 $pickupLaterTime = trim((string)($b['pickup_later_time'] ?? ''));
 $customerName = trim((string)($b['customer_name'] ?? ''));
 
@@ -61,7 +62,7 @@ if ($serviceType === 'remote') {
     if (!in_array($paymentMethod, ['cash', 'gcash'], true)) fail('Invalid payment method.');
 }
 if ($paymentMethod === 'gcash' && $gcashRef === '') {
-    fail('GCash reference number is required.');
+    fail('GCash reference number is required (numbers only).');
 }
 
 $pdo = db();

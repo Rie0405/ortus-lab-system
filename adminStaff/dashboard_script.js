@@ -1337,6 +1337,8 @@ function apiCall(method, url, body) {
 
         if (backdrop === createBackdrop) {
             setServeFlagsOnForm('prod', { hot: false, cold: false });
+            var costPrice = document.getElementById('prod-cost-price');
+            if (costPrice) costPrice.value = '';
             var basePrice = document.getElementById('prod-base-price');
             if (basePrice) basePrice.value = '';
             syncBevSubVisibility();
@@ -1883,6 +1885,7 @@ function apiCall(method, url, body) {
             var mainCatId = parseInt(prodMainCategorySelect && prodMainCategorySelect.value, 10);
             var desc     = document.getElementById('prod-description').value.trim();
             var basePriceInput = document.getElementById('prod-base-price');
+            var costPriceInput = document.getElementById('prod-cost-price');
             var isBeverageCreate = isBevMergedOptionSelected(catSel);
             var customizableIngredients = [];
             if (customizableTagsList) {
@@ -1959,7 +1962,14 @@ function apiCall(method, url, body) {
             }
 
             if (!(price > 0)) {
-                alert(isBeverageCreate ? 'Add at least one variant price greater than 0.' : 'Base price is required for non-beverage products.');
+                alert(isBeverageCreate ? 'Add at least one variant price greater than 0.' : 'Selling price is required for non-beverage products.');
+                return;
+            }
+
+            var costPrice = parseFloat(costPriceInput && costPriceInput.value || '0');
+            if (!Number.isFinite(costPrice) || costPrice < 0) {
+                alert('Cost price must be 0 or greater.');
+                if (costPriceInput) costPriceInput.focus();
                 return;
             }
 
@@ -1991,6 +2001,7 @@ function apiCall(method, url, body) {
                 category_id: catId,
                 main_category_id: mainCatId,
                 price: price,
+                cost_price: costPrice,
                 description: desc,
                 is_available: 1,
                 image_url: createImageUrl || '',
@@ -2010,6 +2021,7 @@ function apiCall(method, url, body) {
                     document.getElementById('prod-category').value    = '';
                     if (prodMainCategorySelect) prodMainCategorySelect.value = '';
                     document.getElementById('prod-description').value = '';
+                    if (costPriceInput) costPriceInput.value = '';
                     if (basePriceInput) basePriceInput.value = '';
                     setServeFlagsOnForm('prod', { hot: false, cold: false });
                     if (prodSubcategorySelect) prodSubcategorySelect.value = '';
@@ -2050,6 +2062,8 @@ function apiCall(method, url, body) {
         editingId = id;
 
         document.getElementById('edit-prod-name').value = item.name;
+        var editCostPriceInput = document.getElementById('edit-cost-price');
+        if (editCostPriceInput) editCostPriceInput.value = Number(item.cost_price || 0).toFixed(2);
         var editBasePriceInput = document.getElementById('edit-base-price');
         if (editBasePriceInput) editBasePriceInput.value = Number(item.price || 0).toFixed(2);
         var editCat = document.getElementById('edit-prod-category');
@@ -2120,6 +2134,7 @@ function apiCall(method, url, body) {
                 var descEdit = document.getElementById('edit-prod-description').value.trim();
                 var resolvedBevCat = null;
                 var editBasePriceInput = document.getElementById('edit-base-price');
+                var editCostPriceInput = document.getElementById('edit-cost-price');
                 var isBeverageEdit = isBevMergedOptionSelected(editCatSel);
 
                 descEdit = stripPosBevSectionLine(descEdit);
@@ -2191,7 +2206,14 @@ function apiCall(method, url, body) {
                 if (!(price > 0)) {
                     alert(isBeverageEdit
                         ? 'Add at least one variant with a price greater than 0 (same as create product).'
-                        : 'Base price is required for non-beverage products.');
+                        : 'Selling price is required for non-beverage products.');
+                    return;
+                }
+
+                var costPrice = parseFloat(editCostPriceInput && editCostPriceInput.value || '0');
+                if (!Number.isFinite(costPrice) || costPrice < 0) {
+                    alert('Cost price must be 0 or greater.');
+                    if (editCostPriceInput) editCostPriceInput.focus();
                     return;
                 }
 
@@ -2226,6 +2248,7 @@ function apiCall(method, url, body) {
                     category_id: resolvedBevCat || parseInt(editCatSel.value, 10),
                     main_category_id: editMainCatId,
                     price:       price,
+                    cost_price:  costPrice,
                     description: descEdit,
                     subcategory_id: editSubcategoryId ? parseInt(editSubcategoryId, 10) : '',
                     image_url:   editImageUrl || '',

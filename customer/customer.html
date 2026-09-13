@@ -833,7 +833,7 @@
                 <div class="cash-modal-discount-preview" id="gcash-discount-preview" hidden></div>
                 <label class="cash-modal-field">
                     <span class="cash-modal-field-label">GCash reference no. <span class="cash-modal-field-required" aria-hidden="true">*</span></span>
-                    <input id="gcash-ref-input" class="gcash-ref-input cash-modal-input" type="text" placeholder="Enter reference number" inputmode="numeric" autocomplete="off" required aria-required="true">
+                    <input id="gcash-ref-input" class="gcash-ref-input cash-modal-input js-gcash-ref-digits" type="text" placeholder="Enter reference number" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required aria-required="true">
                 </label>
             </div>
             <div class="cash-modal-actions">
@@ -896,6 +896,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="../shared/gcash_ref_digits.js"></script>
     <script src="customer_script.js?v=20260910-no-hotcold"></script>
 
 </body>

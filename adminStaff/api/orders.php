@@ -350,6 +350,7 @@ if ($m === 'POST') {
     $paymentMethod  = in_array($b['payment_method'] ?? '', ['cash','gcash']) ? $b['payment_method'] : 'cash';
     $amountReceived = isset($b['amount_received']) ? (float)$b['amount_received'] : null;
     $gcashRef       = trim($b['gcash_ref'] ?? '');
+    $gcashRef       = preg_replace('/\D+/', '', $gcashRef);
     $customerName   = trim((string)($b['customer_name'] ?? ''));
     if (strlen($customerName) > 160) {
         $customerName = substr($customerName, 0, 160);
@@ -358,6 +359,10 @@ if ($m === 'POST') {
     $discount       = normalize_order_discount_payload($b['discount'] ?? null);
     $sessionRole    = strtolower(trim((string)($_SESSION['user_role'] ?? '')));
     $staffId        = (int)$_SESSION['user_id'];
+
+    if ($paymentMethod === 'gcash' && $gcashRef === '') {
+        fail('GCash reference number is required (numbers only).');
+    }
 
     if ($sessionRole === 'admin') {
         $actingStaffId = (int)($b['acting_staff_id'] ?? 0);

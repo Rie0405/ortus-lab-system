@@ -86,7 +86,6 @@ function setActiveFulfillmentFromOrderType() {
 function syncOrderTypeToggleButtons() {
     var show = isDineTakeOrderSelected();
     var isTakeOutActive = activeFulfillmentBucket === 'take_out';
-    var question = isTakeOutActive ? 'Would you like to dine in?' : 'Would you like to take out?';
     var showDineLabel = show && cartByFulfillment.dine_in.length > 0 && cartByFulfillment.take_out.length > 0;
     document.querySelectorAll('.order-type-toggle-section').forEach(function (section) {
         section.hidden = !show;
@@ -103,10 +102,12 @@ function syncOrderTypeToggleButtons() {
         if (takeBox) {
             takeBox.hidden = !isTakeOutActive && cartByFulfillment.take_out.length === 0;
         }
-    });
-    document.querySelectorAll('.order-type-toggle-btn').forEach(function (btn) {
-        btn.textContent = question;
-        btn.setAttribute('aria-label', isTakeOutActive ? 'Switch to dine in' : 'Switch to take out');
+        section.querySelectorAll('.order-type-seg__btn[data-fulfillment]').forEach(function (btn) {
+            var key = btn.getAttribute('data-fulfillment');
+            var active = key === activeFulfillmentBucket;
+            btn.classList.toggle('order-type-seg__btn--active', active);
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
     });
     document.querySelectorAll('.sidebar-cart-group__label--dine-in').forEach(function (label) {
         label.hidden = !showDineLabel;
@@ -1894,9 +1895,11 @@ document.querySelectorAll('.payment-btn').forEach(function (btn) {
     });
 });
 
-document.querySelectorAll('.order-type-toggle-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        toggleOrderTypeDineTake();
+document.querySelectorAll('.order-type-toggle-section').forEach(function (section) {
+    section.addEventListener('click', function (e) {
+        var btn = e.target.closest('.order-type-seg__btn[data-fulfillment]');
+        if (!btn || !section.contains(btn)) return;
+        setActiveFulfillmentBucket(btn.getAttribute('data-fulfillment'));
     });
 });
 

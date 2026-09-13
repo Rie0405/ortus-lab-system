@@ -54,11 +54,12 @@ $periodDays = max(1, (int)floor((strtotime($toDate) - strtotime($fromDate)) / 86
 $prevTo = date('Y-m-d', strtotime($fromDate . ' -1 day'));
 $prevFrom = date('Y-m-d', strtotime($prevTo . ' -' . ($periodDays - 1) . ' day'));
 
+$saleCond = sql_order_counts_as_sale();
 $summaryStmt = $pdo->prepare(
     'SELECT COUNT(*) AS total_orders
      FROM orders
      WHERE DATE(created_at) BETWEEN :from AND :to
-       AND status IN ("confirmed","served")'
+       AND ' . $saleCond
 );
 $summaryStmt->execute([':from' => $fromDate, ':to' => $toDate]);
 $orderCountRow = $summaryStmt->fetch();

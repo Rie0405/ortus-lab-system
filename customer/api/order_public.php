@@ -5,6 +5,8 @@ require_once __DIR__ . '/../../adminStaff/api/receipt_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/recipe_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/cashflow_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/menu_helpers.php';
+require_once __DIR__ . '/../../adminStaff/api/kitchen_ticket_helpers.php';
+require_once __DIR__ . '/../../adminStaff/api/order_number_helpers.php';
 
 $m = method();
 if ($m !== 'POST') fail('Method not allowed.', 405);
@@ -69,6 +71,8 @@ ensure_order_discount_schema($pdo);
 ensure_order_inventory_deduction_schema($pdo);
 ensure_order_items_cost_schema($pdo);
 ensure_receipt_token_schema($pdo);
+ensure_kitchen_ticket_schema($pdo);
+ensure_order_number_schema($pdo);
 
 // Kiosk: hard-block when stock is short (no override).
 $checkItems = [];
@@ -88,7 +92,8 @@ if ($shortages) {
 $receiptToken = generate_receipt_token();
 $pdo->beginTransaction();
 try {
-    $orderNumber = 'CU-' . strtoupper(substr(uniqid(), -6));
+    // KIO-MMDDYY-001 (resets on shift finalize)
+    $orderNumber = allocate_next_order_number($pdo, 'kiosk');
     $discount = normalize_order_discount_payload($b['discount'] ?? null);
     $discountRequested = !empty($b['discount_requested']);
     $discountRequestType = strtolower(trim((string)($b['discount_request_type'] ?? '')));
@@ -229,6 +234,7 @@ try {
         ':dreqtype' => ($discountRequested && $discountAlreadyApplied) ? $discountRequestType : null,
     ]);
     $orderId = (int)$pdo->lastInsertId();
+    $kitchenTicket = assign_kitchen_ticket_to_order($pdo, $orderId);
 
     $insItem = $pdo->prepare(
         'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
@@ -260,6 +266,7 @@ try {
     ok([
         'order_id' => $orderId,
         'order_number' => $orderNumber,
+        'kitchen_ticket_number' => $kitchenTicket,
         'receipt_token' => $receiptToken,
         'gross_amount' => $pricing['gross_amount'],
         'vat_exempt_amount' => $pricing['vat_exempt_amount'],

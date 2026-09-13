@@ -21,6 +21,17 @@ function ensure_order_items_cost_schema(PDO $pdo): void
 }
 
 /**
+ * Orders that still count as sales for reporting.
+ * Kitchen-returned pending orders stay as sales until refunded/voided.
+ */
+function sql_order_counts_as_sale(string $alias = ''): string
+{
+    $p = $alias === '' ? '' : (rtrim($alias, '.') . '.');
+    return '(' . $p . 'status IN ("confirmed","served")'
+        . ' OR (' . $p . 'status = "pending" AND COALESCE(' . $p . 'kitchen_returned, 0) = 1))';
+}
+
+/**
  * Cashflow summary for a date range.
  * COGS comes from recipe unit_cost snapshots on order_items (saved at checkout).
  */
@@ -30,19 +41,21 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
     ensure_order_items_cost_schema($pdo);
     ensure_recipe_schema_shared($pdo);
 
+    $saleCond = sql_order_counts_as_sale();
     $salesStmt = $pdo->prepare(
         'SELECT
-            COALESCE(SUM(CASE WHEN status IN ("confirmed","served") THEN total_amount ELSE 0 END), 0) AS net_sales,
-            COALESCE(SUM(CASE WHEN status IN ("confirmed","served") THEN discount_amount ELSE 0 END), 0) AS discounts_total,
+            COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN total_amount ELSE 0 END), 0) AS net_sales,
+            COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN discount_amount ELSE 0 END), 0) AS discounts_total,
             COALESCE(SUM(CASE WHEN status = "voided" THEN total_amount ELSE 0 END), 0) AS refunds_total,
-            COUNT(CASE WHEN status IN ("confirmed","served") THEN 1 END) AS total_orders,
-            COALESCE(SUM(CASE WHEN status IN ("confirmed","served") THEN gross_amount ELSE 0 END), 0) AS gross_revenue
+            COUNT(CASE WHEN ' . $saleCond . ' THEN 1 END) AS total_orders,
+            COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN gross_amount ELSE 0 END), 0) AS gross_revenue
          FROM orders
          WHERE DATE(created_at) BETWEEN :from AND :to'
     );
     $salesStmt->execute([':from' => $fromDate, ':to' => $toDate]);
     $sales = $salesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
+    $cogsSaleCond = sql_order_counts_as_sale('o');
     $cogsStmt = $pdo->prepare(
         'SELECT COALESCE(SUM(
             CASE
@@ -53,7 +66,7 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
          FROM order_items oi
          INNER JOIN orders o ON o.id = oi.order_id
          WHERE DATE(o.created_at) BETWEEN :from AND :to
-           AND o.status IN ("confirmed","served")'
+           AND ' . $cogsSaleCond
     );
     $cogsStmt->execute([':from' => $fromDate, ':to' => $toDate]);
     $totalCogs = (float)$cogsStmt->fetchColumn();

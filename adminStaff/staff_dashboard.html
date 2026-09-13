@@ -166,24 +166,35 @@
                         <input type="text" class="pos-customer-name__input" id="pos-customer-name" maxlength="160" placeholder="Name for this receipt" autocomplete="name" required aria-required="true">
                     </label>
                     <div class="pos-editing-banner" id="pos-editing-banner" hidden>
-                        <span class="pos-editing-banner__label">Confirm pending order</span>
+                        <span class="pos-editing-banner__label">Editing pending order</span>
                         <strong class="pos-editing-banner__id" id="pos-editing-banner-id"></strong>
                     </div>
                     <div class="pos-fulfillment-panel" id="pos-fulfillment-panel">
-                        <button type="button" class="pos-fulfill-toggle-btn" id="pos-fulfill-toggle-btn">Would you like to take out?</button>
-                        <p class="pos-fulfill-target-label" id="pos-fulfill-target-label" hidden>Orders to take out:</p>
+                        <div class="pos-fulfill-seg" role="group" aria-label="Order type">
+                            <button type="button" class="pos-fulfill-seg__btn pos-fulfill-seg__btn--active" data-fulfillment="dine_in" id="pos-fulfill-dine-in">Dine in</button>
+                            <button type="button" class="pos-fulfill-seg__btn" data-fulfillment="take_out" id="pos-fulfill-take-out">Take Out</button>
+                        </div>
                     </div>
-                    <p class="pos-cart-group__label pos-cart-group__label--dine-in" id="pos-cart-label-dine-in" hidden>Orders to dine in:</p>
-                    <div class="order-list" id="pos-order-list">
-                        <!-- populated by JS from cart state -->
+                    <div class="pos-cart-slider" id="pos-cart-slider" data-active="dine_in">
+                        <div class="pos-cart-slider__track" id="pos-cart-slider-track">
+                            <div class="pos-cart-slider__pane" data-pane="dine_in">
+                                <p class="pos-cart-group__label pos-cart-group__label--dine-in" id="pos-cart-label-dine-in">Orders to dine in:</p>
+                                <div class="order-list" id="pos-order-list">
+                                    <p class="pos-muted pos-empty-cart">Cart is empty</p>
+                                </div>
+                            </div>
+                            <div class="pos-cart-slider__pane" data-pane="take_out">
+                                <p class="pos-cart-group__label pos-cart-group__label--take-out" id="pos-cart-label-take-out">Orders to take out:</p>
+                                <div class="order-list order-list--take-out" id="pos-order-list-take-out">
+                                    <p class="pos-muted pos-empty-cart">No take out items yet.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <p class="pos-cart-group__label pos-cart-group__label--take-out" id="pos-cart-label-take-out" hidden>Orders to take out:</p>
-                    <div class="order-list order-list--take-out" id="pos-order-list-take-out" hidden></div>
 
                     <div class="totals">
                         <div><span>Gross</span><strong id="pos-subtotal">₱0.00</strong></div>
-                        <div id="pos-vat-row" hidden><span>VAT Exempt</span><strong id="pos-vat-exempt">₱0.00</strong></div>
-                        <div id="pos-discount-row" hidden><span id="pos-discount-label">Discount</span><strong id="pos-discount-amount">₱0.00</strong></div>
+                        <div id="pos-discount-row"><span id="pos-discount-label">Discount</span><strong id="pos-discount-amount">₱0.00</strong></div>
                         <div class="total-row"><span>Total</span><strong id="pos-total">₱0.00</strong></div>
                     </div>
 
@@ -289,7 +300,7 @@
                             </div>
                             <footer class="opq-card-foot staff-opq-actions">
                                 <button type="button" class="opq-action-btn opq-action-btn--confirm">Confirm</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--void">Void</button>
+                                <button type="button" class="opq-action-btn opq-action-btn--void">Delete</button>
                                 <button type="button" class="opq-action-btn opq-action-btn--discount">Discount</button>
                                 <button type="button" class="opq-action-btn opq-action-btn--edit">Edit</button>
                             </footer>
@@ -321,7 +332,7 @@
                             </div>
                             <footer class="opq-card-foot staff-opq-actions">
                                 <button type="button" class="opq-action-btn opq-action-btn--confirm">Confirm</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--void">Void</button>
+                                <button type="button" class="opq-action-btn opq-action-btn--void">Delete</button>
                                 <button type="button" class="opq-action-btn opq-action-btn--discount">Discount</button>
                                 <button type="button" class="opq-action-btn opq-action-btn--edit">Edit</button>
                             </footer>
@@ -353,7 +364,7 @@
                             </div>
                             <footer class="opq-card-foot staff-opq-actions">
                                 <button type="button" class="opq-action-btn opq-action-btn--confirm">Confirm</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--void">Void</button>
+                                <button type="button" class="opq-action-btn opq-action-btn--void">Delete</button>
                                 <button type="button" class="opq-action-btn opq-action-btn--discount">Discount</button>
                                 <button type="button" class="opq-action-btn opq-action-btn--edit">Edit</button>
                             </footer>
@@ -404,7 +415,7 @@
                     <aside class="kitchen-serving-panel" aria-label="Serving actions">
                         <div class="kitchen-serving-head">
                             <h3 class="kitchen-serving-title">SERVING</h3>
-                            <span class="kitchen-serving-badge" id="kitchen-serving-count">0 READY</span>
+                            <span class="kitchen-serving-badge" id="kitchen-serving-count">0</span>
                             <button type="button" class="opq-done-all-btn" id="served-all-orders-btn" style="margin-left:auto;">SERVED ALL</button>
                         </div>
                         <div class="kitchen-serving-list" id="kitchen-serving-list">
@@ -450,10 +461,6 @@
                                                 <div class="waste-search-select__dropdown" id="waste-tab-order-search-list" role="listbox" hidden></div>
                                             </div>
                                         </label>
-                                        <label class="opq-field">
-                                            <span class="opq-label">ITEM NAME</span>
-                                            <input type="text" class="opq-input" id="waste-tab-item-name" placeholder="e.g. Matcha Latte">
-                                        </label>
                                         <p class="waste-item-indicator waste-item-indicator--idle" id="waste-tab-item-indicator">Select an item to check waste history.</p>
                                         <label class="opq-field">
                                             <span class="opq-label">QUANTITY</span>
@@ -461,7 +468,7 @@
                                         </label>
                                         <label class="opq-field">
                                             <span class="opq-label">NOTES</span>
-                                            <input type="text" class="opq-input" id="waste-tab-notes" placeholder="Optional note">
+                                            <input type="text" class="opq-input" id="waste-tab-notes" placeholder="Required note" required>
                                         </label>
                                         <button class="opq-waste-btn" id="waste-tab-submit">LOG WASTE</button>
                                     </div>
@@ -668,13 +675,6 @@
                         </div>
                     </section>
 
-                    <section class="pay-modal__section pay-modal__section--fulfill-toggle">
-                        <button type="button" class="pay-fulfill-toggle" data-fulfillment-target="take_out">
-                            <span class="pay-fulfill-toggle__icon" aria-hidden="true">🥡</span>
-                            <span class="pay-fulfill-toggle__name">Would you like to take out?</span>
-                        </button>
-                    </section>
-
                     <!-- Cash fields -->
                     <section class="pay-modal__section">
                         <div class="pay-modal__field-group">
@@ -712,13 +712,6 @@
                                 <span class="pay-method__name">GCASH</span>
                             </button>
                         </div>
-                    </section>
-
-                    <section class="pay-modal__section pay-modal__section--fulfill-toggle">
-                        <button type="button" class="pay-fulfill-toggle" data-fulfillment-target="take_out">
-                            <span class="pay-fulfill-toggle__icon" aria-hidden="true">🥡</span>
-                            <span class="pay-fulfill-toggle__name">Would you like to take out?</span>
-                        </button>
                     </section>
 
                     <!-- GCash verification fields -->
@@ -933,17 +926,17 @@
         <div class="cash-mgmt-backdrop" id="queue-void-modal" aria-hidden="true">
             <div class="cash-mgmt-modal order-refund-modal" role="dialog" aria-modal="true" aria-labelledby="queue-void-title">
                 <header class="cash-mgmt-modal__header">
-                    <h2 class="cash-mgmt-modal__title" id="queue-void-title">VOID ORDER</h2>
-                    <button type="button" class="cash-mgmt-modal__close" id="queue-void-close" aria-label="Close void dialog">×</button>
+                    <h2 class="cash-mgmt-modal__title" id="queue-void-title">DELETE ORDER</h2>
+                    <button type="button" class="cash-mgmt-modal__close" id="queue-void-close" aria-label="Close delete dialog">×</button>
                 </header>
                 <div class="cash-mgmt-modal__body">
                     <p class="order-refund-order-meta" id="queue-void-order-meta"></p>
                     <label class="cash-mgmt-modal__field" for="queue-void-reason">
-                        <span class="cash-mgmt-modal__label">Void Reason</span>
+                        <span class="cash-mgmt-modal__label">Delete Reason</span>
                         <input type="text" class="cash-mgmt-modal__text" id="queue-void-reason" maxlength="200" placeholder="e.g. Customer cancelled">
                     </label>
                     <p class="cash-mgmt-modal__error" id="queue-void-error" hidden role="alert"></p>
-                    <button type="button" class="cash-mgmt-modal__submit order-refund-submit" id="queue-void-submit">VOID ORDER</button>
+                    <button type="button" class="cash-mgmt-modal__submit order-refund-submit" id="queue-void-submit">DELETE ORDER</button>
                 </div>
             </div>
         </div>
@@ -979,21 +972,16 @@
                     <label class="cash-mgmt-modal__field" for="queue-discount-type">
                         <span class="cash-mgmt-modal__label">Discount Type</span>
                         <select class="cash-mgmt-modal__text" id="queue-discount-type">
-                            <option value="none">None</option>
                             <option value="senior">Senior Citizen</option>
                             <option value="pwd">PWD</option>
-                            <option value="custom">Custom Rate (%)</option>
+                            <option value="custom" id="queue-discount-type-custom">Custom (shift rate)</option>
                         </select>
                     </label>
-                    <label class="cash-mgmt-modal__field" id="queue-discount-rate-wrap" hidden>
-                        <span class="cash-mgmt-modal__label">Discount Rate (%)</span>
-                        <input type="number" class="cash-mgmt-modal__text" id="queue-discount-rate" min="1" max="100" step="1" placeholder="e.g. 20">
-                    </label>
-                    <label class="cash-mgmt-modal__field" id="queue-discount-name-wrap" hidden>
+                    <label class="cash-mgmt-modal__field" id="queue-discount-name-wrap">
                         <span class="cash-mgmt-modal__label">Customer Name</span>
                         <input type="text" class="cash-mgmt-modal__text" id="queue-discount-name" maxlength="160" placeholder="Customer name">
                     </label>
-                    <label class="cash-mgmt-modal__field" id="queue-discount-id-wrap" hidden>
+                    <label class="cash-mgmt-modal__field" id="queue-discount-id-wrap">
                         <span class="cash-mgmt-modal__label">ID Number</span>
                         <input type="text" class="cash-mgmt-modal__text" id="queue-discount-id" maxlength="80" placeholder="Senior/PWD ID">
                     </label>
@@ -1309,8 +1297,6 @@
             var posDiscountPanel = document.getElementById("pos-discount-panel");
             var orderList = document.getElementById("pos-order-list");
             var subtotalEl = document.getElementById("pos-subtotal");
-            var vatRowEl = document.getElementById("pos-vat-row");
-            var vatExemptEl = document.getElementById("pos-vat-exempt");
             var discountRowEl = document.getElementById("pos-discount-row");
             var discountLabelEl = document.getElementById("pos-discount-label");
             var discountAmountEl = document.getElementById("pos-discount-amount");
@@ -1341,9 +1327,8 @@
             var posCarts = { dine_in: [], take_out: [] };
             var posActiveFulfillment = "dine_in";
             var orderListTakeOut = document.getElementById("pos-order-list-take-out");
-            var posFulfillToggleBtn = document.getElementById("pos-fulfill-toggle-btn");
-            var posFulfillTargetLabel = document.getElementById("pos-fulfill-target-label");
             var posFulfillmentPanel = document.getElementById("pos-fulfillment-panel");
+            var posCartSlider = document.getElementById("pos-cart-slider");
             var posCartLabelDineIn = document.getElementById("pos-cart-label-dine-in");
             var posCartLabelTakeOut = document.getElementById("pos-cart-label-take-out");
             var posDiscount = { applied: false };
@@ -1549,27 +1534,36 @@
 
             function syncPosFulfillmentUi() {
                 var editing = !!posEditingOrder;
-                var isTakeOut = posActiveFulfillment === "take_out";
+                var isTakeOut = !editing && posActiveFulfillment === "take_out";
                 if (posFulfillmentPanel) posFulfillmentPanel.hidden = editing;
-                if (posFulfillTargetLabel) {
-                    posFulfillTargetLabel.hidden = editing || !isTakeOut;
-                    posFulfillTargetLabel.textContent = "Orders to take out:";
+                if (posFulfillmentPanel) {
+                    posFulfillmentPanel.querySelectorAll(".pos-fulfill-seg__btn[data-fulfillment]").forEach(function (btn) {
+                        var key = btn.getAttribute("data-fulfillment");
+                        var active = key === (isTakeOut ? "take_out" : "dine_in");
+                        btn.classList.toggle("pos-fulfill-seg__btn--active", active);
+                        btn.setAttribute("aria-pressed", active ? "true" : "false");
+                    });
                 }
-                if (posFulfillToggleBtn) {
-                    posFulfillToggleBtn.textContent = isTakeOut ? "Would you like to dine in?" : "Would you like to take out?";
+                if (posCartSlider) {
+                    posCartSlider.classList.toggle("pos-cart-slider--take-out", isTakeOut);
+                    posCartSlider.classList.toggle("pos-cart-slider--editing", editing);
+                    posCartSlider.setAttribute("data-active", isTakeOut ? "take_out" : "dine_in");
                 }
-                var hasBoth = !editing && posCarts.dine_in.length > 0 && posCarts.take_out.length > 0;
-                if (posCartLabelDineIn) posCartLabelDineIn.hidden = !hasBoth;
-                var showTakeOutList = !editing && (isTakeOut || posCarts.take_out.length > 0);
-                if (posCartLabelTakeOut) posCartLabelTakeOut.hidden = !showTakeOutList;
-                if (orderListTakeOut) orderListTakeOut.hidden = !showTakeOutList;
+                if (posCartLabelDineIn) posCartLabelDineIn.hidden = false;
+                if (posCartLabelTakeOut) posCartLabelTakeOut.hidden = false;
+                if (orderList) orderList.hidden = false;
+                if (orderListTakeOut) orderListTakeOut.hidden = false;
+            }
+
+            function setPosFulfillment(bucket) {
+                if (posEditingOrder) return;
+                posActiveFulfillment = bucket === "take_out" ? "take_out" : "dine_in";
+                syncPosFulfillmentUi();
+                renderOrderList();
             }
 
             function togglePosFulfillment() {
-                if (posEditingOrder) return;
-                posActiveFulfillment = posActiveFulfillment === "take_out" ? "dine_in" : "take_out";
-                syncPosFulfillmentUi();
-                renderOrderList();
+                setPosFulfillment(posActiveFulfillment === "take_out" ? "dine_in" : "take_out");
             }
 
             function applyShiftDiscountToOrder() {
@@ -1588,14 +1582,23 @@
 
             function updateConfirmButtonForEditing() {
                 if (!confirmBtn) return;
-                confirmBtn.textContent = posEditingOrder ? "Confirm Order" : "Confirm Payment";
+                confirmBtn.textContent = posEditingOrder ? "Save Order" : "Confirm Payment";
             }
 
             function updateEditingBanner() {
                 if (!posEditingBanner) return;
                 if (posEditingOrder) {
+                    var parts = [];
                     var label = posEditingOrder.order_number || ("#" + posEditingOrder.id);
-                    if (posEditingBannerId) posEditingBannerId.textContent = label;
+                    if (label) parts.push(label);
+                    var customer = String(posEditingOrder.customer_name || "").trim();
+                    if (!customer && posCustomerNameInput) {
+                        customer = String(posCustomerNameInput.value || "").trim();
+                    }
+                    if (customer) parts.push(customer);
+                    var pickup = String(posEditingOrder.pickup_time || "").trim();
+                    if (pickup) parts.push("Pickup " + pickup);
+                    if (posEditingBannerId) posEditingBannerId.textContent = parts.join(" · ");
                     posEditingBanner.removeAttribute("hidden");
                 } else {
                     posEditingBanner.setAttribute("hidden", "");
@@ -1611,7 +1614,8 @@
                         name: item.name || "Item",
                         price: parseFloat(item.unit_price) || 0,
                         quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
-                        notes: item.notes || ""
+                        notes: item.notes || "",
+                        category_name: item.category_name || ""
                     };
                 }).filter(function (x) { return x.menu_item_id > 0; });
                 posCarts.take_out.length = 0;
@@ -1639,12 +1643,18 @@
                     }
                 }
 
+                var pickupTime = "";
+                if (typeof window.getPickupLaterTimeFromOrder === "function") {
+                    pickupTime = window.getPickupLaterTimeFromOrder(order) || "";
+                }
+
                 posEditingOrder = {
                     id: parseInt(order.id, 10) || 0,
                     order_number: order.order_number || "",
                     order_type: order.order_type || "dine_in",
                     order_source: order.order_source || "",
-                    customer_name: customerName
+                    customer_name: customerName,
+                    pickup_time: pickupTime
                 };
 
                 syncDiscountInputs();
@@ -1669,10 +1679,12 @@
                         unit_price: x.price
                     };
                 });
+                var orderSource = String(posEditingOrder.order_source || "kiosk").toLowerCase();
                 var payload = {
                     id: posEditingOrder.id,
                     action: "update_cart",
-                    confirm: true,
+                    // Keep pending so it returns to the processing queue with a notify pulse.
+                    confirm: false,
                     items: items,
                     discount: getPosDiscountPayload(),
                     customer_name: getPosCustomerName() || posEditingOrder.customer_name || "",
@@ -1680,7 +1692,7 @@
                 };
                 if (confirmBtn) {
                     confirmBtn.disabled = true;
-                    confirmBtn.textContent = "Confirming…";
+                    confirmBtn.textContent = "Saving…";
                 }
                 return fetch("api/orders.php", {
                     method: "PUT",
@@ -1688,8 +1700,15 @@
                     body: JSON.stringify(payload)
                 }).then(function (r) { return r.json(); })
                   .then(function (d) {
-                      if (!d.success) throw new Error(d.error || "Failed to confirm order.");
+                      if (!d.success) throw new Error(d.error || "Failed to save order.");
                       clearCart();
+                      var queueTab = orderSource === "pos" ? "queue-pos" : "queue-kiosk";
+                      if (typeof window.staffActivateMainTab === "function") {
+                          window.staffActivateMainTab(queueTab);
+                      }
+                      if (typeof window.markStaffQueueNotify === "function") {
+                          window.markStaffQueueNotify(queueTab);
+                      }
                       if (typeof loadStaffData === "function") loadStaffData();
                   })
                   .finally(function () {
@@ -2473,14 +2492,25 @@
                 return parts.join(", ");
             }
 
-            function addToCart(menuItemId, name, price, notes) {
+            function addToCart(menuItemId, name, price, notes, categoryName) {
                 notes = notes || "";
+                categoryName = categoryName || "";
                 var targetCart = getPosActiveCartArray();
-                var existing = targetCart.find(function (x) { return x.menu_item_id === menuItemId && (x.notes || "") === notes; });
+                var existing = targetCart.find(function (x) {
+                    return x.menu_item_id === menuItemId && (x.notes || "") === notes;
+                });
                 if (existing) {
                     existing.quantity += 1;
+                    if (!existing.category_name && categoryName) existing.category_name = categoryName;
                 } else {
-                    targetCart.push({ menu_item_id: menuItemId, name: name, price: price, quantity: 1, notes: notes });
+                    targetCart.push({
+                        menu_item_id: menuItemId,
+                        name: name,
+                        price: price,
+                        quantity: 1,
+                        notes: notes,
+                        category_name: categoryName
+                    });
                 }
                 renderOrderList();
             }
@@ -2493,22 +2523,70 @@
                     return;
                 }
                 var notes = getModalNotes();
-                addToCart(pendingModalItem.id, pendingModalItem.name, unit, notes);
+                addToCart(
+                    pendingModalItem.id,
+                    pendingModalItem.name,
+                    unit,
+                    notes,
+                    pendingModalItem.category_name || ""
+                );
                 closeProductModal();
+            }
+
+            function escapePosHtml(s) {
+                return String(s == null ? "" : s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
+            }
+
+            function formatPosCartItemDetailHtml(item) {
+                var lines = [];
+                if (typeof window.collectKitchenLineItemDetailLines === "function") {
+                    lines = window.collectKitchenLineItemDetailLines(item, posEditingOrder) || [];
+                }
+                if ((!lines || !lines.length) && item && item.notes) {
+                    return "<p>" + escapePosHtml(item.notes) + "</p>";
+                }
+                if (!lines || !lines.length) return "";
+                return (
+                    '<div class="order-copy__meta">' +
+                    lines.map(function (ln) {
+                        return '<p class="order-copy__meta-line">' + escapePosHtml(ln) + "</p>";
+                    }).join("") +
+                    "</div>"
+                );
+            }
+
+            function buildPosEditingOrderMetaHtml() {
+                if (!posEditingOrder) return "";
+                var lines = [];
+                var customer = String(posEditingOrder.customer_name || "").trim();
+                if (!customer && posCustomerNameInput) {
+                    customer = String(posCustomerNameInput.value || "").trim();
+                }
+                if (customer) lines.push("Customer: " + customer);
+                var pickup = String(posEditingOrder.pickup_time || "").trim();
+                var orderType = String(posEditingOrder.order_type || "").toLowerCase().replace(/[\s-]+/g, "_");
+                var isPickup = orderType === "pickup" || orderType === "pick_up" || /pick/.test(orderType);
+                if (isPickup && pickup) lines.push("Pickup time: " + pickup);
+                if (!lines.length) return "";
+                return (
+                    '<div class="order-copy__meta order-copy__meta--order">' +
+                    lines.map(function (ln) {
+                        return '<p class="order-copy__meta-line">' + escapePosHtml(ln) + "</p>";
+                    }).join("") +
+                    "</div>"
+                );
             }
 
             function buildPosOrderItemHtml(item, bucket, idx) {
                 var lineTotal = item.price * item.quantity;
-                var split = !posEditingOrder && posCarts.take_out.length > 0;
-                var badgeHtml = split
-                    ? '<span class="pos-fulfillment-badge pos-fulfillment-badge--' + (bucket === "take_out" ? "takeout" : "dinein") + '">' +
-                      (bucket === "take_out" ? "Take out" : "Dine in") +
-                      "</span>"
-                    : "";
                 return "<article class=\"order-item\" data-cart-bucket=\"" + bucket + "\" data-cart-idx=\"" + idx + "\">" +
                     "<img src=\"" + placeholderImg + "\" alt=\"" + (item.name || "").replace(/"/g, "&quot;") + "\">" +
-                    "<div class=\"order-copy\"><h4>" + badgeHtml + (item.name || "Item") + "</h4>" +
-                    (item.notes ? "<p>" + item.notes + "</p>" : "") + "</div>" +
+                    "<div class=\"order-copy\"><h4>" + escapePosHtml(item.name || "Item") + "</h4>" +
+                    formatPosCartItemDetailHtml(item) + "</div>" +
                     "<div class=\"order-right\"><strong>" + formatPHP(lineTotal) + "</strong>" +
                     "<div class=\"qty\"><button class=\"qty-minus\">-</button>" +
                         "<input class=\"qty-input\" type=\"number\" min=\"1\" step=\"1\" inputmode=\"numeric\" value=\"" + item.quantity + "\">" +
@@ -2551,7 +2629,8 @@
             function renderOrderList() {
                 syncPosFulfillmentUi();
                 if (!orderList) return;
-                var dineHtml = "";
+                var orderMetaHtml = buildPosEditingOrderMetaHtml();
+                var dineHtml = orderMetaHtml;
                 posCarts.dine_in.forEach(function (item, idx) {
                     dineHtml += buildPosOrderItemHtml(item, "dine_in", idx);
                 });
@@ -2575,10 +2654,8 @@
                 var discountPayload = getPosDiscountPayload();
                 var pricing = calculateDiscountTotals(subtotal, discountPayload);
                 if (subtotalEl) subtotalEl.textContent = formatPHP(pricing.gross);
-                if (vatRowEl) vatRowEl.hidden = pricing.vatExempt <= 0;
-                if (discountRowEl) discountRowEl.hidden = pricing.type === "none";
-                if (discountLabelEl) discountLabelEl.textContent = getDiscountLabel(discountPayload);
-                if (vatExemptEl) vatExemptEl.textContent = formatPHP(pricing.vatExempt);
+                if (discountRowEl) discountRowEl.hidden = false;
+                if (discountLabelEl) discountLabelEl.textContent = "Discount";
                 if (discountAmountEl) discountAmountEl.textContent = formatPHP(pricing.discountAmount);
                 if (totalEl) totalEl.textContent = formatPHP(pricing.total);
             }
@@ -2632,7 +2709,7 @@
                 if (!requirePosCustomerName()) return;
                 if (posEditingOrder) {
                     confirmPendingOrderFromPos().catch(function (err) {
-                        alert(err.message || "Failed to confirm order.");
+                        alert(err.message || "Failed to save order.");
                     });
                     return;
                 }
@@ -2656,8 +2733,12 @@
                 }));
             });
 
-            if (posFulfillToggleBtn) {
-                posFulfillToggleBtn.addEventListener("click", togglePosFulfillment);
+            if (posFulfillmentPanel) {
+                posFulfillmentPanel.addEventListener("click", function (e) {
+                    var btn = e.target.closest(".pos-fulfill-seg__btn[data-fulfillment]");
+                    if (!btn) return;
+                    setPosFulfillment(btn.getAttribute("data-fulfillment"));
+                });
             }
 
             // Delegate for payment modal to call when POS order is completed
@@ -2707,7 +2788,8 @@
 
             migrateDiscountRateStorage();
             syncDiscountInputs();
-            updateTotals();
+            posActiveFulfillment = "dine_in";
+            renderOrderList();
             loadMenu();
             setInterval(refreshFastMovingBadges, 90000);
         })();
@@ -2920,25 +3002,6 @@
 
             function setFulfillment(f) {
                 currentFulfillment = f === "take_out" ? "take_out" : "dine_in";
-                syncFulfillmentToggle();
-            }
-
-            function syncFulfillmentToggle() {
-                if (!payBackdrop) return;
-                var isDineIn = currentFulfillment !== "take_out";
-                payBackdrop.querySelectorAll(".pay-fulfill-toggle").forEach(function (btn) {
-                    var icon = btn.querySelector(".pay-fulfill-toggle__icon");
-                    var name = btn.querySelector(".pay-fulfill-toggle__name");
-                    if (isDineIn) {
-                        btn.setAttribute("data-fulfillment-target", "take_out");
-                        if (icon) icon.textContent = "🥡";
-                        if (name) name.textContent = "Would you like to take out?";
-                    } else {
-                        btn.setAttribute("data-fulfillment-target", "dine_in");
-                        if (icon) icon.textContent = "🍽";
-                        if (name) name.textContent = "Would you like to dine in?";
-                    }
-                });
             }
 
             function applyGcashQrConfig(cfg) {
@@ -3188,25 +3251,20 @@
                 var category = String(line && line.line_type || "Bar");
                 var itemName = String(line && line.item_name || "");
                 var stocks = Math.max(1, parseInt((line && line.stocks) || 1, 10) || 1);
-                var unit = normalizeUnitLabel(line && line.unit);
+                var unitRaw = String(line && line.unit || "pcs").trim().toLowerCase();
+                if (unitRaw === "unit" || unitRaw === "units" || !unitRaw) unitRaw = "pcs";
+                var unitDisplay = normalizeUnitLabel(unitRaw);
+                var unitValue = unitDisplay === "L" ? "l" : (unitDisplay === "mL" ? "ml" : unitRaw);
                 row.innerHTML =
                     '<select class="shortage-restock-category"><option value="Bar">Bar</option><option value="Kitchen">Kitchen</option></select>' +
                     '<input type="text" class="shortage-restock-item" placeholder="Item" value="' + escapeHtml(itemName) + '">' +
                     '<input type="number" class="shortage-restock-stocks" min="1" step="1" value="' + String(stocks) + '">' +
-                    '<select class="shortage-restock-unit">' +
-                        '<option value="pcs">pcs</option>' +
-                        '<option value="g">g</option>' +
-                        '<option value="kg">kg</option>' +
-                        '<option value="ml">mL</option>' +
-                        '<option value="l">L</option>' +
-                    '</select>' +
+                    '<span class="shortage-restock-unit" data-unit="' + escapeHtml(unitValue) + '" title="Fixed from inventory settings">' +
+                        escapeHtml(unitDisplay) +
+                    '</span>' +
                     '<button type="button" class="shortage-restock-lines__remove" title="Remove line">×</button>';
                 var catEl = row.querySelector(".shortage-restock-category");
-                var unitEl = row.querySelector(".shortage-restock-unit");
                 if (catEl) catEl.value = category === "Kitchen" ? "Kitchen" : "Bar";
-                if (unitEl) {
-                    unitEl.value = unit === "L" ? "l" : (unit === "mL" ? "ml" : unit);
-                }
                 return row;
             }
 
@@ -3277,13 +3335,16 @@
                             var stocksEl = row.querySelector(".shortage-restock-stocks");
                             var unitEl = row.querySelector(".shortage-restock-unit");
                             var itemName = String(itemNameEl && itemNameEl.value || "").trim();
+                            var unitVal = unitEl
+                                ? String(unitEl.getAttribute("data-unit") || unitEl.textContent || "pcs").trim()
+                                : "pcs";
                             return {
                                 line_type: String(lineTypeEl && lineTypeEl.value || "Bar"),
                                 item_name: itemName,
                                 stocks: Math.max(1, parseInt((stocksEl && stocksEl.value) || "0", 10) || 1),
                                 in_use: 0,
                                 per_stock_amount: 1,
-                                unit: String(unitEl && unitEl.value || "pcs"),
+                                unit: unitVal || "pcs",
                                 unit_cost: 0,
                                 total_cost: 0,
                                 stock_type: "consumable",
@@ -3585,11 +3646,6 @@
                     var mBtn = e.target.closest(".pay-method[data-method]");
                     if (mBtn) {
                         switchMethod(mBtn.getAttribute("data-method"));
-                        return;
-                    }
-                    var fBtn = e.target.closest(".pay-fulfill-toggle");
-                    if (fBtn) {
-                        setFulfillment(fBtn.getAttribute("data-fulfillment-target"));
                         return;
                     }
                     if (e.target === payBackdrop) closePayModal();
@@ -4297,7 +4353,6 @@
         var wasteTabOrderSelectWrap = document.getElementById('waste-tab-order-select-wrap');
         var wasteTabOrderSearch = document.getElementById('waste-tab-order-search');
         var wasteTabOrderSearchList = document.getElementById('waste-tab-order-search-list');
-        var wasteTabItemName = document.getElementById('waste-tab-item-name');
         var wasteTabItemIndicator = document.getElementById('waste-tab-item-indicator');
         var wasteTabQty = document.getElementById('waste-tab-qty');
         var wasteTabNotes = document.getElementById('waste-tab-notes');
@@ -4397,10 +4452,9 @@
         var queueDiscountClose = document.getElementById('queue-discount-close');
         var queueDiscountSubmit = document.getElementById('queue-discount-submit');
         var queueDiscountType = document.getElementById('queue-discount-type');
-        var queueDiscountRate = document.getElementById('queue-discount-rate');
+        var queueDiscountTypeCustom = document.getElementById('queue-discount-type-custom');
         var queueDiscountName = document.getElementById('queue-discount-name');
         var queueDiscountId = document.getElementById('queue-discount-id');
-        var queueDiscountRateWrap = document.getElementById('queue-discount-rate-wrap');
         var queueDiscountNameWrap = document.getElementById('queue-discount-name-wrap');
         var queueDiscountIdWrap = document.getElementById('queue-discount-id-wrap');
         var queueDiscountError = document.getElementById('queue-discount-error');
@@ -4446,6 +4500,7 @@
         var queueDrawerOpenReturnedPending = false;
         var kitchenOrders = [];
         var servingOrdersQueue = [];
+        var kitchenPriorityById = {};
         var servedOrders = [];
         var refundedOrdersCache = [];
         var orderHistoryView = 'orders';
@@ -4637,11 +4692,12 @@
             var match = wasteMenuSelectOptions.find(function (opt) { return opt.value === val; });
             return match ? match.label : '';
         }
-        function applyWasteMenuSelection() {
-            if (!wasteTabItemName) return;
+        function getSelectedWasteItemName() {
             var parsed = parseWasteMenuSelectValue(getWasteMenuSelectValue());
             var selected = wasteMenuItems.find(function (m) { return m.id === parsed.menuItemId; });
-            wasteTabItemName.value = selected ? (selected.name || '') : '';
+            return selected ? String(selected.name || '').trim() : '';
+        }
+        function applyWasteMenuSelection() {
             updateWasteItemIndicator();
         }
         function setWasteMenuSelectValue(value, label) {
@@ -4776,7 +4832,7 @@
         }
         function updateWasteItemIndicator() {
             if (!wasteTabItemIndicator) return;
-            var itemName = (wasteTabItemName && wasteTabItemName.value || '').trim();
+            var itemName = getSelectedWasteItemName();
             wasteTabItemIndicator.classList.remove(
                 'waste-item-indicator--idle',
                 'waste-item-indicator--none',
@@ -4819,6 +4875,7 @@
             if (!btn || btn.classList.contains('header-main-tab--active')) return;
             btn.classList.add('header-main-tab--notify');
         }
+        window.markStaffQueueNotify = markTabRealtimeNotify;
         function scheduleStaffRealtimeRefresh() {
             if (staffRealtimeReloadTimer) return;
             staffRealtimeReloadTimer = setTimeout(function () {
@@ -4832,10 +4889,14 @@
             if (evtId) staffLastRealtimeEventId = evtId;
             var payload = (evt && evt.payload) || {};
             var source = String(payload.order_source || '').toLowerCase();
-            if (source === 'kiosk') {
+            var status = String(payload.status || '').toLowerCase();
+            // Confirmed/served orders belong in kitchen — pulse kitchen tab.
+            if (status === 'confirmed' || status === 'served') {
+                markTabRealtimeNotify('kitchen');
+            } else if (source === 'kiosk') {
                 markTabRealtimeNotify('queue-kiosk');
             } else if (source === 'pos') {
-                markTabRealtimeNotify('kitchen');
+                markTabRealtimeNotify('queue-pos');
             } else {
                 // Unknown source: refresh silently without flashing indicators.
                 scheduleStaffRealtimeRefresh();
@@ -5441,6 +5502,7 @@
                         item_name: item && item.name ? item.name : 'Unknown Item',
                         menu_item_id: item && item.menu_item_id ? parseInt(item.menu_item_id, 10) : 0,
                         variant_notes: item && item.notes ? item.notes : '',
+                        unit_price: item && item.unit_price != null ? parseFloat(item.unit_price) : null,
                         quantity: Math.max(1, parseInt(item && item.quantity, 10) || 1),
                         reason: 'wasted',
                         notes: 'Kitchen serving waste for order ' + orderLabel + ' | Reason: ' + reason
@@ -5483,10 +5545,28 @@
         }
 
         function syncQueueDiscountFields() {
-            var type = queueDiscountType ? queueDiscountType.value : 'none';
-            if (queueDiscountRateWrap) queueDiscountRateWrap.hidden = type !== 'custom';
-            if (queueDiscountNameWrap) queueDiscountNameWrap.hidden = type !== 'senior' && type !== 'pwd';
-            if (queueDiscountIdWrap) queueDiscountIdWrap.hidden = type !== 'senior' && type !== 'pwd';
+            var type = queueDiscountType ? queueDiscountType.value : 'senior';
+            var needsId = type === 'senior' || type === 'pwd';
+            if (queueDiscountNameWrap) queueDiscountNameWrap.hidden = !needsId;
+            if (queueDiscountIdWrap) queueDiscountIdWrap.hidden = !needsId;
+        }
+
+        function refreshQueueDiscountCustomOption() {
+            var shiftRate = readStaffShiftDiscountRate();
+            if (!queueDiscountTypeCustom) return shiftRate;
+            if (shiftRate) {
+                queueDiscountTypeCustom.hidden = false;
+                queueDiscountTypeCustom.disabled = false;
+                queueDiscountTypeCustom.textContent = 'Custom (' + shiftRate + '%)';
+            } else {
+                queueDiscountTypeCustom.hidden = true;
+                queueDiscountTypeCustom.disabled = true;
+                queueDiscountTypeCustom.textContent = 'Custom (shift rate not set)';
+                if (queueDiscountType && queueDiscountType.value === 'custom') {
+                    queueDiscountType.value = 'senior';
+                }
+            }
+            return shiftRate;
         }
 
         function openQueueDiscountModal(order) {
@@ -5496,23 +5576,16 @@
                 queueDiscountOrderMeta.textContent = 'Order ' + (order.order_number || order.id) + ' · ' + peso(order.total_amount);
             }
             var dtype = String(order.discount_type || 'none').toLowerCase();
-            var shiftRate = readStaffShiftDiscountRate();
+            var shiftRate = refreshQueueDiscountCustomOption();
             if (queueDiscountType) {
-                if (dtype === 'senior' || dtype === 'pwd' || dtype === 'custom') {
+                if (dtype === 'senior' || dtype === 'pwd') {
                     queueDiscountType.value = dtype;
-                } else if (shiftRate) {
+                } else if (dtype === 'custom' && shiftRate) {
+                    queueDiscountType.value = 'custom';
+                } else if (shiftRate && orderHasNoQueueDiscount(order)) {
                     queueDiscountType.value = 'custom';
                 } else {
-                    queueDiscountType.value = 'none';
-                }
-            }
-            if (queueDiscountRate) {
-                if (order.discount_rate) {
-                    queueDiscountRate.value = String(Math.round(Number(order.discount_rate)));
-                } else if (shiftRate && orderHasNoQueueDiscount(order)) {
-                    queueDiscountRate.value = String(shiftRate);
-                } else {
-                    queueDiscountRate.value = '';
+                    queueDiscountType.value = 'senior';
                 }
             }
             if (queueDiscountName) queueDiscountName.value = order.discount_customer_name || '';
@@ -5599,7 +5672,7 @@
             var orderId = parseInt(selectedQueueVoidOrder.id, 10) || 0;
             var reason = queueVoidReason ? String(queueVoidReason.value || '').trim() : '';
             if (!reason) {
-                showQueueModalError(queueVoidError, 'Void reason is required.');
+                showQueueModalError(queueVoidError, 'Delete reason is required.');
                 return;
             }
             if (queueVoidSubmit) {
@@ -5613,7 +5686,7 @@
             }).then(function (r) { return r.json(); })
               .then(function (d) {
                   if (!d.success) {
-                      showQueueModalError(queueVoidError, d.error || 'Failed to void order.');
+                      showQueueModalError(queueVoidError, d.error || 'Failed to delete order.');
                       return;
                   }
                   closeQueueVoidModal();
@@ -5625,7 +5698,7 @@
               .finally(function () {
                   if (queueVoidSubmit) {
                       queueVoidSubmit.disabled = false;
-                      queueVoidSubmit.textContent = 'VOID ORDER';
+                      queueVoidSubmit.textContent = 'DELETE ORDER';
                   }
               });
         }
@@ -5633,13 +5706,24 @@
         function processQueueDiscount() {
             if (!selectedQueueDiscountOrder) return;
             var orderId = parseInt(selectedQueueDiscountOrder.id, 10) || 0;
-            var type = queueDiscountType ? queueDiscountType.value : 'none';
+            var type = queueDiscountType ? queueDiscountType.value : 'senior';
+            if (type !== 'senior' && type !== 'pwd' && type !== 'custom') {
+                showQueueModalError(queueDiscountError, 'Select a discount type.');
+                return;
+            }
+            var shiftRate = readStaffShiftDiscountRate();
+            if (type === 'custom') {
+                if (!shiftRate) {
+                    showQueueModalError(queueDiscountError, 'Set the shift discount rate in POS first.');
+                    return;
+                }
+            }
             var payload = {
                 id: orderId,
                 action: 'discount',
                 discount: {
                     type: type,
-                    rate: type === 'custom' && queueDiscountRate ? parseFloat(queueDiscountRate.value) || 0 : 0,
+                    rate: type === 'custom' ? shiftRate : 0,
                     customer_name: queueDiscountName ? queueDiscountName.value.trim() : '',
                     id_number: queueDiscountId ? queueDiscountId.value.trim() : ''
                 }
@@ -5793,6 +5877,18 @@
             } catch (e) {}
         }
 
+        function isKitchenReturnedOrder(order) {
+            return !!order && (parseInt(order.kitchen_returned, 10) === 1 || order.kitchen_returned === true);
+        }
+
+        /** Still a sale until actually voided/refunded (kitchen return alone does not remove it). */
+        function orderCountsAsSale(order) {
+            var st = String(order && order.status || '').toLowerCase();
+            if (st === 'confirmed' || st === 'served') return true;
+            if (st === 'pending' && isKitchenReturnedOrder(order)) return true;
+            return false;
+        }
+
         function orderCreatedAfterShiftClear(order) {
             var clearAfterMs = getShiftHistoryClearAfterMs();
             if (!clearAfterMs) return true;
@@ -5819,10 +5915,7 @@
         }
 
         function computeShiftSummaryFromOrders(orders) {
-            var active = filterOrdersForCurrentShift(orders).filter(function (order) {
-                var st = String(order && order.status || '').toLowerCase();
-                return st === 'confirmed' || st === 'served';
-            });
+            var active = filterOrdersForCurrentShift(orders).filter(orderCountsAsSale);
             var summary = {
                 total_orders: active.length,
                 total_revenue: 0,
@@ -5891,6 +5984,7 @@
             servingOrdersQueue = [];
             pendingOrders = [];
             kitchenOrders = [];
+            kitchenPriorityById = {};
             servedOrders = [];
             refundedOrdersCache = [];
             wasteEntriesCache = [];
@@ -6165,7 +6259,7 @@
             return (
                 '<footer class="opq-card-foot staff-opq-actions">' +
                     '<button type="button" class="opq-action-btn opq-action-btn--confirm" data-confirm-order="' + orderId + '">Confirm</button>' +
-                    '<button type="button" class="opq-action-btn opq-action-btn--void" data-void-order="' + orderId + '">Void</button>' +
+                    '<button type="button" class="opq-action-btn opq-action-btn--void" data-void-order="' + orderId + '">Delete</button>' +
                     discountBtn +
                     '<button type="button" class="opq-action-btn opq-action-btn--edit" data-edit-order="' + orderId + '">Edit</button>' +
                 '</footer>'
@@ -6245,13 +6339,18 @@
             opts = opts || {};
             var itemsHtml = (order.items || []).map(function (item) {
                 return (
-                    '<div class="opq-item"><span class="opq-item-name">' + esc(item.quantity + 'x ' + item.name) + '</span><span class="opq-price">' + peso(item.subtotal) + '</span></div>' +
-                    pendingAddonOnlyDetailHtml(item.notes)
+                    '<div class="opq-item kitchen-line-item">' +
+                        '<div class="kitchen-item-title"><span class="opq-item-name">' +
+                            esc(item.quantity + 'x ' + item.name) +
+                        '</span><span class="opq-price">' + peso(item.subtotal) + '</span></div>' +
+                        formatKitchenLineItemMetaHtml(item, order) +
+                    '</div>'
                 );
             }).join('');
             var isKioskOrder = String(order && order.order_source || '').toLowerCase() === 'kiosk';
             var typeLine = opts.hideOrderTypeLine ? '' : getOrderTypeDisplayFromOrder(order);
-            var pickupLaterLine = getPickupLaterTimeFromOrder(order);
+            var pickupLaterLine = isPickupOrder(order) ? getPickupLaterTimeFromOrder(order) : '';
+            var orderCustomer = getKitchenOrderCustomerName(order) || 'Guest';
             var cardTitleHtml = isKioskOrder
                 ? ''
                 : ('<h3 class="opq-card-name">' + esc(order.staff_name || 'Staff') + '</h3>');
@@ -6282,9 +6381,7 @@
             }
             var customerPaymentRow =
                 '<div class="opq-customer-payment-row">' +
-                    (order.customer_name
-                        ? '<p class="opq-customer-name">' + esc(order.customer_name) + '</p>'
-                        : '<span class="opq-customer-name opq-customer-name--empty" aria-hidden="true"></span>') +
+                    '<p class="opq-customer-name">' + esc(orderCustomer) + '</p>' +
                     buildQueuePaymentBlockHtml(order) +
                 '</div>';
             var orderMetaLines =
@@ -6370,10 +6467,6 @@
             if (!found) returnedKitchenOrders.push(next);
         }
 
-        function isKitchenReturnedOrder(order) {
-            return !!order && (parseInt(order.kitchen_returned, 10) === 1 || order.kitchen_returned === true);
-        }
-
         function renderQueueDrawerReturned(orders) {
             var listEl = document.getElementById('queue-drawer-returned-list');
             if (!listEl) return;
@@ -6407,15 +6500,16 @@
                                     '<span class="queue-drawer-returned-card__item-name">' + esc(item.quantity + 'x ' + item.name) + '</span>' +
                                     '<span class="queue-drawer-returned-card__item-price">' + peso(item.subtotal) + '</span>' +
                                 '</div>' +
-                                pendingAddonOnlyDetailHtml(item.notes) +
+                                formatKitchenLineItemMetaHtml(item, order) +
                             '</div>'
                         );
                     }).join('');
                     var returnReason = String(order.kitchen_return_reason || '').trim();
+                    var pickupMetaLine = isPickupOrder(order) ? pickupLaterLine : '';
                     return (
                         '<article class="queue-drawer-returned-card">' +
                             '<div class="queue-drawer-returned-card__head">' +
-                                '<h4 class="queue-drawer-returned-card__title">Order #' + orderId + '</h4>' +
+                                '<h4 class="queue-drawer-returned-card__title">' + friendlyKitchenOrderTitle(order) + '</h4>' +
                                 '<span class="queue-drawer-returned-card__badge">RETURNED</span>' +
                             '</div>' +
                             '<div class="queue-drawer-returned-card__meta">' +
@@ -6424,8 +6518,8 @@
                                 (typeLine
                                     ? '<p class="queue-drawer-returned-card__meta-line">' + esc(typeLine) + '</p>'
                                     : '') +
-                                (pickupLaterLine
-                                    ? '<p class="queue-drawer-returned-card__meta-line">' + esc('Pickup time: ' + pickupLaterLine) + '</p>'
+                                (pickupMetaLine
+                                    ? '<p class="queue-drawer-returned-card__meta-line">' + esc('Pickup time: ' + pickupMetaLine) + '</p>'
                                     : '') +
                                 discountLine +
                                 (returnReason
@@ -6732,6 +6826,78 @@
                 '</div>'
             );
         }
+
+        function isKitchenDrinkItem(item) {
+            return isBarCategoryName(item && item.category_name);
+        }
+
+        function isPickupOrder(order) {
+            return normalizeQueueOrderPartition(order) === 'pickup';
+        }
+
+        /** Pull temp / size / note / pickup from stored order_item.notes (POS or kiosk). */
+        function extractKitchenDetailParts(rawNotes) {
+            var lines = kitchenNotesToDisplayLines(rawNotes);
+            var parts = { temp: '', size: '', note: '', pickup: '' };
+            lines.forEach(function (ln) {
+                var t = String(ln || '').trim();
+                var m = /^(Temperature|Size|Note|Pickup time)\s*:\s*(.+)$/i.exec(t);
+                if (!m) return;
+                var key = m[1].toLowerCase();
+                var val = String(m[2] || '').trim();
+                if (!val) return;
+                if (key === 'temperature') parts.temp = val;
+                else if (key === 'size') parts.size = val;
+                else if (key === 'note') parts.note = val;
+                else if (key === 'pickup time') parts.pickup = val;
+            });
+            // Kiosk often stores "Temperature: Iced (16oz)" as one field.
+            if (parts.temp) {
+                var parsed = parseTemperatureAndSize(parts.temp);
+                if (parsed.temp) parts.temp = parsed.temp;
+                if (parsed.size && !parts.size) parts.size = parsed.size;
+            }
+            return parts;
+        }
+
+        /**
+         * Consistent under-item description lines:
+         * - Drinks: Temperature, Size, Note (if any)
+         * - Food: Note (if any)
+         * Pickup time is shown once on the order card (not per line item).
+         */
+        function collectKitchenLineItemDetailLines(item, order) {
+            var parts = extractKitchenDetailParts(item && item.notes);
+            var lines = [];
+            var treatAsDrink = isKitchenDrinkItem(item) || !!(parts.temp || parts.size);
+            if (treatAsDrink) {
+                if (parts.temp) lines.push('Temperature: ' + parts.temp);
+                if (parts.size) lines.push('Size: ' + parts.size);
+                if (parts.note) lines.push('Note: ' + parts.note);
+            } else if (parts.note) {
+                lines.push('Note: ' + parts.note);
+            }
+            return lines;
+        }
+
+        function formatKitchenLineItemMetaHtml(item, order) {
+            var lines = collectKitchenLineItemDetailLines(item, order);
+            if (!lines.length) return '';
+            return (
+                '<div class="kitchen-item-meta">' +
+                lines
+                    .map(function (ln) {
+                        return '<div class="kitchen-item-meta-line">' + esc(ln) + '</div>';
+                    })
+                    .join('') +
+                '</div>'
+            );
+        }
+        window.collectKitchenLineItemDetailLines = collectKitchenLineItemDetailLines;
+        window.formatKitchenLineItemMetaHtml = formatKitchenLineItemMetaHtml;
+        window.getPickupLaterTimeFromOrder = getPickupLaterTimeFromOrder;
+        window.isPickupOrder = isPickupOrder;
+
         function pendingAddonOnlyDetailHtml(notes) {
             var lines = kitchenNotesToDisplayLines(notes).filter(function (ln) {
                 var t = String(ln || '').trim();
@@ -6748,6 +6914,8 @@
         }
 
         function friendlyKitchenOrderTitle(order) {
+            var ticket = parseInt(order && order.kitchen_ticket_number, 10) || 0;
+            if (ticket > 0) return 'Order #' + ticket;
             var id = parseInt(order && order.id, 10) || 0;
             if (id > 0) return 'Order #' + id;
             return 'Order';
@@ -6797,9 +6965,50 @@
             });
         }
 
+        function isKitchenOrderPrioritized(orderId) {
+            var id = parseInt(orderId, 10) || 0;
+            return id > 0 && !!kitchenPriorityById[id];
+        }
+
+        function toggleKitchenOrderPriority(orderId) {
+            var id = parseInt(orderId, 10) || 0;
+            if (!id) return;
+            if (kitchenPriorityById[id]) {
+                delete kitchenPriorityById[id];
+            } else {
+                kitchenPriorityById[id] = Date.now();
+            }
+            renderKitchenOrders();
+        }
+
+        function pruneKitchenPriorityMap(activeOrders) {
+            var keep = {};
+            (activeOrders || []).forEach(function (o) {
+                var id = parseInt(o && o.id, 10) || 0;
+                if (id && kitchenPriorityById[id]) keep[id] = kitchenPriorityById[id];
+            });
+            kitchenPriorityById = keep;
+        }
+
+        function sortKitchenOrdersForDisplay(orders) {
+            return (orders || []).slice().sort(function (a, b) {
+                var idA = parseInt(a && a.id, 10) || 0;
+                var idB = parseInt(b && b.id, 10) || 0;
+                var pA = kitchenPriorityById[idA] || 0;
+                var pB = kitchenPriorityById[idB] || 0;
+                if (pA !== pB) return pB - pA;
+                var ta = new Date(a && a.created_at ? a.created_at : 0).getTime();
+                var tb = new Date(b && b.created_at ? b.created_at : 0).getTime();
+                if (ta !== tb) return ta - tb;
+                return idA - idB;
+            });
+        }
+
         function buildKitchenOrderCardElement(order, idx, opts) {
             opts = opts || {};
             var orderCustomer = getKitchenOrderCustomerName(order);
+            var orderId = parseInt(order && order.id, 10) || 0;
+            var isPriority = isKitchenOrderPrioritized(orderId);
             var itemsHtml = (order.items || [])
                 .map(function (item) {
                     return (
@@ -6807,7 +7016,7 @@
                         '<div class="kitchen-item-title"><span class="opq-item-name">' +
                         esc(item.quantity + 'x ' + item.name) +
                         '</span></div>' +
-                        kitchenItemDetailHtml(item.notes, true) +
+                        formatKitchenLineItemMetaHtml(item, order) +
                         '</div>'
                     );
                 })
@@ -6815,20 +7024,26 @@
             var card = document.createElement('article');
             var queueLabel = '';
             var queueLabelClass = '';
-            if (idx === 0) {
+            if (isPriority) {
+                queueLabel = 'PRIORITY';
+                queueLabelClass = ' kitchen-queue-label--priority';
+            } else if (idx === 0) {
                 queueLabel = 'PREPARING';
                 queueLabelClass = ' kitchen-queue-label--preparing';
-                card.className = 'opq-card kitchen-card kitchen-card--preparing';
             } else if (idx === 1) {
                 queueLabel = 'NEXT IN LINE';
                 queueLabelClass = ' kitchen-queue-label--next';
-                card.className = 'opq-card kitchen-card kitchen-card--next';
             } else {
                 queueLabel = 'QUEUE #' + (idx + 1);
                 queueLabelClass = ' kitchen-queue-label--queue';
-                card.className = 'opq-card kitchen-card';
             }
+            card.className =
+                'opq-card kitchen-card' +
+                (isPriority ? ' kitchen-card--priority' : '') +
+                (!isPriority && idx === 0 ? ' kitchen-card--preparing' : '') +
+                (!isPriority && idx === 1 ? ' kitchen-card--next' : '');
             var typeLine = opts.hideOrderTypeLine ? '' : getOrderTypeDisplayFromOrder(order);
+            var pickupLaterLine = isPickupOrder(order) ? getPickupLaterTimeFromOrder(order) : '';
             var friendlyTitle = friendlyKitchenOrderTitle(order);
             card.innerHTML =
                 '<header class="opq-card-head">' +
@@ -6842,14 +7057,20 @@
                         (typeLine
                             ? '<p class="kitchen-order-type-line opq-order-meta-line">' + esc(typeLine) + '</p>'
                             : '') +
+                        (pickupLaterLine
+                            ? '<p class="kitchen-order-type-line opq-order-meta-line">' + esc('Pickup time: ' + pickupLaterLine) + '</p>'
+                            : '') +
                     '</div>' +
                 '</header>' +
                 '<div class="opq-card-items">' + itemsHtml + '</div>' +
                 '<footer class="opq-card-foot kitchen-card-foot">' +
                     '<div class="kitchen-card-actions">' +
-                        '<button type="button" class="opq-confirm-btn kitchen-return-btn" data-kitchen-return="' + order.id + '">RETURN</button>' +
-                        '<button type="button" class="opq-confirm-btn kitchen-done-btn" data-kitchen-done="' + order.id + '">DONE</button>' +
+                        '<button type="button" class="opq-confirm-btn kitchen-return-btn" data-kitchen-return="' + orderId + '">RETURN</button>' +
+                        '<button type="button" class="opq-confirm-btn kitchen-done-btn" data-kitchen-done="' + orderId + '">DONE</button>' +
                     '</div>' +
+                    '<button type="button" class="opq-confirm-btn kitchen-priority-btn' + (isPriority ? ' kitchen-priority-btn--active' : '') + '" data-kitchen-priority="' + orderId + '">' +
+                        (isPriority ? 'UNPRIORITIZE' : 'PRIORITY') +
+                    '</button>' +
                 '</footer>';
             return card;
         }
@@ -6857,12 +7078,9 @@
         function renderKitchenOrders() {
             if (!kitchenGrid) return;
 
-            var orderedKitchen = filterOrdersForCurrentShift(getFilteredKitchenOrders(kitchenOrders)).slice().sort(function (a, b) {
-                var ta = new Date(a && a.created_at ? a.created_at : 0).getTime();
-                var tb = new Date(b && b.created_at ? b.created_at : 0).getTime();
-                if (ta !== tb) return ta - tb;
-                return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
-            });
+            var filtered = filterOrdersForCurrentShift(getFilteredKitchenOrders(kitchenOrders));
+            pruneKitchenPriorityMap(filtered);
+            var orderedKitchen = sortKitchenOrdersForDisplay(filtered);
 
             if (!orderedKitchen.length) {
                 kitchenGrid.innerHTML = '';
@@ -6917,7 +7135,7 @@
             if (!ordered.length) {
                 kitchenServingList.innerHTML = '<div class="kitchen-serving-empty">No orders marked done yet.</div>';
             }
-            if (kitchenServingCount) kitchenServingCount.textContent = ordered.length + ' READY';
+            if (kitchenServingCount) kitchenServingCount.textContent = String(ordered.length);
         }
 
         function lineItemSubtotal(item) {
@@ -7021,9 +7239,10 @@
                     row.setAttribute('aria-label', 'View refund options for order ' + (order.order_number || order.id));
                 }
                 var paymentNote = isGcashOrder(order) ? (' · ' + formatOrderPaymentSummary(order)) : '';
+                var returnedNote = (!isRefundedView && isKitchenReturnedOrder(order)) ? ' · Returned (pending action)' : '';
                 var subText = isRefundedView
                     ? (sourceLabel + ' order - ' + servedAt + ' · Refunded' + (order.refund_reason ? ' · ' + order.refund_reason : '') + paymentNote)
-                    : (sourceLabel + ' order - ' + servedAt + ' · Tap to refund' + paymentNote);
+                    : (sourceLabel + ' order - ' + servedAt + returnedNote + ' · Tap to refund' + paymentNote);
                 row.innerHTML =
                     '<div class="waste-history-item__main">' +
                     built.linesHtml +
@@ -7262,10 +7481,7 @@
                 var allForHistory = (allOrdersRes && allOrdersRes.success) ? (allOrdersRes.orders || []) : [];
                 var todayKey = new Date().toISOString().slice(0, 10);
                 refundedOrdersCache = filterOrdersForCurrentShift(getRefundedOrderSnapshots());
-                servedOrders = filterOrdersForCurrentShift(allForHistory.filter(function (o) {
-                    var st = String(o && o.status || '').toLowerCase();
-                    return st === 'confirmed' || st === 'served';
-                }));
+                servedOrders = filterOrdersForCurrentShift(allForHistory.filter(orderCountsAsSale));
                 if (shiftOrdersEl) shiftOrdersEl.textContent = String(servedOrders.length);
                 renderWasteOrderHistory();
                 wasteMenuItems = (menuRes && menuRes.success && menuRes.items) ? menuRes.items.slice() : [];
@@ -7476,6 +7692,12 @@
 
         if (kitchenGrid) {
             kitchenGrid.addEventListener('click', function (e) {
+                var priorityBtn = e.target.closest('[data-kitchen-priority]');
+                if (priorityBtn) {
+                    var priorityOrderId = parseInt(priorityBtn.getAttribute('data-kitchen-priority'), 10);
+                    if (priorityOrderId) toggleKitchenOrderPriority(priorityOrderId);
+                    return;
+                }
                 var returnBtn = e.target.closest('[data-kitchen-return]');
                 if (returnBtn) {
                     var returnOrderId = parseInt(returnBtn.getAttribute('data-kitchen-return'), 10);
@@ -7499,6 +7721,7 @@
                     return !hit;
                 });
                 pendingOrders = pendingOrders.filter(function (o) { return parseInt(o && o.id, 10) !== orderId; });
+                if (kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
                 if (moved) {
                     if (!servingOrdersQueue.some(function (o) { return parseInt(o && o.id, 10) === orderId; })) {
                         servingOrdersQueue.push(moved);
@@ -7521,6 +7744,7 @@
                     }
                 });
                 kitchenOrders = [];
+                kitchenPriorityById = {};
                 pendingOrders = [];
                 renderKitchenOrders();
                 renderPendingOrders();
@@ -7640,9 +7864,6 @@
             });
         }
 
-        if (wasteTabItemName) {
-            wasteTabItemName.addEventListener('input', updateWasteItemIndicator);
-        }
         initWasteMenuSearchSelect();
 
         (function initKitchenWasteToggle() {
@@ -7662,14 +7883,15 @@
 
         if (wasteTabSubmit) {
             wasteTabSubmit.addEventListener('click', function () {
-                var itemName = (wasteTabItemName && wasteTabItemName.value || '').trim();
                 var wasteSelection = parseWasteMenuSelectValue(getWasteMenuSelectValue());
                 var menuItemId = wasteSelection.menuItemId;
                 var variantNotes = wasteSelection.variantNotes;
+                var itemName = getSelectedWasteItemName();
                 var qty = parseInt((wasteTabQty && wasteTabQty.value) || '1', 10);
                 var notes = (wasteTabNotes && wasteTabNotes.value || '').trim();
-                if (!itemName) { alert('Item name is required.'); return; }
+                if (!menuItemId || !itemName) { alert('Select a menu item.'); return; }
                 if (!qty || qty < 1) { alert('Quantity must be at least 1.'); return; }
+                if (!notes) { alert('Notes are required.'); return; }
 
                 fetch('api/waste.php', {
                     method: 'POST',

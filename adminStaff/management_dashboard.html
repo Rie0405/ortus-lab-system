@@ -599,7 +599,9 @@
                 if (!order || !order.created_at) return false;
                 if (localYmd(order.created_at) !== activeDate) return false;
                 var st = String(order.status || '').toLowerCase();
-                return st === 'confirmed' || st === 'served';
+                if (st === 'confirmed' || st === 'served') return true;
+                var returned = parseInt(order.kitchen_returned, 10) === 1 || order.kitchen_returned === true;
+                return st === 'pending' && returned;
             });
             var totalRevenue = shiftSalesOrders.reduce(function (sum, order) {
                 return sum + (Number(order.total_amount) || 0);
@@ -962,7 +964,9 @@
                 var userId = parseInt(user.id, 10);
                 var salesOrders = orders.filter(function (order) {
                     var st = String(order && order.status || '').toLowerCase();
-                    return st === 'confirmed' || st === 'served';
+                    if (st === 'confirmed' || st === 'served') return true;
+                    var returned = parseInt(order && order.kitchen_returned, 10) === 1 || order.kitchen_returned === true;
+                    return st === 'pending' && returned;
                 });
                 var refundOrders = orders.filter(function (order) {
                     return String(order && order.status || '').toLowerCase() === 'voided';

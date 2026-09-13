@@ -1051,28 +1051,51 @@ button {
     margin: 0 0 10px;
 }
 
-.pos-fulfill-toggle-btn {
+.pos-fulfill-seg {
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
     border-radius: 10px;
+    background: rgba(18, 14, 10, 0.95);
     border: 1px solid rgba(244, 140, 37, 0.35);
-    background: rgba(244, 140, 37, 0.08);
-    color: #f8fafc;
+}
+
+.pos-fulfill-seg__btn {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 11px 12px;
+    border-radius: 8px;
+    background: transparent;
+    color: rgba(248, 250, 252, 0.72);
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;
-    line-height: 1.35;
+    line-height: 1.2;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.pos-fulfill-toggle-btn:hover {
-    background: rgba(244, 140, 37, 0.14);
-    border-color: rgba(244, 140, 37, 0.55);
+.pos-fulfill-seg__btn:hover {
+    background: rgba(244, 140, 37, 0.1);
+    color: #f8fafc;
+}
+
+.pos-fulfill-seg__btn--active {
+    background: rgba(244, 140, 37, 0.22);
+    color: #f48c25;
+    box-shadow: inset 0 0 0 1px rgba(244, 140, 37, 0.55);
+}
+
+.pos-fulfill-seg__btn--active:hover {
+    background: rgba(244, 140, 37, 0.28);
+    color: #ffb347;
+}
+
+.pos-fulfill-toggle-btn {
+    display: none;
 }
 
 .pos-fulfill-target-label {
@@ -1088,6 +1111,47 @@ button {
     display: none !important;
 }
 
+.pos-cart-slider {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    margin: 0 0 4px;
+}
+
+.pos-cart-slider__track {
+    display: flex;
+    width: 200%;
+    transform: translateX(0);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+}
+
+.pos-cart-slider--take-out .pos-cart-slider__track {
+    transform: translateX(-50%);
+}
+
+.pos-cart-slider--editing .pos-cart-slider__track {
+    width: 100%;
+    transform: translateX(0);
+}
+
+.pos-cart-slider--editing .pos-cart-slider__pane[data-pane="take_out"] {
+    display: none;
+}
+
+.pos-cart-slider__pane {
+    width: 50%;
+    flex: 0 0 50%;
+    min-width: 0;
+    padding-right: 2px;
+    box-sizing: border-box;
+}
+
+.pos-cart-slider--editing .pos-cart-slider__pane[data-pane="dine_in"] {
+    width: 100%;
+    flex-basis: 100%;
+}
+
 .pos-cart-group__label {
     margin: 0 0 8px;
     font-size: 11px;
@@ -1097,8 +1161,7 @@ button {
     color: #f48c25;
 }
 
-.pos-cart-group__label[hidden],
-.order-list--take-out[hidden] {
+.pos-cart-group__label[hidden] {
     display: none !important;
 }
 
@@ -1164,30 +1227,6 @@ button {
     font-weight: 700;
     color: #f48c25;
     white-space: nowrap;
-}
-
-.pos-fulfillment-badge {
-    display: inline-block;
-    margin-right: 6px;
-    padding: 2px 7px;
-    border-radius: 999px;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    vertical-align: middle;
-}
-
-.pos-fulfillment-badge--dinein {
-    background: rgba(148, 163, 184, 0.15);
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    color: #cbd5e1;
-}
-
-.pos-fulfillment-badge--takeout {
-    background: rgba(244, 140, 37, 0.14);
-    border: 1px solid rgba(244, 140, 37, 0.35);
-    color: #f48c25;
 }
 
 .waste-feed {
@@ -1366,6 +1405,14 @@ button {
 }
 .opq-done-all-btn:hover {
     background: #d97706;
+}
+
+#done-all-orders-btn {
+    background: #16a34a;
+    color: #ffffff;
+}
+#done-all-orders-btn:hover {
+    background: #15803d;
 }
 
 .opq-btn {
@@ -2045,6 +2092,20 @@ button {
     color: #cbd5e1;
 }
 
+.opq-item.kitchen-line-item {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+}
+
+.opq-item.kitchen-line-item .kitchen-item-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+}
+
 .opq-item-name {
     display: inline;
     font-size: 16px;
@@ -2716,6 +2777,9 @@ button {
 
 .kitchen-card-foot {
     padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .kitchen-card-actions {
@@ -2734,8 +2798,33 @@ button {
     color: #ffffff;
 }
 
+.kitchen-priority-btn {
+    width: 100%;
+    margin: 0;
+    padding: 8px 12px;
+    min-height: 0;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    background: #f48c25;
+    box-shadow: 0 3px 0 0 #c56e14;
+    color: #120e0a;
+}
+
+.kitchen-priority-btn--active {
+    background: #ea7a12;
+    box-shadow: 0 3px 0 0 #b45f0e;
+    color: #120e0a;
+}
+
+.kitchen-priority-btn:active {
+    transform: translateY(2px);
+    box-shadow: none;
+}
+
 .kitchen-return-btn:hover,
-.kitchen-done-btn:hover {
+.kitchen-done-btn:hover,
+.kitchen-priority-btn:hover {
     opacity: 0.9;
 }
 
@@ -2770,6 +2859,14 @@ button {
     border-color: rgba(244, 140, 37, 0.35);
 }
 
+.kitchen-card--priority {
+    border: 2px solid #f48c25;
+    box-shadow:
+        0 0 0 2px rgba(244, 140, 37, 0.35),
+        0 0 18px rgba(244, 140, 37, 0.28),
+        0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
 .kitchen-queue-label {
     display: inline-block;
     margin-bottom: 6px;
@@ -2785,6 +2882,10 @@ button {
 
 .kitchen-queue-label--next {
     color: #fb923c;
+}
+
+.kitchen-queue-label--priority {
+    color: #fbbf24;
 }
 
 .kitchen-order-type-line {
@@ -4103,40 +4204,17 @@ button {
     margin-top: -8px;
 }
 
-.pay-fulfill-toggle {
+.pay-fulfill-seg {
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 14px 16px;
-    background: #121212;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
 }
 
-.pay-fulfill-toggle:hover {
-    background: rgba(244, 140, 37, 0.08);
-    border-color: rgba(244, 140, 37, 0.45);
+.pay-fulfill-toggle {
+    display: none;
 }
 
-.pay-fulfill-toggle__icon {
-    font-size: 22px;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
+.pay-fulfill-toggle__icon,
 .pay-fulfill-toggle__name {
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 600;
-    text-transform: none;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.01em;
-    line-height: 1.35;
-    text-align: center;
+    display: none;
 }
 
 /* Legacy dine in / take out pair (unused) */
@@ -4535,6 +4613,20 @@ button {
     background: #231a12;
     color: #fff;
     font: inherit;
+}
+.shortage-restock-unit {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(244, 140, 37, 0.22);
+    background: rgba(18, 14, 10, 0.85);
+    color: rgba(248, 250, 252, 0.85);
+    font: inherit;
+    cursor: default;
+    user-select: none;
 }
 .shortage-restock-lines__remove {
     width: 34px;
@@ -5341,6 +5433,33 @@ button {
     font-size: 12px;
     line-height: 16px;
     color: #94a3b8;
+}
+
+.order-copy__meta {
+    margin-top: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.order-copy__meta--order {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(244, 140, 37, 0.28);
+    background: rgba(35, 26, 18, 0.9);
+}
+
+.order-copy__meta-line {
+    margin: 0;
+    font-size: 11px;
+    line-height: 15px;
+    color: #94a3b8;
+}
+
+.order-copy__meta--order .order-copy__meta-line {
+    font-size: 12px;
+    color: #e2e8f0;
 }
 
 .order-right strong {

@@ -518,7 +518,8 @@
                     var pm = String(o.payment_method || '').toLowerCase();
                     if (pm !== 'gcash') return false;
                     var st = String(o.status || '').toLowerCase();
-                    return st === 'served' || st === 'confirmed';
+                    if (st === 'served' || st === 'confirmed') return true;
+                    return st === 'pending' && (parseInt(o.kitchen_returned, 10) === 1 || o.kitchen_returned === true);
                 });
                 todayCashOrders = allOrders.filter(function (o) {
                     if (!o || !o.created_at) return false;
@@ -526,7 +527,8 @@
                     var pm = String(o.payment_method || '').toLowerCase();
                     if (pm !== 'cash') return false;
                     var st = String(o.status || '').toLowerCase();
-                    return st === 'served' || st === 'confirmed';
+                    if (st === 'served' || st === 'confirmed') return true;
+                    return st === 'pending' && (parseInt(o.kitchen_returned, 10) === 1 || o.kitchen_returned === true);
                 });
                 renderStaffBrief(out);
                 renderGcashLogs();

@@ -5,9 +5,13 @@ require_once __DIR__ . '/menu_helpers.php';
 require_once __DIR__ . '/receipt_helpers.php';
 require_once __DIR__ . '/recipe_helpers.php';
 require_once __DIR__ . '/cashflow_helpers.php';
+require_once __DIR__ . '/kitchen_ticket_helpers.php';
+require_once __DIR__ . '/order_number_helpers.php';
 require_auth();   // admin or staff
 
 $m = method();
+ensure_kitchen_ticket_schema(db());
+ensure_order_number_schema(db());
 
 function receipt_expense_for_day(PDO $pdo, string $date): float {
     static $hasReceiptsTable = null;
@@ -204,16 +208,17 @@ if ($m === 'GET') {
     $date = $_GET['date'] ?? date('Y-m-d');
 
     if ($type === 'daily_summary') {
-        // Aggregate revenue for orders already confirmed by staff (POS/Kiosk) or served.
+        // Aggregate revenue for confirmed/served sales, plus kitchen-returned (still a sale until refunded).
+        $saleCond = sql_order_counts_as_sale();
         $stmt = db()->prepare(
             'SELECT
-                COUNT(CASE WHEN (status IN ("confirmed","served","voided")) THEN 1 END) AS total_orders,
-                COALESCE(SUM(CASE WHEN (status IN ("confirmed","served")) THEN total_amount END), 0) AS total_revenue,
-                COALESCE(SUM(CASE WHEN (status IN ("confirmed","served")) THEN gross_amount END), 0) AS gross_revenue,
-                COALESCE(SUM(CASE WHEN (status IN ("confirmed","served")) THEN discount_amount END), 0) AS discount_total,
-                COALESCE(SUM(CASE WHEN (status IN ("confirmed","served")) AND payment_method="gcash" THEN total_amount END), 0) AS digital_revenue,
-                COALESCE(SUM(CASE WHEN (status IN ("confirmed","served")) AND payment_method="cash"  THEN total_amount END), 0) AS cash_revenue,
-                COUNT(CASE WHEN (status IN ("confirmed","served")) THEN 1 END) AS confirmed_count,
+                COUNT(CASE WHEN (status IN ("confirmed","served","voided") OR (status = "pending" AND COALESCE(kitchen_returned, 0) = 1)) THEN 1 END) AS total_orders,
+                COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN total_amount END), 0) AS total_revenue,
+                COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN gross_amount END), 0) AS gross_revenue,
+                COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN discount_amount END), 0) AS discount_total,
+                COALESCE(SUM(CASE WHEN ' . $saleCond . ' AND payment_method="gcash" THEN total_amount END), 0) AS digital_revenue,
+                COALESCE(SUM(CASE WHEN ' . $saleCond . ' AND payment_method="cash"  THEN total_amount END), 0) AS cash_revenue,
+                COUNT(CASE WHEN ' . $saleCond . ' THEN 1 END) AS confirmed_count,
                 COUNT(CASE WHEN status = "voided" THEN 1 END) AS voided_count
              FROM orders
             WHERE DATE(created_at) = :d'
@@ -231,7 +236,7 @@ if ($m === 'GET') {
             'SELECT HOUR(created_at) AS hour, COALESCE(SUM(total_amount),0) AS revenue
                FROM orders
               WHERE DATE(created_at) = :d
-               AND status IN ("confirmed","served")
+               AND ' . $saleCond . '
               GROUP BY HOUR(created_at)
               ORDER BY hour'
         );
@@ -246,7 +251,7 @@ if ($m === 'GET') {
     $limit  = min((int)($_GET['limit'] ?? 50), 200);
     $offset = (int)($_GET['offset'] ?? 0);
 
-    $sql    = 'SELECT o.id, o.order_number, o.order_source, o.status, o.kitchen_returned, o.kitchen_return_reason, o.payment_method, o.order_type,
+    $sql    = 'SELECT o.id, o.order_number, o.kitchen_ticket_number, o.order_source, o.status, o.kitchen_returned, o.kitchen_return_reason, o.payment_method, o.order_type,
                       o.staff_id,
                       o.customer_name, o.refund_reason, o.gcash_ref,
                       o.discount_type, o.discount_customer_name, o.discount_id_number,
@@ -311,7 +316,11 @@ if ($m === 'GET') {
             $itemMap[$item['order_id']][] = $item;
         }
         foreach ($orders as &$order) {
+            $order['id'] = (int)($order['id'] ?? 0);
             $order['staff_id'] = (int)($order['staff_id'] ?? 0);
+            $order['kitchen_ticket_number'] = isset($order['kitchen_ticket_number']) && $order['kitchen_ticket_number'] !== null
+                ? (int)$order['kitchen_ticket_number']
+                : null;
             $order['gross_amount'] = (float)$order['gross_amount'];
             $order['vat_exempt_amount'] = (float)$order['vat_exempt_amount'];
             $order['discount_amount'] = (float)$order['discount_amount'];
@@ -377,6 +386,8 @@ if ($m === 'POST') {
     ensure_order_inventory_deduction_schema($pdo);
     ensure_order_items_cost_schema($pdo);
     ensure_receipt_token_schema($pdo);
+    ensure_kitchen_ticket_schema($pdo);
+    ensure_order_number_schema($pdo);
 
     $shortages = check_inventory_shortages_for_cart($pdo, $items);
     if ($shortages) {
@@ -387,8 +398,8 @@ if ($m === 'POST') {
     $pdo->beginTransaction();
 
     try {
-        // Generate unique order number
-        $orderNumber = 'GC-' . strtoupper(substr(uniqid(), -6));
+        // POS-MMDDYY-001 (resets on shift finalize)
+        $orderNumber = allocate_next_order_number($pdo, $orderSource);
 
         $grossAmount = 0;
         $itemRows = [];
@@ -447,6 +458,7 @@ if ($m === 'POST') {
             ':ref'    => $gcashRef ?: null,
         ]);
         $orderId = (int)$pdo->lastInsertId();
+        $kitchenTicket = assign_kitchen_ticket_to_order($pdo, $orderId);
 
         $insItem = $pdo->prepare(
             'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
@@ -479,6 +491,7 @@ if ($m === 'POST') {
         ok([
             'order_id' => $orderId,
             'order_number' => $orderNumber,
+            'kitchen_ticket_number' => $kitchenTicket,
             'receipt_token' => $receiptToken,
             'gross_amount' => $pricing['gross_amount'],
             'vat_exempt_amount' => $pricing['vat_exempt_amount'],
@@ -657,6 +670,10 @@ if ($m === 'PUT') {
                     $sets[] = 'kitchen_returned = 0';
                     $sets[] = 'kitchen_return_reason = NULL';
                     $params[':status'] = 'confirmed';
+                } else {
+                    // Edited pending/returned orders return to the main processing queue.
+                    $sets[] = 'kitchen_returned = 0';
+                    $sets[] = 'kitchen_return_reason = NULL';
                 }
                 $pdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);
             } elseif ($action === 'discount') {
@@ -713,15 +730,21 @@ if ($m === 'PUT') {
             }
 
             $pdo->commit();
+            $orderSource = strtolower((string)($prev['order_source'] ?? ''));
             if ($action === 'update_cart' && !empty($b['confirm'])) {
                 publish_realtime_event('order_status_changed', [
                     'order_id' => $id,
-                    'order_source' => strtolower((string)($prev['order_source'] ?? '')),
+                    'order_source' => $orderSource,
                     'from_status' => 'pending',
                     'status' => 'confirmed',
                 ]);
             } else {
-                publish_realtime_event('order_updated', ['order_id' => $id, 'action' => $action]);
+                publish_realtime_event('order_updated', [
+                    'order_id' => $id,
+                    'action' => $action,
+                    'order_source' => $orderSource,
+                    'status' => 'pending',
+                ]);
             }
             $msg = 'Order updated.';
             if ($action === 'discount') $msg = 'Order discount updated.';

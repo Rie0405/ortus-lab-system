@@ -1204,28 +1204,50 @@ body {
     display: none !important;
 }
 
-.order-type-toggle-btn {
+.order-type-seg {
     width: 100%;
-    padding: 12px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
     border-radius: 8px;
+    background: #120e0a;
     border: 1px solid #3d3025;
+}
+
+.order-type-seg__btn {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 11px 10px;
+    border-radius: 6px;
+    background: transparent;
+    color: #94a3b8;
     font-family: 'Space Grotesk', sans-serif;
     font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.01em;
-    text-transform: none;
+    line-height: 1.2;
     cursor: pointer;
-    background: #120e0a;
-    color: #f48c25;
-    line-height: 1.35;
-    text-align: center;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.order-type-toggle-btn:hover {
-    background: #2a2118;
-    border-color: #f48c25;
-    color: #ffb347;
+.order-type-seg__btn:hover {
+    background: #1e1812;
+    color: #e2e8f0;
+}
+
+.order-type-seg__btn--active {
+    background: #f48c25;
+    color: #120e0a;
+}
+
+.order-type-seg__btn--active:hover {
+    background: #ff9d3d;
+    color: #120e0a;
+}
+
+.order-type-toggle-btn {
+    display: none;
 }
 
 .order-type-target-label {

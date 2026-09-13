@@ -1,10 +1,15 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/discounts.php';
+require_once __DIR__ . '/cashflow_helpers.php';
+require_once __DIR__ . '/kitchen_ticket_helpers.php';
+require_once __DIR__ . '/order_number_helpers.php';
 require_auth(); // admin or staff
 
 $pdo = db();
 ensure_order_discount_schema($pdo);
+ensure_kitchen_ticket_schema($pdo);
+ensure_order_number_schema($pdo);
 $pdo->exec(
     'CREATE TABLE IF NOT EXISTS revenue_verifications (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -42,12 +47,13 @@ function variance_status_from_difference(float $difference): string
 
 function get_cash_sales_total(PDO $pdo, string $date): float
 {
+    $saleCond = sql_order_counts_as_sale();
     $sum = $pdo->prepare(
         'SELECT COALESCE(SUM(total_amount), 0) AS cash_sales
          FROM orders
          WHERE DATE(created_at) = :d
            AND payment_method = "cash"
-           AND status IN ("confirmed","served")'
+           AND ' . $saleCond
     );
     $sum->execute([':d' => $date]);
     return (float)$sum->fetchColumn();
@@ -61,6 +67,7 @@ function normalize_currency_amount(float $amount): float
 
 if ($m === 'GET') {
     $openingFloat = (float)($_GET['opening_float'] ?? 0);
+    $saleCond = sql_order_counts_as_sale();
     $sum = $pdo->prepare(
         'SELECT
             COALESCE(SUM(total_amount), 0) AS expected_revenue,
@@ -69,7 +76,7 @@ if ($m === 'GET') {
             COUNT(*) AS total_orders
          FROM orders
          WHERE DATE(created_at) = :d
-           AND status IN ("confirmed","served")'
+           AND ' . $saleCond
     );
     $sum->execute([':d' => $date]);
     $summary = $sum->fetch();
@@ -151,12 +158,18 @@ if ($m === 'POST') {
         ':sid' => $staffId ?: null,
     ]);
 
+    // New shift after finalize — kitchen tickets + POS/KIO order # restart at 001.
+    reset_kitchen_ticket_counter($pdo);
+    reset_order_number_counters($pdo);
+
     ok([
         'message' => 'Daily revenue verification saved.',
         'expected_cash_drawer' => $expected,
         'cash_sales' => $cashSales,
         'difference' => $diff,
         'status' => $status,
+        'kitchen_ticket_reset' => true,
+        'order_number_reset' => true,
     ]);
 }
 

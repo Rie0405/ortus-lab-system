@@ -254,10 +254,6 @@
             <div class="menu-header-brand">
                 <span class="menu-logo-text">ORTUS LAB - Menu</span>
             </div>
-            <div class="menu-search-wrap">
-                <span class="menu-search-icon" aria-hidden="true"></span>
-                <input type="text" class="menu-search-input" placeholder="Searching for a drink?">
-            </div>
         </header>
 
         <!-- Menu Body -->
@@ -438,8 +434,8 @@
                         <h4 class="sidebar-section-title">DISCOUNT</h4>
                         <select class="discount-type-select" aria-label="Discount type">
                             <option value="none">None</option>
-                            <option value="senior">Senior Citizen</option>
-                            <option value="pwd">PWD</option>
+                            <option value="senior">Senior Citizen (20%)</option>
+                            <option value="pwd">PWD (20%)</option>
                         </select>
                         <div class="discount-fields" hidden>
                             <input type="text" class="discount-name-input" placeholder="Customer name" maxlength="160" autocomplete="off">
@@ -491,10 +487,6 @@
         <header class="menu-header">
             <div class="menu-header-brand">
                 <span class="menu-logo-text">ORTUS LAB - Menu</span>
-            </div>
-            <div class="menu-search-wrap">
-                <span class="menu-search-icon" aria-hidden="true"></span>
-                <input type="text" class="menu-search-input" placeholder="Searching for a meal?">
             </div>
         </header>
 
@@ -679,8 +671,8 @@
                         <h4 class="sidebar-section-title">DISCOUNT</h4>
                         <select class="discount-type-select" aria-label="Discount type">
                             <option value="none">None</option>
-                            <option value="senior">Senior Citizen</option>
-                            <option value="pwd">PWD</option>
+                            <option value="senior">Senior Citizen (20%)</option>
+                            <option value="pwd">PWD (20%)</option>
                         </select>
                         <div class="discount-fields" hidden>
                             <input type="text" class="discount-name-input" placeholder="Customer name" maxlength="160" autocomplete="off">
@@ -764,8 +756,8 @@
                 <label class="cash-modal-field" for="pwd-sc-request-type">
                     <span class="cash-modal-field-label">Discount type</span>
                     <select id="pwd-sc-request-type" class="gcash-ref-input cash-modal-input">
-                        <option value="senior">Senior Citizen</option>
-                        <option value="pwd">PWD</option>
+                        <option value="senior">Senior Citizen (20%)</option>
+                        <option value="pwd">PWD (20%)</option>
                     </select>
                 </label>
                 <p class="cash-modal-field-hint" id="pwd-sc-request-error" hidden role="alert"></p>
@@ -849,8 +841,10 @@
             <p class="cash-modal-note" id="order-receipt-title">Order received</p>
             <p class="cash-modal-note cash-modal-note--thanks" id="order-receipt-subtitle">Scan the QR to open your receipt on your phone.</p>
             <p class="order-receipt-number" id="order-receipt-number"></p>
-            <div class="order-receipt-qr-wrap" aria-label="Receipt QR code">
-                <canvas id="order-receipt-qr" width="200" height="200"></canvas>
+            <div class="order-receipt-qr-wrap" id="order-receipt-qr-wrap" aria-label="Receipt QR code">
+                <canvas id="order-receipt-qr" width="200" height="200" hidden></canvas>
+                <img id="order-receipt-qr-img" class="order-receipt-qr-img" alt="Receipt QR code" hidden>
+                <p class="order-receipt-qr-status" id="order-receipt-qr-status">Generating QR…</p>
             </div>
             <p class="order-receipt-hint">QR not working? Use the button below.</p>
             <button type="button" class="order-receipt-view-btn" id="order-receipt-view-btn">View My Receipt</button>
@@ -890,14 +884,19 @@
                         <path d="M7 12.5l3.2 3.2L17 8.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
-                <p class="payment-success-toast__title">Payment successful</p>
+                <p class="payment-success-toast__title">Order confirmed. Please proceed to counter</p>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script>
+    if (typeof QRCode === 'undefined') {
+        document.write('<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"><\/script>');
+    }
+    </script>
     <script src="../shared/gcash_ref_digits.js"></script>
-    <script src="customer_script.js?v=20260910-no-hotcold"></script>
+    <script src="customer_script.js?v=20260915-receipt-qr"></script>
 
 </body>
 </html>

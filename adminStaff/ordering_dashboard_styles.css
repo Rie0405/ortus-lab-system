@@ -162,6 +162,30 @@ body.modal-open {
     height: 15px;
 }
 
+.discount-rate-modal .gcash-config-modal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.discount-rate-hint {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.discount-rate-save-btn {
+    align-self: flex-start;
+}
+
+.discount-rate-status {
+    margin: 0;
+    color: #86efac;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
 .btn {
     border-radius: 8px;
     border: 1px solid transparent;
@@ -283,11 +307,11 @@ body.modal-open {
 .table-head,
 .table-row {
     display: grid;
-    grid-template-columns: 100px minmax(160px, 1.8fr) minmax(90px, 1fr) minmax(80px, 0.9fr) minmax(200px, 1.35fr) minmax(260px, 1.4fr);
+    grid-template-columns: 100px minmax(150px, 1.6fr) minmax(90px, 0.9fr) minmax(95px, 0.85fr) minmax(95px, 0.85fr) minmax(180px, 1.2fr) minmax(240px, 1.3fr);
     gap: 14px;
     align-items: center;
     padding: 12px 14px;
-    min-width: 980px;
+    min-width: 1140px;
 }
 .table-head {
     background: rgba(45, 36, 27, 0.5);
@@ -324,6 +348,9 @@ body.modal-open {
 .price {
     color: #f59e0b;
     font-weight: 700;
+}
+.price--cost {
+    color: #94a3b8;
 }
 .pill {
     display: inline-block;
@@ -1525,6 +1552,18 @@ body.modal-open {
     width: 100%;
 }
 
+select.variant-input--size {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #f48c25 50%),
+        linear-gradient(135deg, #f48c25 50%, transparent 50%);
+    background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 32px;
+}
+
 .variant-remove {
     border: 0;
     background: transparent;
@@ -1578,7 +1617,7 @@ body.modal-open {
     .stat-grid { grid-template-columns: repeat(2, 1fr); }
     .table-wrap { overflow-x: auto; }
     .table-head,
-    .table-row { min-width: 1060px; }
+    .table-row { min-width: 1140px; }
 }
 
 @media (max-width: 900px) {

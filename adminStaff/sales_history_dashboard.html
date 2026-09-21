@@ -116,6 +116,12 @@
                     </div>
                     <div class="sales-report-block__actions">
                         <label class="sales-report-filter">
+                            <span>Category</span>
+                            <select id="sales-report-category">
+                                <option value="all" selected>All Categories</option>
+                            </select>
+                        </label>
+                        <label class="sales-report-filter">
                             <span>Recorded Date</span>
                             <select id="sales-report-range">
                                 <option value="all" selected>All Dates</option>
@@ -271,8 +277,10 @@
         var salesReportFoot = document.getElementById('sales-report-foot');
         var salesReportPagination = document.getElementById('sales-report-pagination');
         var salesReportRange = document.getElementById('sales-report-range');
+        var salesReportCategory = document.getElementById('sales-report-category');
         var SALES_REPORT_PAGE_SIZE = 10;
         var salesReportCurrentPage = 1;
+        var salesReportCategories = [];
 
         var allOrders = [];
         var todayGcashOrders = [];
@@ -619,12 +627,35 @@
             }
         }
 
+        function normalizeSalesCategory(name) {
+            return String(name || 'Uncategorized').trim() || 'Uncategorized';
+        }
+
+        function renderSalesCategoryOptions(categories) {
+            if (!salesReportCategory) return;
+            var selected = salesReportCategory.value || 'all';
+            var cats = (categories || []).slice();
+            var html = '<option value="all">All Categories</option>' + cats.map(function (c) {
+                return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+            }).join('');
+            salesReportCategory.innerHTML = html;
+            if (selected !== 'all' && cats.indexOf(selected) !== -1) {
+                salesReportCategory.value = selected;
+            } else {
+                salesReportCategory.value = 'all';
+            }
+        }
+
         function filterOrdersBySelectedRange(orders) {
             var key = salesReportRange ? salesReportRange.value : 'all';
             if (key === 'all') return (orders || []).slice();
             return (orders || []).filter(function (o) {
                 return ymdFromDateLike(o && o.created_at) === key;
             });
+        }
+
+        function selectedSalesCategory() {
+            return salesReportCategory ? (salesReportCategory.value || 'all') : 'all';
         }
 
         function renderSalesReportPagination(totalRows, totalPages) {
@@ -671,6 +702,7 @@
 
         function renderSalesReportTable(orders) {
             if (!salesReportTbody) return;
+            var categoryFilter = selectedSalesCategory();
             var rows = [];
             (orders || []).forEach(function (o) {
                 var status = String(o && o.status || '').toLowerCase();
@@ -680,9 +712,12 @@
                 (o.items || []).forEach(function (it) {
                     var qty = parseFloat(it && it.quantity || 0);
                     if (!Number.isFinite(qty) || qty <= 0) return;
+                    var cat = normalizeSalesCategory(it && (it.category_name || it.category));
+                    if (categoryFilter !== 'all' && cat !== categoryFilter) return;
                     rows.push({
                         created_at: o.created_at,
                         item_name: it && it.name ? it.name : 'Item',
+                        category: cat,
                         qty: qty,
                         total: parseLineTotal(it)
                     });
@@ -773,11 +808,13 @@
         function loadSales() {
             Promise.all([
                 fetch('api/sales.php?limit=200').then(function (r) { return r.json(); }),
-                fetch('api/orders.php?limit=200').then(function (r) { return r.json(); })
+                fetch('api/orders.php?limit=200').then(function (r) { return r.json(); }),
+                fetch('api/menu.php').then(function (r) { return r.json(); }).catch(function () { return null; })
             ])
                 .then(function (res) {
                     var d = res[0];
                     var ordersRes = res[1];
+                    var menuRes = res[2];
                     if (!d.success) return;
 
                     var summary = d.summary || {};
@@ -795,6 +832,28 @@
                     allOrders = d.orders || [];
                     if (tableWrap) renderRows();
                     salesReportOrdersCache = (ordersRes && ordersRes.success) ? (ordersRes.orders || []) : [];
+
+                    salesReportCategories = [];
+                    if (menuRes && menuRes.success && Array.isArray(menuRes.categories)) {
+                        salesReportCategories = menuRes.categories
+                            .filter(function (c) { return !c || c.is_active === undefined || !!c.is_active; })
+                            .map(function (c) { return normalizeSalesCategory(c && c.name); })
+                            .filter(Boolean);
+                    }
+                    if (!salesReportCategories.length) {
+                        var seen = {};
+                        salesReportOrdersCache.forEach(function (o) {
+                            (o.items || []).forEach(function (it) {
+                                var cat = normalizeSalesCategory(it && (it.category_name || it.category));
+                                if (!seen[cat]) {
+                                    seen[cat] = true;
+                                    salesReportCategories.push(cat);
+                                }
+                            });
+                        });
+                        salesReportCategories.sort(function (a, b) { return a.localeCompare(b); });
+                    }
+                    renderSalesCategoryOptions(salesReportCategories);
                     renderRecordedDateOptions(salesReportOrdersCache);
                     renderSalesReportFromCache();
                 })
@@ -803,6 +862,12 @@
 
         if (salesReportRange) {
             salesReportRange.addEventListener('change', function () {
+                salesReportCurrentPage = 1;
+                renderSalesReportFromCache();
+            });
+        }
+        if (salesReportCategory) {
+            salesReportCategory.addEventListener('change', function () {
                 salesReportCurrentPage = 1;
                 renderSalesReportFromCache();
             });

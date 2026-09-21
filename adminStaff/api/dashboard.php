@@ -194,14 +194,14 @@ $slowStmt = $pdo->query(
      LEFT JOIN orders o ON o.id = oi.order_id
      LEFT JOIN categories c ON c.id = mi.category_id
      GROUP BY mi.id, mi.name
-     ORDER BY qty_sold_30d ASC, mi.name ASC
-     LIMIT 5'
+     ORDER BY qty_sold_30d ASC, mi.name ASC'
 );
 $slowItems = $slowStmt->fetchAll();
 
-$inventoryCategories = $pdo->query(
+$menuCategories = $pdo->query(
     'SELECT name FROM categories WHERE is_active = 1 ORDER BY display_order, name'
 )->fetchAll(PDO::FETCH_COLUMN);
+$inventoryCategories = $menuCategories;
 
 // ─── % Change helpers ─────────────────────────────────────────────────────────
 function pctChange($today, $yesterday): ?float {
@@ -219,6 +219,7 @@ $payload = [
     'top_items_today' => $topItemsToday,
     'slow_items'      => $slowItems,
     'inventory_categories' => $inventoryCategories,
+    'menu_categories' => $menuCategories,
     'monthly_revenue' => $monthRevenue,
     'monthly_raw_revenue' => $monthRawRevenue,
     'monthly_receipt_expense' => $monthReceiptExpense,

@@ -226,8 +226,9 @@ function normalizeDiscountType(value) {
 }
 
 function getDiscountLabel(type) {
-    if (type === 'senior') return 'Senior Citizen';
-    if (type === 'pwd') return 'PWD';
+    var pct = Math.round(SENIOR_PWD_RATE * 100);
+    if (type === 'senior') return 'Senior Citizen (' + pct + '%)';
+    if (type === 'pwd') return 'PWD (' + pct + '%)';
     return 'None';
 }
 
@@ -239,24 +240,38 @@ function getOrderDiscountPayload() {
     };
 }
 
-function calculateDiscountTotals(grossAmount, discountType) {
+function getHighestCartUnitPrice() {
+    var max = 0;
+    getAllCartItems().forEach(function (item) {
+        var p = Number(item.price) || 0;
+        if (p > max) max = p;
+    });
+    return Math.round(max * 100) / 100;
+}
+
+function calculateDiscountTotals(grossAmount, discountType, discountableAmount) {
     var gross = Math.round((Number(grossAmount) || 0) * 100) / 100;
     var type = normalizeDiscountType(discountType);
     if (type === 'none' || gross <= 0) {
-        return { gross: gross, vatExempt: 0, discountAmount: 0, total: gross, type: 'none' };
+        return { gross: gross, vatExempt: 0, discountAmount: 0, total: gross, type: 'none', discountable: 0 };
     }
 
-    var vatExemptBase = gross / (1 + VAT_RATE);
-    var vatExempt = gross - vatExemptBase;
-    var seniorPwdDiscount = vatExemptBase * SENIOR_PWD_RATE;
-    var total = vatExemptBase - seniorPwdDiscount;
+    var eligible = Math.round((Number(discountableAmount) || 0) * 100) / 100;
+    if (!(eligible > 0)) eligible = gross;
+    eligible = Math.min(gross, Math.max(0, eligible));
+    var remainder = Math.round((gross - eligible) * 100) / 100;
+
+    // Senior/PWD: plain % off eligible amount (no VAT strip).
+    var seniorPwdDiscount = eligible * SENIOR_PWD_RATE;
+    var eligibleTotal = eligible - seniorPwdDiscount;
 
     return {
         gross: Math.round(gross * 100) / 100,
-        vatExempt: Math.round(vatExempt * 100) / 100,
-        discountAmount: Math.round((vatExempt + seniorPwdDiscount) * 100) / 100,
-        total: Math.round(total * 100) / 100,
-        type: type
+        vatExempt: 0,
+        discountAmount: Math.round(seniorPwdDiscount * 100) / 100,
+        total: Math.round((remainder + eligibleTotal) * 100) / 100,
+        type: type,
+        discountable: eligible
     };
 }
 
@@ -375,6 +390,21 @@ function computeCartLineUnit(menuItemId, temperature, addons) {
         return s + (Number(a.price) || 0);
     }, 0);
     return Math.round((unit + addSum) * 100) / 100;
+}
+
+function computeCartLineBaseUnit(menuItemId, temperature, fallbackCombinedUnit, addons) {
+    var mi = getMenuItemById(menuItemId);
+    if (temperature && Number(temperature.variantPrice) > 0) {
+        return Math.round(Number(temperature.variantPrice) * 100) / 100;
+    }
+    if (mi && Number(mi.price) > 0) {
+        return Math.round(Number(mi.price) * 100) / 100;
+    }
+    var addSum = normalizeAddonsList(addons).reduce(function (s, a) {
+        return s + (Number(a.price) || 0);
+    }, 0);
+    var combined = Number(fallbackCombinedUnit) || 0;
+    return Math.round(Math.max(0, combined - addSum) * 100) / 100;
 }
 
 function describeTemperatureForCart(t) {
@@ -719,14 +749,15 @@ function getTotals() {
         return sum + item.price * item.qty;
     }, 0);
     var discount = getOrderDiscountPayload();
-    var pricing = calculateDiscountTotals(subtotal, discount.type);
+    var pricing = calculateDiscountTotals(subtotal, discount.type, getHighestCartUnitPrice());
     return {
         subtotal: pricing.gross,
         gross: pricing.gross,
         vatExempt: pricing.vatExempt,
         discountAmount: pricing.discountAmount,
         total: pricing.total,
-        discountType: pricing.type
+        discountType: pricing.type,
+        discountable: pricing.discountable
     };
 }
 
@@ -1053,6 +1084,8 @@ function getKioskTabCategories() {
     var tabs = [];
     var insertedBev = false;
     cats.forEach(function (c) {
+        // Hide standalone Add-ons category tab (registered addons still appear in product Add-ons UI).
+        if (isAddonCategoryName(c.name)) return;
         var id = parseInt(c.id, 10);
         if (categoryNameMergesIntoBeverages(c.name)) {
             if (id > 0) beverageCategoryIds.push(id);
@@ -1131,21 +1164,26 @@ function parseKioskCategoryIdFromTabKey(key) {
 }
 
 function getItemsForGroup(group) {
+    function notAddonCard(it) {
+        return !isAddonCardItem(it);
+    }
     if (group === 'beverages') {
         if (beverageCategoryIds.length) {
             return (menuData.items || []).filter(function (it) {
-                return beverageCategoryIds.indexOf(parseInt(it.category_id, 10)) !== -1;
+                return notAddonCard(it) && beverageCategoryIds.indexOf(parseInt(it.category_id, 10)) !== -1;
             });
         }
-        return (menuData.items || []).filter(isBeverageItem);
+        return (menuData.items || []).filter(function (it) {
+            return notAddonCard(it) && isBeverageItem(it);
+        });
     }
     if (selectedKioskCategoryId) {
         return (menuData.items || []).filter(function (it) {
-            return parseInt(it.category_id, 10) === selectedKioskCategoryId;
+            return notAddonCard(it) && parseInt(it.category_id, 10) === selectedKioskCategoryId;
         });
     }
     return (menuData.items || []).filter(function (it) {
-        return !isBeverageItem(it);
+        return notAddonCard(it) && !isBeverageItem(it);
     });
 }
 
@@ -2241,13 +2279,134 @@ var gcashKioskConfigLoaded = false;
 var orderReceiptModal = document.getElementById('order-receipt-modal');
 var orderReceiptNumber = document.getElementById('order-receipt-number');
 var orderReceiptQrCanvas = document.getElementById('order-receipt-qr');
+var orderReceiptQrImg = document.getElementById('order-receipt-qr-img');
+var orderReceiptQrStatus = document.getElementById('order-receipt-qr-status');
 var orderReceiptViewBtn = document.getElementById('order-receipt-view-btn');
 var orderReceiptDoneBtn = document.getElementById('order-receipt-done');
 var lastReceiptUrl = '';
 
 function buildReceiptUrl(token) {
-    var dir = window.location.href.replace(/[^/]+$/, '');
-    return dir + 'receipt.html?t=' + encodeURIComponent(token);
+    try {
+        return new URL('receipt.html?t=' + encodeURIComponent(token), window.location.href).href;
+    } catch (e) {
+        var dir = window.location.href.replace(/[^/]+$/, '');
+        return dir + 'receipt.html?t=' + encodeURIComponent(token);
+    }
+}
+
+function setReceiptQrStatus(message, isError) {
+    if (!orderReceiptQrStatus) return;
+    if (!message) {
+        orderReceiptQrStatus.hidden = true;
+        orderReceiptQrStatus.textContent = '';
+        return;
+    }
+    orderReceiptQrStatus.hidden = false;
+    orderReceiptQrStatus.textContent = message;
+    orderReceiptQrStatus.style.color = isError ? '#ef4444' : '#64748b';
+}
+
+function resetReceiptQrDisplay() {
+    if (orderReceiptQrCanvas) {
+        orderReceiptQrCanvas.hidden = true;
+        var ctx = orderReceiptQrCanvas.getContext && orderReceiptQrCanvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, orderReceiptQrCanvas.width, orderReceiptQrCanvas.height);
+    }
+    if (orderReceiptQrImg) {
+        orderReceiptQrImg.hidden = true;
+        orderReceiptQrImg.removeAttribute('src');
+    }
+    setReceiptQrStatus('Generating QR…', false);
+}
+
+function showReceiptQrOnCanvas(dataUrl) {
+    if (orderReceiptQrImg) {
+        orderReceiptQrImg.onload = function () {
+            orderReceiptQrImg.hidden = false;
+            if (orderReceiptQrCanvas) orderReceiptQrCanvas.hidden = true;
+            setReceiptQrStatus('', false);
+        };
+        orderReceiptQrImg.onerror = function () {
+            setReceiptQrStatus('Could not render QR. Use View My Receipt.', true);
+        };
+        orderReceiptQrImg.src = dataUrl;
+        return;
+    }
+    setReceiptQrStatus('Could not render QR. Use View My Receipt.', true);
+}
+
+function renderReceiptQrFallbackImage(url) {
+    var fallback =
+        'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=' +
+        encodeURIComponent(url);
+    showReceiptQrOnCanvas(fallback);
+}
+
+function renderReceiptQr(url) {
+    resetReceiptQrDisplay();
+    if (!url) {
+        setReceiptQrStatus('Receipt link unavailable.', true);
+        return;
+    }
+
+    function useLibrary() {
+        if (typeof QRCode === 'undefined') {
+            renderReceiptQrFallbackImage(url);
+            return;
+        }
+        // Prefer data URL → <img> so CSS sizing stays reliable across browsers.
+        if (typeof QRCode.toDataURL === 'function') {
+            QRCode.toDataURL(
+                url,
+                { width: 200, margin: 1, color: { dark: '#120e0a', light: '#ffffff' } },
+                function (err, dataUrl) {
+                    if (err || !dataUrl) {
+                        if (orderReceiptQrCanvas && typeof QRCode.toCanvas === 'function') {
+                            QRCode.toCanvas(
+                                orderReceiptQrCanvas,
+                                url,
+                                { width: 200, margin: 1, color: { dark: '#120e0a', light: '#ffffff' } },
+                                function (canvasErr) {
+                                    if (canvasErr) {
+                                        renderReceiptQrFallbackImage(url);
+                                        return;
+                                    }
+                                    orderReceiptQrCanvas.hidden = false;
+                                    if (orderReceiptQrImg) orderReceiptQrImg.hidden = true;
+                                    setReceiptQrStatus('', false);
+                                }
+                            );
+                            return;
+                        }
+                        renderReceiptQrFallbackImage(url);
+                        return;
+                    }
+                    showReceiptQrOnCanvas(dataUrl);
+                }
+            );
+            return;
+        }
+        if (orderReceiptQrCanvas && typeof QRCode.toCanvas === 'function') {
+            QRCode.toCanvas(
+                orderReceiptQrCanvas,
+                url,
+                { width: 200, margin: 1, color: { dark: '#120e0a', light: '#ffffff' } },
+                function (err) {
+                    if (err) {
+                        renderReceiptQrFallbackImage(url);
+                        return;
+                    }
+                    orderReceiptQrCanvas.hidden = false;
+                    if (orderReceiptQrImg) orderReceiptQrImg.hidden = true;
+                    setReceiptQrStatus('', false);
+                }
+            );
+            return;
+        }
+        renderReceiptQrFallbackImage(url);
+    }
+
+    useLibrary();
 }
 
 function showPaymentSuccessToast(onDone) {
@@ -2297,16 +2456,7 @@ function openOrderReceiptModal(res) {
     if (orderReceiptNumber) {
         orderReceiptNumber.textContent = 'Order #' + (res.order_number || '');
     }
-    if (orderReceiptQrCanvas && typeof QRCode !== 'undefined') {
-        QRCode.toCanvas(
-            orderReceiptQrCanvas,
-            lastReceiptUrl,
-            { width: 200, margin: 1, color: { dark: '#120e0a', light: '#ffffff' } },
-            function (err) {
-                if (err) console.warn('Receipt QR render failed', err);
-            }
-        );
-    }
+    renderReceiptQr(lastReceiptUrl);
     if (orderReceiptModal) {
         orderReceiptModal.classList.add('cash-modal-overlay--open');
         orderReceiptModal.setAttribute('aria-hidden', 'false');
@@ -2319,6 +2469,7 @@ function closeOrderReceiptModal() {
         orderReceiptModal.setAttribute('aria-hidden', 'true');
     }
     lastReceiptUrl = '';
+    resetReceiptQrDisplay();
 }
 
 function applyGcashKioskConfig(cfg) {
@@ -2355,15 +2506,57 @@ function loadGcashKioskConfig(force) {
 function buildCheckoutItemRows(items) {
     return (items || []).map(function (item) {
         var qty = parseInt(item.qty, 10) || 1;
-        var lineTotal = (Number(item.price) || 0) * qty;
+        var alist = normalizeAddonsList(item.addons);
+        var baseUnit = computeCartLineBaseUnit(
+            item.menu_item_id,
+            item.temperature || null,
+            item.price,
+            alist
+        );
+        var baseTotal = Math.round(baseUnit * qty * 100) / 100;
+        var addonRowsHtml = alist
+            .map(function (a) {
+                var unitPrice = Number(a.price) || 0;
+                var addonTotal = Math.round(unitPrice * qty * 100) / 100;
+                var label = '+ ' + a.name + (qty > 1 ? ' ×' + qty : '');
+                return (
+                    '<div class="cash-order-subrow">' +
+                    '<span class="cash-order-subname">' +
+                    escapeHtml(label) +
+                    '</span>' +
+                    '<span class="cash-order-subamt">' +
+                    (unitPrice > 0 ? formatCurrency(addonTotal) : '—') +
+                    '</span>' +
+                    '</div>'
+                );
+            })
+            .join('');
+        var metaBits = [];
+        var tempPart = describeTemperatureForCart(item.temperature || null);
+        if (tempPart) metaBits.push(tempPart);
+        if (item.removed && item.removed.length) {
+            metaBits.push('Removed: ' + item.removed.join(', '));
+        }
+        if (item.note) {
+            metaBits.push('Note: ' + item.note);
+        }
+        var metaHtml = metaBits.length
+            ? '<div class="cash-order-details">' + escapeHtml(metaBits.join(' · ')) + '</div>'
+            : '';
         return (
             '<div class="cash-order-row">' +
+            '<div class="cash-order-main">' +
+            '<div class="cash-order-primary">' +
             '<span class="cash-order-name">' +
             escapeHtml(qty + 'x ' + (item.name || 'Item')) +
             '</span>' +
             '<span class="cash-order-amt">' +
-            formatCurrency(lineTotal) +
+            formatCurrency(baseTotal) +
             '</span>' +
+            '</div>' +
+            metaHtml +
+            addonRowsHtml +
+            '</div>' +
             '</div>'
         );
     }).join('');
@@ -2418,7 +2611,7 @@ function renderCheckoutSummary(targetEl, paymentLabel) {
             '<span class="cash-modal-meta-value">' + formatCurrency(totals.vatExempt) + '</span>' +
         '</div>' +
         '<div class="cash-modal-summary-row">' +
-            '<span class="cash-modal-meta-label">Senior/PWD Discount</span>' +
+            '<span class="cash-modal-meta-label">Senior/PWD Discount (20%)</span>' +
             '<span class="cash-modal-meta-value">' + formatCurrency(totals.discountAmount) + '</span>' +
         '</div>'
     );
@@ -2490,9 +2683,10 @@ function closeGcashModal() {
 }
 
 function syncDiscountRequestButtons() {
+    var pct = Math.round(SENIOR_PWD_RATE * 100);
     var label = discountRequest.active
-        ? ('Requested: ' + (discountRequest.type === 'pwd' ? 'PWD' : 'Senior'))
-        : 'Request PWD/SC Discount';
+        ? ('Requested: ' + (discountRequest.type === 'pwd' ? 'PWD' : 'Senior') + ' (' + pct + '%)')
+        : 'Request PWD/SC Discount (' + pct + '%)';
     [document.getElementById('cash-request-pwd-sc-btn'), document.getElementById('gcash-request-pwd-sc-btn')].forEach(function (btn) {
         if (!btn) return;
         btn.textContent = label;
@@ -2520,25 +2714,39 @@ function renderDiscountRequestPreviews() {
 function buildDiscountRequestPreviewHtml() {
     if (!discountRequest.active || !getAllCartItems().length) return '';
     var type = discountRequest.type === 'pwd' ? 'pwd' : 'senior';
-    var typeLabel = type === 'pwd' ? 'PWD' : 'Senior Citizen';
+    var typeLabel = getDiscountLabel(type);
+    var highest = getHighestCartUnitPrice();
+    var markedHighest = false;
     var lines = getAllCartItems().map(function (item) {
         var qty = Math.max(1, parseInt(item.qty, 10) || 1);
-        var gross = Math.round(((Number(item.price) || 0) * qty) * 100) / 100;
-        var priced = calculateDiscountTotals(gross, type);
+        var unit = Math.round((Number(item.price) || 0) * 100) / 100;
+        var gross = Math.round((unit * qty) * 100) / 100;
+        var isHighest = !markedHighest && unit === highest && highest > 0;
+        if (isHighest) markedHighest = true;
+        var discounted = gross;
+        if (isHighest) {
+            var one = calculateDiscountTotals(unit, type, unit);
+            discounted = Math.round((one.total + unit * (qty - 1)) * 100) / 100;
+        }
         return {
             name: qty + 'x ' + (item.name || 'Item'),
             gross: gross,
-            discounted: priced.total
+            discounted: discounted,
+            isHighest: isHighest
         };
     });
-    var discountedTotal = Math.round(lines.reduce(function (sum, line) {
-        return sum + line.discounted;
-    }, 0) * 100) / 100;
+    var orderPricing = calculateDiscountTotals(
+        lines.reduce(function (s, line) { return s + line.gross; }, 0),
+        type,
+        highest
+    );
+    var discountedTotal = orderPricing.total;
 
     var rowsHtml = lines.map(function (line) {
         return (
             '<div class="cash-modal-discount-preview__row">' +
-                '<span class="cash-modal-discount-preview__name">' + escapeHtml(line.name) + '</span>' +
+                '<span class="cash-modal-discount-preview__name">' + escapeHtml(line.name) +
+                    (line.isHighest ? ' <em>(discounted)</em>' : '') + '</span>' +
                 '<span class="cash-modal-discount-preview__prices">' +
                     '<span class="cash-modal-discount-preview__was">' + formatPeso(line.gross) + '</span>' +
                     '<span class="cash-modal-discount-preview__now">' + formatPeso(line.discounted) + '</span>' +
@@ -2548,7 +2756,7 @@ function buildDiscountRequestPreviewHtml() {
     }).join('');
 
     return (
-        '<p class="cash-modal-discount-preview__title">' + escapeHtml(typeLabel) + ' discount preview</p>' +
+        '<p class="cash-modal-discount-preview__title">' + escapeHtml(typeLabel) + ' — highest item only</p>' +
         rowsHtml +
         '<div class="cash-modal-discount-preview__total">' +
             '<span class="cash-modal-discount-preview__total-label">Discounted total</span>' +

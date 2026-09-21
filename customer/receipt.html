@@ -73,8 +73,16 @@
 
             var discountBlock = '';
             if (parseFloat(r.discount_amount || 0) > 0) {
+                var dtype = String(r.discount_type || '').toLowerCase();
+                var discountLabel = 'Discount';
+                if (dtype === 'pwd') discountLabel = 'PWD 20%';
+                else if (dtype === 'senior') discountLabel = 'Senior 20%';
+                else if (dtype === 'custom') {
+                    var rate = Math.round(Number(r.discount_rate) || 0);
+                    discountLabel = rate > 0 ? (rate + '% Discount') : 'Discount';
+                }
                 discountBlock =
-                    '<div class="receipt-total-row"><span>Discount</span><strong>-' + formatPHP(r.discount_amount) + '</strong></div>';
+                    '<div class="receipt-total-row"><span>' + esc(discountLabel) + '</span><strong>-' + formatPHP(r.discount_amount) + '</strong></div>';
             }
             var vatBlock = '';
             if (parseFloat(r.vat_exempt_amount || 0) > 0) {

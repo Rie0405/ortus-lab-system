@@ -1596,24 +1596,20 @@ body {
     width: 100%;
 }
 .receipt-lines__row .receipt-stocks,
-.receipt-lines__row .receipt-in-use,
-.receipt-lines__row .receipt-unit-cost {
+.receipt-lines__row .receipt-in-use {
     padding: 8px 4px;
     text-align: center;
     font-size: 13px;
 }
 .receipt-lines__row .receipt-stocks,
-.receipt-lines__row .receipt-in-use,
-.receipt-lines__row .receipt-unit-cost {
+.receipt-lines__row .receipt-in-use {
     -moz-appearance: textfield;
     appearance: textfield;
 }
 .receipt-lines__row .receipt-stocks::-webkit-outer-spin-button,
 .receipt-lines__row .receipt-stocks::-webkit-inner-spin-button,
 .receipt-lines__row .receipt-in-use::-webkit-outer-spin-button,
-.receipt-lines__row .receipt-in-use::-webkit-inner-spin-button,
-.receipt-lines__row .receipt-unit-cost::-webkit-outer-spin-button,
-.receipt-lines__row .receipt-unit-cost::-webkit-inner-spin-button {
+.receipt-lines__row .receipt-in-use::-webkit-inner-spin-button {
     margin: 0;
 }
 .receipt-line-remove {

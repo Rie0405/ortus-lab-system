@@ -5628,6 +5628,70 @@ button {
     gap: 12px;
 }
 
+.pos-discount-pick-hint {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(244, 140, 37, 0.45);
+    background: rgba(244, 140, 37, 0.12);
+    color: #fbbf24;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.pos-cart-slider.is-discount-pick .order-item {
+    cursor: pointer;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    padding: 8px;
+    margin: -8px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pos-cart-slider.is-discount-pick .order-item:hover {
+    border-color: rgba(244, 140, 37, 0.55);
+    background: rgba(244, 140, 37, 0.08);
+}
+
+.pos-cart-slider.is-discount-pick .order-item.is-discount-selected {
+    border-color: #f48c25;
+    background: rgba(244, 140, 37, 0.16);
+}
+
+.pos-cart-slider.is-discount-pick .order-item .qty,
+.pos-cart-slider.is-discount-pick .order-item .trash-btn {
+    pointer-events: none;
+    opacity: 0.35;
+}
+
+.order-item.has-line-discount .order-price-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    line-height: 1.2;
+}
+
+.order-item.has-line-discount .order-price--orig {
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.order-item.has-line-discount .order-price__pct {
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.92em;
+    white-space: nowrap;
+}
+
+.order-item.has-line-discount .order-price--discounted {
+    color: #facc15;
+    font-weight: 700;
+    font-size: 14px;
+}
+
 .order-item > img {
     width: 48px;
     height: 48px;

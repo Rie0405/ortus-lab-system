@@ -73,7 +73,9 @@ $totalCogs = (float)$cashflow['total_cogs'];
 $grossProfit = (float)$cashflow['gross_profit'];
 $receiptExpenseTotal = receipt_expense_between($pdo, $fromDate, $toDate);
 $adjustedRevenue = $totalRevenue - $receiptExpenseTotal;
-$netCashFlow = round($totalRevenue - $receiptExpenseTotal, 2);
+$totalSellingPrice = (float)($cashflow['total_selling_price'] ?? $grossRevenue);
+$totalCostPrice = (float)($cashflow['total_cost_price'] ?? 0);
+$netCashFlow = round((float)($cashflow['net_cash_flow'] ?? ($totalSellingPrice - $totalCostPrice)), 2);
 $avgOrder = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
 
 $wasteStmt = $pdo->prepare(
@@ -162,6 +164,8 @@ ok([
         'receipt_expense_total' => $receiptExpenseTotal,
         'other_expenses_total' => $otherExpensesTotal,
         'gross_profit'      => $grossProfit,
+        'total_selling_price' => $totalSellingPrice,
+        'total_cost_price'  => $totalCostPrice,
         'net_cash_flow'     => $netCashFlow,
         'total_orders'      => $totalOrders,
         'avg_order_value'   => $avgOrder,

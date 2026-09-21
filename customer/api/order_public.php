@@ -203,7 +203,11 @@ try {
     }
 
     validate_order_discount_payload($discount);
-    $pricing = calculate_order_discount_breakdown($grossAmount, $discount);
+    $pricing = calculate_order_discount_breakdown(
+        $grossAmount,
+        $discount,
+        max_discountable_unit_price_from_rows($itemRows)
+    );
     $total = (float)$pricing['total_amount'];
     $discountAlreadyApplied = ($pricing['discount_type'] ?? 'none') !== 'none';
 

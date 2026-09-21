@@ -16,7 +16,7 @@ ensure_receipt_token_schema($pdo);
 
 $stmt = $pdo->prepare(
     'SELECT o.id, o.order_number, o.order_source, o.status, o.payment_method, o.order_type,
-            o.discount_type, o.discount_customer_name, o.discount_id_number,
+            o.discount_type, o.discount_customer_name, o.discount_id_number, o.discount_rate,
             o.gross_amount, o.vat_exempt_amount, o.discount_amount, o.total_amount,
             o.amount_received, o.change_due, o.created_at
        FROM orders o
@@ -63,6 +63,7 @@ ok([
         'discount_type' => (string)($order['discount_type'] ?? 'none'),
         'discount_customer_name' => (string)($order['discount_customer_name'] ?? ''),
         'discount_id_number' => (string)($order['discount_id_number'] ?? ''),
+        'discount_rate' => $order['discount_rate'] !== null ? (float)$order['discount_rate'] : null,
         'gross_amount' => (float)$order['gross_amount'],
         'vat_exempt_amount' => (float)$order['vat_exempt_amount'],
         'discount_amount' => (float)$order['discount_amount'],

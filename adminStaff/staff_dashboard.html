@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20260910-pos-icons">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20260921-discount-price-v2">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -53,21 +53,6 @@
                     <div class="section-label">CATEGORIES</div>
                     <div class="category-grid" id="pos-category-grid">
                         <!-- populated by JS from api/menu.php -->
-                    </div>
-
-                    <div class="pos-discount-panel" id="pos-discount-panel" hidden>
-                        <div class="pos-discount-panel__head">
-                            <span class="section-label">DISCOUNT RATE</span>
-                            <p class="pos-discount-panel__hint" id="pos-discount-hint">Set the discount rate once. It stays saved until you change it. Click Discounts on any order to apply it.</p>
-                        </div>
-                        <div class="pos-discount-panel__body">
-                            <label class="pos-discount-panel__field">
-                                <span class="pos-discount-panel__label">Discount Rate (%)</span>
-                                <input type="number" class="pay-modal__input" id="pos-discount-rate" min="1" max="100" step="1" inputmode="numeric" placeholder="e.g. 20" aria-label="Discount rate percent">
-                            </label>
-                            <button type="button" class="pos-discount-apply-btn" id="pos-discount-apply-btn">Set Discount Rate</button>
-                            <p class="pos-discount-panel__status" id="pos-discount-status" hidden></p>
-                        </div>
                     </div>
 
                     <div class="menu-top" id="pos-menu-top">
@@ -176,6 +161,7 @@
                         </div>
                     </div>
                     <div class="pos-cart-slider" id="pos-cart-slider" data-active="dine_in">
+                        <p class="pos-discount-pick-hint" id="pos-discount-pick-hint" hidden>Select an order item to apply a discount. Each discount ID can only be used once.</p>
                         <div class="pos-cart-slider__track" id="pos-cart-slider-track">
                             <div class="pos-cart-slider__pane" data-pane="dine_in">
                                 <p class="pos-cart-group__label pos-cart-group__label--dine-in" id="pos-cart-label-dine-in">Orders to dine in:</p>
@@ -195,6 +181,7 @@
                     <div class="totals">
                         <div><span>Gross</span><strong id="pos-subtotal">₱0.00</strong></div>
                         <div id="pos-discount-row"><span id="pos-discount-label">Discount</span><strong id="pos-discount-amount">₱0.00</strong></div>
+                        <div id="pos-vat-exempt-row"><span>VAT exempt (12%)</span><strong id="pos-vat-exempt-amount">₱0.00</strong></div>
                         <div class="total-row"><span>Total</span><strong id="pos-total">₱0.00</strong></div>
                     </div>
 
@@ -1054,8 +1041,8 @@
                     <label class="cash-mgmt-modal__field" for="queue-discount-type">
                         <span class="cash-mgmt-modal__label">Discount Type</span>
                         <select class="cash-mgmt-modal__text" id="queue-discount-type">
-                            <option value="senior">Senior Citizen</option>
-                            <option value="pwd">PWD</option>
+                            <option value="senior">Senior Citizen (20%)</option>
+                            <option value="pwd">PWD (20%)</option>
                             <option value="custom" id="queue-discount-type-custom">Custom (shift rate)</option>
                         </select>
                     </label>
@@ -1069,6 +1056,37 @@
                     </label>
                     <p class="cash-mgmt-modal__error" id="queue-discount-error" hidden role="alert"></p>
                     <button type="button" class="cash-mgmt-modal__submit order-refund-submit" id="queue-discount-submit">SAVE DISCOUNT</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POS Cart Discount Modal (select cart line → ID details) -->
+        <div class="cash-mgmt-backdrop" id="pos-discount-modal" aria-hidden="true">
+            <div class="cash-mgmt-modal order-refund-modal" role="dialog" aria-modal="true" aria-labelledby="pos-discount-modal-title">
+                <header class="cash-mgmt-modal__header">
+                    <h2 class="cash-mgmt-modal__title" id="pos-discount-modal-title">APPLY DISCOUNT</h2>
+                    <button type="button" class="cash-mgmt-modal__close" id="pos-discount-modal-close" aria-label="Close discount dialog">×</button>
+                </header>
+                <div class="cash-mgmt-modal__body">
+                    <p class="order-refund-order-meta" id="pos-discount-modal-meta"></p>
+                    <label class="cash-mgmt-modal__field" for="pos-discount-modal-type">
+                        <span class="cash-mgmt-modal__label">Discount Type</span>
+                        <select class="cash-mgmt-modal__text" id="pos-discount-modal-type">
+                            <option value="senior">Senior Citizen (20%)</option>
+                            <option value="pwd">PWD (20%)</option>
+                            <option value="custom" id="pos-discount-modal-type-custom">Custom (admin rate)</option>
+                        </select>
+                    </label>
+                    <label class="cash-mgmt-modal__field" id="pos-discount-modal-name-wrap">
+                        <span class="cash-mgmt-modal__label">Customer Name</span>
+                        <input type="text" class="cash-mgmt-modal__text" id="pos-discount-modal-name" maxlength="160" placeholder="Customer name">
+                    </label>
+                    <label class="cash-mgmt-modal__field" id="pos-discount-modal-id-wrap">
+                        <span class="cash-mgmt-modal__label">ID Number</span>
+                        <input type="text" class="cash-mgmt-modal__text" id="pos-discount-modal-id" maxlength="80" placeholder="Senior/PWD ID">
+                    </label>
+                    <p class="cash-mgmt-modal__error" id="pos-discount-modal-error" hidden role="alert"></p>
+                    <button type="button" class="cash-mgmt-modal__submit order-refund-submit" id="pos-discount-modal-submit">APPLY DISCOUNT</button>
                 </div>
             </div>
         </div>
@@ -1406,7 +1424,7 @@
             var menuGrid = document.getElementById("pos-menu-grid");
             var menuLabel = document.getElementById("pos-menu-label");
             var menuTop = document.getElementById("pos-menu-top");
-            var posDiscountPanel = document.getElementById("pos-discount-panel");
+            var posDiscountPanel = null;
             var orderList = document.getElementById("pos-order-list");
             var subtotalEl = document.getElementById("pos-subtotal");
             var discountRowEl = document.getElementById("pos-discount-row");
@@ -1418,10 +1436,10 @@
             var posCustomerNameInput = document.getElementById("pos-customer-name");
             var posEditingBanner = document.getElementById("pos-editing-banner");
             var posEditingBannerId = document.getElementById("pos-editing-banner-id");
-            var posDiscountRate = document.getElementById("pos-discount-rate");
-            var posDiscountApplyBtn = document.getElementById("pos-discount-apply-btn");
-            var posDiscountStatus = document.getElementById("pos-discount-status");
-            var posDiscountHint = document.getElementById("pos-discount-hint");
+            var posDiscountRate = null;
+            var posDiscountApplyBtn = null;
+            var posDiscountStatus = null;
+            var posDiscountHint = null;
             var productModal = document.getElementById("pos-product-modal");
             var productModalTitle = document.getElementById("pos-modal-title");
             var productModalTotal = document.getElementById("pos-modal-total");
@@ -1446,6 +1464,22 @@
             var posDiscount = { applied: false };
             var posKioskDiscount = null;
             var posEditingOrder = null;
+            var posDiscountSelectMode = false;
+            /** @type {Array<{bucket:string,idx:number,type:string,rate:number,customer_name:string,id_number:string,price:number}>} */
+            var posLineDiscounts = [];
+            var posDiscountPendingLine = null;
+            var posDiscountPickHint = document.getElementById("pos-discount-pick-hint");
+            var posDiscountModal = document.getElementById("pos-discount-modal");
+            var posDiscountModalClose = document.getElementById("pos-discount-modal-close");
+            var posDiscountModalSubmit = document.getElementById("pos-discount-modal-submit");
+            var posDiscountModalType = document.getElementById("pos-discount-modal-type");
+            var posDiscountModalTypeCustom = document.getElementById("pos-discount-modal-type-custom");
+            var posDiscountModalName = document.getElementById("pos-discount-modal-name");
+            var posDiscountModalId = document.getElementById("pos-discount-modal-id");
+            var posDiscountModalNameWrap = document.getElementById("pos-discount-modal-name-wrap");
+            var posDiscountModalIdWrap = document.getElementById("pos-discount-modal-id-wrap");
+            var posDiscountModalError = document.getElementById("pos-discount-modal-error");
+            var posDiscountModalMeta = document.getElementById("pos-discount-modal-meta");
             var lastMenuCategoryId = null;
             /** When Beverages is selected: 'all' = grouped sections; else filter by getBeverageSectionKey */
             var bevSubFilter = "all";
@@ -1509,6 +1543,26 @@
                 localStorage.setItem(POS_DISCOUNT_RATE_KEY, String(rate));
             }
 
+            function clearShiftDiscountRate() {
+                try { localStorage.removeItem(POS_DISCOUNT_RATE_KEY); } catch (e) {}
+            }
+
+            function syncDiscountRateFromServer() {
+                return fetch("api/discount_rate_config.php", { method: "GET", cache: "no-store" })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) return;
+                        var rate = Math.round(Number(d.rate_value != null ? d.rate_value : d.rate));
+                        if (rate >= 1 && rate <= 100) {
+                            setShiftDiscountRate(rate);
+                        } else {
+                            clearShiftDiscountRate();
+                        }
+                        syncDiscountInputs();
+                    })
+                    .catch(function () {});
+            }
+
             function normalizeDiscountType(value) {
                 var type = String(value || "").trim().toLowerCase();
                 return type === "senior" || type === "pwd" || type === "custom" ? type : "none";
@@ -1516,112 +1570,204 @@
 
             function getDiscountLabel(discount) {
                 var type = normalizeDiscountType(discount && discount.type);
+                var seniorPwdPct = Math.round(SENIOR_PWD_RATE * 100);
+                if (discount && Array.isArray(discount.lines) && discount.lines.length > 1) {
+                    return "Discounts (" + discount.lines.length + ")";
+                }
                 if (type === "custom") {
                     var rate = Math.round(Number(discount.rate) || 0);
                     return rate > 0 ? rate + "% Discount" : "Custom Discount";
                 }
-                if (type === "senior") return "Senior Citizen";
-                if (type === "pwd") return "PWD";
+                if (type === "senior") return "Senior Citizen (" + seniorPwdPct + "%)";
+                if (type === "pwd") return "PWD (" + seniorPwdPct + "%)";
                 return "None";
             }
 
+            function normalizeDiscountIdKey(id) {
+                return String(id || "").trim().toUpperCase().replace(/\s+/g, "");
+            }
+
+            function getLineDiscount(bucket, idx) {
+                for (var i = 0; i < posLineDiscounts.length; i++) {
+                    var d = posLineDiscounts[i];
+                    if (d.bucket === bucket && d.idx === idx) return d;
+                }
+                return null;
+            }
+
+            function isDiscountIdUsedOnOtherLine(idNumber, exceptBucket, exceptIdx) {
+                var key = normalizeDiscountIdKey(idNumber);
+                if (!key) return false;
+                return posLineDiscounts.some(function (d) {
+                    if (d.bucket === exceptBucket && d.idx === exceptIdx) return false;
+                    return normalizeDiscountIdKey(d.id_number) === key;
+                });
+            }
+
+            function upsertLineDiscount(entry) {
+                var found = false;
+                for (var i = 0; i < posLineDiscounts.length; i++) {
+                    if (posLineDiscounts[i].bucket === entry.bucket && posLineDiscounts[i].idx === entry.idx) {
+                        posLineDiscounts[i] = entry;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) posLineDiscounts.push(entry);
+            }
+
+            function removeLineDiscount(bucket, idx) {
+                posLineDiscounts = posLineDiscounts.filter(function (d) {
+                    return !(d.bucket === bucket && d.idx === idx);
+                });
+            }
+
+            function clearAllPosDiscounts() {
+                posLineDiscounts = [];
+                posKioskDiscount = null;
+                posDiscountPendingLine = null;
+                posDiscount = { applied: false };
+            }
+
+            function lineDiscountPercent(d) {
+                if (!d) return 0;
+                if (normalizeDiscountType(d.type) === "custom") {
+                    return Math.round(Number(d.rate) || 0);
+                }
+                return Math.round(SENIOR_PWD_RATE * 100);
+            }
+
+            function lineDiscountAmount(d) {
+                if (!d) return 0;
+                var unit = Math.round((Number(d.price) || 0) * 100) / 100;
+                var pct = lineDiscountPercent(d);
+                return Math.round(unit * (pct / 100) * 100) / 100;
+            }
+
             function getPosDiscountPayload() {
-                if (posKioskDiscount) {
+                if (posKioskDiscount && !posLineDiscounts.length) {
                     return {
                         type: posKioskDiscount.type || "none",
                         rate: posKioskDiscount.rate || 0,
                         customer_name: posKioskDiscount.customer_name || "",
-                        id_number: posKioskDiscount.id_number || ""
+                        id_number: posKioskDiscount.id_number || "",
+                        lines: []
                     };
                 }
-                if (!posDiscount.applied) {
-                    return { type: "none", rate: 0 };
+                if (!posLineDiscounts.length) {
+                    return { type: "none", rate: 0, customer_name: "", id_number: "", lines: [] };
                 }
-                var shiftRate = getShiftDiscountRate();
-                if (!shiftRate) {
-                    return { type: "none", rate: 0 };
-                }
-                return { type: "custom", rate: shiftRate };
+                var first = posLineDiscounts[0];
+                return {
+                    type: first.type || "custom",
+                    rate: first.type === "custom" ? (first.rate || getShiftDiscountRate() || 0) : 0,
+                    customer_name: first.customer_name || "",
+                    id_number: first.id_number || "",
+                    lines: posLineDiscounts.map(function (d) {
+                        return {
+                            type: d.type,
+                            rate: d.type === "custom" ? (d.rate || 0) : 0,
+                            customer_name: d.customer_name || "",
+                            id_number: d.id_number || "",
+                            unit_price: Math.round((Number(d.price) || 0) * 100) / 100,
+                            bucket: d.bucket,
+                            idx: d.idx
+                        };
+                    })
+                };
             }
 
-            function calculateDiscountTotals(grossAmount, discount) {
+            function getHighestCartUnitPrice() {
+                var max = 0;
+                getAllPosCartLines().forEach(function (item) {
+                    var p = Number(item.price) || 0;
+                    if (p > max) max = p;
+                });
+                return Math.round(max * 100) / 100;
+            }
+
+            function calculatePosCartPricing() {
+                var gross = getAllPosCartLines().reduce(function (sum, i) {
+                    return sum + (Number(i.price) || 0) * (Number(i.quantity) || 0);
+                }, 0);
+                gross = Math.round(gross * 100) / 100;
+
+                if (posKioskDiscount && !posLineDiscounts.length) {
+                    return calculateDiscountTotals(gross, getPosDiscountPayload(), getHighestCartUnitPrice());
+                }
+
+                if (!posLineDiscounts.length) {
+                    return { gross: gross, vatExempt: 0, discountAmount: 0, total: gross, type: "none", rate: 0, discountable: 0 };
+                }
+
+                var discountAmount = 0;
+                var discountable = 0;
+                posLineDiscounts.forEach(function (d) {
+                    discountable += Math.round((Number(d.price) || 0) * 100) / 100;
+                    discountAmount += lineDiscountAmount(d);
+                });
+                discountAmount = Math.round(discountAmount * 100) / 100;
+                discountable = Math.round(discountable * 100) / 100;
+                var payload = getPosDiscountPayload();
+                return {
+                    gross: gross,
+                    vatExempt: 0,
+                    discountAmount: discountAmount,
+                    total: Math.round(Math.max(0, gross - discountAmount) * 100) / 100,
+                    type: payload.type,
+                    rate: payload.rate || 0,
+                    discountable: discountable
+                };
+            }
+
+            function calculateDiscountTotals(grossAmount, discount, discountableAmount) {
                 var gross = Math.round((Number(grossAmount) || 0) * 100) / 100;
                 var type = normalizeDiscountType(discount && discount.type);
                 if (type === "none" || gross <= 0) {
-                    return { gross: gross, vatExempt: 0, discountAmount: 0, total: gross, type: "none", rate: 0 };
+                    return { gross: gross, vatExempt: 0, discountAmount: 0, total: gross, type: "none", rate: 0, discountable: 0 };
                 }
+
+                var eligible = Math.round((Number(discountableAmount) || 0) * 100) / 100;
+                if (!(eligible > 0)) eligible = gross;
+                eligible = Math.min(gross, Math.max(0, eligible));
+                var remainder = Math.round((gross - eligible) * 100) / 100;
 
                 if (type === "custom") {
                     var rate = Math.max(0, Math.min(100, Number(discount.rate) || 0));
-                    var customDiscount = gross * (rate / 100);
-                    var customTotal = gross - customDiscount;
+                    var customDiscount = eligible * (rate / 100);
+                    var customEligibleTotal = eligible - customDiscount;
                     return {
                         gross: gross,
                         vatExempt: 0,
                         discountAmount: Math.round(customDiscount * 100) / 100,
-                        total: Math.round(customTotal * 100) / 100,
+                        total: Math.round((remainder + customEligibleTotal) * 100) / 100,
                         type: "custom",
-                        rate: rate
+                        rate: rate,
+                        discountable: eligible
                     };
                 }
 
-                var vatExemptBase = gross / (1 + VAT_RATE);
-                var vatExempt = gross - vatExemptBase;
-                var seniorPwdDiscount = vatExemptBase * SENIOR_PWD_RATE;
-                var total = vatExemptBase - seniorPwdDiscount;
+                // Senior/PWD: plain % off eligible amount (no VAT strip).
+                var seniorPwdDiscount = eligible * SENIOR_PWD_RATE;
+                var eligibleTotal = eligible - seniorPwdDiscount;
 
                 return {
                     gross: Math.round(gross * 100) / 100,
-                    vatExempt: Math.round(vatExempt * 100) / 100,
-                    discountAmount: Math.round((vatExempt + seniorPwdDiscount) * 100) / 100,
-                    total: Math.round(total * 100) / 100,
+                    vatExempt: 0,
+                    discountAmount: Math.round(seniorPwdDiscount * 100) / 100,
+                    total: Math.round((remainder + eligibleTotal) * 100) / 100,
                     type: type,
-                    rate: 0
+                    rate: Math.round(SENIOR_PWD_RATE * 100),
+                    discountable: eligible
                 };
             }
 
             function syncDiscountInputs() {
-                var shiftRate = getShiftDiscountRate();
-                var orderApplied = !!posDiscount.applied;
-
-                if (posDiscountRate) {
-                    posDiscountRate.value = shiftRate ? String(shiftRate) : "";
-                    posDiscountRate.disabled = false;
-                }
-                if (posDiscountApplyBtn) {
-                    posDiscountApplyBtn.hidden = false;
-                    posDiscountApplyBtn.disabled = false;
-                    posDiscountApplyBtn.textContent = shiftRate ? "Update Discount Rate" : "Set Discount Rate";
-                }
-                if (posDiscountHint) {
-                    posDiscountHint.textContent = shiftRate
-                        ? shiftRate + "% is saved. Click Discounts on any order to apply it. Update the rate here when needed."
-                        : "Set the discount rate once. It stays saved until you change it. Click Discounts on any order to apply it.";
-                }
-                if (posDiscountStatus) {
-                    if (shiftRate && orderApplied) {
-                        posDiscountStatus.hidden = false;
-                        posDiscountStatus.textContent = shiftRate + "% discount applied to this order.";
-                    } else if (shiftRate) {
-                        posDiscountStatus.hidden = false;
-                        posDiscountStatus.textContent = shiftRate + "% ready. Click the Discounts button to apply on this order.";
-                    } else {
-                        posDiscountStatus.hidden = true;
-                        posDiscountStatus.textContent = "";
-                    }
-                }
+                // Rate is configured on admin Menu Management; staff only applies it.
             }
 
             function saveShiftDiscountRate() {
-                var rate = Math.round(Number(posDiscountRate && posDiscountRate.value));
-                if (!Number.isFinite(rate) || rate < 1 || rate > 100) {
-                    alert("Enter a discount rate between 1 and 100.");
-                    return;
-                }
-                setShiftDiscountRate(rate);
-                syncDiscountInputs();
-                renderCategories();
-                updatePosMainView();
+                // no-op: rate is set by admin
             }
 
             function getPosActiveCartArray() {
@@ -1679,17 +1825,174 @@
             }
 
             function applyShiftDiscountToOrder() {
-                var shiftRate = getShiftDiscountRate();
-                if (!shiftRate) return false;
-                if (posCartIsEmpty()) {
-                    alert("Add items to the order first, then click Discounts to apply " + shiftRate + "% off.");
-                    return false;
+                return false;
+            }
+
+            function setPosDiscountSelectMode(on) {
+                posDiscountSelectMode = !!on;
+                if (posCartSlider) posCartSlider.classList.toggle("is-discount-pick", posDiscountSelectMode);
+                if (posDiscountPickHint) {
+                    posDiscountPickHint.hidden = !posDiscountSelectMode;
+                    if (posDiscountSelectMode) {
+                        posDiscountPickHint.textContent = "Select an order item to apply a discount. Each discount ID can only be used once.";
+                    }
                 }
+                if (!posDiscountSelectMode) {
+                    posDiscountPendingLine = null;
+                    document.querySelectorAll(".order-item.is-discount-selected").forEach(function (el) {
+                        el.classList.remove("is-discount-selected");
+                    });
+                }
+                renderCategories();
+                updatePosMainView();
+                renderOrderList();
+            }
+
+            function showPosDiscountModalError(msg) {
+                if (!posDiscountModalError) return;
+                if (!msg) {
+                    posDiscountModalError.hidden = true;
+                    posDiscountModalError.textContent = "";
+                    return;
+                }
+                posDiscountModalError.textContent = msg;
+                posDiscountModalError.hidden = false;
+            }
+
+            function syncPosDiscountModalIdFields() {
+                var type = posDiscountModalType ? posDiscountModalType.value : "senior";
+                var needsId = type === "senior" || type === "pwd";
+                if (posDiscountModalNameWrap) posDiscountModalNameWrap.hidden = !needsId;
+                if (posDiscountModalIdWrap) posDiscountModalIdWrap.hidden = !needsId;
+            }
+
+            function syncPosDiscountModalCustomOption() {
+                var shiftRate = getShiftDiscountRate();
+                if (!posDiscountModalTypeCustom) return shiftRate;
+                if (shiftRate) {
+                    posDiscountModalTypeCustom.hidden = false;
+                    posDiscountModalTypeCustom.disabled = false;
+                    posDiscountModalTypeCustom.textContent = "Custom (" + shiftRate + "%)";
+                } else {
+                    posDiscountModalTypeCustom.hidden = true;
+                    posDiscountModalTypeCustom.disabled = true;
+                    posDiscountModalTypeCustom.textContent = "Custom (admin rate not set)";
+                    if (posDiscountModalType && posDiscountModalType.value === "custom") {
+                        posDiscountModalType.value = "senior";
+                    }
+                }
+                return shiftRate;
+            }
+
+            function openPosDiscountDetailsModal(bucket, idx) {
+                var items = posCarts[bucket];
+                var item = items && items[idx];
+                if (!item) return;
+
+                posDiscountPendingLine = {
+                    bucket: bucket,
+                    idx: idx,
+                    price: Number(item.price) || 0,
+                    name: item.name || "Item",
+                    quantity: item.quantity || 1
+                };
+
+                document.querySelectorAll(".order-item.is-discount-selected").forEach(function (el) {
+                    el.classList.remove("is-discount-selected");
+                });
+                var row = document.querySelector('.order-item[data-cart-bucket="' + bucket + '"][data-cart-idx="' + idx + '"]');
+                if (row) row.classList.add("is-discount-selected");
+
+                var existing = getLineDiscount(bucket, idx);
+                syncPosDiscountModalCustomOption();
+                if (posDiscountModalType) {
+                    posDiscountModalType.value = existing && existing.type ? existing.type : "senior";
+                }
+                if (posDiscountModalName) {
+                    posDiscountModalName.value = (existing && existing.customer_name) || getPosCustomerName() || "";
+                }
+                if (posDiscountModalId) {
+                    posDiscountModalId.value = (existing && existing.id_number) || "";
+                }
+                syncPosDiscountModalIdFields();
+                showPosDiscountModalError("");
+
+                if (posDiscountModalMeta) {
+                    posDiscountModalMeta.textContent =
+                        (item.name || "Item") + " · " + formatPHP(Number(item.price) || 0) + " (1 serving)";
+                }
+
+                if (posDiscountModal) {
+                    posDiscountModal.classList.add("is-visible");
+                    posDiscountModal.setAttribute("aria-hidden", "false");
+                }
+                if (posDiscountModalName) setTimeout(function () { posDiscountModalName.focus(); }, 40);
+            }
+
+            function closePosDiscountDetailsModal() {
+                if (posDiscountModal) {
+                    posDiscountModal.classList.remove("is-visible");
+                    posDiscountModal.setAttribute("aria-hidden", "true");
+                }
+                showPosDiscountModalError("");
+            }
+
+            function submitPosDiscountDetails() {
+                var type = posDiscountModalType ? posDiscountModalType.value : "senior";
+                if (type !== "senior" && type !== "pwd" && type !== "custom") {
+                    showPosDiscountModalError("Select a discount type.");
+                    return;
+                }
+
+                var shiftRate = getShiftDiscountRate();
+                if (type === "custom" && !shiftRate) {
+                    showPosDiscountModalError("Ask admin to set the discount rate in Menu Management first.");
+                    return;
+                }
+
+                var customerName = posDiscountModalName ? posDiscountModalName.value.trim() : "";
+                var idNumber = posDiscountModalId ? posDiscountModalId.value.trim() : "";
+                if (type === "senior" || type === "pwd") {
+                    if (!customerName) {
+                        showPosDiscountModalError("Customer name is required.");
+                        return;
+                    }
+                    if (!idNumber) {
+                        showPosDiscountModalError("ID number is required.");
+                        return;
+                    }
+                    if (!posDiscountPendingLine) {
+                        showPosDiscountModalError("Select an order item first.");
+                        return;
+                    }
+                    if (isDiscountIdUsedOnOtherLine(idNumber, posDiscountPendingLine.bucket, posDiscountPendingLine.idx)) {
+                        showPosDiscountModalError("This discount ID is already used on another item in this order. Use a different ID.");
+                        return;
+                    }
+                }
+
+                if (!posDiscountPendingLine) {
+                    showPosDiscountModalError("Select an order item first.");
+                    return;
+                }
+
                 posKioskDiscount = null;
-                posDiscount.applied = true;
+                upsertLineDiscount({
+                    bucket: posDiscountPendingLine.bucket,
+                    idx: posDiscountPendingLine.idx,
+                    type: type,
+                    rate: type === "custom" ? shiftRate : 0,
+                    customer_name: customerName,
+                    id_number: idNumber,
+                    price: Number(posDiscountPendingLine.price) || 0
+                });
+                posDiscount = { applied: posLineDiscounts.length > 0 };
+
+                closePosDiscountDetailsModal();
+                // Stay in select mode so staff can apply another (different) discount ID.
+                posDiscountPendingLine = null;
+                renderOrderList();
                 updateTotals();
-                syncDiscountInputs();
-                return true;
             }
 
             function updateConfirmButtonForEditing() {
@@ -1738,22 +2041,33 @@
                 }
                 if (posCustomerNameInput) posCustomerNameInput.value = customerName;
 
-                posKioskDiscount = null;
-                posDiscount = { applied: false };
+                clearAllPosDiscounts();
                 var dtype = normalizeDiscountType(order.discount_type);
-                if (dtype === "senior" || dtype === "pwd") {
-                    posKioskDiscount = {
-                        type: dtype,
-                        rate: 0,
-                        customer_name: order.discount_customer_name || "",
-                        id_number: order.discount_id_number || ""
-                    };
-                } else if (dtype === "custom") {
+                if (dtype === "senior" || dtype === "pwd" || dtype === "custom") {
+                    var attachIdx = 0;
+                    var attachPrice = 0;
+                    posCarts.dine_in.forEach(function (it, i) {
+                        var p = Number(it.price) || 0;
+                        if (p > attachPrice) {
+                            attachPrice = p;
+                            attachIdx = i;
+                        }
+                    });
                     var customRate = Math.round(Number(order.discount_rate) || 0);
-                    if (customRate > 0) {
-                        posKioskDiscount = { type: "custom", rate: customRate };
+                    if (dtype === "custom" && customRate <= 0) customRate = getShiftDiscountRate() || 0;
+                    if (dtype !== "custom" || customRate > 0) {
+                        upsertLineDiscount({
+                            bucket: "dine_in",
+                            idx: attachIdx,
+                            type: dtype,
+                            rate: dtype === "custom" ? customRate : 0,
+                            customer_name: order.discount_customer_name || "",
+                            id_number: order.discount_id_number || "",
+                            price: attachPrice || (posCarts.dine_in[attachIdx] && posCarts.dine_in[attachIdx].price) || 0
+                        });
                     }
                 }
+                posDiscount = { applied: posLineDiscounts.length > 0 };
 
                 var pickupTime = "";
                 if (typeof window.getPickupLaterTimeFromOrder === "function") {
@@ -1833,9 +2147,14 @@
 
             function getDefaultMenuCategoryId() {
                 if (lastMenuCategoryId !== null && lastMenuCategoryId !== POS_DISCOUNT_VIEW) {
-                    return lastMenuCategoryId;
+                    var lastCat = (menuData.categories || []).find(function (c) { return c.id === lastMenuCategoryId; });
+                    if (lastCat && !isAddonCategoryName(lastCat.name)) return lastMenuCategoryId;
                 }
-                if (menuData.categories.length) return menuData.categories[0].id;
+                for (var i = 0; i < (menuData.categories || []).length; i++) {
+                    if (!isAddonCategoryName(menuData.categories[i].name)) {
+                        return menuData.categories[i].id;
+                    }
+                }
                 return null;
             }
 
@@ -2283,41 +2602,45 @@
             }
 
             function updatePosMainView() {
-                var discountMode = isDiscountViewActive();
-                if (posDiscountPanel) posDiscountPanel.hidden = !discountMode;
-                if (menuTop) menuTop.hidden = discountMode;
-                if (menuGrid) menuGrid.hidden = discountMode;
-                if (discountMode) {
-                    if (menuLabel) menuLabel.textContent = "DISCOUNTS";
-                    syncDiscountInputs();
-                } else {
-                    renderMenu();
-                }
+                if (posDiscountPanel) posDiscountPanel.hidden = true;
+                if (menuTop) menuTop.hidden = false;
+                if (menuGrid) menuGrid.hidden = false;
+                renderMenu();
             }
 
             function renderCategories() {
                 if (!categoryGrid) return;
                 var html = "";
                 var first = true;
-                menuData.categories.forEach(function (cat) {
+                var visibleCats = (menuData.categories || []).filter(function (cat) {
+                    // Hide Add-ons category tab; registered addons remain in product customize modal.
+                    return !isAddonCategoryName(cat.name);
+                });
+                if (selectedCategoryId !== null && selectedCategoryId !== BEVERAGES_MERGED_ID && selectedCategoryId !== POS_DISCOUNT_VIEW) {
+                    var stillVisible = visibleCats.some(function (c) { return c.id === selectedCategoryId; });
+                    if (!stillVisible) selectedCategoryId = null;
+                }
+                visibleCats.forEach(function (cat) {
                     var iconSrc = getPosCategoryIconSrc(cat);
                     var hasCustom = !!(cat && cat.icon_url);
                     if (first && selectedCategoryId === null) selectedCategoryId = cat.id;
                     var active = selectedCategoryId === cat.id;
                     first = false;
-                    html += "<button type=\"button\" class=\"category-card" + (active ? " category-card--active" : "") + (hasCustom ? " category-card--custom-icon" : "") + (isAddonCategoryName(cat.name) ? " category-card--addons" : "") + "\" data-cat-id=\"" + cat.id + "\">" +
+                    html += "<button type=\"button\" class=\"category-card" + (active ? " category-card--active" : "") + (hasCustom ? " category-card--custom-icon" : "") + "\" data-cat-id=\"" + cat.id + "\">" +
                         "<span class=\"category-icon\"><img src=\"" + escHtml(iconSrc) + "\" alt=\"\"></span>" +
                         escHtml(cat.name || "Category") + "</button>";
                 });
-                var discountActive = isDiscountViewActive();
+                var discountActive = isDiscountViewActive() || posDiscountSelectMode;
                 var shiftRate = getShiftDiscountRate();
-                var discountLabel = shiftRate ? "Discounts (" + shiftRate + "%)" : "Discounts";
+                var discountLabel = posDiscountSelectMode
+                    ? "Cancel Select"
+                    : (shiftRate ? "Discounts (" + shiftRate + "%)" : "Discounts");
                 html += "<button type=\"button\" class=\"category-card category-card--discount" + (discountActive ? " category-card--active" : "") + "\" data-cat-id=\"" + POS_DISCOUNT_VIEW + "\">" +
                     "<span class=\"category-icon\"><img src=\"icons_admin/money_icon.svg\" alt=\"\"></span>" +
                     discountLabel + "</button>";
                 categoryGrid.innerHTML = html || "<p class=\"pos-muted\">No categories</p>";
-                if (menuLabel && menuData.categories.length && !discountActive) {
-                    var activeCat = menuData.categories.find(function (c) { return c.id === selectedCategoryId; }) || menuData.categories[0];
+                if (menuLabel && visibleCats.length && !discountActive) {
+                    var activeCat = visibleCats.find(function (c) { return c.id === selectedCategoryId; }) || visibleCats[0];
                     menuLabel.textContent = (activeCat.name || "MENU") + " MENU";
                 }
 
@@ -2325,16 +2648,29 @@
                     btn.addEventListener("click", function () {
                         var catAttr = btn.getAttribute("data-cat-id");
                         if (catAttr === POS_DISCOUNT_VIEW) {
-                            if (getShiftDiscountRate()) {
-                                if (applyShiftDiscountToOrder()) {
+                            syncDiscountRateFromServer().then(function () {
+                                if (posCartIsEmpty()) {
+                                    alert("Add items to the order first, then click Discounts.");
+                                    selectedCategoryId = getDefaultMenuCategoryId();
+                                    renderCategories();
+                                    updatePosMainView();
+                                    return;
+                                }
+                                if (posDiscountSelectMode) {
+                                    setPosDiscountSelectMode(false);
                                     selectedCategoryId = getDefaultMenuCategoryId();
                                 } else {
                                     selectedCategoryId = POS_DISCOUNT_VIEW;
+                                    setPosDiscountSelectMode(true);
                                 }
-                            } else {
-                                selectedCategoryId = POS_DISCOUNT_VIEW;
-                            }
+                            });
+                            return;
                         } else {
+                            if (posDiscountSelectMode) {
+                                posDiscountSelectMode = false;
+                                if (posCartSlider) posCartSlider.classList.remove("is-discount-pick");
+                                if (posDiscountPickHint) posDiscountPickHint.hidden = true;
+                            }
                             selectedCategoryId = parseInt(catAttr, 10);
                             lastMenuCategoryId = selectedCategoryId;
                             bevSubFilter = "all";
@@ -2355,7 +2691,7 @@
             function getPosBeverageMenuItems() {
                 if (selectedCategoryId !== BEVERAGES_MERGED_ID || !beverageCategoryIds.length) return [];
                 return menuData.items.filter(function (i) {
-                    return beverageCategoryIds.indexOf(i.category_id) !== -1;
+                    return !isAddonCardItem(i) && beverageCategoryIds.indexOf(i.category_id) !== -1;
                 });
             }
 
@@ -2432,12 +2768,14 @@
                 var items;
                 if (selectedCategoryId === BEVERAGES_MERGED_ID && beverageCategoryIds.length) {
                     items = menuData.items.filter(function (i) {
-                        return beverageCategoryIds.indexOf(i.category_id) !== -1;
+                        return !isAddonCardItem(i) && beverageCategoryIds.indexOf(i.category_id) !== -1;
                     });
                 } else if (selectedCategoryId != null) {
-                    items = menuData.items.filter(function (i) { return i.category_id === selectedCategoryId; });
+                    items = menuData.items.filter(function (i) {
+                        return !isAddonCardItem(i) && i.category_id === selectedCategoryId;
+                    });
                 } else {
-                    items = menuData.items;
+                    items = menuData.items.filter(function (i) { return !isAddonCardItem(i); });
                 }
                 if (!items.length) {
                     menuGrid.innerHTML = "<p class=\"pos-muted\">No items in this category</p>";
@@ -2693,13 +3031,41 @@
                 );
             }
 
+            function getAppliedDiscountPercentLabel() {
+                return "";
+            }
+
             function buildPosOrderItemHtml(item, bucket, idx) {
                 var lineTotal = item.price * item.quantity;
-                return "<article class=\"order-item\" data-cart-bucket=\"" + bucket + "\" data-cart-idx=\"" + idx + "\">" +
+                var selectCls = posDiscountSelectMode ? " order-item--selectable" : "";
+                var lineDisc = getLineDiscount(bucket, idx);
+                var isPending = !!(
+                    posDiscountPendingLine &&
+                    posDiscountPendingLine.bucket === bucket &&
+                    posDiscountPendingLine.idx === idx
+                );
+                var selectedCls = (posDiscountSelectMode && isPending) ? " is-discount-selected" : "";
+                var hasDiscountCls = "";
+                var priceHtml = "<strong>" + formatPHP(lineTotal) + "</strong>";
+                if (lineDisc) {
+                    hasDiscountCls = " has-line-discount";
+                    var pctNum = lineDiscountPercent(lineDisc);
+                    var pctLabel = pctNum > 0 ? pctNum + "%" : "";
+                    var unitDiscount = lineDiscountAmount(lineDisc);
+                    var discountedLineTotal = Math.round(Math.max(0, lineTotal - unitDiscount) * 100) / 100;
+                    priceHtml =
+                        "<div class=\"order-price-stack\">" +
+                        "<strong class=\"order-price order-price--orig\">" + formatPHP(lineTotal) +
+                        (pctLabel ? (" <span class=\"order-price__pct\">(" + pctLabel + ")</span>") : "") +
+                        "</strong>" +
+                        "<strong class=\"order-price order-price--discounted\">" + formatPHP(discountedLineTotal) + "</strong>" +
+                        "</div>";
+                }
+                return "<article class=\"order-item" + selectCls + selectedCls + hasDiscountCls + "\" data-cart-bucket=\"" + bucket + "\" data-cart-idx=\"" + idx + "\">" +
                     "<img src=\"" + placeholderImg + "\" alt=\"" + (item.name || "").replace(/"/g, "&quot;") + "\">" +
                     "<div class=\"order-copy\"><h4>" + escapePosHtml(item.name || "Item") + "</h4>" +
                     formatPosCartItemDetailHtml(item) + "</div>" +
-                    "<div class=\"order-right\"><strong>" + formatPHP(lineTotal) + "</strong>" +
+                    "<div class=\"order-right\">" + priceHtml +
                     "<div class=\"qty\"><button class=\"qty-minus\">-</button>" +
                         "<input class=\"qty-input\" type=\"number\" min=\"1\" step=\"1\" inputmode=\"numeric\" value=\"" + item.quantity + "\">" +
                         "<button class=\"qty-plus\">+</button></div></div>" +
@@ -2711,13 +3077,25 @@
                 var items = posCarts[bucket];
                 container.querySelectorAll(".order-item").forEach(function (row) {
                     var idx = parseInt(row.getAttribute("data-cart-idx"), 10);
+                    if (posDiscountSelectMode) {
+                        row.addEventListener("click", function (e) {
+                            e.preventDefault();
+                            openPosDiscountDetailsModal(bucket, idx);
+                        });
+                        return;
+                    }
                     var plus = row.querySelector(".qty-plus");
                     var minus = row.querySelector(".qty-minus");
                     var qtyInput = row.querySelector(".qty-input");
                     var trash = row.querySelector(".trash-btn");
                     if (plus) plus.addEventListener("click", function () { items[idx].quantity++; renderOrderList(); });
                     if (minus) minus.addEventListener("click", function () {
-                        if (items[idx].quantity <= 1) { items.splice(idx, 1); } else { items[idx].quantity--; }
+                        if (items[idx].quantity <= 1) {
+                            clearDiscountIfTargetRemoved(bucket, idx);
+                            items.splice(idx, 1);
+                        } else {
+                            items[idx].quantity--;
+                        }
                         renderOrderList();
                     });
                     if (qtyInput) {
@@ -2734,8 +3112,24 @@
                             }
                         });
                     }
-                    if (trash) trash.addEventListener("click", function () { items.splice(idx, 1); renderOrderList(); });
+                    if (trash) trash.addEventListener("click", function () {
+                        clearDiscountIfTargetRemoved(bucket, idx);
+                        items.splice(idx, 1);
+                        renderOrderList();
+                    });
                 });
+            }
+
+            function clearDiscountIfTargetRemoved(bucket, idx) {
+                removeLineDiscount(bucket, idx);
+                posLineDiscounts.forEach(function (d) {
+                    if (d.bucket === bucket && d.idx > idx) d.idx -= 1;
+                });
+                if (posDiscountPendingLine && posDiscountPendingLine.bucket === bucket) {
+                    if (posDiscountPendingLine.idx === idx) posDiscountPendingLine = null;
+                    else if (posDiscountPendingLine.idx > idx) posDiscountPendingLine.idx -= 1;
+                }
+                posDiscount = { applied: posLineDiscounts.length > 0 };
             }
 
             function renderOrderList() {
@@ -2762,12 +3156,18 @@
             }
 
             function updateTotals() {
-                var subtotal = getAllPosCartLines().reduce(function (sum, i) { return sum + i.price * i.quantity; }, 0);
+                var pricing = calculatePosCartPricing();
                 var discountPayload = getPosDiscountPayload();
-                var pricing = calculateDiscountTotals(subtotal, discountPayload);
                 if (subtotalEl) subtotalEl.textContent = formatPHP(pricing.gross);
                 if (discountRowEl) discountRowEl.hidden = false;
-                if (discountLabelEl) discountLabelEl.textContent = "Discount";
+                if (discountLabelEl) {
+                    if (normalizeDiscountType(discountPayload.type) !== "none" || (discountPayload.lines && discountPayload.lines.length)) {
+                        discountLabelEl.textContent = getDiscountLabel(discountPayload);
+                    } else {
+                        var shiftRate = getShiftDiscountRate();
+                        discountLabelEl.textContent = shiftRate ? ("Discount (" + shiftRate + "%)") : "Discount";
+                    }
+                }
                 if (discountAmountEl) discountAmountEl.textContent = formatPHP(pricing.discountAmount);
                 if (totalEl) totalEl.textContent = formatPHP(pricing.total);
             }
@@ -2794,9 +3194,9 @@
 
             function clearCart() {
                 clearPosCarts();
-                posDiscount = { applied: false };
-                posKioskDiscount = null;
+                clearAllPosDiscounts();
                 posEditingOrder = null;
+                if (posDiscountSelectMode) setPosDiscountSelectMode(false);
                 if (posCustomerNameInput) posCustomerNameInput.value = "";
                 syncDiscountInputs();
                 updateConfirmButtonForEditing();
@@ -2806,15 +3206,28 @@
             }
 
             if (cancelBtn) cancelBtn.addEventListener("click", clearCart);
-            if (posDiscountApplyBtn) posDiscountApplyBtn.addEventListener("click", saveShiftDiscountRate);
-            if (posDiscountRate) {
-                posDiscountRate.addEventListener("keydown", function (e) {
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        saveShiftDiscountRate();
-                    }
+
+            if (posDiscountModalType) {
+                posDiscountModalType.addEventListener("change", syncPosDiscountModalIdFields);
+            }
+            if (posDiscountModalClose) posDiscountModalClose.addEventListener("click", closePosDiscountDetailsModal);
+            if (posDiscountModalSubmit) posDiscountModalSubmit.addEventListener("click", submitPosDiscountDetails);
+            if (posDiscountModal) {
+                posDiscountModal.addEventListener("click", function (e) {
+                    if (e.target === posDiscountModal) closePosDiscountDetailsModal();
                 });
             }
+            document.addEventListener("keydown", function (e) {
+                if (e.key !== "Escape") return;
+                if (posDiscountModal && posDiscountModal.classList.contains("is-visible")) {
+                    closePosDiscountDetailsModal();
+                    return;
+                }
+                if (posDiscountSelectMode) {
+                    selectedCategoryId = getDefaultMenuCategoryId();
+                    setPosDiscountSelectMode(false);
+                }
+            });
 
             if (confirmBtn) confirmBtn.addEventListener("click", function () {
                 if (posCartIsEmpty()) return;
@@ -2827,7 +3240,7 @@
                 }
                 var subtotal = getAllPosCartLines().reduce(function (s, i) { return s + i.price * i.quantity; }, 0);
                 var discount = getPosDiscountPayload();
-                var pricing = calculateDiscountTotals(subtotal, discount);
+                var pricing = calculatePosCartPricing();
                 window.dispatchEvent(new CustomEvent("pos-request-payment", {
                     detail: {
                         total: pricing.total,
@@ -2858,7 +3271,6 @@
 
             window.addEventListener('ortus-shift-reset', function () {
                 clearCart();
-                posDiscount = { applied: false };
                 syncDiscountInputs();
                 renderCategories();
                 updatePosMainView();
@@ -2900,6 +3312,10 @@
 
             migrateDiscountRateStorage();
             syncDiscountInputs();
+            syncDiscountRateFromServer().then(function () {
+                renderCategories();
+                updatePosMainView();
+            });
             posActiveFulfillment = "dine_in";
             renderOrderList();
             loadMenu();
@@ -4691,6 +5107,25 @@
             return rate >= 1 && rate <= 100 ? rate : null;
         }
 
+        var SENIOR_PWD_RATE_PERCENT = 20;
+
+        function formatAppliedDiscountIndicator(order) {
+            var dtype = String(order && order.discount_type || "none").toLowerCase();
+            if (dtype === "pwd") return "PWD " + SENIOR_PWD_RATE_PERCENT + "%";
+            if (dtype === "senior") return "Senior " + SENIOR_PWD_RATE_PERCENT + "%";
+            if (dtype === "custom") {
+                var rate = Math.round(Number(order && order.discount_rate) || 0);
+                if (!rate) rate = readStaffShiftDiscountRate() || 0;
+                return rate > 0 ? rate + "% discount" : "Custom discount";
+            }
+            return "";
+        }
+
+        function discountActionButtonLabel() {
+            var rate = readStaffShiftDiscountRate();
+            return rate ? ("Discount (" + rate + "%)") : "Discount";
+        }
+
         function orderHasNoQueueDiscount(order) {
             var dtype = String(order && order.discount_type || "none").toLowerCase();
             return !dtype || dtype === "none";
@@ -6057,7 +6492,7 @@
             var shiftRate = readStaffShiftDiscountRate();
             if (type === 'custom') {
                 if (!shiftRate) {
-                    showQueueModalError(queueDiscountError, 'Set the shift discount rate in POS first.');
+                    showQueueModalError(queueDiscountError, 'Ask admin to set the discount rate in Menu Management first.');
                     return;
                 }
             }
@@ -6616,7 +7051,7 @@
             var hasDiscount = orderHasActiveDiscount(order);
             var discountBtn = hasDiscount
                 ? '<button type="button" class="opq-action-btn opq-action-btn--void-discount" data-void-discount="' + orderId + '">Void Discount</button>'
-                : '<button type="button" class="opq-action-btn opq-action-btn--discount" data-discount-order="' + orderId + '">Discount</button>';
+                : '<button type="button" class="opq-action-btn opq-action-btn--discount" data-discount-order="' + orderId + '">' + esc(discountActionButtonLabel()) + '</button>';
             return (
                 '<footer class="opq-card-foot staff-opq-actions">' +
                     '<button type="button" class="opq-action-btn opq-action-btn--confirm" data-confirm-order="' + orderId + '">Confirm</button>' +
@@ -6734,11 +7169,7 @@
             var dtype = String(order.discount_type || 'none').toLowerCase();
             var discountLine = '';
             if (dtype === 'senior' || dtype === 'pwd' || dtype === 'custom') {
-                var dLabel = dtype === 'pwd' ? 'PWD discount' : (dtype === 'senior' ? 'Senior discount' : 'Custom discount');
-                if (dtype === 'custom' && order.discount_rate) {
-                    dLabel = Math.round(Number(order.discount_rate)) + '% discount';
-                }
-                discountLine = '<p class="kitchen-order-type-line opq-discount-applied">' + esc(dLabel) + '</p>';
+                discountLine = '<p class="kitchen-order-type-line opq-discount-applied">' + esc(formatAppliedDiscountIndicator(order)) + '</p>';
             }
             var customerPaymentRow =
                 '<div class="opq-customer-payment-row">' +
@@ -6848,11 +7279,7 @@
                     var dtype = String(order.discount_type || 'none').toLowerCase();
                     var discountLine = '';
                     if (dtype === 'senior' || dtype === 'pwd' || dtype === 'custom') {
-                        var dLabel = dtype === 'pwd' ? 'PWD discount' : (dtype === 'senior' ? 'Senior discount' : 'Custom discount');
-                        if (dtype === 'custom' && order.discount_rate) {
-                            dLabel = Math.round(Number(order.discount_rate)) + '% discount';
-                        }
-                        discountLine = '<p class="queue-drawer-returned-card__meta-line queue-drawer-returned-card__meta-line--discount">' + esc(dLabel) + '</p>';
+                        discountLine = '<p class="queue-drawer-returned-card__meta-line queue-drawer-returned-card__meta-line--discount">' + esc(formatAppliedDiscountIndicator(order)) + '</p>';
                     }
                     var itemsHtml = (order.items || []).map(function (item) {
                         return (

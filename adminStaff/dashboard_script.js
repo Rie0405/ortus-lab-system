@@ -542,7 +542,13 @@ function apiCall(method, url, body) {
     function resetVariantRows() {
         if (!variantsListEl) return;
         variantsListEl.innerHTML = '';
-        addVariantRow();
+    }
+
+    function normalizeVariantTempValue(raw) {
+        var n = String(raw || '').trim().toLowerCase();
+        if (/\b(hot|warm)\b/.test(n)) return 'Hot';
+        if (/\b(iced|cold|blended|frappe)\b/.test(n) || n === 'cold') return 'Cold';
+        return 'Hot';
     }
 
     function addVariantRow(data) {
@@ -556,9 +562,12 @@ function apiCall(method, url, body) {
         var priceInp = row.querySelector('.variant-input--price');
 
         if (data) {
-            if (sizeInp) sizeInp.value = data.size || '';
+            if (sizeInp) sizeInp.value = normalizeVariantTempValue(data.size);
             if (labelInp) labelInp.value = data.label || '';
             if (priceInp) priceInp.value = data.price || '';
+        } else if (sizeInp) {
+            // New optional variants default to Hot (base drink is Cold).
+            sizeInp.value = 'Hot';
         }
 
         variantsListEl.appendChild(frag);
@@ -646,7 +655,6 @@ function apiCall(method, url, body) {
     function resetEditVariantRows() {
         if (!editVariantsListEl) return;
         editVariantsListEl.innerHTML = '';
-        addEditVariantRow();
     }
 
     function addEditVariantRow(data) {
@@ -660,9 +668,11 @@ function apiCall(method, url, body) {
         var priceInp = row.querySelector('.variant-input--price');
 
         if (data) {
-            if (sizeInp) sizeInp.value = data.size || '';
+            if (sizeInp) sizeInp.value = normalizeVariantTempValue(data.size);
             if (labelInp) labelInp.value = data.label || '';
             if (priceInp) priceInp.value = data.price || '';
+        } else if (sizeInp) {
+            sizeInp.value = 'Hot';
         }
 
         editVariantsListEl.appendChild(frag);
@@ -756,11 +766,17 @@ function apiCall(method, url, body) {
     }
 
     function fillMainCategorySelects(selectedId) {
-        populateMainCategorySelect(prodMainCategorySelect, selectedId || null);
-        populateMainCategorySelect(editMainCategorySelect, selectedId || null);
+        var prodVal = selectedId
+            || (prodMainCategorySelect && prodMainCategorySelect.value)
+            || null;
+        var editVal = selectedId
+            || (editMainCategorySelect && editMainCategorySelect.value)
+            || null;
         var manageSelected = manageMainCategorySelect && manageMainCategorySelect.value
             ? manageMainCategorySelect.value
             : null;
+        populateMainCategorySelect(prodMainCategorySelect, prodVal);
+        populateMainCategorySelect(editMainCategorySelect, editVal);
         populateMainCategorySelect(manageMainCategorySelect, selectedId || manageSelected);
     }
 
@@ -891,7 +907,6 @@ function apiCall(method, url, body) {
     var catalogRoleCreateEls = createBackdrop ? createBackdrop.querySelectorAll('[data-catalog-role="create"]') : [];
     var catalogRoleManageEls = createBackdrop ? createBackdrop.querySelectorAll('[data-catalog-role="manage"]') : [];
     var activeCatalogMode = 'create';
-    var subcategoryParentSelect = createBackdrop ? createBackdrop.querySelector('#prod-subcategory-parent') : null;
     var prodSubcategorySelect = createBackdrop ? createBackdrop.querySelector('#prod-subcategory') : null;
     var prodCategorySelect = createBackdrop ? createBackdrop.querySelector('#prod-category') : null;
     var manageCategorySelect = createBackdrop ? createBackdrop.querySelector('#manage-category-select') : null;
@@ -917,17 +932,6 @@ function apiCall(method, url, body) {
             }
         }
         return id;
-    }
-
-    function populateParentCategorySelect(sel) {
-        if (!sel) return;
-        sel.innerHTML = '<option value="">Select parent category</option>';
-        (categories || []).forEach(function (c) {
-            var o = document.createElement('option');
-            o.value = String(c.id);
-            o.textContent = c.name;
-            sel.appendChild(o);
-        });
     }
 
     function findCategoryById(id) {
@@ -1044,9 +1048,6 @@ function apiCall(method, url, body) {
     }
 
     function getSubcategoryParentCategoryId() {
-        if (subcategoryParentSelect && subcategoryParentSelect.value) {
-            return parseInt(subcategoryParentSelect.value, 10) || null;
-        }
         return resolveSelectedCategoryId(prodCategorySelect);
     }
 
@@ -1059,7 +1060,7 @@ function apiCall(method, url, body) {
             return;
         }
         if (!parentId) {
-            alert('Select a parent category for the new subcategory.');
+            alert('Select a category first, then add a subcategory.');
             return;
         }
 
@@ -1067,20 +1068,31 @@ function apiCall(method, url, body) {
         var oldText = newSubcategoryAddBtn.textContent;
         newSubcategoryAddBtn.textContent = 'ADDING…';
 
+        var keepMainCat = prodMainCategorySelect ? prodMainCategorySelect.value : '';
+        var keepCategory = prodCategorySelect ? prodCategorySelect.value : '';
+        var panelWasOpen = !!(newSubcategoryPanel && !newSubcategoryPanel.hidden);
+
         apiCall('POST', 'api/subcategories.php', { name: subName, category_id: parentId, is_active: 1 })
             .then(function (res) {
                 if (!res.success) throw new Error(res.error || 'Failed to add subcategory');
                 newSubcategoryNameInput.value = '';
                 var newId = res.id || null;
-                if (prodCategorySelect && String(prodCategorySelect.value) === '') {
-                    prodCategorySelect.value = String(parentId);
-                    syncBevSubVisibility();
-                }
                 return loadItems().then(function () {
+                    if (prodMainCategorySelect && keepMainCat) {
+                        prodMainCategorySelect.value = keepMainCat;
+                    }
+                    if (prodCategorySelect && keepCategory) {
+                        prodCategorySelect.value = keepCategory;
+                    }
                     syncProductSubcategoryOptions(newId);
                     if (newId && prodSubcategorySelect) {
                         prodSubcategorySelect.value = String(newId);
                     }
+                    if (panelWasOpen) {
+                        toggleCatalogPanel(newSubcategoryPanel, toggleNewSubcategoryBtn, true);
+                    }
+                    syncBevSubVisibility();
+                    syncAllCatalogIconDropzones();
                 });
             })
             .catch(function (err) { alert('Error: ' + err.message); })
@@ -1108,15 +1120,7 @@ function apiCall(method, url, body) {
 
     if (toggleNewSubcategoryBtn && newSubcategoryPanel) {
         toggleNewSubcategoryBtn.addEventListener('click', function () {
-            var opening = newSubcategoryPanel.hidden;
-            toggleCatalogPanel(newSubcategoryPanel, toggleNewSubcategoryBtn, opening);
-            if (opening) {
-                populateParentCategorySelect(subcategoryParentSelect);
-                var currentCat = resolveSelectedCategoryId(prodCategorySelect);
-                if (currentCat && subcategoryParentSelect) {
-                    subcategoryParentSelect.value = String(currentCat);
-                }
-            }
+            toggleCatalogPanel(newSubcategoryPanel, toggleNewSubcategoryBtn, newSubcategoryPanel.hidden);
         });
     }
 
@@ -1132,10 +1136,6 @@ function apiCall(method, url, body) {
     if (prodCategorySelect) {
         prodCategorySelect.addEventListener('change', function () {
             syncProductSubcategoryOptions();
-            var currentCat = resolveSelectedCategoryId(prodCategorySelect);
-            if (currentCat && subcategoryParentSelect) {
-                subcategoryParentSelect.value = String(currentCat);
-            }
             syncAllCatalogIconDropzones();
         });
     }
@@ -1327,16 +1327,13 @@ function apiCall(method, url, body) {
             setCatalogMode('create');
             collapseCatalogPanels();
         }
-        if (backdrop === createBackdrop && subcategoryParentSelect) {
-            subcategoryParentSelect.value = '';
-        }
         if (backdrop === createBackdrop && prodSubcategorySelect) {
             prodSubcategorySelect.value = '';
             syncProductSubcategoryOptions();
         }
 
         if (backdrop === createBackdrop) {
-            setServeFlagsOnForm('prod', { hot: false, cold: false });
+            setServeFlagsOnForm('prod', { hot: false, cold: true });
             var costPrice = document.getElementById('prod-cost-price');
             if (costPrice) costPrice.value = '';
             var basePrice = document.getElementById('prod-base-price');
@@ -1374,8 +1371,17 @@ function apiCall(method, url, body) {
             if (categoryNameMergesIntoBeveragesAdmin(c.name)) beverageMergedCategoryIds.push(c.id);
         });
 
+        var prodCatVal = prodCategorySelect ? prodCategorySelect.value : '';
+        var editCatEl = document.getElementById('edit-prod-category');
+        var editCatVal = editCatEl ? editCatEl.value : '';
+        var manageCatVal = manageCategorySelect ? manageCategorySelect.value : '';
+        var prodSubVal = prodSubcategorySelect ? prodSubcategorySelect.value : '';
+        var editSubVal = editProdSubcategorySelect ? editProdSubcategorySelect.value : '';
+        var manageSubVal = manageSubcategorySelect ? manageSubcategorySelect.value : '';
+
         function populateCategorySelect(sel) {
             if (!sel) return;
+            var keep = sel.value || '';
             sel.innerHTML = '<option value="">Select Category</option>';
             var inserted = false;
             (cats || []).forEach(function (c) {
@@ -1395,15 +1401,20 @@ function apiCall(method, url, body) {
                     sel.appendChild(o);
                 }
             });
+            if (keep) sel.value = keep;
         }
 
         populateCategorySelect(document.getElementById('prod-category'));
         populateCategorySelect(document.getElementById('edit-prod-category'));
         populateCategorySelect(manageCategorySelect);
-        populateParentCategorySelect(subcategoryParentSelect);
-        syncProductSubcategoryOptions();
-        syncEditSubcategoryOptions();
-        syncManageSubcategoryOptions();
+
+        if (prodCategorySelect && prodCatVal) prodCategorySelect.value = prodCatVal;
+        if (editCatEl && editCatVal) editCatEl.value = editCatVal;
+        if (manageCategorySelect && manageCatVal) manageCategorySelect.value = manageCatVal;
+
+        syncProductSubcategoryOptions(prodSubVal);
+        syncEditSubcategoryOptions(editSubVal);
+        syncManageSubcategoryOptions(manageSubVal);
         syncBevSubVisibility();
         syncAllCatalogIconDropzones();
     }
@@ -1453,7 +1464,8 @@ function apiCall(method, url, body) {
                 '<div class="name"><strong>' + escHtml(item.name) + '</strong>' +
                     '<small>' + escHtml(stripIngredientsFromDescription(item.description || '') || '--') + '</small></div>' +
                 '<div><span class="cat">' + escHtml(displayCategoryLabelForTable(item.category_name)) + '</span></div>' +
-                '<div class="price">₱' + parseFloat(item.price).toFixed(2) + '</div>' +
+                '<div class="price price--cost">₱' + parseFloat(item.cost_price || 0).toFixed(2) + '</div>' +
+                '<div class="price">₱' + parseFloat(item.price || 0).toFixed(2) + '</div>' +
                 '<div>' +
                     '<span class="pill ' + statusClass + '">' + statusLabel + '</span>' +
                     '<button class="status-toggle-btn ' + (item.is_available ? 'to-out' : 'to-ok') + '" data-toggle-availability="' + item.id + '" data-next-availability="' + (item.is_available ? '0' : '1') + '">' +
@@ -1543,11 +1555,27 @@ function apiCall(method, url, body) {
         rowsContainer.querySelectorAll('.variant-input-row').forEach(function (row) {
             var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim().toLowerCase();
             var label = (row.querySelector('.variant-input--label') && row.querySelector('.variant-input--label').value || '').trim().toLowerCase();
+            var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
+            // Ignore incomplete optional rows (temp alone is not enough).
+            if (!label && !priceRaw) return;
             var combo = size + ' ' + label;
-            if (/\b(hot|warm)\b/.test(combo)) hot = true;
-            if (/\b(iced|cold|blended|frappe)\b/.test(combo)) cold = true;
+            if (/\b(hot|warm)\b/.test(combo) || size === 'hot') hot = true;
+            if (/\b(iced|cold|blended|frappe)\b/.test(combo) || size === 'cold') cold = true;
         });
         return { hot: hot, cold: cold };
+    }
+
+    function resolveBeverageServeFlags(rowsContainer) {
+        var flags = inferServeFlagsFromVariantRows(rowsContainer);
+        // Base drink is Cold by default; Hot only when a Hot variant is added.
+        if (!flags.hot && !flags.cold) {
+            return { hot: false, cold: true };
+        }
+        if (flags.hot && !flags.cold) {
+            // Keep Cold available as the default base option when only Hot variants exist.
+            return { hot: true, cold: true };
+        }
+        return flags;
     }
 
     function readServeFlagsFromForm(prefix) {
@@ -1599,12 +1627,13 @@ function apiCall(method, url, body) {
         var editVariantsSection = document.getElementById('edit-variants-section');
         if (prodSel) {
             var prodIsBev = isBevMergedOptionSelected(prodSel);
-            if (prodBasePriceWrap) prodBasePriceWrap.hidden = prodIsBev;
+            // Selling price stays visible for beverages (variants are optional).
+            if (prodBasePriceWrap) prodBasePriceWrap.hidden = false;
             if (prodVariantsSection) prodVariantsSection.hidden = !prodIsBev;
         }
         if (editSel) {
             var editIsBev = isBevMergedOptionSelected(editSel);
-            if (editBasePriceWrap) editBasePriceWrap.hidden = editIsBev;
+            if (editBasePriceWrap) editBasePriceWrap.hidden = false;
             if (editVariantsSection) editVariantsSection.hidden = !editIsBev;
         }
     }
@@ -1922,8 +1951,9 @@ function apiCall(method, url, body) {
                     var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
                     var label = (row.querySelector('.variant-input--label') && row.querySelector('.variant-input--label').value || '').trim();
                     var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
-                    if (!size && !label && !priceRaw) return;
-                    variants.push({ size: size, label: label, price: priceRaw });
+                    // Optional rows: require ounce or price before counting.
+                    if (!label && !priceRaw) return;
+                    variants.push({ size: size || 'Hot', label: label, price: priceRaw });
                 });
             }
 
@@ -1944,16 +1974,14 @@ function apiCall(method, url, body) {
                 desc = (desc ? (desc + '\n') : '') + 'Variants: ' + parts.join('; ');
             }
 
-            var price = 0;
-            if (isBeverageCreate && variants.length) {
+            var price = parseFloat(basePriceInput && basePriceInput.value || '0');
+            if (!(price > 0) && isBeverageCreate && variants.length) {
                 var pricedVariants = variants
                     .map(function (v) { return Number(v.price); })
                     .filter(function (n) { return Number.isFinite(n) && n > 0; });
                 if (pricedVariants.length) {
                     price = Math.min.apply(null, pricedVariants);
                 }
-            } else if (!isBeverageCreate) {
-                price = parseFloat(basePriceInput && basePriceInput.value || '0');
             }
 
             if (!name || !catId || !mainCatId) {
@@ -1962,7 +1990,8 @@ function apiCall(method, url, body) {
             }
 
             if (!(price > 0)) {
-                alert(isBeverageCreate ? 'Add at least one variant price greater than 0.' : 'Selling price is required for non-beverage products.');
+                alert('Selling price is required.');
+                if (basePriceInput) basePriceInput.focus();
                 return;
             }
 
@@ -1984,12 +2013,8 @@ function apiCall(method, url, body) {
             var serveHot = 0;
             var serveCold = 0;
             if (isBeverageCreate) {
-                var serveFlags = inferServeFlagsFromVariantRows(variantsListEl);
+                var serveFlags = resolveBeverageServeFlags(variantsListEl);
                 setServeFlagsOnForm('prod', serveFlags);
-                if (!serveFlags.hot && !serveFlags.cold) {
-                    alert('Add at least one variant with Hot or Cold temperature.');
-                    return;
-                }
                 serveHot = serveFlags.hot ? 1 : 0;
                 serveCold = serveFlags.cold ? 1 : 0;
             }
@@ -2171,8 +2196,8 @@ function apiCall(method, url, body) {
                         var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
                         var label = (row.querySelector('.variant-input--label') && row.querySelector('.variant-input--label').value || '').trim();
                         var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
-                        if (!size && !label && !priceRaw) return;
-                        variants.push({ size: size, label: label, price: priceRaw });
+                        if (!label && !priceRaw) return;
+                        variants.push({ size: size || 'Hot', label: label, price: priceRaw });
                     });
                 }
 
@@ -2191,22 +2216,19 @@ function apiCall(method, url, body) {
                     descEdit = (descEdit ? (descEdit + '\n') : '') + 'Variants: ' + parts.join('; ');
                 }
 
-                var price = 0;
-                if (isBeverageEdit && variants.length) {
+                var price = parseFloat(editBasePriceInput && editBasePriceInput.value || '0');
+                if (!(price > 0) && isBeverageEdit && variants.length) {
                     var pricedVariants = variants
                         .map(function (v) { return Number(v.price); })
                         .filter(function (n) { return Number.isFinite(n) && n > 0; });
                     if (pricedVariants.length) {
                         price = Math.min.apply(null, pricedVariants);
                     }
-                } else if (!isBeverageEdit) {
-                    price = parseFloat(editBasePriceInput && editBasePriceInput.value || '0');
                 }
 
                 if (!(price > 0)) {
-                    alert(isBeverageEdit
-                        ? 'Add at least one variant with a price greater than 0 (same as create product).'
-                        : 'Selling price is required for non-beverage products.');
+                    alert('Selling price is required.');
+                    if (editBasePriceInput) editBasePriceInput.focus();
                     return;
                 }
 
@@ -2220,16 +2242,8 @@ function apiCall(method, url, body) {
                 var serveHot = 0;
                 var serveCold = 0;
                 if (isBeverageEdit) {
-                    var serveFlagsEdit = inferServeFlagsFromVariantRows(editVariantsListEl);
+                    var serveFlagsEdit = resolveBeverageServeFlags(editVariantsListEl);
                     setServeFlagsOnForm('edit', serveFlagsEdit);
-                    if (!serveFlagsEdit.hot && !serveFlagsEdit.cold) {
-                        // Keep previously saved serve flags if variants don't encode temp.
-                        serveFlagsEdit = readServeFlagsFromForm('edit');
-                    }
-                    if (!serveFlagsEdit.hot && !serveFlagsEdit.cold) {
-                        alert('Add at least one variant with Hot or Cold temperature.');
-                        return;
-                    }
                     serveHot = serveFlagsEdit.hot ? 1 : 0;
                     serveCold = serveFlagsEdit.cold ? 1 : 0;
                 }

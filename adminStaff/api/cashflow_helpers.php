@@ -80,6 +80,11 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
     $grossProfit = round($netSales - $totalCogs, 2);
     $avgOrder = $totalOrders > 0 ? round($netSales / $totalOrders, 2) : 0.0;
 
+    $priceTotals = fetch_menu_price_totals($pdo, $fromDate, $toDate);
+    $totalSellingPrice = (float)$priceTotals['total_selling_price'];
+    $totalCostPrice = (float)$priceTotals['total_cost_price'];
+    $netCashFlow = round($totalSellingPrice - $totalCostPrice, 2);
+
     return [
         'net_sales' => $netSales,
         'discounts_total' => $discountsTotal,
@@ -89,10 +94,54 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
         'gross_revenue' => $grossRevenue,
         'total_orders' => $totalOrders,
         'avg_order_value' => $avgOrder,
+        'total_selling_price' => $totalSellingPrice,
+        'total_cost_price' => $totalCostPrice,
+        'net_cash_flow' => $netCashFlow,
         // Backward-compatible aliases used by older dashboard JS.
         'total_revenue' => $netSales,
         'total_sales' => $netSales,
         'raw_total_revenue' => $netSales,
         'adjusted_revenue' => $netSales,
+    ];
+}
+
+/**
+ * Weekly net cash flow basis: sum(selling unit price × qty) − sum(menu cost_price × qty).
+ */
+function fetch_menu_price_totals(PDO $pdo, string $fromDate, string $toDate): array
+{
+    if (function_exists('ensure_menu_cost_price_schema')) {
+        ensure_menu_cost_price_schema($pdo);
+    } else {
+        try {
+            $hasCost = (bool)$pdo->query("SHOW COLUMNS FROM menu_items LIKE 'cost_price'")->fetch();
+            if (!$hasCost) {
+                $pdo->exec(
+                    'ALTER TABLE menu_items
+                     ADD COLUMN cost_price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER price'
+                );
+            }
+        } catch (Throwable $e) {
+            // Non-fatal if schema race.
+        }
+    }
+
+    $saleCond = sql_order_counts_as_sale('o');
+    $stmt = $pdo->prepare(
+        'SELECT
+            COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS total_selling_price,
+            COALESCE(SUM(COALESCE(m.cost_price, 0) * oi.quantity), 0) AS total_cost_price
+         FROM order_items oi
+         INNER JOIN orders o ON o.id = oi.order_id
+         LEFT JOIN menu_items m ON m.id = oi.menu_item_id
+         WHERE DATE(o.created_at) BETWEEN :from AND :to
+           AND ' . $saleCond
+    );
+    $stmt->execute([':from' => $fromDate, ':to' => $toDate]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    return [
+        'total_selling_price' => round((float)($row['total_selling_price'] ?? 0), 2),
+        'total_cost_price' => round((float)($row['total_cost_price'] ?? 0), 2),
     ];
 }

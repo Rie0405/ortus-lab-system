@@ -782,7 +782,7 @@
             { id: 0, value: 'cashier_area', label: 'Cashier Area' }
         ];
         var REGISTER_LINE_GRID_REGISTER = 'minmax(90px, 0.95fr) minmax(110px, 1fr) minmax(130px, 1.35fr) minmax(80px, 0.85fr) minmax(110px, 1fr) minmax(100px, 0.95fr)';
-        var ADD_RECEIPT_LINE_GRID = 'minmax(90px, 1fr) minmax(140px, 1.6fr) 72px 90px 80px 34px';
+        var ADD_RECEIPT_LINE_GRID = 'minmax(90px, 1fr) minmax(140px, 1.6fr) 72px 80px 34px';
         var REGISTER_UNIT_OPTIONS = [
             { value: 'pcs', label: 'pcs' },
             { value: 'g', label: 'g' },
@@ -1502,7 +1502,6 @@
                     receiptMainCategoryFieldHtml() +
                     '<select class="receipt-item-name"><option value="">Select item</option></select>' +
                     '<input type="number" class="receipt-stocks" min="0" step="1" value="0" aria-label="Stocks">' +
-                    '<input type="number" class="receipt-unit-cost" min="0" step="0.01" value="0" placeholder="0.00" aria-label="Item cost">' +
                     receiptUnitLabelFieldHtml('pcs') +
                     '<button type="button" class="receipt-line-remove">×</button>';
                 var unitEl = row.querySelector('.receipt-unit-label');
@@ -1557,7 +1556,6 @@
                 itemEl.value = prevValue;
             }
             syncReceiptUnitFieldFromRow(row);
-            syncReceiptCostFieldFromRow(row);
             syncReceiptSupplierFromSelectedItems();
         }
 
@@ -1762,21 +1760,6 @@
             unitEl.value = unit;
         }
 
-        function syncReceiptCostFieldFromRow(row) {
-            if (!row || receiptModalMode !== 'add_receipt') return;
-            var costEl = row.querySelector('.receipt-unit-cost');
-            if (!costEl) return;
-            var match = getReceiptLineMatchedItem(row);
-            if (!match) {
-                if (!String(costEl.value || '').trim()) costEl.value = '0';
-                return;
-            }
-            var cost = Number(match.unit_cost);
-            if (!Number.isFinite(cost) || cost < 0) cost = 0;
-            // Prefill from last saved item cost when switching items.
-            costEl.value = String(Math.round(cost * 100) / 100);
-        }
-
         function addReceiptLine() {
             if (!receiptLinesBody) return;
             var row = createReceiptLineRow(receiptModalMode);
@@ -1798,7 +1781,7 @@
             if (headWrap) headWrap.style.justifyContent = isAddReceiptMode ? 'space-between' : 'flex-start';
             if (receiptLinesRowHead) {
                 receiptLinesRowHead.innerHTML = isAddReceiptMode
-                    ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>Cost (₱)</span><span>Unit</span><span></span>'
+                    ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>Unit</span><span></span>'
                     : '<span>Main Category</span><span>Category Type</span><span>Item</span><span>Unit Label</span><span>Stock Type</span><span>Mode</span>';
                 receiptLinesRowHead.style.gridTemplateColumns = isAddReceiptMode
                     ? ADD_RECEIPT_LINE_GRID
@@ -1862,10 +1845,8 @@
                 var entryModeEl = row.querySelector('.receipt-entry-mode');
                 var categoryTypeEl = row.querySelector('.receipt-category-type');
                 var unitLabelEl = row.querySelector('.receipt-unit-label');
-                var unitCostEl = row.querySelector('.receipt-unit-cost');
                 var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
-                var unitCostVal = parseFloat((unitCostEl && unitCostEl.value) || '0');
-                if (!Number.isFinite(unitCostVal) || unitCostVal < 0) unitCostVal = 0;
+                var unitCostVal = 0;
                 var resolvedUnit = (unitLabelEl && unitLabelEl.value) || 'pcs';
                 if (receiptModalMode === 'add_receipt') {
                     var matchItem = allItems.find(function (it) {
@@ -1876,7 +1857,7 @@
                         resolvedUnit = normalizeDisplayUnit(matchItem.per_stock_unit || 'pcs');
                     }
                 }
-                var totalCostVal = Math.round(unitCostVal * Math.max(0, stocksVal) * 100) / 100;
+                var totalCostVal = 0;
                 var line = {
                     line_type: lineType,
                     item_name: (itemNameEl && itemNameEl.value || '').trim(),
@@ -1888,7 +1869,7 @@
                     stock_status: 'good',
                     per_stock_amount: 1,
                     unit: resolvedUnit,
-                    unit_cost: Math.round(unitCostVal * 100) / 100,
+                    unit_cost: unitCostVal,
                     total_cost: totalCostVal
                 };
                 if (!line.item_name) return;
@@ -3886,7 +3867,6 @@
                 if (itemEl) {
                     var itemRow = itemEl.closest('.receipt-lines__row');
                     syncReceiptUnitFieldFromRow(itemRow);
-                    syncReceiptCostFieldFromRow(itemRow);
                     syncReceiptSupplierFromSelectedItems();
                 }
             });

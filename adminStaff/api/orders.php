@@ -429,7 +429,20 @@ if ($m === 'POST') {
         }
 
         validate_order_discount_payload($discount);
-        $pricing = calculate_order_discount_breakdown($grossAmount, $discount);
+        $discountLines = normalize_order_discount_lines($b['discount'] ?? null);
+        if ($discountLines) {
+            $pricing = calculate_order_discount_lines_breakdown($grossAmount, $discountLines);
+            $discount['type'] = $pricing['discount_type'];
+            $discount['rate'] = (float)($pricing['discount_rate'] ?? 0);
+            $discount['customer_name'] = (string)($pricing['discount_customer_name'] ?? '');
+            $discount['id_number'] = (string)($pricing['discount_id_number'] ?? '');
+        } else {
+            $pricing = calculate_order_discount_breakdown(
+                $grossAmount,
+                $discount,
+                max_discountable_unit_price_from_rows($itemRows)
+            );
+        }
         $total = (float)$pricing['total_amount'];
 
         $changeDue = ($paymentMethod === 'cash' && $amountReceived !== null)
@@ -451,12 +464,12 @@ if ($m === 'POST') {
             ':otype'  => $orderType,
             ':cname'  => $customerName !== '' ? $customerName : null,
             ':dtype'  => $pricing['discount_type'],
-            ':dname'  => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['customer_name'] : null,
-            ':did'    => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['id_number'] : null,
+            ':dname'  => ($discount['customer_name'] ?? '') !== '' ? $discount['customer_name'] : null,
+            ':did'    => ($discount['id_number'] ?? '') !== '' ? $discount['id_number'] : null,
             ':gross'  => $pricing['gross_amount'],
             ':vat_exempt' => $pricing['vat_exempt_amount'],
             ':discount_amount' => $pricing['discount_amount'],
-            ':drate'  => $discount['type'] === 'custom' ? $discount['rate'] : null,
+            ':drate'  => !empty($pricing['discount_rate']) ? $pricing['discount_rate'] : ($discount['type'] === 'custom' ? $discount['rate'] : null),
             ':total'  => $total,
             ':recv'   => $amountReceived,
             ':change' => $changeDue,
@@ -611,7 +624,20 @@ if ($m === 'PUT') {
 
                 $discount = normalize_order_discount_payload($b['discount'] ?? null);
                 validate_order_discount_payload($discount);
-                $pricing = calculate_order_discount_breakdown($grossAmount, $discount);
+                $discountLines = normalize_order_discount_lines($b['discount'] ?? null);
+                if ($discountLines) {
+                    $pricing = calculate_order_discount_lines_breakdown($grossAmount, $discountLines);
+                    $discount['type'] = $pricing['discount_type'];
+                    $discount['rate'] = (float)($pricing['discount_rate'] ?? 0);
+                    $discount['customer_name'] = (string)($pricing['discount_customer_name'] ?? '');
+                    $discount['id_number'] = (string)($pricing['discount_id_number'] ?? '');
+                } else {
+                    $pricing = calculate_order_discount_breakdown(
+                        $grossAmount,
+                        $discount,
+                        max_discountable_unit_price_from_rows($itemRows)
+                    );
+                }
 
                 $pdo->prepare('DELETE FROM order_items WHERE order_id = :id')->execute([':id' => $id]);
 
@@ -652,12 +678,12 @@ if ($m === 'PUT') {
                 ];
                 $params = [
                     ':dtype' => $pricing['discount_type'],
-                    ':dname' => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['customer_name'] : null,
-                    ':did'   => in_array($discount['type'], ['senior', 'pwd'], true) ? $discount['id_number'] : null,
+                    ':dname' => ($discount['customer_name'] ?? '') !== '' ? $discount['customer_name'] : null,
+                    ':did'   => ($discount['id_number'] ?? '') !== '' ? $discount['id_number'] : null,
                     ':gross' => $pricing['gross_amount'],
                     ':vat_exempt' => $pricing['vat_exempt_amount'],
                     ':discount_amount' => $pricing['discount_amount'],
-                    ':drate' => $discount['type'] === 'custom' ? $discount['rate'] : null,
+                    ':drate' => !empty($pricing['discount_rate']) ? $pricing['discount_rate'] : ($discount['type'] === 'custom' ? $discount['rate'] : null),
                     ':total' => $pricing['total_amount'],
                     ':id'    => $id,
                 ];
@@ -685,12 +711,21 @@ if ($m === 'PUT') {
                 $discount = normalize_order_discount_payload($b['discount'] ?? null);
                 validate_order_discount_payload($discount);
                 $gross = round((float)($prev['gross_amount'] ?? 0), 2);
+                $maxUnit = 0.0;
+                $unitStmt = $pdo->prepare('SELECT unit_price FROM order_items WHERE order_id = :id');
+                $unitStmt->execute([':id' => $id]);
+                foreach ($unitStmt->fetchAll(PDO::FETCH_COLUMN) as $up) {
+                    $up = (float)$up;
+                    if ($up > $maxUnit) {
+                        $maxUnit = $up;
+                    }
+                }
                 if ($gross <= 0) {
                     $sumStmt = $pdo->prepare('SELECT COALESCE(SUM(subtotal), 0) FROM order_items WHERE order_id = :id');
                     $sumStmt->execute([':id' => $id]);
                     $gross = round((float)$sumStmt->fetchColumn(), 2);
                 }
-                $pricing = calculate_order_discount_breakdown($gross, $discount);
+                $pricing = calculate_order_discount_breakdown($gross, $discount, round($maxUnit, 2));
                 $pdo->prepare(
                     'UPDATE orders SET discount_type = :dtype, discount_customer_name = :dname, discount_id_number = :did,
                      gross_amount = :gross, vat_exempt_amount = :vat_exempt, discount_amount = :discount_amount,

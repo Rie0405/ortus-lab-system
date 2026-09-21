@@ -57,10 +57,10 @@
                     <p class="kpi-value" id="sales-kpi-net">₱0.00</p>
                     <div class="kpi-track"><span class="fill-70"></span></div>
                 </article>
-                <article class="kpi-card kpi-card--highlight" title="Weekly: Actual sales minus stock log / stock entry costs">
+                <article class="kpi-card kpi-card--highlight" title="This week: Total selling price − Total cost price">
                     <h3>Net Cash Flow</h3>
                     <p class="kpi-value" id="sales-kpi-net-cashflow">₱0.00</p>
-                    <p class="kpi-sub" id="sales-kpi-net-cashflow-sub">This week · Sales - Stock costs</p>
+                    <p class="kpi-sub" id="sales-kpi-net-cashflow-sub">This week · Selling − Cost</p>
                     <div class="kpi-track"><span class="fill-82" id="sales-kpi-net-cashflow-fill"></span></div>
                 </article>
             </section>
@@ -194,22 +194,23 @@
         }
 
         function getTopSellingCategories(items, inventoryOrder) {
-            var present = {};
-            (items || []).forEach(function (item) {
-                present[normalizeTopSellingCategory(item.category)] = true;
-            });
+            // Always surface registered menu categories (Beverages, Rice Meal, Pastries, …)
+            // even when the current top/slow window has no rows for that category yet.
             var ordered = [];
+            var seen = {};
             (inventoryOrder || []).forEach(function (name) {
                 var cat = normalizeTopSellingCategory(name);
-                if (present[cat]) {
+                if (!seen[cat]) {
                     ordered.push(cat);
-                    delete present[cat];
+                    seen[cat] = true;
                 }
             });
-            Object.keys(present).sort(function (a, b) {
-                return a.localeCompare(b);
-            }).forEach(function (name) {
-                ordered.push(name);
+            (items || []).forEach(function (item) {
+                var cat = normalizeTopSellingCategory(item.category);
+                if (!seen[cat]) {
+                    ordered.push(cat);
+                    seen[cat] = true;
+                }
             });
             return ordered;
         }
@@ -259,7 +260,7 @@
             if (!topList) return;
             topList.innerHTML = '';
             var tops = topSellingItems || [];
-            if (!tops.length) {
+            if (!tops.length && topSellingFilter === 'all') {
                 topList.innerHTML = '<p class="list-hint">No served orders in the database yet. Staff must mark kitchen orders Done (served) before line items appear here.</p>';
                 return;
             }
@@ -271,7 +272,7 @@
                         return normalizeTopSellingCategory(item.category) === cat;
                     }).sort(function (a, b) {
                         return parseFloat(b.qty_sold || 0) - parseFloat(a.qty_sold || 0);
-                    });
+                    }).slice(0, 5);
                     if (!catItems.length) return;
                     var block = document.createElement('div');
                     block.className = 'line-category-block';
@@ -285,6 +286,9 @@
                     });
                     topList.appendChild(block);
                 });
+                if (!topList.children.length) {
+                    topList.innerHTML = '<p class="list-hint">No top sellers in the current window.</p>';
+                }
                 return;
             }
 
@@ -292,9 +296,9 @@
                 return normalizeTopSellingCategory(item.category) === topSellingFilter;
             }).sort(function (a, b) {
                 return parseFloat(b.qty_sold || 0) - parseFloat(a.qty_sold || 0);
-            });
+            }).slice(0, 10);
             if (!filtered.length) {
-                topList.innerHTML = '<p class="list-hint">No top sellers in this category for the current window.</p>';
+                topList.innerHTML = '<p class="list-hint">No top sellers in ' + esc(topSellingFilter) + ' for the current window.</p>';
                 return;
             }
             var maxQtyFiltered = Math.max(1, parseFloat(filtered[0].qty_sold || 0));
@@ -338,8 +342,10 @@
                     return normalizeTopSellingCategory(item.category) === slowMovingFilter;
                 });
             }
+            slows = slows.slice(0, slowMovingFilter === 'all' ? 5 : 10);
             if (!slows.length) {
-                slowList.innerHTML = '<p class="list-hint">No slow moving items in this category.</p>';
+                slowList.innerHTML = '<p class="list-hint">No slow moving items' +
+                    (slowMovingFilter !== 'all' ? ' in ' + esc(slowMovingFilter) : '') + '.</p>';
                 return;
             }
             slows.forEach(function (item) {
@@ -372,7 +378,8 @@
                     var refunds = 0;
                     var discounts = 0;
                     var grossProfit = 0;
-                    var stockCosts = 0;
+                    var sellingTotal = 0;
+                    var costTotal = 0;
                     var netCashFlow = 0;
                     var orders = [];
                     if (summaryRes && summaryRes.success && summaryRes.summary) {
@@ -380,11 +387,12 @@
                         refunds = parseFloat(summaryRes.summary.refunds_total || 0);
                         discounts = parseFloat(summaryRes.summary.discounts_total || 0);
                         grossProfit = parseFloat(summaryRes.summary.gross_profit || 0);
-                        stockCosts = parseFloat(summaryRes.summary.receipt_expense_total || 0);
+                        sellingTotal = parseFloat(summaryRes.summary.total_selling_price || 0);
+                        costTotal = parseFloat(summaryRes.summary.total_cost_price || 0);
                         if (summaryRes.summary.net_cash_flow != null) {
                             netCashFlow = parseFloat(summaryRes.summary.net_cash_flow || 0);
                         } else {
-                            netCashFlow = rev - stockCosts;
+                            netCashFlow = sellingTotal - costTotal;
                         }
                         orders = Array.isArray(summaryRes.orders) ? summaryRes.orders : [];
                     }
@@ -407,7 +415,7 @@
                         netCashEl.classList.toggle('is-negative', netCashFlow < 0);
                     }
                     if (netCashSubEl) {
-                        netCashSubEl.textContent = 'This week · Sales ' + peso(rev) + ' - Stock ' + peso(stockCosts);
+                        netCashSubEl.textContent = 'This week · Selling ' + peso(sellingTotal) + ' − Cost ' + peso(costTotal);
                     }
                     if (analyticsRevEl) analyticsRevEl.textContent = peso(rev);
                     var weekDays = Math.max(1, Math.round((todayObj - fromObj) / 86400000) + 1);
@@ -544,7 +552,7 @@
                 dashShowBanner('', false);
 
                 topSellingItems = d.top_items || [];
-                topSellingInventoryCategories = (d.inventory_categories || []).map(function (row) {
+                topSellingInventoryCategories = (d.menu_categories || d.inventory_categories || []).map(function (row) {
                     return typeof row === 'string' ? row : (row && row.name ? row.name : '');
                 }).filter(Boolean);
                 if (!topSellingFilter || topSellingFilter === 'all') {

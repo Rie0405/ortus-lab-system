@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260910-icons">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260921-discount-rate">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -43,7 +43,10 @@
                 <div class="heading-actions">
                     <button class="cta-btn"><img src="icons_admin/plus_icon.svg" alt=""> Create New Product</button>
                     <button type="button" class="gcash-config-btn" id="btn-register-addon">
-                        <img src="icons_admin/plus_icon.svg" alt=""> Register Addon
+                        <img src="icons_admin/plus_icon.svg" alt=""> Register Add-on
+                    </button>
+                    <button type="button" class="gcash-config-btn" id="btn-set-discount-rate">
+                        <img src="icons_admin/money_icon.svg" alt=""> Set Discount Rate
                     </button>
                     <button type="button" class="gcash-config-btn" id="btn-set-kiosk-gcash">
                         <img src="icons_admin/message_icon.svg" alt=""> Set Kiosk GCash
@@ -79,7 +82,8 @@
                     <span>IMAGE</span>
                     <span>PRODUCT NAME</span>
                     <span>CATEGORY</span>
-                    <span>PRICE</span>
+                    <span>COST PRICE</span>
+                    <span>SELLING PRICE</span>
                     <span>STATUS</span>
                     <span>ACTIONS</span>
                 </div>
@@ -187,7 +191,7 @@
 
                             <div class="product-field-group" data-catalog-role="create">
                                 <label class="product-field-label" for="prod-main-category">
-                                    Main Category
+                                    Select Designation Station
                                     <span class="product-field-label__note">(Bar / Kitchen station)</span>
                                 </label>
                                 <div class="product-select-wrap">
@@ -249,13 +253,6 @@
                                     </div>
                                     <button type="button" class="product-inline-link" id="prod-toggle-new-subcategory" data-catalog-role="create" aria-expanded="false">+ New subcategory</button>
                                     <div id="prod-new-subcategory-panel" class="product-catalog-panel" hidden>
-                                        <label class="product-field-label product-field-label--compact" for="prod-subcategory-parent">Parent category</label>
-                                        <div class="product-select-wrap">
-                                            <select id="prod-subcategory-parent" class="product-select">
-                                                <option value="">Select parent</option>
-                                            </select>
-                                            <span class="product-select-caret">▾</span>
-                                        </div>
                                         <div class="product-new-category-row product-new-category-row--sub">
                                             <input type="text"
                                                    id="prod-new-subcategory-name"
@@ -398,7 +395,10 @@
                                     <div class="variant-input-row">
                                         <div class="variant-input-block">
                                             <label class="product-field-label">Temperature</label>
-                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. Hot" />
+                                            <select class="product-input product-select variant-input--size" aria-label="Temperature">
+                                                <option value="Cold">Cold</option>
+                                                <option value="Hot" selected>Hot</option>
+                                            </select>
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">Ounce</label>
@@ -448,7 +448,7 @@
 
                             <div class="product-field-group">
                                 <label class="product-field-label" for="edit-prod-main-category">
-                                    Main Category
+                                    Select Designation Station
                                     <span class="product-field-label__note">(Bar / Kitchen station)</span>
                                 </label>
                                 <div class="product-select-wrap">
@@ -573,7 +573,10 @@
                                     <div class="variant-input-row">
                                         <div class="variant-input-block">
                                             <label class="product-field-label">Temperature</label>
-                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. Hot" />
+                                            <select class="product-input product-select variant-input--size" aria-label="Temperature">
+                                                <option value="Cold">Cold</option>
+                                                <option value="Hot" selected>Hot</option>
+                                            </select>
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">Ounce</label>
@@ -633,17 +636,6 @@
                         <p class="addon-station-hint">Bar addons appear on beverage items. Kitchen addons appear on food items.</p>
                     </div>
 
-                    <div class="gcash-config-field addon-inventory-link">
-                        <span class="gcash-config-label">LINK TO INVENTORY</span>
-                        <div class="addon-inventory-link__row">
-                            <select id="addon-register-inventory" class="gcash-config-input" aria-label="Inventory item">
-                                <option value="">No inventory link</option>
-                            </select>
-                            <input id="addon-register-inventory-qty" class="gcash-config-input addon-inventory-qty" type="number" min="0.01" step="0.01" value="1" title="Qty used per sold addon" aria-label="Inventory qty per addon">
-                        </div>
-                        <p class="addon-station-hint">Optional. When this addon is sold, deduct this inventory qty × order quantity.</p>
-                    </div>
-
                     <div class="addon-register-list-wrap">
                         <p class="gcash-config-label">REGISTERED ADDONS</p>
                         <div id="addon-register-list" class="addon-register-list" aria-live="polite"></div>
@@ -653,6 +645,36 @@
                 <footer class="gcash-config-modal__footer">
                     <button type="button" class="btn btn-muted" id="addon-register-cancel">Cancel</button>
                     <button type="button" class="btn btn-primary" id="addon-register-save">Save Addon</button>
+                </footer>
+            </div>
+        </div>
+
+        <!-- ── Discount Rate Modal (moved from Staff POS) ───────────── -->
+        <div class="gcash-config-backdrop" id="discount-rate-backdrop" aria-hidden="true">
+            <div class="gcash-config-modal discount-rate-modal" role="dialog" aria-modal="true" aria-labelledby="discount-rate-title">
+                <header class="gcash-config-modal__header">
+                    <div class="gcash-config-modal__title-block">
+                        <p class="gcash-config-modal__eyebrow">STAFF POS</p>
+                        <h2 id="discount-rate-title">DISCOUNT RATE</h2>
+                    </div>
+                    <button type="button" class="gcash-config-modal__close" id="discount-rate-close" aria-label="Close">×</button>
+                </header>
+
+                <div class="gcash-config-modal__body">
+                    <p id="discount-rate-error" class="gcash-config-error" hidden></p>
+                    <p class="discount-rate-hint" id="discount-rate-hint">Set the discount rate once. It stays saved until you change it. Staff clicks Discounts on any order to apply it.</p>
+
+                    <div class="gcash-config-field">
+                        <label for="discount-rate-input" class="gcash-config-label">DISCOUNT RATE (%)</label>
+                        <input id="discount-rate-input" class="gcash-config-input" type="number" min="1" max="100" step="1" inputmode="numeric" placeholder="e.g. 20" autocomplete="off">
+                    </div>
+
+                    <button type="button" class="btn btn-primary discount-rate-save-btn" id="discount-rate-save">Set Discount Rate</button>
+                    <p class="discount-rate-status" id="discount-rate-status" hidden></p>
+                </div>
+
+                <footer class="gcash-config-modal__footer">
+                    <button type="button" class="btn btn-muted" id="discount-rate-cancel">Close</button>
                 </footer>
             </div>
         </div>
@@ -707,7 +729,7 @@
         </footer>
         </div>
 
-        <script src="dashboard_script.js?v=20260910-no-hotcold"></script>
+        <script src="dashboard_script.js?v=20260921-bev-cold-default"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');
@@ -718,17 +740,13 @@
             var errEl = document.getElementById('addon-register-error');
             var nameInput = document.getElementById('addon-register-name');
             var priceInput = document.getElementById('addon-register-price');
-            var invSelect = document.getElementById('addon-register-inventory');
-            var invQtyInput = document.getElementById('addon-register-inventory-qty');
             var listEl = document.getElementById('addon-register-list');
             var stationBtns = document.querySelectorAll('.addon-station-btn');
             if (!btnOpen || !backdrop || !saveBtn || !nameInput || !listEl) return;
 
             var mainCategories = [];
             var addons = [];
-            var inventoryItems = [];
             var selectedStation = 'bar';
-            var editingAddonId = null;
 
             function setErr(msg) {
                 if (!errEl) return;
@@ -768,35 +786,12 @@
                 });
             }
 
-            function syncSaveButtonLabel() {
-                if (!saveBtn) return;
-                saveBtn.textContent = editingAddonId ? 'Update Addon' : 'Save Addon';
-            }
-
             function resetForm() {
-                editingAddonId = null;
                 nameInput.value = '';
                 if (priceInput) priceInput.value = '';
-                if (invSelect) invSelect.value = '';
-                if (invQtyInput) invQtyInput.value = '1';
                 selectedStation = 'bar';
                 syncStationButtons();
-                syncSaveButtonLabel();
-            }
-
-            function populateInventorySelect(selectedId) {
-                if (!invSelect) return;
-                var html = '<option value="">No inventory link</option>';
-                inventoryItems.forEach(function (it) {
-                    var id = parseInt(it.id, 10) || 0;
-                    if (!id) return;
-                    var label = String(it.name || '').trim() || ('Item #' + id);
-                    var cat = String(it.category_name || '').trim();
-                    if (cat) label += ' (' + cat + ')';
-                    html += '<option value="' + id + '">' + escapeHtml(label) + '</option>';
-                });
-                invSelect.innerHTML = html;
-                if (selectedId) invSelect.value = String(selectedId);
+                if (saveBtn) saveBtn.textContent = 'Save Addon';
             }
 
             function renderList() {
@@ -806,61 +801,17 @@
                 }
                 listEl.innerHTML = addons.map(function (a) {
                     var stationLabel = a.station === 'bar' ? 'Bar' : 'Kitchen';
-                    var linked = a.inventory_item_id
-                        ? ('Linked: ' + (a.inventory_item_name || ('Item #' + a.inventory_item_id)) +
-                            ' × ' + (Number(a.inventory_qty) || 1))
-                        : 'Not linked to inventory';
-                    var linkedClass = a.inventory_item_id ? ' is-linked' : '';
                     return '' +
-                        '<article class="addon-register-item' + (editingAddonId === a.id ? ' is-editing' : '') + '" data-addon-id="' + a.id + '">' +
+                        '<article class="addon-register-item">' +
                             '<div class="addon-register-item__meta">' +
                                 '<strong class="addon-register-item__name">' + escapeHtml(a.name) + '</strong>' +
                                 '<span class="addon-register-item__station addon-register-item__station--' + escapeHtml(a.station) + '">' + stationLabel + '</span>' +
-                                '<span class="addon-register-item__inv' + linkedClass + '">' + escapeHtml(linked) + '</span>' +
                             '</div>' +
                             '<div class="addon-register-item__right">' +
                                 '<span class="addon-register-item__price">' + formatPeso(a.price) + '</span>' +
-                                '<button type="button" class="addon-register-item__link" data-link-addon="' + a.id + '">Link</button>' +
-                                '<button type="button" class="addon-register-item__delete" data-delete-addon="' + a.id + '">Delete</button>' +
                             '</div>' +
                         '</article>';
                 }).join('');
-            }
-
-            function beginLinkAddon(id) {
-                var addon = addons.find(function (a) { return a.id === id; });
-                if (!addon) return;
-                editingAddonId = id;
-                nameInput.value = addon.name || '';
-                if (priceInput) priceInput.value = String(addon.price != null ? addon.price : '');
-                selectedStation = addon.station === 'kitchen' ? 'kitchen' : 'bar';
-                syncStationButtons();
-                populateInventorySelect(addon.inventory_item_id || '');
-                if (invQtyInput) invQtyInput.value = String(addon.inventory_qty || 1);
-                syncSaveButtonLabel();
-                renderList();
-                if (invSelect) invSelect.focus();
-                setErr('Editing "' + addon.name + '". Pick inventory, then Update Addon.');
-            }
-
-            function loadInventoryOptions() {
-                return fetch('api/inventory.php', { method: 'GET', cache: 'no-store', credentials: 'same-origin' })
-                    .then(function (r) { return r.json(); })
-                    .then(function (d) {
-                        if (!d || !d.success) {
-                            inventoryItems = [];
-                            populateInventorySelect('');
-                            return;
-                        }
-                        inventoryItems = (d.items || []).slice().sort(function (a, b) {
-                            return String(a.name || '').localeCompare(String(b.name || ''));
-                        });
-                        populateInventorySelect(invSelect && invSelect.value ? invSelect.value : '');
-                    })
-                    .catch(function () {
-                        inventoryItems = [];
-                        populateInventorySelect('');
-                    });
             }
 
             function loadAddons() {
@@ -881,11 +832,10 @@
                 resetForm();
                 backdrop.classList.add('is-visible');
                 backdrop.setAttribute('aria-hidden', 'false');
-                Promise.all([loadAddons(), loadInventoryOptions()])
-                    .catch(function (err) {
-                        setErr(err.message || 'Failed to load addons.');
-                        renderList();
-                    });
+                loadAddons().catch(function (err) {
+                    setErr(err.message || 'Failed to load addons.');
+                    renderList();
+                });
                 nameInput.focus();
             }
 
@@ -900,40 +850,6 @@
                     selectedStation = btn.getAttribute('data-station') === 'kitchen' ? 'kitchen' : 'bar';
                     syncStationButtons();
                 });
-            });
-
-            listEl.addEventListener('click', function (e) {
-                var linkBtn = e.target.closest('[data-link-addon]');
-                if (linkBtn) {
-                    var linkId = parseInt(linkBtn.getAttribute('data-link-addon'), 10);
-                    if (linkId) beginLinkAddon(linkId);
-                    return;
-                }
-                var del = e.target.closest('[data-delete-addon]');
-                if (!del) return;
-                var id = parseInt(del.getAttribute('data-delete-addon'), 10);
-                if (!id) return;
-                if (!window.confirm('Remove this addon?')) return;
-                setErr('');
-                fetch('api/addons.php', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ id: id })
-                })
-                    .then(function (r) { return r.json(); })
-                    .then(function (d) {
-                        if (!d || !d.success) {
-                            setErr((d && d.error) || 'Failed to delete addon.');
-                            return;
-                        }
-                        if (editingAddonId === id) resetForm();
-                        addons = d.addons || [];
-                        renderList();
-                    })
-                    .catch(function () {
-                        setErr('Failed to delete addon.');
-                    });
             });
 
             btnOpen.addEventListener('click', openModal);
@@ -953,26 +869,17 @@
                 if (!mainCategoryId) {
                     return setErr('Bar/Kitchen stations are missing. Create them under products first.');
                 }
-                var inventoryItemId = invSelect ? (parseInt(invSelect.value, 10) || 0) : 0;
-                var inventoryQty = invQtyInput ? parseFloat(invQtyInput.value) : 1;
-                if (!Number.isFinite(inventoryQty) || inventoryQty <= 0) inventoryQty = 1;
-
-                var payload = {
-                    name: name,
-                    price: price,
-                    main_category_id: mainCategoryId,
-                    inventory_item_id: inventoryItemId > 0 ? inventoryItemId : null,
-                    inventory_qty: inventoryQty
-                };
-                var isEdit = !!editingAddonId;
-                if (isEdit) payload.id = editingAddonId;
 
                 saveBtn.disabled = true;
                 fetch('api/addons.php', {
-                    method: isEdit ? 'PUT' : 'POST',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        name: name,
+                        price: price,
+                        main_category_id: mainCategoryId
+                    })
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
@@ -1107,6 +1014,117 @@
                     })
                     .catch(function () {
                         setErr('Network error while saving GCash kiosk config.');
+                    })
+                    .finally(function () {
+                        saveBtn.disabled = false;
+                    });
+            });
+        })();
+        </script>
+        <script>
+        (function () {
+            var btnOpen = document.getElementById('btn-set-discount-rate');
+            var backdrop = document.getElementById('discount-rate-backdrop');
+            var closeBtn = document.getElementById('discount-rate-close');
+            var cancelBtn = document.getElementById('discount-rate-cancel');
+            var saveBtn = document.getElementById('discount-rate-save');
+            var errEl = document.getElementById('discount-rate-error');
+            var rateInput = document.getElementById('discount-rate-input');
+            var hintEl = document.getElementById('discount-rate-hint');
+            var statusEl = document.getElementById('discount-rate-status');
+
+            if (!btnOpen || !backdrop || !saveBtn || !rateInput) return;
+
+            function setErr(msg) {
+                if (!errEl) return;
+                if (!msg) {
+                    errEl.hidden = true;
+                    errEl.textContent = '';
+                    return;
+                }
+                errEl.textContent = msg;
+                errEl.hidden = false;
+            }
+
+            function syncUi(rate) {
+                var hasRate = rate >= 1 && rate <= 100;
+                if (rateInput) rateInput.value = hasRate ? String(rate) : '';
+                if (saveBtn) saveBtn.textContent = hasRate ? 'Update Discount Rate' : 'Set Discount Rate';
+                if (hintEl) {
+                    hintEl.textContent = hasRate
+                        ? rate + '% is saved. Staff clicks Discounts on any order to apply it. Update the rate here when needed.'
+                        : 'Set the discount rate once. It stays saved until you change it. Staff clicks Discounts on any order to apply it.';
+                }
+                if (statusEl) {
+                    if (hasRate) {
+                        statusEl.hidden = false;
+                        statusEl.textContent = rate + '% ready. Staff can apply it via the Discounts button.';
+                    } else {
+                        statusEl.hidden = true;
+                        statusEl.textContent = '';
+                    }
+                }
+            }
+
+            function openModal() {
+                setErr('');
+                backdrop.classList.add('is-visible');
+                backdrop.setAttribute('aria-hidden', 'false');
+                fetch('api/discount_rate_config.php', { method: 'GET', cache: 'no-store' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) return;
+                        var val = Math.round(Number(d.rate_value));
+                        syncUi(Number.isFinite(val) ? val : 0);
+                    })
+                    .catch(function () {
+                        syncUi(0);
+                    });
+                setTimeout(function () { rateInput.focus(); }, 50);
+            }
+
+            function closeModal() {
+                backdrop.classList.remove('is-visible');
+                backdrop.setAttribute('aria-hidden', 'true');
+            }
+
+            btnOpen.addEventListener('click', openModal);
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+            backdrop.addEventListener('click', function (e) {
+                if (e.target === backdrop) closeModal();
+            });
+
+            rateInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveBtn.click();
+                }
+            });
+
+            saveBtn.addEventListener('click', function () {
+                setErr('');
+                var rate = Math.round(Number(rateInput.value));
+                if (!Number.isFinite(rate) || rate < 1 || rate > 100) {
+                    return setErr('Enter a discount rate between 1 and 100.');
+                }
+
+                saveBtn.disabled = true;
+                fetch('api/discount_rate_config.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rate: rate })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) {
+                            setErr(d && d.error ? d.error : 'Failed to save discount rate.');
+                            return;
+                        }
+                        syncUi(rate);
+                    })
+                    .catch(function () {
+                        setErr('Network error while saving discount rate.');
                     })
                     .finally(function () {
                         saveBtn.disabled = false;

@@ -261,6 +261,195 @@ body.modal-open {
     overflow-x: auto;
     padding-bottom: 2px;
     flex: 1;
+    margin-top: 10px;
+}
+.menu-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.menu-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #2a2118;
+    border: 1px solid #3d3025;
+    color: #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+.menu-filter-btn:hover {
+    border-color: #f48c25;
+    background: #342818;
+}
+.menu-filter-btn img {
+    width: 14px;
+    height: 14px;
+    opacity: 0.85;
+}
+.menu-filter-btn__label {
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: #94a3b8;
+}
+.menu-filter-btn__summary {
+    color: #f8fafc;
+    font-size: 14px;
+    font-weight: 700;
+}
+.menu-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 96px 18px 18px;
+    z-index: 28;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease-out;
+}
+.menu-filter-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.menu-filter-popover {
+    width: min(420px, 100%);
+    background: linear-gradient(180deg, #221a14 0%, #1a1410 100%);
+    border: 1px solid #4a3828;
+    border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(244, 140, 37, 0.08);
+    overflow: hidden;
+    animation: menu-filter-pop 0.22s ease;
+}
+@keyframes menu-filter-pop {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.menu-filter-popover__head,
+.menu-filter-popover__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+}
+.menu-filter-popover__head {
+    border-bottom: 1px solid rgba(61, 48, 37, 0.85);
+}
+.menu-filter-popover__foot {
+    border-top: 1px solid rgba(61, 48, 37, 0.85);
+    justify-content: flex-end;
+}
+.menu-filter-popover__head h3 {
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #f48c25;
+}
+.menu-filter-popover__close {
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+}
+.menu-filter-popover__close:hover { color: #f8fafc; }
+.menu-filter-popover__body {
+    padding: 18px 16px 20px;
+    max-height: min(52vh, 420px);
+    overflow-y: auto;
+}
+.menu-filter-check-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.menu-filter-check {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 12px 14px;
+    border: 1px solid #3d3025;
+    border-radius: 12px;
+    background: rgba(11, 15, 20, 0.55);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+}
+.menu-filter-check:hover {
+    border-color: #6b4f33;
+    background: rgba(42, 33, 24, 0.85);
+}
+.menu-filter-check input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.menu-filter-check__box {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid #64748b;
+    background: #0f1419;
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.menu-filter-check__box::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 6px;
+    height: 11px;
+    border-right: 2px solid #120e0a;
+    border-bottom: 2px solid #120e0a;
+    transform: rotate(45deg) scale(0);
+    transition: transform 0.15s ease;
+}
+.menu-filter-check input:checked + .menu-filter-check__box {
+    border-color: #f48c25;
+    background: #f48c25;
+    box-shadow: 0 0 0 3px rgba(244, 140, 37, 0.18);
+}
+.menu-filter-check input:checked + .menu-filter-check__box::after {
+    transform: rotate(45deg) scale(1);
+}
+.menu-filter-check input:focus-visible + .menu-filter-check__box {
+    outline: 2px solid #f48c25;
+    outline-offset: 2px;
+}
+.menu-filter-check input:checked ~ .menu-filter-check__text {
+    color: #f8fafc;
+}
+.menu-filter-check__text {
+    color: #cbd5e1;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.menu-filter-empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    text-align: center;
+    padding: 12px 8px;
 }
 .menu-search {
     width: 240px;

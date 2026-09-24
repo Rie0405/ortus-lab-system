@@ -6989,6 +6989,37 @@ button {
     justify-content: center;
     border-radius: 50%;
     background: rgba(74, 222, 128, 0.12);
+    position: relative;
+}
+.payment-success-toast__icon {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 36px;
+    height: 36px;
+}
+.payment-success-toast__icon-ok {
+    display: block !important;
+}
+.payment-success-toast__icon-fail {
+    display: none !important;
+}
+.payment-success-toast.is-failed .payment-success-toast__icon-ok {
+    display: none !important;
+}
+.payment-success-toast.is-failed .payment-success-toast__icon-fail {
+    display: block !important;
+}
+.payment-success-toast__check.is-failed,
+.payment-success-toast.is-failed .payment-success-toast__check {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+.payment-success-toast.is-failed .payment-success-toast__bar-fill {
+    background: #f87171;
+}
+.payment-success-toast.is-failed .payment-success-toast__card {
+    border-color: rgba(248, 113, 113, 0.45);
 }
 .payment-success-toast__title {
     margin: 0;

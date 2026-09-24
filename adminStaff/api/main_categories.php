@@ -88,15 +88,92 @@ if ($m === 'DELETE') {
         fail('Main category not found.', 404);
     }
 
-    $inUse = $pdo->prepare('SELECT COUNT(*) FROM menu_items WHERE main_category_id = :id');
-    $inUse->execute([':id' => $id]);
-    if ((int)$inUse->fetchColumn() > 0) {
-        fail('Cannot delete a main category that still has menu items.');
+    $itemIds = [];
+
+    try {
+        $pdo->beginTransaction();
+
+        // Soft-delete addons registered to this main category.
+        try {
+            $pdo->prepare('UPDATE addons SET is_active = 0 WHERE main_category_id = :id')
+                ->execute([':id' => $id]);
+        } catch (Throwable $e) {
+            // Addons table may be unavailable on some installs.
+        }
+
+        $idsStmt = $pdo->prepare('SELECT id FROM menu_items WHERE main_category_id = :id');
+        $idsStmt->execute([':id' => $id]);
+        $itemIds = array_map('intval', $idsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+
+        foreach ($itemIds as $menuItemId) {
+            if ($menuItemId <= 0) {
+                continue;
+            }
+
+            // Clear recipe rows first (FK to menu_items).
+            try {
+                $recipeIdsStmt = $pdo->prepare('SELECT id FROM recipes WHERE menu_item_id = :mid');
+                $recipeIdsStmt->execute([':mid' => $menuItemId]);
+                foreach ($recipeIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $recipeId) {
+                    $rid = (int)$recipeId;
+                    if ($rid <= 0) {
+                        continue;
+                    }
+                    try {
+                        $pdo->prepare('DELETE FROM recipe_ingredients WHERE recipe_id = :rid')
+                            ->execute([':rid' => $rid]);
+                    } catch (Throwable $e) {
+                        // ignore
+                    }
+                }
+                $pdo->prepare('DELETE FROM recipes WHERE menu_item_id = :mid')
+                    ->execute([':mid' => $menuItemId]);
+            } catch (Throwable $e) {
+                // Recipes may not exist.
+            }
+
+            try {
+                $pdo->prepare('UPDATE inventory_items SET menu_item_id = NULL WHERE menu_item_id = :mid')
+                    ->execute([':mid' => $menuItemId]);
+            } catch (Throwable $e) {
+                // ignore
+            }
+
+            try {
+                $pdo->prepare('UPDATE addons SET menu_item_id = NULL WHERE menu_item_id = :mid')
+                    ->execute([':mid' => $menuItemId]);
+            } catch (Throwable $e) {
+                // ignore
+            }
+
+            // Remove the menu item. Keep order_items for sales history when possible.
+            try {
+                $pdo->prepare('DELETE FROM menu_items WHERE id = :mid')->execute([':mid' => $menuItemId]);
+            } catch (Throwable $e) {
+                $pdo->prepare(
+                    'UPDATE menu_items
+                        SET is_available = 0, main_category_id = NULL
+                      WHERE id = :mid'
+                )->execute([':mid' => $menuItemId]);
+            }
+        }
+
+        $upd = $pdo->prepare('UPDATE main_categories SET is_active = 0 WHERE id = :id');
+        $upd->execute([':id' => $id]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        fail('Failed to delete main category: ' . $e->getMessage());
     }
 
-    $upd = $pdo->prepare('UPDATE main_categories SET is_active = 0 WHERE id = :id');
-    $upd->execute([':id' => $id]);
-    ok(['id' => $id, 'message' => 'Main category deleted.']);
+    ok([
+        'id' => $id,
+        'deleted_menu_items' => count($itemIds),
+        'message' => 'Main category deleted.',
+    ]);
 }
 
 fail('Method not allowed', 405);

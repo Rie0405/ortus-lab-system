@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20260921-discount-price-v2">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20260924-txn-icons-v2">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -201,7 +201,7 @@
                             <h4>Oat Milk (Barista Edition)</h4>
                             <div class="waste-card-foot">
                                 <span>2.0 Units</span>
-                                <strong>Est: ₱12.40</strong>
+                                <strong>Est: ₱12.4`0</strong>
                             </div>
                         </article>
 
@@ -4011,7 +4011,29 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
-                }).then(function (r) { return r.json(); });
+                }).then(function (r) {
+                    return r.json().then(function (data) {
+                        if (!data || typeof data !== "object") {
+                            return { success: false, error: "Invalid server response (" + r.status + ")." };
+                        }
+                        if (!r.ok || data.success !== true) {
+                            return {
+                                success: false,
+                                error: data.error || ("Request failed (" + r.status + ")."),
+                                code: data.code || null,
+                                shortages: data.shortages || null
+                            };
+                        }
+                        return data;
+                    }).catch(function () {
+                        return { success: false, error: "Invalid server response (" + r.status + ")." };
+                    });
+                }).catch(function (err) {
+                    return {
+                        success: false,
+                        error: (err && err.message) ? err.message : "Network error. Order was not recorded."
+                    };
+                });
             }
 
             function mapPosCartLinesForSubmit(lines) {
@@ -4059,25 +4081,27 @@
             function postPosOrderWithShortageHandling(payload) {
                 if (payComplete) payComplete.disabled = true;
                 return postPosOrder(payload).then(function (data) {
-                    if (data.success) return data;
-                    if (data.code === "inventory_shortage") {
+                    if (data && data.success) return data;
+                    if (data && data.code === "inventory_shortage") {
                         return openInventoryShortageModal(data.shortages || [], payload).then(function (restocked) {
-                            if (!restocked) return null;
+                            if (!restocked) return { success: false, error: "Order cancelled due to inventory shortage." };
                             if (payComplete) payComplete.disabled = true;
                             return postPosOrder(payload).then(function (data2) {
-                                if (data2.success) return data2;
-                                if (data2.code === "inventory_shortage") {
+                                if (data2 && data2.success) return data2;
+                                if (data2 && data2.code === "inventory_shortage") {
                                     return openInventoryShortageModal(data2.shortages || [], payload).then(function () {
-                                        return null;
+                                        return { success: false, error: "Inventory still insufficient after restock." };
                                     });
                                 }
-                                alert(data2.error || "Failed to create order after restock.");
-                                return null;
+                                return data2 && typeof data2 === "object"
+                                    ? data2
+                                    : { success: false, error: "Failed to create order after restock." };
                             });
                         });
                     }
-                    alert(data.error || "Failed to create order");
-                    return null;
+                    return data && typeof data === "object"
+                        ? data
+                        : { success: false, error: "Failed to create order." };
                 });
             }
 
@@ -4111,27 +4135,45 @@
                         jobs.push({ order_type: currentFulfillment, lines: fallbackLines });
                     }
 
-                    var successCount = 0;
+                    var expectedJobs = 0;
+                    var recordedCount = 0;
+                    var lastError = "";
                     var chain = Promise.resolve();
                     jobs.forEach(function (job, idx) {
                         chain = chain.then(function () {
                             var payload = buildPosOrderPayload(job.order_type, job.lines, idx === 0);
                             if (!payload.items.length) return null;
+                            expectedJobs += 1;
                             return postPosOrderWithShortageHandling(payload).then(function (res) {
-                                if (res && res.success) successCount += 1;
+                                if (typeof window.isOrderFullyRecorded === "function"
+                                    ? window.isOrderFullyRecorded(res)
+                                    : (res && res.success && res.order_id && res.order_number && res.kitchen_ticket_number)) {
+                                    recordedCount += 1;
+                                } else if (res && res.error) {
+                                    lastError = String(res.error || "");
+                                }
                                 return res;
                             });
                         });
                     });
                     chain.then(function () {
-                        if (successCount > 0) {
+                        var allRecorded = expectedJobs > 0 && recordedCount === expectedJobs;
+                        if (recordedCount > 0) {
                             if (window.posOrderCompleted) window.posOrderCompleted();
                             closePayModal();
-                            if (typeof window.showPaymentSuccessToast === "function") {
-                                window.showPaymentSuccessToast();
-                            }
+                        }
+                        if (typeof window.showPaymentSuccessToast === "function") {
+                            window.showPaymentSuccessToast({ ok: !!allRecorded });
+                        }
+                        if (!allRecorded && lastError) {
+                            alert(lastError);
+                        } else if (!allRecorded && expectedJobs > 0) {
+                            alert("Transaction not successful. Order was not fully recorded.");
                         }
                     }).catch(function (err) {
+                        if (typeof window.showPaymentSuccessToast === "function") {
+                            window.showPaymentSuccessToast({ ok: false });
+                        }
                         alert("Failed to create order: " + (err.message || err));
                     }).finally(function () {
                         updateCompleteButtonState();
@@ -9217,13 +9259,17 @@
                 <span class="payment-success-toast__bar-fill" id="payment-success-toast-bar"></span>
             </div>
             <div class="payment-success-toast__body">
-                <div class="payment-success-toast__check" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none">
+                <div class="payment-success-toast__check" id="payment-success-toast-icon" aria-hidden="true">
+                    <svg class="payment-success-toast__icon payment-success-toast__icon-ok" id="payment-success-toast-icon-ok" viewBox="0 0 24 24" width="36" height="36" fill="none" aria-hidden="true" style="display:block">
                         <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.6"/>
                         <path d="M7 12.5l3.2 3.2L17 8.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
+                    <svg class="payment-success-toast__icon payment-success-toast__icon-fail" id="payment-success-toast-icon-fail" viewBox="0 0 24 24" width="36" height="36" fill="none" aria-hidden="true" style="display:none">
+                        <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M8 8l8 8M16 8l-8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
                 </div>
-                <p class="payment-success-toast__title">Payment successful</p>
+                <p class="payment-success-toast__title" id="payment-success-toast-title">Transaction successful</p>
             </div>
         </div>
     </div>
@@ -9231,10 +9277,41 @@
         (function () {
             var toast = document.getElementById('payment-success-toast');
             var bar = document.getElementById('payment-success-toast-bar');
+            var titleEl = document.getElementById('payment-success-toast-title');
+            var iconWrap = document.getElementById('payment-success-toast-icon');
+            var iconOk = document.getElementById('payment-success-toast-icon-ok');
+            var iconFail = document.getElementById('payment-success-toast-icon-fail');
             var hideTimer = null;
-            var DURATION_MS = 1500;
+            var DURATION_MS = 1800;
 
-            window.showPaymentSuccessToast = function (onDone) {
+            function setToastIcons(ok) {
+                // Inline display — SVG `hidden` is unreliable across browsers.
+                if (iconOk) iconOk.style.display = ok ? 'block' : 'none';
+                if (iconFail) iconFail.style.display = ok ? 'none' : 'block';
+            }
+
+            function isOrderFullyRecorded(res) {
+                if (!res || res.success !== true) return false;
+                var orderId = parseInt(res.order_id, 10) || 0;
+                var orderNumber = String(res.order_number || '').trim();
+                var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
+                return orderId > 0 && orderNumber !== '' && kitchenTicket > 0;
+            }
+            window.isOrderFullyRecorded = isOrderFullyRecorded;
+
+            window.showPaymentSuccessToast = function (onDoneOrOpts, maybeOnDone) {
+                var opts = {};
+                var onDone = null;
+                if (typeof onDoneOrOpts === 'function') {
+                    onDone = onDoneOrOpts;
+                } else if (onDoneOrOpts && typeof onDoneOrOpts === 'object') {
+                    opts = onDoneOrOpts;
+                    onDone = typeof maybeOnDone === 'function' ? maybeOnDone : (typeof opts.onDone === 'function' ? opts.onDone : null);
+                } else if (typeof maybeOnDone === 'function') {
+                    onDone = maybeOnDone;
+                }
+                // Require explicit ok:true for success; anything else is failure.
+                var ok = opts.ok === true;
                 if (!toast) {
                     if (typeof onDone === 'function') onDone();
                     return;
@@ -9243,6 +9320,13 @@
                     clearTimeout(hideTimer);
                     hideTimer = null;
                 }
+                if (titleEl) {
+                    titleEl.textContent = ok ? 'Transaction successful' : 'Transaction not successful';
+                }
+                toast.classList.toggle('is-failed', !ok);
+                if (iconWrap) iconWrap.classList.toggle('is-failed', !ok);
+                setToastIcons(ok);
+
                 toast.hidden = false;
                 toast.setAttribute('aria-hidden', 'false');
                 toast.classList.add('is-visible');
@@ -9256,8 +9340,12 @@
                 hideTimer = setTimeout(function () {
                     hideTimer = null;
                     toast.classList.remove('is-visible');
+                    toast.classList.remove('is-failed');
                     toast.setAttribute('aria-hidden', 'true');
                     toast.hidden = true;
+                    if (iconWrap) iconWrap.classList.remove('is-failed');
+                    setToastIcons(true);
+                    if (titleEl) titleEl.textContent = 'Transaction successful';
                     if (bar) {
                         bar.style.transition = 'none';
                         bar.style.width = '100%';

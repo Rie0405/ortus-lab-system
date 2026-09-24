@@ -152,15 +152,13 @@ function getSidebarOrderName() {
 }
 
 function syncOrderNameSection() {
-    var show = isPickupOrderSelected();
+    // Same for pickup and onsite: collect order name in the sidebar first.
     document.querySelectorAll('.order-name-section').forEach(function (section) {
-        section.hidden = !show;
+        section.hidden = false;
     });
-    if (show) {
-        document.querySelectorAll('.order-name-input').forEach(function (input) {
-            if (input.value !== orderCustomerName) input.value = orderCustomerName;
-        });
-    }
+    document.querySelectorAll('.order-name-input').forEach(function (input) {
+        if (input.value !== orderCustomerName) input.value = orderCustomerName;
+    });
 }
 
 function getPickupTestHourOverride() {
@@ -2283,7 +2281,24 @@ var orderReceiptQrImg = document.getElementById('order-receipt-qr-img');
 var orderReceiptQrStatus = document.getElementById('order-receipt-qr-status');
 var orderReceiptViewBtn = document.getElementById('order-receipt-view-btn');
 var orderReceiptDoneBtn = document.getElementById('order-receipt-done');
+var receiptViewModal = document.getElementById('receipt-view-modal');
+var receiptViewFrame = document.getElementById('receipt-view-frame');
+var receiptViewCloseBtn = document.getElementById('receipt-view-close');
 var lastReceiptUrl = '';
+
+function openReceiptViewModal(url) {
+    if (!receiptViewModal || !url) return;
+    if (receiptViewFrame) receiptViewFrame.src = url;
+    receiptViewModal.classList.add('cash-modal-overlay--open');
+    receiptViewModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeReceiptViewModal() {
+    if (!receiptViewModal) return;
+    receiptViewModal.classList.remove('cash-modal-overlay--open');
+    receiptViewModal.setAttribute('aria-hidden', 'true');
+    if (receiptViewFrame) receiptViewFrame.src = 'about:blank';
+}
 
 function buildReceiptUrl(token) {
     try {
@@ -2409,10 +2424,34 @@ function renderReceiptQr(url) {
     useLibrary();
 }
 
-function showPaymentSuccessToast(onDone) {
+function isOrderFullyRecorded(res) {
+    if (!res || !res.success) return false;
+    var orderId = parseInt(res.order_id, 10) || 0;
+    var orderNumber = String(res.order_number || '').trim();
+    var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
+    return orderId > 0 && orderNumber !== '' && kitchenTicket > 0;
+}
+
+function showPaymentSuccessToast(onDoneOrOpts, maybeOnDone) {
     var toast = document.getElementById('payment-success-toast');
     var bar = document.getElementById('payment-success-toast-bar');
-    var DURATION_MS = 1500;
+    var titleEl = document.getElementById('payment-success-toast-title');
+    var iconWrap = document.getElementById('payment-success-toast-icon');
+    var iconOk = document.getElementById('payment-success-toast-icon-ok');
+    var iconFail = document.getElementById('payment-success-toast-icon-fail');
+    var DURATION_MS = 1800;
+    var opts = {};
+    var onDone = null;
+    if (typeof onDoneOrOpts === 'function') {
+        onDone = onDoneOrOpts;
+    } else if (onDoneOrOpts && typeof onDoneOrOpts === 'object') {
+        opts = onDoneOrOpts;
+        onDone = typeof maybeOnDone === 'function' ? maybeOnDone : (typeof opts.onDone === 'function' ? opts.onDone : null);
+    } else if (typeof maybeOnDone === 'function') {
+        onDone = maybeOnDone;
+    }
+    // Require explicit ok:true for success; anything else is failure.
+    var ok = opts.ok === true;
     if (!toast) {
         if (typeof onDone === 'function') onDone();
         return;
@@ -2421,6 +2460,15 @@ function showPaymentSuccessToast(onDone) {
         clearTimeout(showPaymentSuccessToast._timer);
         showPaymentSuccessToast._timer = null;
     }
+    if (titleEl) {
+        titleEl.textContent = ok ? 'Transaction successful' : 'Transaction not successful';
+    }
+    toast.classList.toggle('is-failed', !ok);
+    if (iconWrap) iconWrap.classList.toggle('is-failed', !ok);
+    // Inline display — SVG `hidden` is unreliable across browsers.
+    if (iconOk) iconOk.style.display = ok ? 'block' : 'none';
+    if (iconFail) iconFail.style.display = ok ? 'none' : 'block';
+
     toast.hidden = false;
     toast.setAttribute('aria-hidden', 'false');
     toast.classList.add('is-visible');
@@ -2434,8 +2482,13 @@ function showPaymentSuccessToast(onDone) {
     showPaymentSuccessToast._timer = setTimeout(function () {
         showPaymentSuccessToast._timer = null;
         toast.classList.remove('is-visible');
+        toast.classList.remove('is-failed');
         toast.setAttribute('aria-hidden', 'true');
         toast.hidden = true;
+        if (iconWrap) iconWrap.classList.remove('is-failed');
+        if (iconOk) iconOk.style.display = 'block';
+        if (iconFail) iconFail.style.display = 'none';
+        if (titleEl) titleEl.textContent = 'Transaction successful';
         if (bar) {
             bar.style.transition = 'none';
             bar.style.width = '100%';
@@ -2464,6 +2517,7 @@ function openOrderReceiptModal(res) {
 }
 
 function closeOrderReceiptModal() {
+    closeReceiptViewModal();
     if (orderReceiptModal) {
         orderReceiptModal.classList.remove('cash-modal-overlay--open');
         orderReceiptModal.setAttribute('aria-hidden', 'true');
@@ -2642,7 +2696,7 @@ function openCashModal() {
     renderCheckoutSummary(cashModalSummary, 'CASH');
     syncDiscountRequestButtons();
     var cashNameInput = document.getElementById('cash-order-name-input');
-    if (cashNameInput) cashNameInput.value = '';
+    if (cashNameInput) cashNameInput.value = getSidebarOrderName();
     cashCheckoutModal.classList.add('cash-modal-overlay--open');
     cashCheckoutModal.setAttribute('aria-hidden', 'false');
 }
@@ -2831,6 +2885,12 @@ document.querySelectorAll('.checkout-btn').forEach(function (btn) {
 
         var paymentText = activePaymentBtn.textContent.trim().toUpperCase();
         e.preventDefault();
+        if (!getSidebarOrderName()) {
+            window.alert('Please enter a customer name for the order.');
+            var nameInput = page.querySelector('.order-name-input');
+            if (nameInput) nameInput.focus();
+            return;
+        }
         if (paymentText === 'CASH') {
             var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
             var isPickupOrder = orderTypeNorm === 'pickup' || orderTypeNorm === 'pick_up';
@@ -2840,12 +2900,6 @@ document.querySelectorAll('.checkout-btn').forEach(function (btn) {
             }
             openCashModal();
         } else if (paymentText === 'GCASH') {
-            if (isPickupOrderSelected() && !getSidebarOrderName()) {
-                window.alert('Please enter a customer name for the order.');
-                var nameInput = page.querySelector('.order-name-input');
-                if (nameInput) nameInput.focus();
-                return;
-            }
             openGcashModal();
         }
     });
@@ -2955,21 +3009,37 @@ function submitPublicOrder(paymentMethod, gcashRef) {
         return Promise.reject(new Error('Please add at least one item before checkout.'));
     }
 
-    var lastRes = null;
+    var recorded = [];
     return jobs.reduce(function (chain, job, idx) {
         return chain.then(function () {
             return submitOnePublicOrder(paymentMethod, gcashRef, job.type, job.items, idx === 0);
         }).then(function (res) {
-            lastRes = res;
+            recorded.push(res);
+            return res;
         });
     }, Promise.resolve()).then(function () {
-        return lastRes;
+        var allOk = recorded.length === jobs.length && recorded.every(isOrderFullyRecorded);
+        if (!allOk) {
+            var err = new Error('Transaction not successful. Order was not fully recorded in sales/kitchen.');
+            err.partialResults = recorded;
+            err.recordedOk = false;
+            throw err;
+        }
+        return recorded[recorded.length - 1];
     });
 }
 
 if (orderReceiptViewBtn) {
     orderReceiptViewBtn.addEventListener('click', function () {
-        if (lastReceiptUrl) window.open(lastReceiptUrl, '_blank', 'noopener');
+        if (lastReceiptUrl) openReceiptViewModal(lastReceiptUrl);
+    });
+}
+if (receiptViewCloseBtn) {
+    receiptViewCloseBtn.addEventListener('click', closeReceiptViewModal);
+}
+if (receiptViewModal) {
+    receiptViewModal.addEventListener('click', function (e) {
+        if (e.target === receiptViewModal) closeReceiptViewModal();
     });
 }
 if (orderReceiptDoneBtn) {
@@ -2998,10 +3068,11 @@ if (cashModalConfirmBtn) {
             orderCustomerName = '';
             syncDiscountRequestButtons();
             renderAllSidebars();
-            showPaymentSuccessToast(function () {
+            showPaymentSuccessToast({ ok: true }, function () {
                 openOrderReceiptModal(res);
             });
         }).catch(function (err) {
+            showPaymentSuccessToast({ ok: false });
             window.alert(err && err.message ? err.message : 'Failed to submit order.');
         });
     });
@@ -3076,10 +3147,11 @@ if (gcashModalConfirmBtn) {
             orderCustomerName = '';
             syncDiscountRequestButtons();
             renderAllSidebars();
-            showPaymentSuccessToast(function () {
+            showPaymentSuccessToast({ ok: true }, function () {
                 openOrderReceiptModal(res);
             });
         }).catch(function (err) {
+            showPaymentSuccessToast({ ok: false });
             window.alert(err && err.message ? err.message : 'Failed to submit order.');
         });
     });
@@ -3182,6 +3254,10 @@ if (ingredientModal) {
 
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
+        if (receiptViewModal && receiptViewModal.classList.contains('cash-modal-overlay--open')) {
+            closeReceiptViewModal();
+            return;
+        }
         closeCashModal();
         closeGcashModal();
         closeIngredientModal(null);

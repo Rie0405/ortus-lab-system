@@ -2524,6 +2524,73 @@ body {
     padding-top: 0;
 }
 
+.receipt-view-overlay {
+    z-index: 12000;
+}
+
+.receipt-view-modal {
+    max-width: min(440px, calc(100vw - 24px));
+    width: 100%;
+    max-height: min(92vh, 780px);
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: #0f0c0a;
+    border-radius: 16px;
+}
+
+.receipt-view-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(61, 48, 37, 0.9);
+    background: #15110d;
+}
+
+.receipt-view-modal__title {
+    margin: 0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #f1f5f9;
+}
+
+.receipt-view-modal__close {
+    border: 0;
+    background: transparent;
+    color: #e2e8f0;
+    font-size: 28px;
+    line-height: 1;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.receipt-view-modal__close:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.receipt-view-modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: #0b0908;
+}
+
+.receipt-view-frame {
+    display: block;
+    width: 100%;
+    height: min(78vh, 680px);
+    border: 0;
+    background: #0b0908;
+}
+
 .cash-order-row {
     display: flex;
     justify-content: space-between;
@@ -3634,6 +3701,37 @@ body {
     justify-content: center;
     border-radius: 50%;
     background: rgba(74, 222, 128, 0.12);
+    position: relative;
+}
+.payment-success-toast__icon {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 36px;
+    height: 36px;
+}
+.payment-success-toast__icon-ok {
+    display: block !important;
+}
+.payment-success-toast__icon-fail {
+    display: none !important;
+}
+.payment-success-toast.is-failed .payment-success-toast__icon-ok {
+    display: none !important;
+}
+.payment-success-toast.is-failed .payment-success-toast__icon-fail {
+    display: block !important;
+}
+.payment-success-toast__check.is-failed,
+.payment-success-toast.is-failed .payment-success-toast__check {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+.payment-success-toast.is-failed .payment-success-toast__bar-fill {
+    background: #f87171;
+}
+.payment-success-toast.is-failed .payment-success-toast__card {
+    border-color: rgba(248, 113, 113, 0.45);
 }
 .payment-success-toast__title {
     margin: 0;

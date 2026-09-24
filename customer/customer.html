@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="customer_styles.css?v=20260910-align">
+    <link rel="stylesheet" href="customer_styles.css?v=20260924-order-name-uniform">
 </head>
 <body>
 
@@ -419,9 +419,9 @@
                         <p class="order-type-value">Not selected</p>
                     </div>
 
-                    <div class="sidebar-section order-name-section" hidden>
+                    <div class="sidebar-section order-name-section">
                         <h4 class="sidebar-section-title">ORDER NAME</h4>
-                        <input type="text" class="order-name-input" placeholder="Customer name for pickup" maxlength="100" autocomplete="name">
+                        <input type="text" class="order-name-input" placeholder="Customer name" maxlength="100" autocomplete="name">
                     </div>
 
                     <!-- Cart Items -->
@@ -656,9 +656,9 @@
                         <p class="order-type-value">Not selected</p>
                     </div>
 
-                    <div class="sidebar-section order-name-section" hidden>
+                    <div class="sidebar-section order-name-section">
                         <h4 class="sidebar-section-title">ORDER NAME</h4>
-                        <input type="text" class="order-name-input" placeholder="Customer name for pickup" maxlength="100" autocomplete="name">
+                        <input type="text" class="order-name-input" placeholder="Customer name" maxlength="100" autocomplete="name">
                     </div>
 
                     <!-- Cart Items -->
@@ -854,6 +854,19 @@
         </div>
     </div>
 
+    <!-- ── Receipt viewer popup (same content as receipt.html) ── -->
+    <div id="receipt-view-modal" class="cash-modal-overlay receipt-view-overlay" aria-hidden="true">
+        <div class="cash-modal receipt-view-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-view-title">
+            <header class="receipt-view-modal__header">
+                <h2 id="receipt-view-title" class="receipt-view-modal__title">Order Receipt</h2>
+                <button type="button" class="receipt-view-modal__close" id="receipt-view-close" aria-label="Close receipt">×</button>
+            </header>
+            <div class="receipt-view-modal__body">
+                <iframe id="receipt-view-frame" class="receipt-view-frame" title="Order receipt" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Add-ons checklist modal (same ids/classes as before for styles) ── -->
     <div id="ingredient-modal" class="ingredient-modal-overlay" aria-hidden="true">
         <div class="ingredient-modal" role="dialog" aria-modal="true" aria-labelledby="ingredient-modal-title">
@@ -878,13 +891,17 @@
                 <span class="payment-success-toast__bar-fill" id="payment-success-toast-bar"></span>
             </div>
             <div class="payment-success-toast__body">
-                <div class="payment-success-toast__check" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none">
+                <div class="payment-success-toast__check" id="payment-success-toast-icon" aria-hidden="true">
+                    <svg class="payment-success-toast__icon payment-success-toast__icon-ok" id="payment-success-toast-icon-ok" viewBox="0 0 24 24" width="36" height="36" fill="none" aria-hidden="true" style="display:block">
                         <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.6"/>
                         <path d="M7 12.5l3.2 3.2L17 8.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
+                    <svg class="payment-success-toast__icon payment-success-toast__icon-fail" id="payment-success-toast-icon-fail" viewBox="0 0 24 24" width="36" height="36" fill="none" aria-hidden="true" style="display:none">
+                        <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M8 8l8 8M16 8l-8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
                 </div>
-                <p class="payment-success-toast__title">Order confirmed. Please proceed to counter</p>
+                <p class="payment-success-toast__title" id="payment-success-toast-title">Transaction successful</p>
             </div>
         </div>
     </div>
@@ -896,7 +913,7 @@
     }
     </script>
     <script src="../shared/gcash_ref_digits.js"></script>
-    <script src="customer_script.js?v=20260915-receipt-qr"></script>
+    <script src="customer_script.js?v=20260924-order-name-uniform"></script>
 
 </body>
 </html>

@@ -45,10 +45,17 @@ function apiCall(method, url, body) {
     var editingId   = null;
     /** Category ids merged into the single "Beverages" option (same rules as staff POS). */
     var beverageMergedCategoryIds = [];
-    var categoryChipsRow = document.getElementById('menu-category-chips') || document.querySelector('.chips-row');
+    var menuFilterBtn = document.getElementById('btn-menu-filter');
+    var menuFilterSummary = document.getElementById('menu-filter-summary');
+    var menuFilterBackdrop = document.getElementById('menu-filter-backdrop');
+    var menuFilterCheckGrid = document.getElementById('menu-filter-check-grid');
+    var menuFilterCloseBtn = document.getElementById('menu-filter-close');
+    var menuFilterResetBtn = document.getElementById('menu-filter-reset');
+    var menuFilterDoneBtn = document.getElementById('menu-filter-done');
     var subcategoryChipsRow = document.getElementById('menu-subcategory-chips');
     var menuSearchInput = document.getElementById('menu-search-input');
-    var selectedCategoryChipKey = 'all';
+    /** category chip keys → enabled; empty object means “all” until categories load */
+    var menuCategoryFilters = {};
     var selectedSubcategoryChipId = 'all';
     var menuSearchQuery = '';
     var createImageUrl = '';
@@ -720,11 +727,36 @@ function apiCall(method, url, body) {
         var oldText = newCategoryAddBtn.textContent;
         newCategoryAddBtn.textContent = 'ADDING…';
 
+        var keepMainCat = prodMainCategorySelect ? prodMainCategorySelect.value : '';
+
         apiCall('POST', 'api/categories.php', { name: catName, is_active: 1 })
             .then(function (res) {
                 if (!res.success) throw new Error(res.error || 'Failed to add category');
                 newCategoryNameInput.value = '';
-                loadItems();
+                var newId = res.id || null;
+                return loadItems().then(function () {
+                    if (prodMainCategorySelect && keepMainCat) {
+                        prodMainCategorySelect.value = keepMainCat;
+                    }
+                    if (newId && prodCategorySelect) {
+                        prodCategorySelect.value = String(newId);
+                        // If beverages-merge mapped the option away, fall back to name match.
+                        if (prodCategorySelect.value !== String(newId)) {
+                            for (var i = 0; i < (categories || []).length; i++) {
+                                if (String(categories[i].name || '').toLowerCase() === catName.toLowerCase()) {
+                                    prodCategorySelect.value = String(categories[i].id);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    syncProductSubcategoryOptions();
+                    syncBevSubVisibility();
+                    syncAllCatalogIconDropzones();
+                    if (newCategoryPanel && toggleNewCategoryBtn) {
+                        toggleCatalogPanel(newCategoryPanel, toggleNewCategoryBtn, false);
+                    }
+                });
             })
             .catch(function (err) { alert('Error: ' + err.message); })
             .finally(function () {
@@ -833,7 +865,9 @@ function apiCall(method, url, body) {
             alert('Main category not found.');
             return;
         }
-        if (!window.confirm('Delete main category "' + cat.name + '"? Only allowed when it has no menu items.')) {
+        if (!window.confirm(
+            'Deleting main category "' + cat.name + '" would result in all categories and subcategories registered under it being deleted. Continue?'
+        )) {
             return;
         }
         apiCall('DELETE', 'api/main_categories.php', { id: parseInt(cat.id, 10) })
@@ -1197,7 +1231,9 @@ function apiCall(method, url, body) {
             alert('Category not found.');
             return;
         }
-        if (!window.confirm('Delete category "' + cat.name + '"? Only allowed when it has no menu items.')) {
+        if (!window.confirm(
+            'Deleting category "' + cat.name + '" would result in all subcategories registered under it being deleted. Continue?'
+        )) {
             return;
         }
         apiCall('DELETE', 'api/categories.php', { id: parseInt(cat.id, 10) })
@@ -1703,15 +1739,53 @@ function apiCall(method, url, body) {
         return 'cat-' + catId;
     }
 
-    function getSubcategoriesForSelectedCategory() {
-        if (selectedCategoryChipKey === 'all') return [];
-        if (selectedCategoryChipKey === 'bev') {
+    function getMenuCategoryFilterOptions() {
+        var opts = [];
+        var insertedBeverage = false;
+        (categories || []).forEach(function (cat) {
+            var catId = parseInt(cat.id, 10);
+            if (!catId) return;
+            if (categoryNameMergesIntoBeveragesAdmin(cat.name)) {
+                if (!insertedBeverage) {
+                    opts.push({ key: 'bev', label: 'Drinks' });
+                    insertedBeverage = true;
+                }
+                return;
+            }
+            opts.push({ key: 'cat-' + catId, label: cat.name || 'Category' });
+        });
+        return opts;
+    }
+
+    function getEnabledCategoryKeys() {
+        return Object.keys(menuCategoryFilters).filter(function (key) {
+            return !!menuCategoryFilters[key];
+        });
+    }
+
+    function ensureMenuCategoryFilterState() {
+        var opts = getMenuCategoryFilterOptions();
+        var next = {};
+        var hadAny = Object.keys(menuCategoryFilters).length > 0;
+        opts.forEach(function (opt) {
+            if (hadAny && Object.prototype.hasOwnProperty.call(menuCategoryFilters, opt.key)) {
+                next[opt.key] = !!menuCategoryFilters[opt.key];
+            } else {
+                next[opt.key] = true;
+            }
+        });
+        menuCategoryFilters = next;
+        return opts;
+    }
+
+    function getSubcategoriesForCategoryKey(selectedKey) {
+        if (selectedKey === 'bev') {
             return subcategories.filter(function (s) {
                 if (isTemperatureSubcategoryName(s.name)) return false;
                 return beverageMergedCategoryIds.indexOf(parseInt(s.category_id, 10)) !== -1;
             });
         }
-        var catId = parseInt(String(selectedCategoryChipKey).replace('cat-', ''), 10);
+        var catId = parseInt(String(selectedKey).replace('cat-', ''), 10);
         if (!catId) return [];
         return subcategories.filter(function (s) {
             if (isTemperatureSubcategoryName(s.name)) return false;
@@ -1719,10 +1793,35 @@ function apiCall(method, url, body) {
         });
     }
 
+    function getSubcategoriesForSelectedCategory() {
+        var enabled = getEnabledCategoryKeys();
+        // Subcategory chips when 1–2 categories are selected; hide if more than 2.
+        if (enabled.length < 1 || enabled.length > 2) return [];
+        var seen = {};
+        var combined = [];
+        enabled.forEach(function (key) {
+            getSubcategoriesForCategoryKey(key).forEach(function (sub) {
+                var sid = String(sub.id);
+                if (seen[sid]) return;
+                seen[sid] = true;
+                combined.push(sub);
+            });
+        });
+        return combined;
+    }
+
     function applyChipFilters() {
         var list = allItems.slice();
-        if (selectedCategoryChipKey !== 'all') {
-            list = list.filter(function (item) { return getItemCategoryChipKey(item) === selectedCategoryChipKey; });
+        var enabled = getEnabledCategoryKeys();
+        var allKeys = Object.keys(menuCategoryFilters);
+        if (!enabled.length) {
+            list = [];
+        } else if (enabled.length < allKeys.length) {
+            var enabledMap = {};
+            enabled.forEach(function (key) { enabledMap[key] = true; });
+            list = list.filter(function (item) {
+                return !!enabledMap[getItemCategoryChipKey(item)];
+            });
         }
         if (selectedSubcategoryChipId !== 'all') {
             list = list.filter(function (item) {
@@ -1761,28 +1860,88 @@ function apiCall(method, url, body) {
         subcategoryChipsRow.innerHTML = html;
     }
 
-    function renderCategoryChips() {
-        if (!categoryChipsRow) return;
-        var html = '<button class="chip' + (selectedCategoryChipKey === 'all' ? ' chip--active' : '') + '" data-category-key="all">All</button>';
-        var insertedBeverage = false;
-        (categories || []).forEach(function (cat) {
-            var catId = parseInt(cat.id, 10);
-            if (!catId) return;
-            if (categoryNameMergesIntoBeveragesAdmin(cat.name)) {
-                if (!insertedBeverage) {
-                    html += '<button class="chip' + (selectedCategoryChipKey === 'bev' ? ' chip--active' : '') + '" data-category-key="bev">Drinks</button>';
-                    insertedBeverage = true;
-                }
-                return;
-            }
-            var key = 'cat-' + catId;
-            html += '<button class="chip' + (selectedCategoryChipKey === key ? ' chip--active' : '') + '" data-category-key="' + key + '">' + escHtml(cat.name || 'Category') + '</button>';
+    function updateMenuFilterSummary() {
+        if (!menuFilterSummary) return;
+        var opts = getMenuCategoryFilterOptions();
+        var enabled = getEnabledCategoryKeys();
+        if (!opts.length) {
+            menuFilterSummary.textContent = 'All Items';
+            return;
+        }
+        if (enabled.length === opts.length) {
+            menuFilterSummary.textContent = 'All Items';
+            return;
+        }
+        if (!enabled.length) {
+            menuFilterSummary.textContent = 'None selected';
+            return;
+        }
+        if (enabled.length === 1) {
+            var only = opts.find(function (o) { return o.key === enabled[0]; });
+            menuFilterSummary.textContent = only ? only.label : '1 category';
+            return;
+        }
+        menuFilterSummary.textContent = enabled.length + ' categories';
+    }
+
+    function renderMenuFilterCheckboxes() {
+        if (!menuFilterCheckGrid) return;
+        var opts = ensureMenuCategoryFilterState();
+        if (!opts.length) {
+            menuFilterCheckGrid.innerHTML = '<p class="menu-filter-empty">No categories yet.</p>';
+            updateMenuFilterSummary();
+            return;
+        }
+        var html = '';
+        opts.forEach(function (opt) {
+            var checked = menuCategoryFilters[opt.key] !== false;
+            html +=
+                '<label class="menu-filter-check">' +
+                    '<input type="checkbox" data-category-key="' + escHtml(opt.key) + '"' + (checked ? ' checked' : '') + '>' +
+                    '<span class="menu-filter-check__box" aria-hidden="true"></span>' +
+                    '<span class="menu-filter-check__text">' + escHtml(opt.label) + '</span>' +
+                '</label>';
         });
-        categoryChipsRow.innerHTML = html;
+        menuFilterCheckGrid.innerHTML = html;
+        updateMenuFilterSummary();
+    }
+
+    function syncMenuFilterStateFromCheckboxes() {
+        if (!menuFilterCheckGrid) return;
+        menuFilterCheckGrid.querySelectorAll('input[data-category-key]').forEach(function (input) {
+            var key = input.getAttribute('data-category-key');
+            if (!key) return;
+            menuCategoryFilters[key] = !!input.checked;
+        });
+    }
+
+    function resetMenuFilters() {
+        Object.keys(menuCategoryFilters).forEach(function (key) {
+            menuCategoryFilters[key] = true;
+        });
+        selectedSubcategoryChipId = 'all';
+        renderMenuFilterCheckboxes();
+        renderSubcategoryChips();
+        applyChipFilters();
+    }
+
+    function openMenuFilterPopover() {
+        if (!menuFilterBackdrop) return;
+        renderMenuFilterCheckboxes();
+        menuFilterBackdrop.classList.add('is-visible');
+        menuFilterBackdrop.setAttribute('aria-hidden', 'false');
+        if (menuFilterBtn) menuFilterBtn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeMenuFilterPopover() {
+        if (!menuFilterBackdrop) return;
+        menuFilterBackdrop.classList.remove('is-visible');
+        menuFilterBackdrop.setAttribute('aria-hidden', 'true');
+        if (menuFilterBtn) menuFilterBtn.setAttribute('aria-expanded', 'false');
     }
 
     function renderFilterChips() {
-        renderCategoryChips();
+        renderMenuFilterCheckboxes();
         renderSubcategoryChips();
         applyChipFilters();
     }
@@ -2310,14 +2469,33 @@ function apiCall(method, url, body) {
         });
     }
 
-    // ── Category/subcategory filter chips ─────────────────────────────────────
-    if (categoryChipsRow) {
-        categoryChipsRow.addEventListener('click', function (e) {
-            var chip = e.target.closest('.chip[data-category-key]');
-            if (!chip) return;
-            selectedCategoryChipKey = chip.getAttribute('data-category-key') || 'all';
+    // ── Category filter popover + subcategory chips ───────────────────────────
+    if (menuFilterBtn) {
+        menuFilterBtn.addEventListener('click', openMenuFilterPopover);
+    }
+    if (menuFilterCloseBtn) {
+        menuFilterCloseBtn.addEventListener('click', closeMenuFilterPopover);
+    }
+    if (menuFilterDoneBtn) {
+        menuFilterDoneBtn.addEventListener('click', closeMenuFilterPopover);
+    }
+    if (menuFilterResetBtn) {
+        menuFilterResetBtn.addEventListener('click', resetMenuFilters);
+    }
+    if (menuFilterBackdrop) {
+        menuFilterBackdrop.addEventListener('click', function (e) {
+            if (e.target === menuFilterBackdrop) closeMenuFilterPopover();
+        });
+    }
+    if (menuFilterCheckGrid) {
+        menuFilterCheckGrid.addEventListener('change', function (e) {
+            var input = e.target && e.target.closest ? e.target.closest('input[data-category-key]') : null;
+            if (!input) return;
+            syncMenuFilterStateFromCheckboxes();
             selectedSubcategoryChipId = 'all';
-            renderFilterChips();
+            updateMenuFilterSummary();
+            renderSubcategoryChips();
+            applyChipFilters();
         });
     }
     if (subcategoryChipsRow) {
@@ -2335,6 +2513,11 @@ function apiCall(method, url, body) {
             applyChipFilters();
         });
     }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menuFilterBackdrop && menuFilterBackdrop.classList.contains('is-visible')) {
+            closeMenuFilterPopover();
+        }
+    });
 
     // ── Initial load ──────────────────────────────────────────────────────────
     loadItems();

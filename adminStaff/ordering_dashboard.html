@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260921-discount-rate">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260924-menu-filter">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -70,12 +70,34 @@
             </section>
 
             <section class="chips-toolbar">
-                <div class="chips-row" id="menu-category-chips"></div>
+                <section class="menu-filter-bar">
+                    <button type="button" class="btn menu-filter-btn" id="btn-menu-filter" aria-haspopup="dialog" aria-expanded="false" aria-controls="menu-filter-popover">
+                        <img src="icons_admin/list_icon.svg" alt="" aria-hidden="true">
+                        <span class="menu-filter-btn__label">Filters</span>
+                        <span class="menu-filter-btn__summary" id="menu-filter-summary">All Items</span>
+                    </button>
+                </section>
                 <label class="menu-search" for="menu-search-input">
                     <input type="search" id="menu-search-input" placeholder="Search product...">
                 </label>
             </section>
             <section class="chips-row" id="menu-subcategory-chips" hidden></section>
+
+            <div class="menu-filter-backdrop" id="menu-filter-backdrop" aria-hidden="true">
+                <div class="menu-filter-popover" id="menu-filter-popover" role="dialog" aria-modal="true" aria-labelledby="menu-filter-title">
+                    <header class="menu-filter-popover__head">
+                        <h3 id="menu-filter-title">Filter Categories</h3>
+                        <button type="button" class="menu-filter-popover__close" id="menu-filter-close" aria-label="Close">×</button>
+                    </header>
+                    <div class="menu-filter-popover__body">
+                        <div class="menu-filter-check-grid" id="menu-filter-check-grid"></div>
+                    </div>
+                    <footer class="menu-filter-popover__foot">
+                        <button type="button" class="btn btn-muted" id="menu-filter-reset">Reset</button>
+                        <button type="button" class="btn btn-primary" id="menu-filter-done">Done</button>
+                    </footer>
+                </div>
+            </div>
 
             <section class="table-wrap">
                 <div class="table-head">
@@ -192,7 +214,7 @@
                             <div class="product-field-group" data-catalog-role="create">
                                 <label class="product-field-label" for="prod-main-category">
                                     Select Designation Station
-                                    <span class="product-field-label__note">(Bar / Kitchen station)</span>
+                                    <span class="product-field-label__note">(Example: Bar)</span>
                                 </label>
                                 <div class="product-select-wrap">
                                     <select id="prod-main-category" class="product-select">
@@ -218,7 +240,7 @@
                                 <div class="product-field-group">
                                     <label class="product-field-label" for="prod-category">
                                         Category
-                                        <span class="product-field-label__note">(Main Food group: e.g. Beverages, Rice Meal, etc.)</span>
+                                        <span class="product-field-label__note"><br>Enter menu type for this station (Example: Beverages)</br></span>
                                     </label>
                                     <div class="product-select-wrap">
                                         <select id="prod-category" class="product-select">
@@ -242,8 +264,8 @@
 
                                 <div class="product-field-group">
                                     <label class="product-field-label" for="prod-subcategory">
-                                        Subcategory
-                                        <span class="product-field-label__note">(Food types inside a food group. e.g. Beverage: Coffee, Refreshers, Frappe, etc.)</span>
+                                        Subcategory (Optional)
+                                        <span class="product-field-label__note"><br>Enter item group for a menu type (Example: Coffee, Frappe)</br></span>
                                     </label>
                                     <div class="product-select-wrap">
                                         <select id="prod-subcategory" class="product-select">
@@ -729,7 +751,7 @@
         </footer>
         </div>
 
-        <script src="dashboard_script.js?v=20260921-bev-cold-default"></script>
+        <script src="dashboard_script.js?v=20260924-cat-del-cascade"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');

@@ -717,6 +717,14 @@ body {
     color: #94a3b8;
     line-height: 1.4;
 }
+.app-modal__hint--subtitle {
+    margin: 4px 0 0;
+    max-width: min(52ch, calc(100% - 12px));
+    padding-right: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
 .app-menu-group-title {
     margin: 12px 0 8px;
     font-size: 10px;

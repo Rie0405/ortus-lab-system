@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260924-menu-filter">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260924-addon-cost">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -645,17 +645,19 @@
                     </div>
 
                     <div class="gcash-config-field">
-                        <label for="addon-register-price" class="gcash-config-label">PRICE (₱)</label>
+                        <label for="addon-register-cost" class="gcash-config-label">COST (₱)</label>
+                        <input id="addon-register-cost" class="gcash-config-input" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal">
+                    </div>
+
+                    <div class="gcash-config-field">
+                        <label for="addon-register-price" class="gcash-config-label">SELLING PRICE (₱)</label>
                         <input id="addon-register-price" class="gcash-config-input" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal">
                     </div>
 
                     <div class="gcash-config-field">
                         <span class="gcash-config-label">SHOW IN</span>
-                        <div class="addon-station-toggle" role="group" aria-label="Addon station">
-                            <button type="button" class="addon-station-btn addon-station-btn--active" data-station="bar" id="addon-station-bar">Bar</button>
-                            <button type="button" class="addon-station-btn" data-station="kitchen" id="addon-station-kitchen">Kitchen</button>
-                        </div>
-                        <p class="addon-station-hint">Bar addons appear on beverage items. Kitchen addons appear on food items.</p>
+                        <div class="addon-station-toggle" id="addon-station-toggle" role="group" aria-label="Addon main category"></div>
+                        <p class="addon-station-hint">Addons appear on menu items assigned to the selected main category (station).</p>
                     </div>
 
                     <div class="addon-register-list-wrap">
@@ -751,7 +753,7 @@
         </footer>
         </div>
 
-        <script src="dashboard_script.js?v=20260924-cat-del-cascade"></script>
+        <script src="dashboard_script.js?v=20260924-addon-menu-del"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');
@@ -762,13 +764,14 @@
             var errEl = document.getElementById('addon-register-error');
             var nameInput = document.getElementById('addon-register-name');
             var priceInput = document.getElementById('addon-register-price');
+            var costInput = document.getElementById('addon-register-cost');
             var listEl = document.getElementById('addon-register-list');
-            var stationBtns = document.querySelectorAll('.addon-station-btn');
+            var stationToggle = document.getElementById('addon-station-toggle');
             if (!btnOpen || !backdrop || !saveBtn || !nameInput || !listEl) return;
 
             var mainCategories = [];
             var addons = [];
-            var selectedStation = 'bar';
+            var selectedMainCategoryId = 0;
 
             function setErr(msg) {
                 if (!errEl) return;
@@ -793,26 +796,52 @@
                 return '₱' + (Number(n) || 0).toFixed(2);
             }
 
-            function stationIdFor(station) {
-                var want = String(station || '').toLowerCase();
-                var found = mainCategories.find(function (c) {
-                    return String(c.name || '').trim().toLowerCase() === want;
-                });
-                return found ? parseInt(found.id, 10) || 0 : 0;
+            function mainCategoryLabel(id) {
+                var want = parseInt(id, 10) || 0;
+                for (var i = 0; i < mainCategories.length; i++) {
+                    if (parseInt(mainCategories[i].id, 10) === want) {
+                        return String(mainCategories[i].name || '').trim() || 'Station';
+                    }
+                }
+                return 'Station';
             }
 
-            function syncStationButtons() {
-                stationBtns.forEach(function (btn) {
-                    var active = btn.getAttribute('data-station') === selectedStation;
-                    btn.classList.toggle('addon-station-btn--active', active);
+            function ensureSelectedMainCategory() {
+                if (!mainCategories.length) {
+                    selectedMainCategoryId = 0;
+                    return;
+                }
+                var stillThere = mainCategories.some(function (c) {
+                    return parseInt(c.id, 10) === selectedMainCategoryId;
                 });
+                if (!stillThere) {
+                    selectedMainCategoryId = parseInt(mainCategories[0].id, 10) || 0;
+                }
+            }
+
+            function renderStationButtons() {
+                if (!stationToggle) return;
+                ensureSelectedMainCategory();
+                if (!mainCategories.length) {
+                    stationToggle.innerHTML = '<p class="addon-station-empty">No main categories yet. Create one under Products first.</p>';
+                    return;
+                }
+                stationToggle.innerHTML = mainCategories.map(function (c) {
+                    var id = parseInt(c.id, 10) || 0;
+                    var active = id === selectedMainCategoryId ? ' addon-station-btn--active' : '';
+                    return '' +
+                        '<button type="button" class="addon-station-btn' + active + '" data-main-category-id="' + id + '">' +
+                            escapeHtml(c.name || 'Station') +
+                        '</button>';
+                }).join('');
             }
 
             function resetForm() {
                 nameInput.value = '';
                 if (priceInput) priceInput.value = '';
-                selectedStation = 'bar';
-                syncStationButtons();
+                if (costInput) costInput.value = '';
+                ensureSelectedMainCategory();
+                renderStationButtons();
                 if (saveBtn) saveBtn.textContent = 'Save Addon';
             }
 
@@ -822,15 +851,21 @@
                     return;
                 }
                 listEl.innerHTML = addons.map(function (a) {
-                    var stationLabel = a.station === 'bar' ? 'Bar' : 'Kitchen';
+                    var stationLabel = String(a.station_name || '').trim()
+                        || mainCategoryLabel(a.main_category_id)
+                        || String(a.station || '').trim()
+                        || 'Station';
+                    var stationKey = String(a.station || stationLabel || 'station').toLowerCase().replace(/\s+/g, '-');
+                    var cost = Number(a.cost_price) || 0;
                     return '' +
                         '<article class="addon-register-item">' +
                             '<div class="addon-register-item__meta">' +
                                 '<strong class="addon-register-item__name">' + escapeHtml(a.name) + '</strong>' +
-                                '<span class="addon-register-item__station addon-register-item__station--' + escapeHtml(a.station) + '">' + stationLabel + '</span>' +
+                                '<span class="addon-register-item__station addon-register-item__station--' + escapeHtml(stationKey) + '">' + escapeHtml(stationLabel) + '</span>' +
                             '</div>' +
                             '<div class="addon-register-item__right">' +
                                 '<span class="addon-register-item__price">' + formatPeso(a.price) + '</span>' +
+                                '<span class="addon-register-item__cost">Cost ' + formatPeso(cost) + '</span>' +
                             '</div>' +
                         '</article>';
                 }).join('');
@@ -845,6 +880,8 @@
                         }
                         mainCategories = d.main_categories || [];
                         addons = d.addons || [];
+                        ensureSelectedMainCategory();
+                        renderStationButtons();
                         renderList();
                     });
             }
@@ -856,6 +893,7 @@
                 backdrop.setAttribute('aria-hidden', 'false');
                 loadAddons().catch(function (err) {
                     setErr(err.message || 'Failed to load addons.');
+                    renderStationButtons();
                     renderList();
                 });
                 nameInput.focus();
@@ -867,12 +905,14 @@
                 resetForm();
             }
 
-            stationBtns.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    selectedStation = btn.getAttribute('data-station') === 'kitchen' ? 'kitchen' : 'bar';
-                    syncStationButtons();
+            if (stationToggle) {
+                stationToggle.addEventListener('click', function (e) {
+                    var btn = e.target.closest('.addon-station-btn[data-main-category-id]');
+                    if (!btn || !stationToggle.contains(btn)) return;
+                    selectedMainCategoryId = parseInt(btn.getAttribute('data-main-category-id'), 10) || 0;
+                    renderStationButtons();
                 });
-            });
+            }
 
             btnOpen.addEventListener('click', openModal);
             if (closeBtn) closeBtn.addEventListener('click', closeModal);
@@ -885,11 +925,13 @@
                 setErr('');
                 var name = String(nameInput.value || '').trim();
                 var price = priceInput ? parseFloat(priceInput.value) : 0;
+                var cost = costInput ? parseFloat(costInput.value) : 0;
                 if (!name) return setErr('Addon name is required.');
                 if (!Number.isFinite(price) || price < 0) price = 0;
-                var mainCategoryId = stationIdFor(selectedStation);
-                if (!mainCategoryId) {
-                    return setErr('Bar/Kitchen stations are missing. Create them under products first.');
+                if (!Number.isFinite(cost) || cost < 0) cost = 0;
+                ensureSelectedMainCategory();
+                if (!selectedMainCategoryId) {
+                    return setErr('Create a main category under Products first, then choose it here.');
                 }
 
                 saveBtn.disabled = true;
@@ -900,22 +942,31 @@
                     body: JSON.stringify({
                         name: name,
                         price: price,
-                        main_category_id: mainCategoryId
+                        cost_price: cost,
+                        main_category_id: selectedMainCategoryId
                     })
                 })
-                    .then(function (r) { return r.json(); })
-                    .then(function (d) {
-                        if (!d || !d.success) {
-                            setErr((d && d.error) || 'Failed to save addon.');
+                    .then(function (r) {
+                        return r.json().then(function (d) {
+                            return { ok: r.ok, d: d };
+                        }).catch(function () {
+                            return { ok: false, d: { success: false, error: 'Invalid server response.' } };
+                        });
+                    })
+                    .then(function (res) {
+                        var d = res.d || {};
+                        if (!d.success) {
+                            setErr(d.error || 'Failed to save addon.');
                             return;
                         }
-                        resetForm();
+                        mainCategories = d.main_categories || mainCategories;
                         addons = d.addons || [];
+                        resetForm();
                         renderList();
                         setErr('');
                     })
-                    .catch(function () {
-                        setErr('Failed to save addon.');
+                    .catch(function (err) {
+                        setErr((err && err.message) || 'Failed to save addon.');
                     })
                     .finally(function () {
                         saveBtn.disabled = false;

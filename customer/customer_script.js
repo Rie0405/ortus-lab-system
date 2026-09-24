@@ -435,12 +435,48 @@ function loadCatalogAddons() {
         });
 }
 
-function getAddonOptionsForItem(itemName, categoryName) {
+function getAddonOptionsForItem(itemName, categoryName, mainCategoryId, mainCategoryName) {
+    var mid = parseInt(mainCategoryId, 10) || 0;
+    if (mid > 0) {
+        var byId = catalogAddons
+            .filter(function (a) {
+                return (parseInt(a.main_category_id, 10) || 0) === mid;
+            })
+            .map(function (a) {
+                return {
+                    name: String(a.name || '').trim(),
+                    price: Number(a.price) || 0
+                };
+            })
+            .filter(function (a) {
+                return !!a.name;
+            });
+        if (byId.length) return byId;
+    }
+    var stationName = String(mainCategoryName || '').trim().toLowerCase();
+    if (stationName) {
+        var byName = catalogAddons
+            .filter(function (a) {
+                return String(a.station || '').toLowerCase() === stationName
+                    || String(a.station_name || '').trim().toLowerCase() === stationName;
+            })
+            .map(function (a) {
+                return {
+                    name: String(a.name || '').trim(),
+                    price: Number(a.price) || 0
+                };
+            })
+            .filter(function (a) {
+                return !!a.name;
+            });
+        if (byName.length) return byName;
+    }
     var cat = String(categoryName || '').toLowerCase();
     var station = isBeverageCategoryName(cat) ? 'bar' : 'kitchen';
     return catalogAddons
         .filter(function (a) {
-            return String(a.station || '').toLowerCase() === station;
+            return String(a.station || '').toLowerCase() === station
+                || String(a.station_name || '').trim().toLowerCase() === station;
         })
         .map(function (a) {
             return {
@@ -536,7 +572,12 @@ function openIngredientModal(menuItem, initial, openOpts) {
         }
     }
 
-    var options = getAddonOptionsForItem(itemName, menuItem.category_name || '');
+    var options = getAddonOptionsForItem(
+        itemName,
+        menuItem.category_name || '',
+        menuItem.main_category_id,
+        menuItem.main_category_name
+    );
     var pillsHtml = options
         .map(function (opt) {
             var isActive = selectedSet.has(String(opt.name).toLowerCase());
@@ -1296,7 +1337,12 @@ function attachAddHandlers(scopeEl, opts) {
                 return;
             }
             var quickVariants = getKioskTemperatureVariants(it, !!opts.temperatureFallback);
-            var quickAddons = getAddonOptionsForItem(it.name, it.category_name || '');
+            var quickAddons = getAddonOptionsForItem(
+                it.name,
+                it.category_name || '',
+                it.main_category_id,
+                it.main_category_name
+            );
             if (!quickVariants.length && !quickAddons.length) {
                 addItemToCart({
                     menu_item_id: it.id,

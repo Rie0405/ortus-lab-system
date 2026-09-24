@@ -2323,6 +2323,50 @@
                     "<p>" + descShow + "</p></article>";
             }
 
+            function itemHasPosAddons(item) {
+                if (!item) return false;
+                var mid = parseInt(item.main_category_id, 10) || 0;
+                if (mid > 0) {
+                    return posCatalogAddons.some(function (a) {
+                        return (parseInt(a.main_category_id, 10) || 0) === mid;
+                    });
+                }
+                var stationName = String(item.main_category_name || "").trim().toLowerCase();
+                if (stationName) {
+                    return posCatalogAddons.some(function (a) {
+                        return String(a.station || "").toLowerCase() === stationName
+                            || String(a.station_name || "").trim().toLowerCase() === stationName;
+                    });
+                }
+                var want = categoryNameMergesIntoBeverages(item.category_name || "") ? "bar" : "kitchen";
+                return posCatalogAddons.some(function (a) {
+                    return String(a.station || "").toLowerCase() === want;
+                });
+            }
+
+            function getPosAddonsForItem(item) {
+                if (!item) return [];
+                var mid = parseInt(item.main_category_id, 10) || 0;
+                if (mid > 0) {
+                    var byId = posCatalogAddons.filter(function (a) {
+                        return (parseInt(a.main_category_id, 10) || 0) === mid;
+                    });
+                    if (byId.length) return byId;
+                }
+                var stationName = String(item.main_category_name || "").trim().toLowerCase();
+                if (stationName) {
+                    var byName = posCatalogAddons.filter(function (a) {
+                        return String(a.station || "").toLowerCase() === stationName
+                            || String(a.station_name || "").trim().toLowerCase() === stationName;
+                    });
+                    if (byName.length) return byName;
+                }
+                var want = categoryNameMergesIntoBeverages(item.category_name || "") ? "bar" : "kitchen";
+                return posCatalogAddons.filter(function (a) {
+                    return String(a.station || "").toLowerCase() === want;
+                });
+            }
+
             function bindPosMenuCards() {
                 if (!menuGrid) return;
                 menuGrid.querySelectorAll(".menu-card").forEach(function (card) {
@@ -2337,16 +2381,21 @@
                             addToCart(id, name, price, formatStandaloneAddonNotes(name));
                             return;
                         }
-                        if (!categoryNameMergesIntoBeverages(categoryName)) {
+                        var isBeverageItem = categoryNameMergesIntoBeverages(categoryName);
+                        var hasAddons = itemHasPosAddons(item);
+                        // Food items with station addons must open the modal too (not only drinks).
+                        if (!isBeverageItem && !hasAddons) {
                             addToCart(id, name, price, "");
                             return;
                         }
                         openProductModal({
                             id: id,
-                            name: name,
-                            price: price,
+                            name: item.name || name,
+                            price: item.price != null ? item.price : price,
                             description: item.description || "",
-                            category_name: categoryName
+                            category_name: categoryName,
+                            main_category_id: item.main_category_id || null,
+                            main_category_name: item.main_category_name || ""
                         });
                     });
                 });
@@ -2858,12 +2907,18 @@
                     });
             }
 
-            function renderPosAddonPills(station) {
+            function renderPosAddonPills(itemOrStation) {
                 if (!posAddonPillRow) return;
-                var want = station === "kitchen" ? "kitchen" : "bar";
-                var list = posCatalogAddons.filter(function (a) {
-                    return String(a.station || "").toLowerCase() === want;
-                });
+                var list = [];
+                if (itemOrStation && typeof itemOrStation === "object") {
+                    list = getPosAddonsForItem(itemOrStation);
+                } else {
+                    var stationWant = String(itemOrStation || "bar").toLowerCase();
+                    list = posCatalogAddons.filter(function (a) {
+                        return String(a.station || "").toLowerCase() === stationWant
+                            || String(a.station_name || "").trim().toLowerCase() === stationWant;
+                    });
+                }
                 posAddonPillRow.innerHTML = list.map(function (a) {
                     var name = String(a.name || "").trim();
                     var price = Number(a.price) || 0;
@@ -2896,7 +2951,7 @@
                     }
                     if (posAddonsSection) {
                         posAddonsSection.style.display = "";
-                        renderPosAddonPills(isBeverageItem ? "bar" : "kitchen");
+                        renderPosAddonPills(item);
                     }
                     updateProductModalTotal();
                 }

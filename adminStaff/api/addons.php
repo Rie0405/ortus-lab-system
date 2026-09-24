@@ -36,6 +36,7 @@ if ($m === 'POST') {
     $b = body();
     $name = trim((string)($b['name'] ?? ''));
     $price = isset($b['price']) ? (float)$b['price'] : 0.0;
+    $costPrice = isset($b['cost_price']) ? (float)$b['cost_price'] : 0.0;
     $mainCategoryId = (int)($b['main_category_id'] ?? 0);
 
     if ($name === '') {
@@ -46,6 +47,9 @@ if ($m === 'POST') {
     }
     if ($price < 0) {
         fail('Addon price cannot be negative.');
+    }
+    if ($costPrice < 0) {
+        fail('Addon cost cannot be negative.');
     }
     $mainCategoryId = resolve_main_category_id(db(), $mainCategoryId);
 
@@ -66,26 +70,71 @@ if ($m === 'POST') {
         fail('An addon with that name already exists for this station.');
     }
 
+    // Soft-deleted rows still hold the unique (main_category_id, name) key — revive them.
+    $inactive = $pdo->prepare(
+        'SELECT id FROM addons
+          WHERE main_category_id = :mcid AND LOWER(TRIM(name)) = LOWER(:name) AND is_active = 0
+          LIMIT 1'
+    );
+    $inactive->execute([':mcid' => $mainCategoryId, ':name' => $name]);
+    $inactiveId = (int)($inactive->fetchColumn() ?: 0);
+    if ($inactiveId > 0) {
+        $pdo->prepare(
+            'UPDATE addons
+                SET name = :name,
+                    price = :price,
+                    cost_price = :cost,
+                    inventory_item_id = :inv,
+                    inventory_qty = :qty,
+                    is_active = 1
+              WHERE id = :id'
+        )->execute([
+            ':name' => $name,
+            ':price' => round($price, 2),
+            ':cost' => round($costPrice, 2),
+            ':inv' => $inventoryItemId,
+            ':qty' => $inventoryQty,
+            ':id' => $inactiveId,
+        ]);
+        sync_addon_menu_item($pdo, $inactiveId);
+        ok([
+            'id' => $inactiveId,
+            'message' => 'Addon restored.',
+            'addons' => fetch_addons_rows($pdo),
+            'main_categories' => fetch_active_main_categories($pdo),
+        ]);
+    }
+
     $nextOrder = (int)$pdo->query(
         'SELECT COALESCE(MAX(display_order), 0) + 1 FROM addons WHERE main_category_id = ' . (int)$mainCategoryId
     )->fetchColumn();
 
-    $ins = $pdo->prepare(
-        'INSERT INTO addons (name, price, main_category_id, inventory_item_id, inventory_qty, display_order, is_active)
-         VALUES (:name, :price, :mcid, :inv, :qty, :ord, 1)'
-    );
-    $ins->execute([
-        ':name' => $name,
-        ':price' => round($price, 2),
-        ':mcid' => $mainCategoryId,
-        ':inv' => $inventoryItemId,
-        ':qty' => $inventoryQty,
-        ':ord' => $nextOrder,
-    ]);
+    try {
+        $ins = $pdo->prepare(
+            'INSERT INTO addons (name, price, cost_price, main_category_id, inventory_item_id, inventory_qty, display_order, is_active)
+             VALUES (:name, :price, :cost, :mcid, :inv, :qty, :ord, 1)'
+        );
+        $ins->execute([
+            ':name' => $name,
+            ':price' => round($price, 2),
+            ':cost' => round($costPrice, 2),
+            ':mcid' => $mainCategoryId,
+            ':inv' => $inventoryItemId,
+            ':qty' => $inventoryQty,
+            ':ord' => $nextOrder,
+        ]);
+    } catch (Throwable $e) {
+        fail('Failed to save addon: ' . $e->getMessage());
+    }
 
     $id = (int)$pdo->lastInsertId();
     sync_addon_menu_item($pdo, $id);
-    ok(['id' => $id, 'message' => 'Addon created.', 'addons' => fetch_addons_rows($pdo)], 201);
+    ok([
+        'id' => $id,
+        'message' => 'Addon created.',
+        'addons' => fetch_addons_rows($pdo),
+        'main_categories' => fetch_active_main_categories($pdo),
+    ], 201);
 }
 
 if ($m === 'PUT') {
@@ -94,6 +143,7 @@ if ($m === 'PUT') {
     $id = (int)($b['id'] ?? 0);
     $name = trim((string)($b['name'] ?? ''));
     $price = isset($b['price']) ? (float)$b['price'] : 0.0;
+    $costPrice = isset($b['cost_price']) ? (float)$b['cost_price'] : 0.0;
     $mainCategoryId = (int)($b['main_category_id'] ?? 0);
 
     if (!$id) {
@@ -107,6 +157,9 @@ if ($m === 'PUT') {
     }
     if ($price < 0) {
         fail('Addon price cannot be negative.');
+    }
+    if ($costPrice < 0) {
+        fail('Addon cost cannot be negative.');
     }
     $mainCategoryId = resolve_main_category_id(db(), $mainCategoryId);
 
@@ -137,6 +190,7 @@ if ($m === 'PUT') {
         'UPDATE addons
             SET name = :name,
                 price = :price,
+                cost_price = :cost,
                 main_category_id = :mcid,
                 inventory_item_id = :inv,
                 inventory_qty = :qty
@@ -145,6 +199,7 @@ if ($m === 'PUT') {
     $upd->execute([
         ':name' => $name,
         ':price' => round($price, 2),
+        ':cost' => round($costPrice, 2),
         ':mcid' => $mainCategoryId,
         ':inv' => $inventoryItemId,
         ':qty' => $inventoryQty,

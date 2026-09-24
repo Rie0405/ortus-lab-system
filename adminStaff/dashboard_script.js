@@ -2458,14 +2458,19 @@ function apiCall(method, url, body) {
     function deleteItem(id) {
         var item = allItems.find(function (i) { return i.id === id; });
         if (!item) return;
-        if (!confirm('Delete "' + item.name + '"? This cannot be undone.')) return;
+        var label = item.is_addon_card
+            ? ('addon "' + item.name + '" (also removes it from Register Addon)')
+            : ('"' + item.name + '"');
+        if (!confirm('Delete ' + label + '? This cannot be undone.')) return;
 
         apiCall('DELETE', 'api/menu.php', { id: id }).then(function (res) {
             if (res.success) {
                 loadItems();
             } else {
-                alert('Error: ' + res.error);
+                alert('Error: ' + (res.error || 'Failed to delete item.'));
             }
+        }).catch(function (err) {
+            alert('Error: ' + ((err && err.message) || 'Failed to delete item.'));
         });
     }
 

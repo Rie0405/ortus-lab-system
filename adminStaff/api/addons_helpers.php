@@ -16,6 +16,7 @@ function ensure_addons_schema(PDO $pdo): void
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(120) NOT NULL,
             price DECIMAL(10,2) NOT NULL DEFAULT 0,
+            cost_price DECIMAL(10,2) NOT NULL DEFAULT 0,
             main_category_id INT NOT NULL,
             inventory_item_id INT NULL DEFAULT NULL,
             inventory_qty DECIMAL(12,2) NOT NULL DEFAULT 1,
@@ -30,6 +31,7 @@ function ensure_addons_schema(PDO $pdo): void
     );
 
     $cols = [
+        'cost_price' => 'ALTER TABLE addons ADD COLUMN cost_price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER price',
         'inventory_item_id' => 'ALTER TABLE addons ADD COLUMN inventory_item_id INT NULL DEFAULT NULL AFTER main_category_id',
         'inventory_qty' => 'ALTER TABLE addons ADD COLUMN inventory_qty DECIMAL(12,2) NOT NULL DEFAULT 1 AFTER inventory_item_id',
         'menu_item_id' => 'ALTER TABLE addons ADD COLUMN menu_item_id INT NULL DEFAULT NULL AFTER inventory_qty',
@@ -92,7 +94,7 @@ function sync_addon_menu_item(PDO $pdo, int $addonId): ?int
     }
 
     $stmt = $pdo->prepare(
-        'SELECT id, name, price, main_category_id, menu_item_id, is_active
+        'SELECT id, name, price, cost_price, main_category_id, menu_item_id, is_active
            FROM addons
           WHERE id = :id
           LIMIT 1'
@@ -104,9 +106,11 @@ function sync_addon_menu_item(PDO $pdo, int $addonId): ?int
     }
 
     $categoryId = ensure_addons_menu_category($pdo);
+    ensure_menu_cost_price_schema($pdo);
     $mainCategoryId = resolve_main_category_id($pdo, (int)($addon['main_category_id'] ?? 0));
     $name = trim((string)($addon['name'] ?? ''));
     $price = round(max(0, (float)($addon['price'] ?? 0)), 2);
+    $costPrice = round(max(0, (float)($addon['cost_price'] ?? 0)), 2);
     $available = !empty($addon['is_active']) ? 1 : 0;
     $description = 'Standalone add-on';
     $menuItemId = !empty($addon['menu_item_id']) ? (int)$addon['menu_item_id'] : 0;
@@ -128,6 +132,7 @@ function sync_addon_menu_item(PDO $pdo, int $addonId): ?int
                     name = :name,
                     description = :desc,
                     price = :price,
+                    cost_price = :cost,
                     is_available = :avail,
                     serve_hot = 0,
                     serve_cold = 0
@@ -139,15 +144,16 @@ function sync_addon_menu_item(PDO $pdo, int $addonId): ?int
             ':name' => $name,
             ':desc' => $description,
             ':price' => $price,
+            ':cost' => $costPrice,
             ':avail' => $available,
             ':id' => $menuItemId,
         ]);
     } else {
         $ins = $pdo->prepare(
             'INSERT INTO menu_items
-                (category_id, main_category_id, subcategory_id, name, description, price, image_url, is_available, serve_hot, serve_cold)
+                (category_id, main_category_id, subcategory_id, name, description, price, cost_price, image_url, is_available, serve_hot, serve_cold)
              VALUES
-                (:cid, :mcid, NULL, :name, :desc, :price, NULL, :avail, 0, 0)'
+                (:cid, :mcid, NULL, :name, :desc, :price, :cost, NULL, :avail, 0, 0)'
         );
         $ins->execute([
             ':cid' => $categoryId,
@@ -155,6 +161,7 @@ function sync_addon_menu_item(PDO $pdo, int $addonId): ?int
             ':name' => $name,
             ':desc' => $description,
             ':price' => $price,
+            ':cost' => $costPrice,
             ':avail' => $available,
         ]);
         $menuItemId = (int)$pdo->lastInsertId();
@@ -237,7 +244,7 @@ function normalize_addon_inventory_qty($qty): float
 function fetch_addons_rows(PDO $pdo, ?int $mainCategoryId = null, bool $activeOnly = true): array
 {
     ensure_addons_schema($pdo);
-    $sql = 'SELECT a.id, a.name, a.price, a.main_category_id, a.inventory_item_id, a.inventory_qty,
+    $sql = 'SELECT a.id, a.name, a.price, a.cost_price, a.main_category_id, a.inventory_item_id, a.inventory_qty,
                    a.menu_item_id, a.display_order, a.is_active,
                    mc.name AS station_name,
                    ii.item_name AS inventory_item_name
@@ -261,6 +268,7 @@ function fetch_addons_rows(PDO $pdo, ?int $mainCategoryId = null, bool $activeOn
     foreach ($rows as &$row) {
         $row['id'] = (int)$row['id'];
         $row['price'] = round((float)$row['price'], 2);
+        $row['cost_price'] = round((float)($row['cost_price'] ?? 0), 2);
         $row['main_category_id'] = (int)$row['main_category_id'];
         $row['inventory_item_id'] = !empty($row['inventory_item_id']) ? (int)$row['inventory_item_id'] : null;
         $row['inventory_qty'] = normalize_addon_inventory_qty($row['inventory_qty'] ?? 1);
@@ -270,7 +278,9 @@ function fetch_addons_rows(PDO $pdo, ?int $mainCategoryId = null, bool $activeOn
         $row['menu_item_id'] = !empty($row['menu_item_id']) ? (int)$row['menu_item_id'] : null;
         $row['display_order'] = (int)$row['display_order'];
         $row['is_active'] = !empty($row['is_active']) ? 1 : 0;
-        $row['station'] = strtolower(trim((string)($row['station_name'] ?? ''))) === 'bar' ? 'bar' : 'kitchen';
+        $row['station_name'] = trim((string)($row['station_name'] ?? ''));
+        // Keep lowercase station slug for clients (matches main category name).
+        $row['station'] = strtolower($row['station_name']);
     }
     unset($row);
     return $rows;

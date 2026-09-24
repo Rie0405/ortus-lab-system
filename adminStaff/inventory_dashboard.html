@@ -465,7 +465,10 @@
         <div class="app-modal-backdrop" id="applicable-items-modal" aria-hidden="true">
             <div class="app-modal" role="dialog" aria-modal="true" aria-labelledby="applicable-items-title">
                 <header class="app-modal__header">
-                    <h2 id="applicable-items-title">Low Stock Alert Level</h2>
+                    <div>
+                        <h2 id="applicable-items-title">Low Stock Alert Level</h2>
+                        <p class="app-modal__hint app-modal__hint--subtitle">set a threshold for the system to know if an item needs restocking alerts</p>
+                    </div>
                     <button type="button" class="app-modal__close" id="applicable-items-close" aria-label="Close">×</button>
                 </header>
                 <div class="app-modal__body">
@@ -481,7 +484,10 @@
         <div class="receipt-modal-backdrop" id="receipt-modal-backdrop" aria-hidden="true">
             <div class="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-modal-title">
                 <header class="receipt-modal__header">
-                    <h2 id="receipt-modal-title">REGISTER INVENTORY ITEM</h2>
+                    <div>
+                        <h2 id="receipt-modal-title">REGISTER INVENTORY ITEM</h2>
+                        <p class="app-modal__hint app-modal__hint--subtitle" id="receipt-modal-subtitle">Register inventory-monitored items to systemically track stock levels.</p>
+                    </div>
                     <button type="button" class="receipt-modal__close" id="receipt-modal-close" aria-label="Close">×</button>
                 </header>
                 <div class="receipt-modal__body">
@@ -551,7 +557,10 @@
         <div class="receipt-summary-backdrop" id="receipt-summary-backdrop" aria-hidden="true">
             <div class="receipt-summary-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-summary-title">
                 <header class="receipt-summary-modal__header">
-                    <h2 id="receipt-summary-title">STOCK LOG</h2>
+                    <div>
+                        <h2 id="receipt-summary-title">STOCK LOG</h2>
+                        <p class="app-modal__hint app-modal__hint--subtitle">Note: Stock additions are restricted to registered inventory items. Please ensure all items are registered prior to logging stock.</p>
+                    </div>
                     <button type="button" class="receipt-summary-modal__close" id="receipt-summary-close" aria-label="Close">×</button>
                 </header>
                 <div class="receipt-summary-modal__body">
@@ -713,6 +722,7 @@
         var receiptModalSave = document.getElementById('receipt-modal-save');
         var receiptModalError = document.getElementById('receipt-modal-error');
         var receiptModalTitle = document.getElementById('receipt-modal-title');
+        var receiptModalSubtitle = document.getElementById('receipt-modal-subtitle');
         var receiptDateGrid = document.getElementById('receipt-date-grid');
         var receiptDate = document.getElementById('receipt-date');
         var receiptExpectedDate = document.getElementById('receipt-expected-date');
@@ -1815,6 +1825,9 @@
                 receiptModalTitle.textContent = receiptModalMode === 'add_receipt'
                     ? 'ADD STOCK ENTRY'
                     : 'REGISTER INVENTORY ITEM';
+            }
+            if (receiptModalSubtitle) {
+                receiptModalSubtitle.hidden = receiptModalMode === 'add_receipt';
             }
             if (receiptModalSave) {
                 receiptModalSave.textContent = receiptModalMode === 'add_receipt'

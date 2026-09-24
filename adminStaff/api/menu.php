@@ -241,9 +241,67 @@ if ($m === 'DELETE') {
     $id = (int)($b['id'] ?? $_GET['id'] ?? 0);
     if (!$id) fail('Item ID is required.');
 
-    // Hard delete: remove dependent order lines first, then the menu item.
-    db()->prepare('DELETE FROM order_items WHERE menu_item_id = :id')->execute([':id' => $id]);
-    db()->prepare('DELETE FROM menu_items WHERE id = :id')->execute([':id' => $id]);
+    $pdo = db();
+
+    // Detach / deactivate linked addon cards outside the main delete txn so a
+    // missing optional table cannot abort the transaction.
+    try {
+        ensure_addons_schema($pdo);
+        $pdo->prepare(
+            'UPDATE addons
+                SET is_active = 0, menu_item_id = NULL
+              WHERE menu_item_id = :mid'
+        )->execute([':mid' => $id]);
+    } catch (Throwable $e) {
+        // Addons schema may be unavailable.
+    }
+
+    try {
+        $hasRecipes = (bool)$pdo->query("SHOW TABLES LIKE 'recipes'")->fetchColumn();
+        if ($hasRecipes) {
+            $recipeIdsStmt = $pdo->prepare('SELECT id FROM recipes WHERE menu_item_id = :mid');
+            $recipeIdsStmt->execute([':mid' => $id]);
+            $recipeIds = array_map('intval', $recipeIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+            $hasRecipeIngredients = (bool)$pdo->query("SHOW TABLES LIKE 'recipe_ingredients'")->fetchColumn();
+            if ($hasRecipeIngredients && $recipeIds) {
+                $delIng = $pdo->prepare('DELETE FROM recipe_ingredients WHERE recipe_id = :rid');
+                foreach ($recipeIds as $rid) {
+                    if ($rid > 0) {
+                        $delIng->execute([':rid' => $rid]);
+                    }
+                }
+            }
+            $pdo->prepare('DELETE FROM recipes WHERE menu_item_id = :mid')->execute([':mid' => $id]);
+        }
+    } catch (Throwable $e) {
+        // Recipes may be unavailable.
+    }
+
+    try {
+        $hasInvMenu = (bool)$pdo->query("SHOW COLUMNS FROM inventory_items LIKE 'menu_item_id'")->fetch();
+        if ($hasInvMenu) {
+            $pdo->prepare('UPDATE inventory_items SET menu_item_id = NULL WHERE menu_item_id = :mid')
+                ->execute([':mid' => $id]);
+        }
+    } catch (Throwable $e) {
+        // ignore
+    }
+
+    try {
+        $pdo->beginTransaction();
+        // Clear order lines first — menu_items is referenced by order_items.
+        $pdo->prepare('DELETE FROM order_items WHERE menu_item_id = :id')->execute([':id' => $id]);
+        $pdo->prepare('DELETE FROM menu_items WHERE id = :id')->execute([':id' => $id]);
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        fail('Failed to delete item: ' . $e->getMessage());
+    }
+
     ok(['message' => 'Item deleted.']);
 }
 

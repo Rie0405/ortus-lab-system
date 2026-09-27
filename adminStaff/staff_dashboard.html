@@ -1376,9 +1376,9 @@
 
                 <div class="pos-modal__body">
                     <section class="pos-modal__section" id="pos-size-section" data-pos-section="temperature" style="display:none;">
-                        <h3 class="pos-modal__label">TEMPERATURE</h3>
+                        <h3 class="pos-modal__label">VARIANT</h3>
                         <div class="pos-modal__pill-row pos-modal__pill-row--wrap pos-modal__pill-row--size" id="pos-size-pill-row">
-                            <!-- populated from menu item Variants (temperature + ounce from admin) -->
+                            <!-- populated from menu item Variants (name + price from admin) -->
                         </div>
                     </section>
 
@@ -1452,6 +1452,7 @@
 
             var menuData = { categories: [], items: [], subcategories: [] };
             var fastMovingItemIds = [];
+            var bestSellerMenuItemId = 0;
             var pendingModalItem = null;
             var selectedCategoryId = null;
             var posCarts = { dine_in: [], take_out: [] };
@@ -2305,7 +2306,8 @@
                     ? 'Add on its own'
                     : stripPosBevSectionForDisplay(item.description || '');
                 var isAvailable = item.is_available !== false;
-                var isBestSeller = fastMovingItemIds.indexOf(parseInt(item.id, 10)) !== -1;
+                var isBestSeller = bestSellerMenuItemId > 0
+                    && parseInt(item.id, 10) === bestSellerMenuItemId;
                 var bestSellerChip = isBestSeller
                     ? "<span class=\"bestseller-chip\">BEST SELLER</span>"
                     : "";
@@ -2602,8 +2604,15 @@
                 productModalTotal.textContent = formatPHP(unit);
             }
 
+            function applyBestSellerId(id) {
+                bestSellerMenuItemId = parseInt(id, 10) || 0;
+                // Keep legacy array in sync for any leftover readers (badge uses bestSellerMenuItemId).
+                fastMovingItemIds = bestSellerMenuItemId > 0 ? [bestSellerMenuItemId] : [];
+            }
+
             function applyFastMovingIds(ids) {
-                fastMovingItemIds = (ids || []).map(function (id) { return parseInt(id, 10) || 0; }).filter(Boolean);
+                var list = (ids || []).map(function (id) { return parseInt(id, 10) || 0; }).filter(Boolean);
+                applyBestSellerId(list.length ? list[0] : 0);
             }
 
             function refreshFastMovingBadges() {
@@ -2611,7 +2620,11 @@
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (!data || !data.success) return;
-                        applyFastMovingIds(data.menu_item_ids || []);
+                        if (data.best_seller_menu_item_id != null) {
+                            applyBestSellerId(data.best_seller_menu_item_id);
+                        } else {
+                            applyFastMovingIds(data.menu_item_ids || []);
+                        }
                         if (!isDiscountViewActive()) renderMenu();
                     })
                     .catch(function () {});
@@ -2628,8 +2641,12 @@
                         menuData.categories = data.categories || [];
                         menuData.items = data.items || [];
                         menuData.subcategories = data.subcategories || [];
-                        applyFastMovingIds(data.fast_moving_item_ids || []);
                         applyBeverageCategoryMerge();
+                        if (data.best_seller_menu_item_id != null) {
+                            applyBestSellerId(data.best_seller_menu_item_id);
+                        } else {
+                            applyFastMovingIds(data.fast_moving_item_ids || []);
+                        }
                         if (selectedCategoryId !== null && beverageCategoryIds.indexOf(selectedCategoryId) !== -1) {
                             selectedCategoryId = BEVERAGES_MERGED_ID;
                         }
@@ -3024,7 +3041,7 @@
                 if (!pendingModalItem) return;
                 var unit = getProductModalUnitPrice();
                 if (unit === null) {
-                    alert("Please select a temperature.");
+                    alert("Please select a variant.");
                     return;
                 }
                 var notes = getModalNotes();

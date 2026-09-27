@@ -541,7 +541,7 @@ function apiCall(method, url, body) {
 
     initCustomizableIngredientsTags();
 
-    // ── Variants / size inputs (ordering_dashboard.html create modal) ──
+    // ── Variants (freeform name + price → recipe tabs + customer options) ──
     var variantsListEl = null;
     var variantTemplateEl = null;
     var variantAddBtn = null;
@@ -551,11 +551,12 @@ function apiCall(method, url, body) {
         variantsListEl.innerHTML = '';
     }
 
-    function normalizeVariantTempValue(raw) {
-        var n = String(raw || '').trim().toLowerCase();
-        if (/\b(hot|warm)\b/.test(n)) return 'Hot';
-        if (/\b(iced|cold|blended|frappe)\b/.test(n) || n === 'cold') return 'Cold';
-        return 'Hot';
+    function formatVariantDisplayName(data) {
+        if (!data) return '';
+        var size = String(data.size || '').trim();
+        var label = String(data.label || '').trim();
+        if (size && label && size !== label) return size + ' (' + label + ')';
+        return size || label || '';
     }
 
     function addVariantRow(data) {
@@ -565,16 +566,11 @@ function apiCall(method, url, body) {
         if (!row) return;
 
         var sizeInp = row.querySelector('.variant-input--size');
-        var labelInp = row.querySelector('.variant-input--label');
         var priceInp = row.querySelector('.variant-input--price');
 
         if (data) {
-            if (sizeInp) sizeInp.value = normalizeVariantTempValue(data.size);
-            if (labelInp) labelInp.value = data.label || '';
+            if (sizeInp) sizeInp.value = formatVariantDisplayName(data);
             if (priceInp) priceInp.value = data.price || '';
-        } else if (sizeInp) {
-            // New optional variants default to Hot (base drink is Cold).
-            sizeInp.value = 'Hot';
         }
 
         variantsListEl.appendChild(frag);
@@ -599,7 +595,7 @@ function apiCall(method, url, body) {
             row.remove();
         });
 
-        // Start with one row
+        // Start empty — admin adds variants only when needed
         resetVariantRows();
     }
 
@@ -671,15 +667,11 @@ function apiCall(method, url, body) {
         if (!row) return;
 
         var sizeInp = row.querySelector('.variant-input--size');
-        var labelInp = row.querySelector('.variant-input--label');
         var priceInp = row.querySelector('.variant-input--price');
 
         if (data) {
-            if (sizeInp) sizeInp.value = normalizeVariantTempValue(data.size);
-            if (labelInp) labelInp.value = data.label || '';
+            if (sizeInp) sizeInp.value = formatVariantDisplayName(data);
             if (priceInp) priceInp.value = data.price || '';
-        } else if (sizeInp) {
-            sizeInp.value = 'Hot';
         }
 
         editVariantsListEl.appendChild(frag);
@@ -723,13 +715,18 @@ function apiCall(method, url, body) {
             return;
         }
 
+        var keepMainCat = prodMainCategorySelect ? prodMainCategorySelect.value : '';
+        var mainCatId = parseInt(keepMainCat, 10);
+        if (!mainCatId) {
+            alert('Select a main category first, then add a category.');
+            return;
+        }
+
         newCategoryAddBtn.disabled = true;
         var oldText = newCategoryAddBtn.textContent;
         newCategoryAddBtn.textContent = 'ADDING…';
 
-        var keepMainCat = prodMainCategorySelect ? prodMainCategorySelect.value : '';
-
-        apiCall('POST', 'api/categories.php', { name: catName, is_active: 1 })
+        apiCall('POST', 'api/categories.php', { name: catName, is_active: 1, main_category_id: mainCatId })
             .then(function (res) {
                 if (!res.success) throw new Error(res.error || 'Failed to add category');
                 newCategoryNameInput.value = '';
@@ -738,21 +735,16 @@ function apiCall(method, url, body) {
                     if (prodMainCategorySelect && keepMainCat) {
                         prodMainCategorySelect.value = keepMainCat;
                     }
-                    if (newId && prodCategorySelect) {
-                        prodCategorySelect.value = String(newId);
-                        // If beverages-merge mapped the option away, fall back to name match.
-                        if (prodCategorySelect.value !== String(newId)) {
-                            for (var i = 0; i < (categories || []).length; i++) {
-                                if (String(categories[i].name || '').toLowerCase() === catName.toLowerCase()) {
-                                    prodCategorySelect.value = String(categories[i].id);
-                                    break;
-                                }
+                    syncProductCategoryOptions(newId || '');
+                    if (newId && prodCategorySelect && prodCategorySelect.value !== String(newId)) {
+                        for (var i = 0; i < (categories || []).length; i++) {
+                            if (String(categories[i].name || '').toLowerCase() === catName.toLowerCase()
+                                && parseInt(categories[i].main_category_id, 10) === mainCatId) {
+                                syncProductCategoryOptions(categories[i].id);
+                                break;
                             }
                         }
                     }
-                    syncProductSubcategoryOptions();
-                    syncBevSubVisibility();
-                    syncAllCatalogIconDropzones();
                     if (newCategoryPanel && toggleNewCategoryBtn) {
                         toggleCatalogPanel(newCategoryPanel, toggleNewCategoryBtn, false);
                     }
@@ -907,6 +899,7 @@ function apiCall(method, url, body) {
                         }
                     }
                 }
+                syncProductCategoryOptions('');
             })
             .catch(function (err) { alert('Error: ' + err.message); })
             .finally(function () {
@@ -959,13 +952,37 @@ function apiCall(method, url, body) {
         var id = parseInt(sel.value, 10);
         if (!id) return null;
         if (isBevMergedOptionSelected(sel)) {
-            for (var i = 0; i < categories.length; i++) {
-                if (categoryNameMergesIntoBeveragesAdmin(categories[i].name)) {
-                    return parseInt(categories[i].id, 10);
+            var mainId = mainCategoryIdForCategorySelect(sel);
+            var pool = mainId ? categoriesForMain(mainId) : (categories || []);
+            for (var i = 0; i < pool.length; i++) {
+                if (categoryNameMergesIntoBeveragesAdmin(pool[i].name)) {
+                    return parseInt(pool[i].id, 10);
                 }
             }
         }
         return id;
+    }
+
+    function categoriesForMain(mainCatId) {
+        var want = parseInt(mainCatId, 10);
+        if (!want) return [];
+        return (categories || []).filter(function (c) {
+            return parseInt(c.main_category_id, 10) === want;
+        });
+    }
+
+    function mainCategoryIdForCategorySelect(sel) {
+        if (!sel) return '';
+        if (sel === prodCategorySelect || sel.id === 'prod-category') {
+            return prodMainCategorySelect && prodMainCategorySelect.value ? prodMainCategorySelect.value : '';
+        }
+        if (sel.id === 'edit-prod-category') {
+            return editMainCategorySelect && editMainCategorySelect.value ? editMainCategorySelect.value : '';
+        }
+        if (sel === manageCategorySelect || sel.id === 'manage-category-select') {
+            return manageMainCategorySelect && manageMainCategorySelect.value ? manageMainCategorySelect.value : '';
+        }
+        return '';
     }
 
     function findCategoryById(id) {
@@ -1358,6 +1375,7 @@ function apiCall(method, url, body) {
         }
         if (backdrop === createBackdrop && prodMainCategorySelect) {
             prodMainCategorySelect.value = '';
+            syncProductCategoryOptions('');
         }
         if (backdrop === createBackdrop) {
             setCatalogMode('create');
@@ -1400,7 +1418,78 @@ function apiCall(method, url, body) {
         }
     });
 
-    // ── Populate category <select> elements ──────────────────────────────────
+    // ── Populate category <select> elements (scoped to selected main category) ─
+    function populateCategorySelect(sel, mainCatId, keepId) {
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Select Category</option>';
+        if (!mainCatId) return;
+
+        var pool = categoriesForMain(mainCatId);
+        var inserted = false;
+        pool.forEach(function (c) {
+            if (categoryNameMergesIntoBeveragesAdmin(c.name)) {
+                if (!inserted) {
+                    var opt = document.createElement('option');
+                    opt.value = String(c.id);
+                    opt.textContent = 'Beverages';
+                    opt.setAttribute('data-bev-merged', '1');
+                    sel.appendChild(opt);
+                    inserted = true;
+                }
+            } else {
+                var o = document.createElement('option');
+                o.value = String(c.id);
+                o.textContent = c.name;
+                sel.appendChild(o);
+            }
+        });
+
+        if (keepId) {
+            setCategorySelectForBeverageItem(sel, parseInt(keepId, 10));
+        }
+    }
+
+    function syncProductCategoryOptions(selectedCategoryId, selectedSubcategoryId) {
+        var mainId = prodMainCategorySelect ? prodMainCategorySelect.value : '';
+        var keep = selectedCategoryId != null && selectedCategoryId !== ''
+            ? selectedCategoryId
+            : (prodCategorySelect ? prodCategorySelect.value : '');
+        populateCategorySelect(prodCategorySelect, mainId, keep);
+        var keepSub = selectedSubcategoryId != null
+            ? selectedSubcategoryId
+            : (prodSubcategorySelect ? prodSubcategorySelect.value : null);
+        syncProductSubcategoryOptions(keepSub);
+        syncBevSubVisibility();
+        syncAllCatalogIconDropzones();
+    }
+
+    function syncEditCategoryOptions(selectedCategoryId, selectedSubcategoryId) {
+        var editCat = document.getElementById('edit-prod-category');
+        var mainId = editMainCategorySelect ? editMainCategorySelect.value : '';
+        var keep = selectedCategoryId != null && selectedCategoryId !== ''
+            ? selectedCategoryId
+            : (editCat ? editCat.value : '');
+        populateCategorySelect(editCat, mainId, keep);
+        var keepSub = selectedSubcategoryId != null
+            ? selectedSubcategoryId
+            : (editProdSubcategorySelect ? editProdSubcategorySelect.value : null);
+        syncEditSubcategoryOptions(keepSub);
+        syncBevSubVisibility();
+        syncAllCatalogIconDropzones();
+    }
+
+    function syncManageCategoryOptions(selectedCategoryId, selectedSubcategoryId) {
+        var mainId = manageMainCategorySelect ? manageMainCategorySelect.value : '';
+        var keep = selectedCategoryId != null && selectedCategoryId !== ''
+            ? selectedCategoryId
+            : (manageCategorySelect ? manageCategorySelect.value : '');
+        populateCategorySelect(manageCategorySelect, mainId, keep);
+        var keepSub = selectedSubcategoryId != null
+            ? selectedSubcategoryId
+            : (manageSubcategorySelect ? manageSubcategorySelect.value : null);
+        syncManageSubcategoryOptions(keepSub);
+    }
+
     function fillCategorySelects(cats) {
         beverageMergedCategoryIds = [];
         (cats || []).forEach(function (c) {
@@ -1415,44 +1504,9 @@ function apiCall(method, url, body) {
         var editSubVal = editProdSubcategorySelect ? editProdSubcategorySelect.value : '';
         var manageSubVal = manageSubcategorySelect ? manageSubcategorySelect.value : '';
 
-        function populateCategorySelect(sel) {
-            if (!sel) return;
-            var keep = sel.value || '';
-            sel.innerHTML = '<option value="">Select Category</option>';
-            var inserted = false;
-            (cats || []).forEach(function (c) {
-                if (categoryNameMergesIntoBeveragesAdmin(c.name)) {
-                    if (!inserted) {
-                        var opt = document.createElement('option');
-                        opt.value = String(c.id);
-                        opt.textContent = 'Beverages';
-                        opt.setAttribute('data-bev-merged', '1');
-                        sel.appendChild(opt);
-                        inserted = true;
-                    }
-                } else {
-                    var o = document.createElement('option');
-                    o.value = String(c.id);
-                    o.textContent = c.name;
-                    sel.appendChild(o);
-                }
-            });
-            if (keep) sel.value = keep;
-        }
-
-        populateCategorySelect(document.getElementById('prod-category'));
-        populateCategorySelect(document.getElementById('edit-prod-category'));
-        populateCategorySelect(manageCategorySelect);
-
-        if (prodCategorySelect && prodCatVal) prodCategorySelect.value = prodCatVal;
-        if (editCatEl && editCatVal) editCatEl.value = editCatVal;
-        if (manageCategorySelect && manageCatVal) manageCategorySelect.value = manageCatVal;
-
-        syncProductSubcategoryOptions(prodSubVal);
-        syncEditSubcategoryOptions(editSubVal);
-        syncManageSubcategoryOptions(manageSubVal);
-        syncBevSubVisibility();
-        syncAllCatalogIconDropzones();
+        syncProductCategoryOptions(prodCatVal, prodSubVal);
+        syncEditCategoryOptions(editCatVal, editSubVal);
+        syncManageCategoryOptions(manageCatVal, manageSubVal);
     }
 
     ['prod-category', 'edit-prod-category'].forEach(function (id) {
@@ -1464,6 +1518,21 @@ function apiCall(method, url, body) {
             });
         }
     });
+    if (prodMainCategorySelect) {
+        prodMainCategorySelect.addEventListener('change', function () {
+            syncProductCategoryOptions('');
+        });
+    }
+    if (editMainCategorySelect) {
+        editMainCategorySelect.addEventListener('change', function () {
+            syncEditCategoryOptions('');
+        });
+    }
+    if (manageMainCategorySelect) {
+        manageMainCategorySelect.addEventListener('change', function () {
+            syncManageCategoryOptions('');
+        });
+    }
     ['prod-subcategory', 'edit-prod-subcategory'].forEach(function (id) {
         var s = document.getElementById(id);
         if (s) {
@@ -1590,28 +1659,45 @@ function apiCall(method, url, body) {
         if (!rowsContainer) return { hot: hot, cold: cold };
         rowsContainer.querySelectorAll('.variant-input-row').forEach(function (row) {
             var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim().toLowerCase();
-            var label = (row.querySelector('.variant-input--label') && row.querySelector('.variant-input--label').value || '').trim().toLowerCase();
             var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
-            // Ignore incomplete optional rows (temp alone is not enough).
-            if (!label && !priceRaw) return;
-            var combo = size + ' ' + label;
-            if (/\b(hot|warm)\b/.test(combo) || size === 'hot') hot = true;
-            if (/\b(iced|cold|blended|frappe)\b/.test(combo) || size === 'cold') cold = true;
+            // Ignore incomplete optional rows.
+            if (!size && !priceRaw) return;
+            if (/\b(hot|warm)\b/.test(size)) hot = true;
+            if (/\b(iced|cold|blended|frappe)\b/.test(size)) cold = true;
         });
         return { hot: hot, cold: cold };
     }
 
     function resolveBeverageServeFlags(rowsContainer) {
         var flags = inferServeFlagsFromVariantRows(rowsContainer);
-        // Base drink is Cold by default; Hot only when a Hot variant is added.
+        // Freeform variants: default Cold if no temperature keyword is present.
         if (!flags.hot && !flags.cold) {
             return { hot: false, cold: true };
         }
         if (flags.hot && !flags.cold) {
-            // Keep Cold available as the default base option when only Hot variants exist.
             return { hot: true, cold: true };
         }
         return flags;
+    }
+
+    function collectVariantRowsFromContainer(rowsContainer) {
+        var variants = [];
+        if (!rowsContainer) return variants;
+        rowsContainer.querySelectorAll('.variant-input-row').forEach(function (row) {
+            var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
+            var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
+            if (!size) return;
+            variants.push({ size: size, label: '', price: priceRaw });
+        });
+        return variants;
+    }
+
+    function formatVariantsDescriptionLine(variants) {
+        return variants.map(function (v) {
+            var s = v.size || '—';
+            var p = v.price !== '' ? Number(v.price).toFixed(2) : '0.00';
+            return s + ' = ' + p;
+        }).join('; ');
     }
 
     function readServeFlagsFromForm(prefix) {
@@ -2043,17 +2129,28 @@ function apiCall(method, url, body) {
             var totalEl = document.querySelector('.stat-card:first-child p');
             if (totalEl) totalEl.innerHTML = allItems.length + ' <span>items</span>';
 
-            // Pull best-seller + alert count from dashboard aggregates.
+            // Best seller + unavailable products — same source as dashboard Most Selling chart.
             apiCall('GET', 'api/dashboard.php').then(function (dash) {
                 if (!dash.success) return;
-                var bestEl = document.querySelectorAll('.stat-card p')[1];
-                var alertEl = document.querySelectorAll('.stat-card p')[2];
-                if (bestEl) {
-                    var best = (dash.top_items && dash.top_items[0] && dash.top_items[0].name) || 'N/A';
-                    bestEl.textContent = best;
+                var bestNameEl = document.querySelector('#stat-best-seller .stat-best-seller__name');
+                var bestCatEl = document.querySelector('#stat-best-seller .stat-best-seller__cat');
+                var unavailableEl = document.querySelector('#stat-unavailable p');
+                var best = dash.best_seller || (dash.top_items && dash.top_items[0]) || null;
+                if (bestNameEl) {
+                    bestNameEl.textContent = (best && best.name) ? best.name : 'N/A';
                 }
-                if (alertEl) {
-                    alertEl.innerHTML = (dash.low_stock_count || 0) + ' <span class="warn">Unavailable</span>';
+                if (bestCatEl) {
+                    var catLabel = best && best.category
+                        ? displayCategoryLabelForTable(best.category)
+                        : '';
+                    bestCatEl.textContent = catLabel || '';
+                    bestCatEl.hidden = !catLabel;
+                }
+                if (unavailableEl) {
+                    var unavailableCount = dash.unavailable_products_count != null
+                        ? dash.unavailable_products_count
+                        : (dash.low_stock_count || 0);
+                    unavailableEl.innerHTML = unavailableCount + ' <span class="warn">items</span>';
                 }
             }).catch(function () {});
         }).catch(function (err) { console.error('Menu load failed:', err); });
@@ -2106,14 +2203,7 @@ function apiCall(method, url, body) {
             // Collect variants from the create modal (save into description).
             var variants = [];
             if (isBeverageCreate && variantsListEl) {
-                variantsListEl.querySelectorAll('.variant-input-row').forEach(function (row) {
-                    var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
-                    var label = (row.querySelector('.variant-input--label') && row.querySelector('.variant-input--label').value || '').trim();
-                    var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
-                    // Optional rows: require ounce or price before counting.
-                    if (!label && !priceRaw) return;
-                    variants.push({ size: size || 'Hot', label: label, price: priceRaw });
-                });
+                variants = collectVariantRowsFromContainer(variantsListEl);
             }
 
             if (isBeverageCreate && variants.length) {
@@ -2123,14 +2213,7 @@ function apiCall(method, url, body) {
                     return !/^Variants\s*:/i.test(String(ln || '').trim());
                 });
                 desc = lines2.join('\n').trim();
-
-                var parts = variants.map(function (v) {
-                    var s = v.size || '—';
-                    var l = v.label || '';
-                    var p = v.price !== '' ? Number(v.price).toFixed(2) : '0.00';
-                    return s + ' (' + l + ') = ' + p;
-                });
-                desc = (desc ? (desc + '\n') : '') + 'Variants: ' + parts.join('; ');
+                desc = (desc ? (desc + '\n') : '') + 'Variants: ' + formatVariantsDescriptionLine(variants);
             }
 
             var price = parseFloat(basePriceInput && basePriceInput.value || '0');
@@ -2250,11 +2333,11 @@ function apiCall(method, url, body) {
         if (editCostPriceInput) editCostPriceInput.value = Number(item.cost_price || 0).toFixed(2);
         var editBasePriceInput = document.getElementById('edit-base-price');
         if (editBasePriceInput) editBasePriceInput.value = Number(item.price || 0).toFixed(2);
-        var editCat = document.getElementById('edit-prod-category');
-        setCategorySelectForBeverageItem(editCat, item.category_id);
         if (editMainCategorySelect) {
             editMainCategorySelect.value = item.main_category_id ? String(item.main_category_id) : '';
         }
+        syncEditCategoryOptions(item.category_id || '', item.subcategory_id || null);
+        var editCat = document.getElementById('edit-prod-category');
 
         var rawDesc = item.description || '';
         document.getElementById('edit-prod-description').value = stripStructuredLinesForEditTextarea(rawDesc);
@@ -2282,7 +2365,6 @@ function apiCall(method, url, body) {
             }
         }
 
-        syncEditSubcategoryOptions(item.subcategory_id || null);
         if (item.subcategory_id && editProdSubcategorySelect) {
             editProdSubcategorySelect.value = String(item.subcategory_id);
         }
@@ -2351,13 +2433,7 @@ function apiCall(method, url, body) {
 
                 var variants = [];
                 if (isBeverageEdit && editVariantsListEl) {
-                    editVariantsListEl.querySelectorAll('.variant-input-row').forEach(function (row) {
-                        var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
-                        var label = (row.querySelector('.variant-input--label') && row.querySelector('.variant-input--label').value || '').trim();
-                        var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
-                        if (!label && !priceRaw) return;
-                        variants.push({ size: size || 'Hot', label: label, price: priceRaw });
-                    });
+                    variants = collectVariantRowsFromContainer(editVariantsListEl);
                 }
 
                 var lines2 = (descEdit || '').split(/\r?\n/);
@@ -2366,13 +2442,7 @@ function apiCall(method, url, body) {
                 });
                 descEdit = lines2.join('\n').trim();
                 if (isBeverageEdit && variants.length) {
-                    var parts = variants.map(function (v) {
-                        var s = v.size || '—';
-                        var l = v.label || '';
-                        var p = v.price !== '' ? Number(v.price).toFixed(2) : '0.00';
-                        return s + ' (' + l + ') = ' + p;
-                    });
-                    descEdit = (descEdit ? (descEdit + '\n') : '') + 'Variants: ' + parts.join('; ');
+                    descEdit = (descEdit ? (descEdit + '\n') : '') + 'Variants: ' + formatVariantsDescriptionLine(variants);
                 }
 
                 var price = parseFloat(editBasePriceInput && editBasePriceInput.value || '0');

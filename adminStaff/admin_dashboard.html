@@ -25,7 +25,7 @@
                 <a href="inventory_dashboard.html" class="top-link">Inventory</a>
                 <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
                 <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
-                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
+                <a href="sales_history_dashboard.html" class="top-link">Staff Activity</a>
             </nav>
 
             <div class="top-actions">
@@ -37,49 +37,64 @@
             <div id="dash-api-banner" class="dash-api-banner is-hidden" role="alert"></div>
             <pre id="dash-debug-panel" class="dash-debug-panel is-hidden" aria-label="Dashboard debug output"></pre>
             <section class="kpi-grid kpi-grid--sales-history" aria-label="Cashflow summary (recipe-based COGS)">
-                <article class="kpi-card">
-                    <h3>Net Sales</h3>
-                    <p class="kpi-value" id="sales-kpi-revenue">₱0.00</p>
-                    <div class="kpi-track"><span class="fill-75"></span></div>
+                <article class="kpi-card" title="The total amount collected from all item sales before any deductions.">
+                    <h3>Gross Sales</h3>
+                    <p class="kpi-value" id="sales-kpi-gross">₱0.00</p>
+                    <p class="kpi-sub">The total amount collected from all item sales before any deductions.</p>
                 </article>
-                <article class="kpi-card">
-                    <h3>Total Refunds</h3>
-                    <p class="kpi-value" id="sales-kpi-refunds">₱0.00</p>
-                    <div class="kpi-track"><span class="fill-65"></span></div>
-                </article>
-                <article class="kpi-card">
+                <article class="kpi-card" title="The sum of all price reductions given to customers (e.g., PWD/Senior discounts).">
                     <h3>Total Discounts</h3>
                     <p class="kpi-value" id="sales-kpi-discounts">₱0.00</p>
-                    <div class="kpi-track"><span class="fill-55"></span></div>
+                    <p class="kpi-sub">The sum of all price reductions given to customers (e.g., PWD/Senior discounts).</p>
                 </article>
-                <article class="kpi-card">
+                <article class="kpi-card" title="The total money returned to customers for returned or canceled orders.">
+                    <h3>Total Refunds</h3>
+                    <p class="kpi-value" id="sales-kpi-refunds">₱0.00</p>
+                    <p class="kpi-sub">The total money returned to customers for returned or canceled orders.</p>
+                </article>
+                <article class="kpi-card" title="The actual sales generated after subtracting discounts and refunds (Gross Sales − Discounts − Refunds).">
+                    <h3>Net Sales</h3>
+                    <p class="kpi-value" id="sales-kpi-revenue">₱0.00</p>
+                    <p class="kpi-sub">The actual sales generated after subtracting discounts and refunds (Gross Sales − Discounts − Refunds).</p>
+                </article>
+                <article class="kpi-card" title="The profit earned strictly from sold items after deducting the ingredient or product cost.">
                     <h3>Gross Profit</h3>
                     <p class="kpi-value" id="sales-kpi-net">₱0.00</p>
-                    <div class="kpi-track"><span class="fill-70"></span></div>
-                </article>
-                <article class="kpi-card kpi-card--highlight" title="This week: Total selling price − Total cost price">
-                    <h3>Net Cash Flow</h3>
-                    <p class="kpi-value" id="sales-kpi-net-cashflow">₱0.00</p>
-                    <p class="kpi-sub" id="sales-kpi-net-cashflow-sub">This week · Selling − Cost</p>
-                    <div class="kpi-track"><span class="fill-82" id="sales-kpi-net-cashflow-fill"></span></div>
+                    <p class="kpi-sub">The profit earned strictly from sold items after deducting the ingredient or product cost.</p>
                 </article>
             </section>
 
             <section class="grid-main">
                 <article class="panel chart-panel">
                     <div class="panel-head">
-                        <div>
-                            <h2>SALES</h2>
-                            <p>Sales analytics report (this week)</p>
+                        <div class="panel-head__title-row">
+                            <div>
+                                <h2>SALES</h2>
+                                <p id="sales-analytics-period-label">Sales analytics report (this week)</p>
+                            </div>
+                            <div class="dash-date-filter" id="dash-date-filter">
+                                <button type="button" class="dash-date-toggle" id="dash-date-toggle" aria-expanded="false" aria-haspopup="dialog" aria-controls="dash-date-calendar">This week</button>
+                                <div class="dash-date-calendar" id="dash-date-calendar" role="dialog" aria-label="Select sales dates" hidden>
+                                    <div class="dash-date-calendar__head">
+                                        <button type="button" class="dash-date-calendar__nav" id="dash-cal-prev" aria-label="Previous month">‹</button>
+                                        <strong id="dash-cal-label">Month</strong>
+                                        <button type="button" class="dash-date-calendar__nav" id="dash-cal-next" aria-label="Next month">›</button>
+                                    </div>
+                                    <div class="dash-date-calendar__weekdays" aria-hidden="true">
+                                        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                                    </div>
+                                    <div class="dash-date-calendar__grid" id="dash-cal-grid"></div>
+                                    <div class="dash-date-calendar__footer">
+                                        <p class="dash-date-calendar__hint" id="dash-cal-hint">Default shows this week. Tap days to change.</p>
+                                        <button type="button" class="dash-cal-clear" id="dash-cal-clear">This week</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="sales-analytics-head sales-analytics-head--inline">
                             <div class="sales-analytics-item">
-                                <span>Week Revenue</span>
+                                <span>Period Revenue</span>
                                 <strong id="sales-analytics-revenue">₱0.00</strong>
-                            </div>
-                            <div class="sales-analytics-item">
-                                <span>Daily Average</span>
-                                <strong id="sales-analytics-daily">₱0.00</strong>
                             </div>
                         </div>
                     </div>
@@ -360,33 +375,197 @@
             });
         }
 
-        function loadSalesHistoryKpis() {
-            var todayObj = new Date();
-            todayObj.setHours(0, 0, 0, 0);
-            // Calendar week: Monday → today (same weekly basis as Stock Log / sales export).
-            var day = todayObj.getDay();
+        var dashSelectedDates = {};
+        var dashCalendarMonth = new Date();
+        dashCalendarMonth.setDate(1);
+        dashCalendarMonth.setHours(0, 0, 0, 0);
+        var dashDateToggle = document.getElementById('dash-date-toggle');
+        var dashDateCalendar = document.getElementById('dash-date-calendar');
+        var dashCalPrev = document.getElementById('dash-cal-prev');
+        var dashCalNext = document.getElementById('dash-cal-next');
+        var dashCalLabel = document.getElementById('dash-cal-label');
+        var dashCalGrid = document.getElementById('dash-cal-grid');
+        var dashCalHint = document.getElementById('dash-cal-hint');
+        var dashCalClear = document.getElementById('dash-cal-clear');
+        var dashPeriodLabel = document.getElementById('sales-analytics-period-label');
+        var dashDateFilterWrap = document.getElementById('dash-date-filter');
+
+        function getCurrentWeekDateIsos() {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            var day = today.getDay();
             var diffToMonday = day === 0 ? -6 : (1 - day);
-            var fromObj = new Date(todayObj.getTime());
-            fromObj.setDate(todayObj.getDate() + diffToMonday);
-            var toDate = localYmd(todayObj);
-            var fromDate = localYmd(fromObj);
+            var monday = new Date(today.getTime());
+            monday.setDate(today.getDate() + diffToMonday);
+            var dates = [];
+            var i;
+            for (i = 0; i < 7; i += 1) {
+                var d = new Date(monday.getTime());
+                d.setDate(monday.getDate() + i);
+                dates.push(localYmd(d));
+            }
+            return dates;
+        }
+
+        function applyDashWeekDefault() {
+            var weekDates = getCurrentWeekDateIsos();
+            dashSelectedDates = {};
+            weekDates.forEach(function (iso) {
+                dashSelectedDates[iso] = true;
+            });
+            dashCalendarMonth = new Date();
+            dashCalendarMonth.setDate(1);
+            dashCalendarMonth.setHours(0, 0, 0, 0);
+        }
+
+        function getSelectedDashDates() {
+            return Object.keys(dashSelectedDates).filter(function (key) {
+                return !!dashSelectedDates[key];
+            }).sort();
+        }
+
+        function updateDashDateFilterUi() {
+            var selected = getSelectedDashDates();
+            var weekDates = getCurrentWeekDateIsos();
+            var isCurrentWeek = selected.length === weekDates.length &&
+                weekDates.every(function (iso) { return !!dashSelectedDates[iso]; });
+            if (dashDateToggle) {
+                if (isCurrentWeek) {
+                    dashDateToggle.textContent = 'This week';
+                } else if (selected.length) {
+                    dashDateToggle.textContent = selected.length === 1
+                        ? selected[0]
+                        : ('Dates (' + selected.length + ')');
+                } else {
+                    dashDateToggle.textContent = 'Select dates';
+                }
+                dashDateToggle.classList.toggle('is-active', selected.length > 0 && !isCurrentWeek);
+            }
+            if (dashCalHint) {
+                if (isCurrentWeek) {
+                    dashCalHint.textContent = 'Showing this week (' + weekDates[0] + ' to ' + weekDates[weekDates.length - 1] + '). Tap days to change.';
+                } else if (!selected.length) {
+                    dashCalHint.textContent = 'Select at least one day. Use This week to reset.';
+                } else if (selected.length === 1) {
+                    dashCalHint.textContent = 'Filtering dashboard for ' + selected[0] + '.';
+                } else {
+                    dashCalHint.textContent = 'Filtering dashboard for ' + selected.length + ' selected days.';
+                }
+            }
+            if (dashCalClear) {
+                dashCalClear.textContent = 'This week';
+                dashCalClear.disabled = isCurrentWeek;
+            }
+            if (dashPeriodLabel) {
+                if (isCurrentWeek) {
+                    dashPeriodLabel.textContent = 'Sales analytics report (this week)';
+                } else if (selected.length === 1) {
+                    dashPeriodLabel.textContent = 'Sales analytics report (' + selected[0] + ')';
+                } else if (selected.length) {
+                    dashPeriodLabel.textContent = 'Sales analytics report (' + selected.length + ' days)';
+                } else {
+                    dashPeriodLabel.textContent = 'Sales analytics report';
+                }
+            }
+        }
+
+        function setDashCalendarOpen(open) {
+            var isOpen = !!open;
+            if (dashDateCalendar) dashDateCalendar.hidden = !isOpen;
+            if (dashDateToggle) {
+                dashDateToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+            if (isOpen) renderDashCalendar();
+        }
+
+        function renderDashCalendar() {
+            if (!dashCalGrid || !dashCalLabel) return;
+            var year = dashCalendarMonth.getFullYear();
+            var month = dashCalendarMonth.getMonth();
+            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            dashCalLabel.textContent = monthNames[month] + ' ' + year;
+
+            var firstDay = new Date(year, month, 1);
+            var startWeekday = firstDay.getDay();
+            var daysInMonth = new Date(year, month + 1, 0).getDate();
+            var todayIso = localYmd(new Date());
+            var html = '';
+            var i;
+            for (i = 0; i < startWeekday; i += 1) {
+                html += '<span class="dash-date-calendar__day is-empty"></span>';
+            }
+            for (i = 1; i <= daysInMonth; i += 1) {
+                var iso = year + '-' + pad2(month + 1) + '-' + pad2(i);
+                var classes = ['dash-date-calendar__day'];
+                if (dashSelectedDates[iso]) classes.push('is-selected');
+                if (iso === todayIso) classes.push('is-today');
+                html += '<button type="button" class="' + classes.join(' ') + '" data-dash-date="' + iso + '">' + i + '</button>';
+            }
+            dashCalGrid.innerHTML = html;
+            dashCalGrid.querySelectorAll('[data-dash-date]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    toggleDashDate(btn.getAttribute('data-dash-date'));
+                });
+            });
+            updateDashDateFilterUi();
+        }
+
+        function toggleDashDate(isoDate) {
+            var key = String(isoDate || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+            if (dashSelectedDates[key]) {
+                delete dashSelectedDates[key];
+            } else {
+                dashSelectedDates[key] = true;
+            }
+            if (!getSelectedDashDates().length) {
+                applyDashWeekDefault();
+            }
+            renderDashCalendar();
+            loadSalesHistoryKpis();
+        }
+
+        function clearDashDatesToWeek() {
+            applyDashWeekDefault();
+            renderDashCalendar();
+            loadSalesHistoryKpis();
+        }
+
+        function loadSalesHistoryKpis() {
+            var selected = getSelectedDashDates();
+            if (!selected.length) {
+                applyDashWeekDefault();
+                selected = getSelectedDashDates();
+            }
+            updateDashDateFilterUi();
+
+            var fromDate = selected[0];
+            var toDate = selected[selected.length - 1];
             var cacheBust = Date.now();
-            fetch('api/sales.php?from=' + encodeURIComponent(fromDate) + '&to=' + encodeURIComponent(toDate) + '&limit=200&_=' + cacheBust, { cache: 'no-store' })
+            var url = 'api/sales.php?from=' + encodeURIComponent(fromDate) +
+                '&to=' + encodeURIComponent(toDate) +
+                '&dates=' + encodeURIComponent(selected.join(',')) +
+                '&limit=200&_=' + cacheBust;
+
+            fetch(url, { cache: 'no-store' })
                 .then(function (r) { return r.json(); })
                 .then(function (summaryRes) {
                     var rev = 0;
+                    var grossSales = 0;
                     var refunds = 0;
                     var discounts = 0;
-                    var grossProfit = 0;
                     var sellingTotal = 0;
                     var costTotal = 0;
                     var netCashFlow = 0;
                     var orders = [];
                     if (summaryRes && summaryRes.success && summaryRes.summary) {
                         rev = parseFloat(summaryRes.summary.net_sales || summaryRes.summary.total_revenue || 0);
-                        refunds = parseFloat(summaryRes.summary.refunds_total || 0);
                         discounts = parseFloat(summaryRes.summary.discounts_total || 0);
-                        grossProfit = parseFloat(summaryRes.summary.gross_profit || 0);
+                        refunds = parseFloat(summaryRes.summary.refunds_total || 0);
+                        grossSales = parseFloat(summaryRes.summary.gross_revenue || 0);
+                        if (!grossSales && (rev || discounts)) {
+                            grossSales = rev + discounts;
+                        }
                         sellingTotal = parseFloat(summaryRes.summary.total_selling_price || 0);
                         costTotal = parseFloat(summaryRes.summary.total_cost_price || 0);
                         if (summaryRes.summary.net_cash_flow != null) {
@@ -397,38 +576,37 @@
                         orders = Array.isArray(summaryRes.orders) ? summaryRes.orders : [];
                     }
 
+                    var grossEl = document.getElementById('sales-kpi-gross');
                     var revEl = document.getElementById('sales-kpi-revenue');
                     var refundsEl = document.getElementById('sales-kpi-refunds');
                     var discountsEl = document.getElementById('sales-kpi-discounts');
                     var netEl = document.getElementById('sales-kpi-net');
-                    var netCashEl = document.getElementById('sales-kpi-net-cashflow');
-                    var netCashSubEl = document.getElementById('sales-kpi-net-cashflow-sub');
                     var analyticsRevEl = document.getElementById('sales-analytics-revenue');
-                    var analyticsDailyEl = document.getElementById('sales-analytics-daily');
                     var analyticsBarsEl = document.getElementById('sales-analytics-bars');
+                    if (grossEl) grossEl.textContent = peso(grossSales);
                     if (revEl) revEl.textContent = peso(rev);
                     if (refundsEl) refundsEl.textContent = peso(refunds);
                     if (discountsEl) discountsEl.textContent = peso(discounts);
-                    if (netEl) netEl.textContent = peso(grossProfit);
-                    if (netCashEl) {
-                        netCashEl.textContent = peso(netCashFlow);
-                        netCashEl.classList.toggle('is-negative', netCashFlow < 0);
-                    }
-                    if (netCashSubEl) {
-                        netCashSubEl.textContent = 'This week · Selling ' + peso(sellingTotal) + ' − Cost ' + peso(costTotal);
+                    if (netEl) {
+                        netEl.textContent = peso(netCashFlow);
+                        netEl.classList.toggle('is-negative', netCashFlow < 0);
                     }
                     if (analyticsRevEl) analyticsRevEl.textContent = peso(rev);
-                    var weekDays = Math.max(1, Math.round((todayObj - fromObj) / 86400000) + 1);
-                    if (analyticsDailyEl) analyticsDailyEl.textContent = peso(rev / weekDays);
                     if (analyticsBarsEl) {
-                        var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                         var buckets = {};
-                        var cursor = new Date(fromObj.getTime());
-                        while (cursor <= todayObj) {
-                            var key = localYmd(cursor);
-                            buckets[key] = { label: dayNames[cursor.getDay()], amount: 0 };
-                            cursor.setDate(cursor.getDate() + 1);
-                        }
+                        selected.forEach(function (key) {
+                            var d = new Date(key + 'T00:00:00');
+                            var dateLabel = key;
+                            if (!isNaN(d.getTime())) {
+                                dateLabel = monthNames[d.getMonth()] + ' ' + d.getDate();
+                            }
+                            buckets[key] = {
+                                label: dateLabel,
+                                amount: 0,
+                                iso: key
+                            };
+                        });
 
                         orders.forEach(function (order) {
                             var key = localYmd(order && order.created_at);
@@ -436,7 +614,7 @@
                             buckets[key].amount += parseFloat(order.total_amount || 0);
                         });
 
-                        var dayRows = Object.keys(buckets).map(function (key) {
+                        var dayRows = selected.map(function (key) {
                             return buckets[key];
                         });
                         var maxAmount = dayRows.reduce(function (m, row) {
@@ -444,49 +622,148 @@
                         }, 0);
 
                         if (maxAmount <= 0) {
-                            analyticsBarsEl.innerHTML = '<p class="list-hint">No sales data yet.</p>';
+                            analyticsBarsEl.innerHTML = '<p class="list-hint">No sales data for the selected dates.</p>';
                         } else {
-                            var width = 560;
-                            var height = 170;
-                            var paddingX = 22;
-                            var paddingY = 16;
-                            var plotWidth = width - (paddingX * 2);
-                            var plotHeight = height - (paddingY * 2);
-                            var points = [];
-                            dayRows.forEach(function (row, idx) {
-                                var x = paddingX + (plotWidth * idx / Math.max(1, dayRows.length - 1));
-                                var y = paddingY + (plotHeight * (1 - (row.amount / maxAmount)));
-                                points.push({ x: x, y: y, label: row.label, amount: row.amount });
+                            var width = 720;
+                            var height = 280;
+                            var padL = 58;
+                            var padR = 28;
+                            var padT = 24;
+                            var padB = 52;
+                            var plotW = width - padL - padR;
+                            var plotH = height - padT - padB;
+                            var niceMax = maxAmount;
+                            if (niceMax <= 0) niceMax = 1;
+                            var mag = Math.pow(10, Math.floor(Math.log10(niceMax)));
+                            var norm = niceMax / mag;
+                            var niceNorm = norm <= 1 ? 1 : (norm <= 2 ? 2 : (norm <= 5 ? 5 : 10));
+                            niceMax = niceNorm * mag;
+                            var tickCount = 5;
+                            var ticks = [];
+                            var t;
+                            for (t = 0; t <= tickCount; t += 1) {
+                                ticks.push((niceMax * t) / tickCount);
+                            }
+
+                            function formatAxisPeso(v) {
+                                if (v >= 1000) {
+                                    var k = v / 1000;
+                                    return '₱' + (Number.isInteger(k) ? k : k.toFixed(1)) + 'k';
+                                }
+                                return '₱' + Math.round(v);
+                            }
+
+                            var points = dayRows.map(function (row, idx) {
+                                var x = padL + (dayRows.length === 1 ? plotW / 2 : (plotW * idx / (dayRows.length - 1)));
+                                var y = padT + plotH * (1 - (row.amount / niceMax));
+                                return { x: x, y: y, label: row.label, amount: row.amount };
                             });
-                            var polyline = points.map(function (p) {
-                                return p.x.toFixed(1) + ',' + p.y.toFixed(1);
+
+                            var gridHtml = ticks.map(function (val) {
+                                var y = padT + plotH * (1 - (val / niceMax));
+                                return '' +
+                                    '<line class="sales-analytics-grid" x1="' + padL + '" y1="' + y.toFixed(1) +
+                                    '" x2="' + (padL + plotW) + '" y2="' + y.toFixed(1) + '"></line>' +
+                                    '<text class="sales-analytics-ylabel" x="' + (padL - 10) + '" y="' + (y + 4).toFixed(1) +
+                                    '" text-anchor="end">' + formatAxisPeso(val) + '</text>';
+                            }).join('');
+
+                            var vGridHtml = points.map(function (p) {
+                                return '<line class="sales-analytics-grid sales-analytics-grid--v" x1="' +
+                                    p.x.toFixed(1) + '" y1="' + padT + '" x2="' + p.x.toFixed(1) +
+                                    '" y2="' + (padT + plotH) + '"></line>';
+                            }).join('');
+
+                            var pathD = points.map(function (p, idx) {
+                                return (idx === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
                             }).join(' ');
 
                             var markers = points.map(function (p) {
                                 return '' +
-                                    '<g>' +
-                                        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" class="sales-analytics-point"></circle>' +
+                                    '<g class="sales-analytics-marker">' +
+                                        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="6.5" class="sales-analytics-point-outer"></circle>' +
+                                        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.2" class="sales-analytics-point-inner"></circle>' +
                                         '<title>' + p.label + ': ' + peso(p.amount) + '</title>' +
                                     '</g>';
                             }).join('');
 
-                            var labels = points.map(function (p) {
-                                return '<span>' + p.label + '</span>';
+                            var xLabels = points.map(function (p) {
+                                return '' +
+                                    '<text class="sales-analytics-xlabel" x="' + p.x.toFixed(1) + '" y="' +
+                                    (padT + plotH + 22) + '" text-anchor="middle" transform="rotate(-32 ' +
+                                    p.x.toFixed(1) + ' ' + (padT + plotH + 22) + ')">' + p.label + '</text>';
                             }).join('');
 
+                            var axisY2 = padT + plotH;
                             analyticsBarsEl.innerHTML =
-                                '<svg class="sales-analytics-line" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="7-day sales line chart">' +
-                                    '<line x1="' + paddingX + '" y1="' + (height - paddingY) + '" x2="' + (width - paddingX) + '" y2="' + (height - paddingY) + '" class="sales-analytics-axis"></line>' +
-                                    '<polyline points="' + polyline + '" class="sales-analytics-path"></polyline>' +
+                                '<svg class="sales-analytics-line" viewBox="0 0 ' + width + ' ' + height +
+                                '" role="img" aria-label="Sales line chart for selected dates" preserveAspectRatio="xMidYMid meet">' +
+                                    '<defs>' +
+                                        '<marker id="sales-axis-arrow-x" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">' +
+                                            '<path d="M0,0 L6,3 L0,6 Z" class="sales-analytics-arrow"></path>' +
+                                        '</marker>' +
+                                        '<marker id="sales-axis-arrow-y" markerWidth="8" markerHeight="8" refX="3" refY="6" orient="auto">' +
+                                            '<path d="M0,6 L3,0 L6,6 Z" class="sales-analytics-arrow"></path>' +
+                                        '</marker>' +
+                                    '</defs>' +
+                                    '<rect class="sales-analytics-plot-bg" x="' + padL + '" y="' + padT +
+                                    '" width="' + plotW + '" height="' + plotH + '"></rect>' +
+                                    gridHtml +
+                                    vGridHtml +
+                                    '<line class="sales-analytics-axis" x1="' + padL + '" y1="' + axisY2 +
+                                    '" x2="' + (padL + plotW + 8) + '" y2="' + axisY2 +
+                                    '" marker-end="url(#sales-axis-arrow-x)"></line>' +
+                                    '<line class="sales-analytics-axis" x1="' + padL + '" y1="' + (padT + plotH) +
+                                    '" x2="' + padL + '" y2="' + (padT - 8) +
+                                    '" marker-end="url(#sales-axis-arrow-y)"></line>' +
+                                    '<path class="sales-analytics-path" d="' + pathD + '" fill="none"></path>' +
                                     markers +
-                                '</svg>' +
-                                '<div class="sales-analytics-line-labels">' + labels + '</div>';
+                                    xLabels +
+                                '</svg>';
                         }
                     }
                 })
                 .catch(function (e) { console.warn('Sales history KPIs unavailable:', e.message); });
         }
+
+        applyDashWeekDefault();
+        updateDashDateFilterUi();
         loadSalesHistoryKpis();
+
+        if (dashDateToggle) {
+            dashDateToggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var open = !(dashDateCalendar && !dashDateCalendar.hidden);
+                setDashCalendarOpen(open);
+            });
+        }
+        if (dashDateCalendar) {
+            dashDateCalendar.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        }
+        document.addEventListener('click', function () {
+            if (!dashDateCalendar || dashDateCalendar.hidden) return;
+            setDashCalendarOpen(false);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') setDashCalendarOpen(false);
+        });
+        if (dashCalPrev) {
+            dashCalPrev.addEventListener('click', function () {
+                dashCalendarMonth.setMonth(dashCalendarMonth.getMonth() - 1);
+                renderDashCalendar();
+            });
+        }
+        if (dashCalNext) {
+            dashCalNext.addEventListener('click', function () {
+                dashCalendarMonth.setMonth(dashCalendarMonth.getMonth() + 1);
+                renderDashCalendar();
+            });
+        }
+        if (dashCalClear) {
+            dashCalClear.addEventListener('click', clearDashDatesToWeek);
+        }
 
         var dashDebug = typeof location !== 'undefined' && /(?:^|[?&])debug=1(?:&|$)/.test(location.search);
         var dashUrl = 'api/dashboard.php' + (dashDebug ? '?debug=1' : '');

@@ -25,7 +25,7 @@
                 <a href="inventory_dashboard.html" class="top-link">Inventory</a>
                 <a href="ordering_dashboard.html" class="top-link top-link--active">Ordering System</a>
                 <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
-                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
+                <a href="sales_history_dashboard.html" class="top-link">Staff Activity</a>
             </nav>
 
             <div class="top-actions">
@@ -49,23 +49,26 @@
                         <img src="icons_admin/money_icon.svg" alt=""> Set Discount Rate
                     </button>
                     <button type="button" class="gcash-config-btn" id="btn-set-kiosk-gcash">
-                        <img src="icons_admin/message_icon.svg" alt=""> Set Kiosk GCash
+                        <img src="icons_admin/message_icon.svg" alt=""> Set GCash
                     </button>
                 </div>
             </section>
 
             <section class="stat-grid">
                 <article class="stat-card stat-card--green">
-                    <h3>TOTAL BREWS</h3>
+                    <h3>TOTAL MENU ITEMS</h3>
                     <p>48 <span>+2 this week</span></p>
                 </article>
-                <article class="stat-card stat-card--blue">
+                <article class="stat-card stat-card--blue" id="stat-best-seller">
                     <h3>BEST SELLER</h3>
-                    <p>Coffee</p>
+                    <p class="stat-best-seller">
+                        <span class="stat-best-seller__name">—</span>
+                        <span class="stat-best-seller__cat" hidden></span>
+                    </p>
                 </article>
-                <article class="stat-card stat-card--red">
-                    <h3>ALERTS</h3>
-                    <p>1 <span class="warn">Low stock</span></p>
+                <article class="stat-card stat-card--red" id="stat-unavailable">
+                    <h3>UNAVAILABLE PRODUCTS</h3>
+                    <p>0 <span class="warn">items</span></p>
                 </article>
             </section>
 
@@ -408,23 +411,19 @@
                     <div class="product-modal__lower">
                         <div id="prod-variants-section" class="product-section" data-catalog-role="create">
                             <div class="product-section__head">
-                                <span class="product-section__title">Variants (temperature &amp; size)</span>
+                                <span class="product-section__title">Variants</span>
                             </div>
                             <div class="product-section__body">
+                                <p class="product-field-label__note" style="margin: 0 0 10px;">
+                                    Add cup sizes or options customers can pick. Each variant gets its own recipe tab.
+                                </p>
                                 <div id="prod-variants-list" class="prod-variants-list"></div>
 
                                 <template id="prod-variant-template">
                                     <div class="variant-input-row">
                                         <div class="variant-input-block">
-                                            <label class="product-field-label">Temperature</label>
-                                            <select class="product-input product-select variant-input--size" aria-label="Temperature">
-                                                <option value="Cold">Cold</option>
-                                                <option value="Hot" selected>Hot</option>
-                                            </select>
-                                        </div>
-                                        <div class="variant-input-block">
-                                            <label class="product-field-label">Ounce</label>
-                                            <input type="text" class="product-input variant-input--label" placeholder="e.g. 8oz" />
+                                            <label class="product-field-label">Variant name</label>
+                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. 8oz, Large, Iced 16oz" aria-label="Variant name" />
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>
@@ -586,23 +585,19 @@
                     <div class="product-modal__lower">
                         <div id="edit-variants-section" class="product-section">
                             <div class="product-section__head">
-                                <span class="product-section__title">VARIANTS / TEMPERATURE &amp; OUNCE</span>
+                                <span class="product-section__title">Variants</span>
                             </div>
                             <div class="product-section__body">
+                                <p class="product-field-label__note" style="margin: 0 0 10px;">
+                                    Add cup sizes or options customers can pick. Each variant gets its own recipe tab.
+                                </p>
                                 <div id="edit-variants-list" class="prod-variants-list"></div>
 
                                 <template id="edit-variant-template">
                                     <div class="variant-input-row">
                                         <div class="variant-input-block">
-                                            <label class="product-field-label">Temperature</label>
-                                            <select class="product-input product-select variant-input--size" aria-label="Temperature">
-                                                <option value="Cold">Cold</option>
-                                                <option value="Hot" selected>Hot</option>
-                                            </select>
-                                        </div>
-                                        <div class="variant-input-block">
-                                            <label class="product-field-label">Ounce</label>
-                                            <input type="text" class="product-input variant-input--label" placeholder="e.g. 8oz" />
+                                            <label class="product-field-label">Variant name</label>
+                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. 8oz, Large, Iced 16oz" aria-label="Variant name" />
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>

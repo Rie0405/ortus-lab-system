@@ -34,14 +34,19 @@ function sql_order_counts_as_sale(string $alias = ''): string
 /**
  * Cashflow summary for a date range.
  * COGS comes from recipe unit_cost snapshots on order_items (saved at checkout).
+ * Optional $onlyDates limits the summary to specific YYYY-MM-DD values inside the range.
  */
-function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): array
+function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate, ?array $onlyDates = null): array
 {
     ensure_order_discount_schema($pdo);
     ensure_order_items_cost_schema($pdo);
     ensure_recipe_schema_shared($pdo);
 
+    $dates = normalize_cashflow_dates($onlyDates);
     $saleCond = sql_order_counts_as_sale();
+    $params = [];
+    $dateSql = cashflow_date_sql('created_at', $dates, $fromDate, $toDate, $params);
+
     $salesStmt = $pdo->prepare(
         'SELECT
             COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN total_amount ELSE 0 END), 0) AS net_sales,
@@ -50,12 +55,14 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
             COUNT(CASE WHEN ' . $saleCond . ' THEN 1 END) AS total_orders,
             COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN gross_amount ELSE 0 END), 0) AS gross_revenue
          FROM orders
-         WHERE DATE(created_at) BETWEEN :from AND :to'
+         WHERE ' . $dateSql
     );
-    $salesStmt->execute([':from' => $fromDate, ':to' => $toDate]);
+    $salesStmt->execute($params);
     $sales = $salesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
     $cogsSaleCond = sql_order_counts_as_sale('o');
+    $cogsParams = [];
+    $cogsDateSql = cashflow_date_sql('o.created_at', $dates, $fromDate, $toDate, $cogsParams);
     $cogsStmt = $pdo->prepare(
         'SELECT COALESCE(SUM(
             CASE
@@ -65,10 +72,10 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
          ), 0) AS total_cogs
          FROM order_items oi
          INNER JOIN orders o ON o.id = oi.order_id
-         WHERE DATE(o.created_at) BETWEEN :from AND :to
+         WHERE ' . $cogsDateSql . '
            AND ' . $cogsSaleCond
     );
-    $cogsStmt->execute([':from' => $fromDate, ':to' => $toDate]);
+    $cogsStmt->execute($cogsParams);
     $totalCogs = (float)$cogsStmt->fetchColumn();
 
     $netSales = round((float)($sales['net_sales'] ?? 0), 2);
@@ -80,7 +87,7 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
     $grossProfit = round($netSales - $totalCogs, 2);
     $avgOrder = $totalOrders > 0 ? round($netSales / $totalOrders, 2) : 0.0;
 
-    $priceTotals = fetch_menu_price_totals($pdo, $fromDate, $toDate);
+    $priceTotals = fetch_menu_price_totals($pdo, $fromDate, $toDate, $dates);
     $totalSellingPrice = (float)$priceTotals['total_selling_price'];
     $totalCostPrice = (float)$priceTotals['total_cost_price'];
     $netCashFlow = round($totalSellingPrice - $totalCostPrice, 2);
@@ -106,9 +113,55 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate): arr
 }
 
 /**
- * Weekly net cash flow basis: sum(selling unit price × qty) − sum(menu cost_price × qty).
+ * @param list<string>|null $onlyDates
+ * @return list<string>
  */
-function fetch_menu_price_totals(PDO $pdo, string $fromDate, string $toDate): array
+function normalize_cashflow_dates(?array $onlyDates): array
+{
+    if (!$onlyDates) {
+        return [];
+    }
+    $out = [];
+    foreach ($onlyDates as $d) {
+        $d = trim((string)$d);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+            $out[$d] = true;
+        }
+    }
+    $keys = array_keys($out);
+    sort($keys);
+    return $keys;
+}
+
+/**
+ * Build a DATE(...) filter using either an explicit date list or a from/to range.
+ *
+ * @param list<string> $dates
+ * @param array<string,string> $params
+ */
+function cashflow_date_sql(string $columnExpr, array $dates, string $fromDate, string $toDate, array &$params): string
+{
+    $params = [];
+    if ($dates) {
+        $placeholders = [];
+        foreach ($dates as $i => $d) {
+            $key = ':cd' . $i;
+            $placeholders[] = $key;
+            $params[$key] = $d;
+        }
+        return 'DATE(' . $columnExpr . ') IN (' . implode(',', $placeholders) . ')';
+    }
+    $params[':from'] = $fromDate;
+    $params[':to'] = $toDate;
+    return 'DATE(' . $columnExpr . ') BETWEEN :from AND :to';
+}
+
+/**
+ * Weekly net cash flow basis: sum(selling unit price × qty) − sum(menu cost_price × qty).
+ *
+ * @param list<string>|null $onlyDates
+ */
+function fetch_menu_price_totals(PDO $pdo, string $fromDate, string $toDate, ?array $onlyDates = null): array
 {
     if (function_exists('ensure_menu_cost_price_schema')) {
         ensure_menu_cost_price_schema($pdo);
@@ -126,7 +179,10 @@ function fetch_menu_price_totals(PDO $pdo, string $fromDate, string $toDate): ar
         }
     }
 
+    $dates = normalize_cashflow_dates($onlyDates);
     $saleCond = sql_order_counts_as_sale('o');
+    $params = [];
+    $dateSql = cashflow_date_sql('o.created_at', $dates, $fromDate, $toDate, $params);
     $stmt = $pdo->prepare(
         'SELECT
             COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS total_selling_price,
@@ -134,10 +190,10 @@ function fetch_menu_price_totals(PDO $pdo, string $fromDate, string $toDate): ar
          FROM order_items oi
          INNER JOIN orders o ON o.id = oi.order_id
          LEFT JOIN menu_items m ON m.id = oi.menu_item_id
-         WHERE DATE(o.created_at) BETWEEN :from AND :to
+         WHERE ' . $dateSql . '
            AND ' . $saleCond
     );
-    $stmt->execute([':from' => $fromDate, ':to' => $toDate]);
+    $stmt->execute($params);
     $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
     return [

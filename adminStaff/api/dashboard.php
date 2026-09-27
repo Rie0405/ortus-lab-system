@@ -111,7 +111,8 @@ $catRevenue = [];
 if ($processedIds) {
     $inList = implode(',', $processedIds);
     $topStmt = $pdo->query(
-        "SELECT mi.name,
+        "SELECT mi.id AS menu_item_id,
+                mi.name,
                 COALESCE(MAX(c.name), 'Uncategorized') AS category,
                 SUM(oi.quantity) AS qty_sold,
                 SUM(oi.subtotal) AS revenue
@@ -124,6 +125,14 @@ if ($processedIds) {
           ORDER BY qty_sold DESC"
     );
     $topItems = $topStmt->fetchAll();
+    foreach ($topItems as &$ti) {
+        $ti['menu_item_id'] = (int)$ti['menu_item_id'];
+        $ti['name'] = (string)$ti['name'];
+        $ti['category'] = (string)$ti['category'];
+        $ti['qty_sold'] = (int)$ti['qty_sold'];
+        $ti['revenue'] = (float)$ti['revenue'];
+    }
+    unset($ti);
 
     $catRevStmt = $pdo->query(
         "SELECT c.name AS category, COALESCE(SUM(oi.subtotal), 0) AS revenue
@@ -174,11 +183,24 @@ $monthDiscounts = (float)($monthData['monthly_discounts'] ?? 0);
 $monthCashflow = fetch_cashflow_summary($pdo, $monthStart, $today);
 $todayCashflow = fetch_cashflow_summary($pdo, $today, $today);
 
-// ─── Inventory low-stock proxy count (unavailable menu items) ───────────────
-$lowStockStmt = $pdo->query(
+// ─── Unavailable menu products (sold out / toggled off) ───────────────────────
+$unavailableStmt = $pdo->query(
     'SELECT COUNT(*) FROM menu_items WHERE is_available = 0'
 );
-$lowStockCount = (int)$lowStockStmt->fetchColumn();
+$unavailableProductsCount = (int)$unavailableStmt->fetchColumn();
+$lowStockCount = $unavailableProductsCount;
+
+$bestSeller = null;
+if (!empty($topItems[0])) {
+    $bestSeller = [
+        'menu_item_id' => (int)$topItems[0]['menu_item_id'],
+        'name' => (string)$topItems[0]['name'],
+        'category' => (string)$topItems[0]['category'],
+        'qty_sold' => (int)$topItems[0]['qty_sold'],
+        'revenue' => (float)$topItems[0]['revenue'],
+        'rank' => 1,
+    ];
+}
 
 // Slow movers: fewest units on served orders in the last 30 days.
 $slowStmt = $pdo->query(
@@ -227,6 +249,8 @@ $payload = [
     'cashflow_today' => $todayCashflow,
     'cashflow_month' => $monthCashflow,
     'low_stock_count' => $lowStockCount,
+    'unavailable_products_count' => $unavailableProductsCount,
+    'best_seller' => $bestSeller,
     'pct_revenue'     => pctChange((float)$todayData['total_revenue'], (float)$yestData['total_revenue']),
     'pct_orders'      => pctChange((float)$todayData['total_orders'],  (float)$yestData['total_orders']),
     'date'            => $today,

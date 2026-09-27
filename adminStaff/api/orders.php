@@ -204,6 +204,7 @@ if ($m === 'GET') {
     ensure_order_discount_schema(db());
     ensure_kitchen_returned_schema(db());
     ensure_kitchen_return_reason_schema(db());
+    ensure_order_items_cost_schema(db());
     $type = $_GET['type'] ?? 'list';
     $date = $_GET['date'] ?? date('Y-m-d');
 
@@ -303,7 +304,11 @@ if ($m === 'GET') {
     if (!empty($orders)) {
         $ids = implode(',', array_column($orders, 'id'));
         $items = db()->query(
-            "SELECT oi.order_id, oi.menu_item_id, mi.name, oi.quantity, oi.unit_price, oi.subtotal, oi.notes,
+            "SELECT oi.order_id, oi.menu_item_id, mi.name, oi.quantity, oi.unit_price, oi.subtotal,
+                    COALESCE(oi.unit_cost, 0) AS unit_cost,
+                    COALESCE(oi.line_cost, 0) AS line_cost,
+                    COALESCE(mi.cost_price, 0) AS menu_cost_price,
+                    oi.notes,
                     COALESCE(c.name, '') AS category_name
                FROM order_items oi
                JOIN menu_items mi ON mi.id = oi.menu_item_id

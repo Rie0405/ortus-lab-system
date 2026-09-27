@@ -245,7 +245,7 @@ body {
 .kpi-sub {
     margin: 6px 0 0;
     font-size: 11px;
-    line-height: 1.35;
+    line-height: 1.4;
     color: #94a3b8;
 }
 
@@ -310,6 +310,189 @@ body {
 
 .chart-panel {
     padding: 24px;
+}
+
+.panel-head__title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.dash-date-filter {
+    position: relative;
+    min-width: 140px;
+    margin-top: 4px;
+}
+
+.dash-date-toggle {
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: #120e0a;
+    color: #fff;
+    padding: 8px 34px 8px 10px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    min-height: 36px;
+    min-width: 140px;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #e2e8f0 50%),
+        linear-gradient(135deg, #e2e8f0 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.dash-date-toggle.is-active {
+    border-color: rgba(244, 140, 37, 0.7);
+    color: #f48c25;
+}
+
+.dash-date-toggle[aria-expanded="true"] {
+    border-color: #f48c25;
+}
+
+.dash-date-calendar {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 40;
+    width: min(320px, calc(100vw - 32px));
+    margin: 0;
+    padding: 12px;
+    border: 1px solid rgba(61, 48, 37, 0.95);
+    border-radius: 12px;
+    background: #1a1410;
+    box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
+}
+
+.dash-date-calendar[hidden] {
+    display: none !important;
+}
+
+.dash-date-calendar__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.dash-date-calendar__head strong {
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: #fff;
+}
+
+.dash-date-calendar__nav {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: #2a2118;
+    color: #e2e8f0;
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.dash-date-calendar__nav:hover {
+    border-color: rgba(244, 140, 37, 0.55);
+}
+
+.dash-date-calendar__weekdays,
+.dash-date-calendar__grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.dash-date-calendar__weekdays {
+    margin-bottom: 4px;
+}
+
+.dash-date-calendar__weekdays span {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    padding: 4px 0;
+}
+
+.dash-date-calendar__day {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #e2e8f0;
+    min-height: 34px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dash-date-calendar__day.is-empty {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.dash-date-calendar__day.is-today {
+    border-color: rgba(244, 140, 37, 0.45);
+}
+
+.dash-date-calendar__day.is-selected {
+    background: rgba(244, 140, 37, 0.2);
+    border-color: #f48c25;
+    color: #fff;
+}
+
+.dash-date-calendar__day:not(.is-empty):hover {
+    border-color: rgba(244, 140, 37, 0.55);
+}
+
+.dash-date-calendar__footer {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.dash-date-calendar__hint {
+    margin: 0;
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.35;
+}
+
+.dash-cal-clear {
+    border: 1px solid #3d3025;
+    border-radius: 999px;
+    background: #2a2118;
+    color: #e2e8f0;
+    padding: 7px 12px;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dash-cal-clear:disabled {
+    opacity: 0.55;
+    cursor: default;
 }
 
 .panel-head {
@@ -401,50 +584,79 @@ body {
 }
 
 .sales-analytics-line-wrap {
-    min-height: 210px;
+    min-height: 280px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    padding: 4px 2px 0;
 }
 
 .sales-analytics-line {
     width: 100%;
-    height: 180px;
+    height: auto;
+    min-height: 260px;
     display: block;
 }
 
-.sales-analytics-axis {
-    stroke: rgba(255, 255, 255, 0.2);
+.sales-analytics-plot-bg {
+    fill: rgba(255, 255, 255, 0.015);
+}
+
+.sales-analytics-grid {
+    stroke: rgba(148, 163, 184, 0.18);
     stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+.sales-analytics-grid--v {
+    stroke: rgba(148, 163, 184, 0.1);
+}
+
+.sales-analytics-axis {
+    stroke: rgba(203, 213, 225, 0.55);
+    stroke-width: 1.5;
+}
+
+.sales-analytics-arrow {
+    fill: rgba(203, 213, 225, 0.7);
+}
+
+.sales-analytics-ylabel,
+.sales-analytics-xlabel {
+    fill: rgba(203, 213, 225, 0.72);
+    font-size: 11px;
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.sales-analytics-xlabel {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 .sales-analytics-path {
     fill: none;
     stroke: #f48c25;
-    stroke-width: 3;
+    stroke-width: 3.5;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
 
-.sales-analytics-point {
-    fill: #f48c25;
-    stroke: rgba(18, 14, 10, 0.95);
-    stroke-width: 1.5;
+.sales-analytics-point-outer {
+    fill: #120e0a;
+    stroke: #f48c25;
+    stroke-width: 2.5;
 }
 
-.sales-analytics-line-labels {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 4px;
+.sales-analytics-point-inner {
+    fill: #120e0a;
+    stroke: none;
 }
 
-.sales-analytics-line-labels span {
-    text-align: center;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.56);
+.sales-analytics-marker:hover .sales-analytics-point-outer {
+    stroke: #ffb065;
+    stroke-width: 3;
 }
 
 .diag-column {

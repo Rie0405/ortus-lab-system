@@ -762,6 +762,25 @@ if ($method === 'PUT') {
         $stmt->execute($params);
     }
 
+    if (array_key_exists('item_name', $b)) {
+        $newName = trim((string)$b['item_name']);
+        if ($newName !== '') {
+            try {
+                $hasRecipeIng = (bool)$pdo->query("SHOW TABLES LIKE 'recipe_ingredients'")->fetchColumn();
+                if ($hasRecipeIng) {
+                    $syncIng = $pdo->prepare(
+                        'UPDATE recipe_ingredients
+                         SET ingredient_name = :name
+                         WHERE inventory_item_id = :id'
+                    );
+                    $syncIng->execute([':name' => $newName, ':id' => $id]);
+                }
+            } catch (Throwable $e) {
+                // Non-fatal: rename still succeeded on inventory_items.
+            }
+        }
+    }
+
     if ($pendingStockEditLog) {
         if ($pendingStockEditLog['item_name'] === '') {
             $nameStmt = $pdo->prepare('SELECT item_name FROM inventory_items WHERE id = :id LIMIT 1');
@@ -903,6 +922,76 @@ foreach ($linkStmt->fetchAll() as $lr) {
     ];
 }
 
+// Menu items where this inventory row is used as a recipe ingredient.
+$recipeMenusByInv = [];
+try {
+    $hasRecipes = (bool)$pdo->query("SHOW TABLES LIKE 'recipes'")->fetchColumn();
+    $hasRecipeIng = (bool)$pdo->query("SHOW TABLES LIKE 'recipe_ingredients'")->fetchColumn();
+    if ($hasRecipes && $hasRecipeIng) {
+        $recipeStmt = $pdo->query(
+            'SELECT
+                ri.inventory_item_id,
+                ri.ingredient_name,
+                m.id AS menu_id,
+                m.name AS menu_name,
+                COALESCE(r.variant_signature, "") AS variant_signature
+             FROM recipe_ingredients ri
+             INNER JOIN recipes r ON r.id = ri.recipe_id
+             INNER JOIN menu_items m ON m.id = r.menu_item_id'
+        );
+        $invIdByNameLookup = [];
+        foreach ($rows as $row) {
+            $n = strtolower(trim((string)($row['item_name'] ?? '')));
+            if ($n === '') {
+                continue;
+            }
+            $invIdByNameLookup[$n][] = (int)$row['id'];
+        }
+        foreach ($recipeStmt->fetchAll(PDO::FETCH_ASSOC) as $rr) {
+            $invIds = [];
+            $byId = (int)($rr['inventory_item_id'] ?? 0);
+            if ($byId > 0) {
+                $invIds[] = $byId;
+            } else {
+                $ingKey = strtolower(trim((string)($rr['ingredient_name'] ?? '')));
+                if ($ingKey !== '' && isset($invIdByNameLookup[$ingKey])) {
+                    foreach ($invIdByNameLookup[$ingKey] as $matchedId) {
+                        $invIds[] = (int)$matchedId;
+                    }
+                }
+            }
+            $menuId = (int)($rr['menu_id'] ?? 0);
+            $menuName = trim((string)($rr['menu_name'] ?? ''));
+            if ($menuId <= 0 || $menuName === '') {
+                continue;
+            }
+            $variant = trim((string)($rr['variant_signature'] ?? ''));
+            foreach (array_unique($invIds) as $iid) {
+                if (!isset($recipeMenusByInv[$iid])) {
+                    $recipeMenusByInv[$iid] = [];
+                }
+                $dedupeKey = $menuId . '|' . $variant;
+                if (isset($recipeMenusByInv[$iid][$dedupeKey])) {
+                    continue;
+                }
+                $recipeMenusByInv[$iid][$dedupeKey] = [
+                    'menu_item_id' => $menuId,
+                    'name' => $menuName,
+                    'variant_signature' => $variant,
+                ];
+            }
+        }
+        foreach ($recipeMenusByInv as $iid => $map) {
+            $recipeMenusByInv[$iid] = array_values($map);
+            usort($recipeMenusByInv[$iid], static function ($a, $b) {
+                return strcasecmp((string)$a['name'], (string)$b['name']);
+            });
+        }
+    }
+} catch (Throwable $e) {
+    $recipeMenusByInv = [];
+}
+
 // Compute applicable menu items from each menu item's removable ingredients.
 // This keeps the inventory checklist in sync even if the admin never manually selected items.
 $invIdsByName = [];
@@ -997,6 +1086,7 @@ foreach ($rows as $row) {
         'updated_at'    => $row['updated_at'],
         'applicable_menu_ids'   => $finalMenuIds,
         'applicable_menu_links' => $finalLinks,
+        'linked_recipe_menus'   => $recipeMenusByInv[(int)$row['id']] ?? [],
     ];
 }
 

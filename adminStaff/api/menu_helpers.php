@@ -312,20 +312,80 @@ function ensure_main_categories_schema(PDO $pdo): void
            JOIN categories c ON c.id = m.category_id
           WHERE m.main_category_id IS NULL OR m.main_category_id = 0'
     )->fetchAll();
-    if (!$rows) {
-        return;
+    if ($rows) {
+        $upd = $pdo->prepare('UPDATE menu_items SET main_category_id = :mcid WHERE id = :id');
+        foreach ($rows as $row) {
+            $cat = strtolower(trim((string)($row['category_name'] ?? '')));
+            $isBar = ($cat === 'drinks' || $cat === 'beverages' || $cat === 'coffee'
+                || strpos($cat, 'drink') !== false || strpos($cat, 'coffee') !== false
+                || strpos($cat, 'frappe') !== false || strpos($cat, 'refresher') !== false);
+            $upd->execute([
+                ':mcid' => $isBar ? $barId : $kitchenId,
+                ':id' => (int)$row['id'],
+            ]);
+        }
     }
 
-    $upd = $pdo->prepare('UPDATE menu_items SET main_category_id = :mcid WHERE id = :id');
-    foreach ($rows as $row) {
-        $cat = strtolower(trim((string)($row['category_name'] ?? '')));
-        $isBar = ($cat === 'drinks' || $cat === 'beverages' || $cat === 'coffee'
-            || strpos($cat, 'drink') !== false || strpos($cat, 'coffee') !== false
-            || strpos($cat, 'frappe') !== false || strpos($cat, 'refresher') !== false);
-        $upd->execute([
-            ':mcid' => $isBar ? $barId : $kitchenId,
-            ':id' => (int)$row['id'],
-        ]);
+    // Tie categories to the station (main category) they were created under.
+    $hasCatMc = (bool)$pdo->query("SHOW COLUMNS FROM categories LIKE 'main_category_id'")->fetch();
+    if (!$hasCatMc) {
+        try {
+            $pdo->exec(
+                'ALTER TABLE categories
+                    ADD COLUMN main_category_id INT NULL DEFAULT NULL AFTER id,
+                    ADD KEY idx_categories_main_category (main_category_id)'
+            );
+        } catch (Throwable $e) {
+            // Ignore migration issues on restricted environments.
+        }
+    }
+
+    $orphanCats = $pdo->query(
+        'SELECT id, name FROM categories
+          WHERE main_category_id IS NULL OR main_category_id = 0'
+    )->fetchAll();
+    if ($orphanCats) {
+        $voteStmt = $pdo->prepare(
+            'SELECT main_category_id, COUNT(*) AS cnt
+               FROM menu_items
+              WHERE category_id = :id
+                AND main_category_id IS NOT NULL
+                AND main_category_id > 0
+              GROUP BY main_category_id
+              ORDER BY cnt DESC
+              LIMIT 1'
+        );
+        $updCat = $pdo->prepare('UPDATE categories SET main_category_id = :mcid WHERE id = :id');
+        foreach ($orphanCats as $catRow) {
+            $catId = (int)$catRow['id'];
+            $voteStmt->execute([':id' => $catId]);
+            $mcid = (int)$voteStmt->fetchColumn();
+            if ($mcid <= 0) {
+                $cat = strtolower(trim((string)($catRow['name'] ?? '')));
+                $isBar = ($cat === 'drinks' || $cat === 'beverages' || $cat === 'coffee'
+                    || strpos($cat, 'drink') !== false || strpos($cat, 'coffee') !== false
+                    || strpos($cat, 'frappe') !== false || strpos($cat, 'refresher') !== false);
+                $mcid = $isBar ? $barId : $kitchenId;
+            }
+            $updCat->execute([':mcid' => $mcid, ':id' => $catId]);
+        }
+    }
+}
+
+function assert_category_belongs_to_main(PDO $pdo, int $categoryId, int $mainCategoryId): void
+{
+    ensure_main_categories_schema($pdo);
+    $stmt = $pdo->prepare(
+        'SELECT id, main_category_id FROM categories WHERE id = :id AND is_active = 1'
+    );
+    $stmt->execute([':id' => $categoryId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        fail('Category not found.');
+    }
+    $catMain = isset($row['main_category_id']) ? (int)$row['main_category_id'] : 0;
+    if ($catMain <= 0 || $catMain !== $mainCategoryId) {
+        fail('Category does not belong to the selected main category.');
     }
 }
 
@@ -625,4 +685,11 @@ function fetch_fast_moving_item_ids(PDO $pdo, int $orderLimit = 100, int $itemLi
         $ids[] = (int)$row['menu_item_id'];
     }
     return $ids;
+}
+
+/** Overall #1 seller — same window as the dashboard Most Selling chart. */
+function fetch_best_seller(PDO $pdo, int $orderLimit = 100): ?array
+{
+    $items = fetch_fast_moving_items($pdo, $orderLimit, 1);
+    return $items[0] ?? null;
 }

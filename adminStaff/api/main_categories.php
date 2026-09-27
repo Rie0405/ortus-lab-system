@@ -101,6 +101,26 @@ if ($m === 'DELETE') {
             // Addons table may be unavailable on some installs.
         }
 
+        // Soft-delete categories (and their subcategories) tied to this station.
+        try {
+            $catIdsStmt = $pdo->prepare(
+                'SELECT id FROM categories WHERE main_category_id = :id AND is_active = 1'
+            );
+            $catIdsStmt->execute([':id' => $id]);
+            $catIds = array_map('intval', $catIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+            foreach ($catIds as $catId) {
+                if ($catId <= 0) {
+                    continue;
+                }
+                $pdo->prepare('UPDATE subcategories SET is_active = 0 WHERE category_id = :cid')
+                    ->execute([':cid' => $catId]);
+            }
+            $pdo->prepare('UPDATE categories SET is_active = 0 WHERE main_category_id = :id')
+                ->execute([':id' => $id]);
+        } catch (Throwable $e) {
+            // Column may be missing on older installs mid-migration.
+        }
+
         $idsStmt = $pdo->prepare('SELECT id FROM menu_items WHERE main_category_id = :id');
         $idsStmt->execute([':id' => $id]);
         $itemIds = array_map('intval', $idsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);

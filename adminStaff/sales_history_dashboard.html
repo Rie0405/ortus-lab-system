@@ -25,7 +25,6 @@
                 <a href="inventory_dashboard.html" class="top-link">Inventory</a>
                 <a href="ordering_dashboard.html" class="top-link">Ordering System</a>
                 <a href="sales_history_dashboard.html" class="top-link top-link--active">Sales History</a>
-                <a href="management_dashboard.html" class="top-link">Staff Activity</a>
             </nav>
 
             <div class="top-actions">
@@ -54,58 +53,108 @@
                     </button>
                 </div>
                 <div class="staff-brief__grid" id="staff-brief-grid">
-                    <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Expenses</span>
-                        <strong class="staff-brief-card__value" data-brief-key="expenses">--</strong>
+                    <article class="staff-brief-box staff-brief-box--pair" aria-label="Short and Over">
+                        <div class="staff-brief-metric">
+                            <span class="staff-brief-card__label">Short</span>
+                            <strong class="staff-brief-card__value" data-brief-key="short">--</strong>
+                        </div>
+                        <div class="staff-brief-metric">
+                            <span class="staff-brief-card__label">Over</span>
+                            <strong class="staff-brief-card__value" data-brief-key="over">--</strong>
+                        </div>
                     </article>
-                    <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Today Sales</span>
-                        <strong class="staff-brief-card__value" data-brief-key="today-sales">--</strong>
+
+                    <article class="staff-brief-box staff-brief-box--sales-loss" aria-label="Today sales and shift total loss">
+                        <div class="staff-brief-metric staff-brief-metric--today">
+                            <span class="staff-brief-card__label">Today Sales</span>
+                            <div class="staff-brief-card__today-row">
+                                <strong class="staff-brief-card__value" data-brief-key="today-sales">--</strong>
+                                <div class="staff-brief-card__pay-split" aria-label="Cash and GCash totals for today">
+                                    <div class="staff-brief-card__pay-line">
+                                        <span>Cash</span>
+                                        <strong id="staff-brief-cash-val">₱0.00</strong>
+                                    </div>
+                                    <div class="staff-brief-card__pay-line">
+                                        <span>GCash</span>
+                                        <strong id="staff-brief-gcash-val">₱0.00</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="staff-brief-metric staff-brief-metric--loss">
+                            <span class="staff-brief-card__label">Shift Total Loss</span>
+                            <strong class="staff-brief-card__value staff-brief-card__value--loss" data-brief-key="shift-loss">--</strong>
+                        </div>
                     </article>
-                    <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Expected</span>
-                        <strong class="staff-brief-card__value" data-brief-key="expected" id="staff-brief-expected-val" role="button" tabindex="0" aria-label="Show Cash and GCash sales logs">--</strong>
+
+                    <div class="staff-brief-expenses-col">
+                        <article class="staff-brief-box staff-brief-box--expenses" aria-label="Expenses">
+                            <span class="staff-brief-card__label">Expenses</span>
+                            <strong class="staff-brief-card__value" data-brief-key="expenses">--</strong>
+                            <div class="brief-readout staff-brief-expenses-readout" id="brief-exp">
+                                <div class="brief-readout__list" id="brief-exp-list"></div>
+                            </div>
+                        </article>
+                        <div class="staff-brief-more" id="staff-brief-more">
+                            <button type="button" class="staff-brief-more__btn" id="staff-brief-more-btn" aria-expanded="false" aria-haspopup="true" aria-controls="staff-brief-more-panel">
+                                More
+                            </button>
+                            <div class="staff-brief-more__panel is-hidden" id="staff-brief-more-panel" role="dialog" aria-label="More cash drawer details">
+                                <div class="staff-brief-more__row">
+                                    <span>Expected Cash</span>
+                                    <strong id="staff-brief-more-expected">₱0.00</strong>
+                                </div>
+                                <div class="staff-brief-more__row">
+                                    <span>Discount</span>
+                                    <strong id="staff-brief-more-discount">₱0.00</strong>
+                                </div>
+                                <div class="staff-brief-more__row">
+                                    <span>Refund</span>
+                                    <strong id="staff-brief-more-refund">₱0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <article class="staff-brief-box staff-brief-box--starting" aria-label="Starting money from staff report">
+                        <h3 class="staff-brief-box__title">Starting Money</h3>
+                        <div class="brief-readout" id="brief-sm">
+                            <p class="brief-readout__empty" id="brief-sm-empty">No starting money or paid in saved for today on this device yet.</p>
+                            <div class="brief-readout__list is-hidden" id="brief-sm-list"></div>
+                        </div>
                     </article>
-                    <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Short</span>
-                        <strong class="staff-brief-card__value" data-brief-key="short">--</strong>
-                    </article>
-                    <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Over</span>
-                        <strong class="staff-brief-card__value" data-brief-key="over">--</strong>
-                    </article>
-                    <article class="staff-brief-card">
-                        <span class="staff-brief-card__label">Shift Total Loss</span>
-                        <strong class="staff-brief-card__value staff-brief-card__value--loss" data-brief-key="shift-loss">--</strong>
+
+                    <article class="staff-brief-box staff-brief-activity" id="staff-brief-activity" aria-label="Staff shift cash drawer">
+                        <div class="staff-brief-activity__controls">
+                            <div class="staff-brief-activity__menu" id="sh-staff-menu">
+                                <button type="button" class="staff-brief-activity__btn" id="sh-select-staff-btn" aria-expanded="false" aria-haspopup="listbox" aria-controls="sh-select-staff-panel">Select Staff</button>
+                                <div class="staff-brief-activity__panel is-hidden" id="sh-select-staff-panel" role="listbox" aria-label="Select staff">
+                                    <p class="staff-brief-activity__hint" id="sh-select-staff-hint">Loading cashiers…</p>
+                                    <div class="staff-brief-activity__options" id="sh-select-staff-options"></div>
+                                </div>
+                            </div>
+                            <div class="staff-brief-activity__menu" id="sh-shift-menu">
+                                <button type="button" class="staff-brief-activity__btn" id="sh-shift-date-btn" aria-expanded="false" aria-haspopup="listbox" aria-controls="sh-shift-date-panel">Shift Date</button>
+                                <div class="staff-brief-activity__panel is-hidden" id="sh-shift-date-panel" role="listbox" aria-label="Select shift date">
+                                    <p class="staff-brief-activity__hint" id="sh-shift-date-hint">Select a staff first</p>
+                                    <div class="staff-brief-activity__options" id="sh-shift-date-options"></div>
+                                </div>
+                            </div>
+                            <button type="button" class="staff-brief-activity__btn staff-brief-activity__btn--manage" id="sh-manage-btn">Manage</button>
+                        </div>
+                        <p class="staff-brief-activity__meta" id="sh-activity-meta">Select a cashier and login shift.</p>
+                        <div class="brief-readout staff-brief-activity__list" id="sh-drawer-list">
+                            <div class="brief-readout__row"><span class="brief-readout__k">Starting Money</span><strong class="brief-readout__v" id="sh-drawer-starting">--</strong></div>
+                            <div class="brief-readout__row"><span class="brief-readout__k">Cash Payments</span><strong class="brief-readout__v" id="sh-drawer-cash">--</strong></div>
+                            <div class="brief-readout__row"><span class="brief-readout__k">GCash Payments</span><strong class="brief-readout__v" id="sh-drawer-gcash">--</strong></div>
+                            <div class="brief-readout__row"><span class="brief-readout__k">Discounts</span><strong class="brief-readout__v" id="sh-drawer-discounts">--</strong></div>
+                            <div class="brief-readout__row"><span class="brief-readout__k">Cash Refunds</span><strong class="brief-readout__v" id="sh-drawer-refunds">--</strong></div>
+                            <div class="brief-readout__row"><span class="brief-readout__k">Paid In</span><strong class="brief-readout__v" id="sh-drawer-paid-in">--</strong></div>
+                            <div class="brief-readout__row"><span class="brief-readout__k">Paid Out</span><strong class="brief-readout__v" id="sh-drawer-paid-out">--</strong></div>
+                        </div>
                     </article>
                 </div>
                 <p class="staff-brief__text" id="staff-brief-text"></p>
-                <section class="sales-detail-card sales-detail-card--in-brief staff-brief-gcash-logs is-hidden" id="staff-brief-gcash-logs" aria-label="Cash and GCash sales logs for today">
-                    <div class="staff-brief-gcash-logs__head">
-                        <h3 class="sales-detail-card__title">PAYMENT SALES LOGS (TODAY)</h3>
-                        <button type="button" class="staff-brief-gcash-logs__close" id="staff-brief-gcash-logs-close" aria-label="Close payment logs">Close</button>
-                    </div>
-                    <div class="staff-brief-gcash-logs__list" id="staff-brief-gcash-logs-list"></div>
-                </section>
-                <div class="staff-brief__report-forms staff-brief__report-readout" id="staff-brief-report-readout">
-                    <section class="sales-detail-card sales-detail-card--in-brief" aria-label="Starting money from staff report">
-                        <h3 class="sales-detail-card__title">STARTING MONEY</h3>
-                        <div class="brief-readout" id="brief-sm">
-                            <p class="brief-readout__empty" id="brief-sm-empty">No starting money saved for today on this device yet.</p>
-                            <div class="brief-readout__list is-hidden" id="brief-sm-list"></div>
-                        </div>
-                    </section>
-                    <section class="sales-detail-card sales-detail-card--in-brief" aria-label="Sales accuracy from staff report">
-                        <h3 class="sales-detail-card__title">SALES ACCURACY CHECK</h3>
-                        <div class="brief-readout" id="brief-ac">
-                            <p class="brief-readout__empty" id="brief-ac-empty">No accuracy check recorded for today on this device yet.</p>
-                            <div class="is-hidden" id="brief-ac-detail">
-                                <p class="brief-readout__status" id="brief-ac-status"></p>
-                                <p class="brief-readout__amount is-hidden" id="brief-ac-amount"></p>
-                            </div>
-                        </div>
-                    </section>
-                </div>
             </section>
 
             <section class="sales-report-block" id="sales-report-block" aria-label="Customer orders sales report">
@@ -115,18 +164,35 @@
                         <p>Source: customer orders processed by the system.</p>
                     </div>
                     <div class="sales-report-block__actions">
+                        <label class="sales-report-filter sales-report-filter--search">
+                            <span>Search</span>
+                            <input type="search" id="sales-report-search" placeholder="Order code or item…" autocomplete="off">
+                        </label>
                         <label class="sales-report-filter">
                             <span>Category</span>
                             <select id="sales-report-category">
                                 <option value="all" selected>All Categories</option>
                             </select>
                         </label>
-                        <label class="sales-report-filter">
+                        <div class="sales-report-filter sales-report-filter--date">
                             <span>Recorded Date</span>
-                            <select id="sales-report-range">
-                                <option value="all" selected>All Dates</option>
-                            </select>
-                        </label>
+                            <button type="button" class="sales-report-date-toggle" id="sales-report-date-toggle" aria-expanded="false" aria-haspopup="dialog" aria-controls="sales-report-calendar">This week</button>
+                            <div class="sales-report-calendar" id="sales-report-calendar" role="dialog" aria-label="Select recorded dates" hidden>
+                                <div class="sales-report-calendar__head">
+                                    <button type="button" class="sales-report-calendar__nav" id="sales-report-cal-prev" aria-label="Previous month">‹</button>
+                                    <strong id="sales-report-cal-label">Month</strong>
+                                    <button type="button" class="sales-report-calendar__nav" id="sales-report-cal-next" aria-label="Next month">›</button>
+                                </div>
+                                <div class="sales-report-calendar__weekdays" aria-hidden="true">
+                                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                                </div>
+                                <div class="sales-report-calendar__grid" id="sales-report-cal-grid"></div>
+                                <div class="sales-report-calendar__footer">
+                                    <p class="sales-report-calendar__hint" id="sales-report-cal-hint">Default shows this week. Tap days to change.</p>
+                                    <button type="button" class="sales-report-cal-clear" id="sales-report-cal-clear">This week</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="sales-report-table-wrap">
@@ -134,13 +200,17 @@
                         <thead>
                             <tr>
                                 <th>Date</th>
+                                <th>Order Code</th>
                                 <th>Item</th>
+                                <th>Price</th>
+                                <th>Costs</th>
                                 <th>Qty</th>
-                                <th>Total</th>
+                                <th>Total Price</th>
+                                <th>Total Costs</th>
                             </tr>
                         </thead>
                         <tbody id="sales-report-tbody">
-                            <tr><td colspan="4" class="sales-report-empty">No sales transactions yet.</td></tr>
+                            <tr><td colspan="8" class="sales-report-empty">No sales transactions yet.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -268,19 +338,36 @@
         var tableWrap = document.getElementById('sales-table-wrap');
         var resultsTx = document.getElementById('sales-results-text');
         var staffBriefText = document.getElementById('staff-brief-text');
-        var staffBriefGrid = document.getElementById('staff-brief-grid');
-        var expectedValueEl = document.getElementById('staff-brief-expected-val');
-        var gcashLogsWrap = document.getElementById('staff-brief-gcash-logs');
-        var gcashLogsList = document.getElementById('staff-brief-gcash-logs-list');
-        var gcashLogsCloseBtn = document.getElementById('staff-brief-gcash-logs-close');
+        var staffBriefCashVal = document.getElementById('staff-brief-cash-val');
+        var staffBriefGcashVal = document.getElementById('staff-brief-gcash-val');
+        var staffBriefMoreBtn = document.getElementById('staff-brief-more-btn');
+        var staffBriefMorePanel = document.getElementById('staff-brief-more-panel');
+        var staffBriefMoreWrap = document.getElementById('staff-brief-more');
+        var staffBriefMoreExpected = document.getElementById('staff-brief-more-expected');
+        var staffBriefMoreDiscount = document.getElementById('staff-brief-more-discount');
+        var staffBriefMoreRefund = document.getElementById('staff-brief-more-refund');
+        var staffBriefMoreCashRevenue = 0;
+        var staffBriefMoreDiscountTotal = 0;
         var salesReportTbody = document.getElementById('sales-report-tbody');
         var salesReportFoot = document.getElementById('sales-report-foot');
         var salesReportPagination = document.getElementById('sales-report-pagination');
-        var salesReportRange = document.getElementById('sales-report-range');
         var salesReportCategory = document.getElementById('sales-report-category');
+        var salesReportSearch = document.getElementById('sales-report-search');
+        var salesReportDateToggle = document.getElementById('sales-report-date-toggle');
+        var salesReportCalendar = document.getElementById('sales-report-calendar');
+        var salesReportCalPrev = document.getElementById('sales-report-cal-prev');
+        var salesReportCalNext = document.getElementById('sales-report-cal-next');
+        var salesReportCalLabel = document.getElementById('sales-report-cal-label');
+        var salesReportCalGrid = document.getElementById('sales-report-cal-grid');
+        var salesReportCalHint = document.getElementById('sales-report-cal-hint');
+        var salesReportCalClear = document.getElementById('sales-report-cal-clear');
         var SALES_REPORT_PAGE_SIZE = 10;
         var salesReportCurrentPage = 1;
         var salesReportCategories = [];
+        var salesReportSelectedDates = {};
+        var salesReportCalendarMonth = new Date();
+        salesReportCalendarMonth.setDate(1);
+        salesReportCalendarMonth.setHours(0, 0, 0, 0);
 
         var allOrders = [];
         var todayGcashOrders = [];
@@ -306,6 +393,88 @@
 
         function peso(v) {
             return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function toMoney(v) {
+            var n = parseFloat(v);
+            return Number.isFinite(n) && n >= 0 ? n : 0;
+        }
+
+        function getAccuracyStorageKey() {
+            return 'staff_sales_report_accuracy_' + localYmd(new Date());
+        }
+
+        function getCashMgmtStorageKeyToday() {
+            return 'staff_cash_management_' + localYmd(new Date());
+        }
+
+        function getCashRefundsStorageKeyToday() {
+            return 'staff_cash_refunds_' + localYmd(new Date());
+        }
+
+        function getStartingMoneyStorageKeyToday() {
+            return 'staff_sales_report_starting_money_' + localYmd(new Date());
+        }
+
+        function getSavedStartingMoneyTotalToday() {
+            try {
+                var raw = localStorage.getItem(getStartingMoneyStorageKeyToday());
+                if (!raw) return 0;
+                var obj = JSON.parse(raw);
+                if (typeof obj.total !== 'undefined') return toMoney(obj.total);
+                var base = toMoney(obj && obj.base);
+                var additional = Array.isArray(obj && obj.additional_inputs)
+                    ? obj.additional_inputs.reduce(function (sum, x) { return sum + toMoney(x); }, 0)
+                    : toMoney(obj && obj.additional);
+                return base + additional;
+            } catch (e) {
+                return toMoney(raw);
+            }
+        }
+
+        function getCashMgmtTotalsToday() {
+            try {
+                var raw = localStorage.getItem(getCashMgmtStorageKeyToday());
+                var parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) return { paidIn: 0, paidOut: 0 };
+                return parsed.reduce(function (acc, entry) {
+                    var amount = toMoney(entry && entry.amount);
+                    if (!amount) return acc;
+                    if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
+                    else acc.paidIn += amount;
+                    return acc;
+                }, { paidIn: 0, paidOut: 0 });
+            } catch (e) {
+                return { paidIn: 0, paidOut: 0 };
+            }
+        }
+
+        function getCashRefundsTotalToday() {
+            try {
+                var raw = localStorage.getItem(getCashRefundsStorageKeyToday());
+                var parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) return 0;
+                return parsed.reduce(function (sum, entry) {
+                    return sum + toMoney(entry && entry.amount);
+                }, 0);
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        function updateStaffBriefMorePanel() {
+            var cashMgmt = getCashMgmtTotalsToday();
+            var expected = getSavedStartingMoneyTotalToday() + staffBriefMoreCashRevenue + cashMgmt.paidIn - cashMgmt.paidOut;
+            if (staffBriefMoreExpected) staffBriefMoreExpected.textContent = peso(expected);
+            if (staffBriefMoreDiscount) staffBriefMoreDiscount.textContent = peso(staffBriefMoreDiscountTotal);
+            if (staffBriefMoreRefund) staffBriefMoreRefund.textContent = peso(getCashRefundsTotalToday());
+        }
+
+        function setStaffBriefMoreOpen(open) {
+            if (!staffBriefMoreBtn || !staffBriefMorePanel) return;
+            staffBriefMorePanel.classList.toggle('is-hidden', !open);
+            staffBriefMoreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) updateStaffBriefMorePanel();
         }
 
         function pctText(v) {
@@ -362,26 +531,35 @@
             if (!staffBriefText) return;
             var totalRevenue = data && data.total_revenue != null ? data.total_revenue : null;
             var expensesTotal = data && data.expenses_total != null ? data.expenses_total : null;
+            var expensesBase = data && data.expenses_base != null ? data.expenses_base : expensesTotal;
             var overAmount = data && data.over_amount != null ? data.over_amount : null;
             var shortAmount = data && data.short_amount != null ? data.short_amount : null;
-            var expectedRevenue = data && data.expected_revenue != null ? data.expected_revenue : null;
             var wasteTotal = data && data.waste_total_est != null ? data.waste_total_est : null;
+            var cashTotal = data && data.cash_revenue != null ? data.cash_revenue : null;
+            var gcashTotal = data && data.gcash_revenue != null ? data.gcash_revenue : null;
 
             var valueMap = {
                 'expenses': (expensesTotal != null ? peso(expensesTotal) : '--'),
                 'today-sales': (totalRevenue != null ? peso(totalRevenue) : '--'),
                 'over': (overAmount != null ? peso(overAmount) : '--'),
                 'short': (shortAmount != null ? peso(shortAmount) : '--'),
-                'expected': (expectedRevenue != null ? peso(expectedRevenue) : '--'),
                 'shift-loss': (wasteTotal != null ? ('-' + peso(wasteTotal)) : '--')
             };
 
-            if (staffBriefGrid) {
-                staffBriefGrid.querySelectorAll('[data-brief-key]').forEach(function (el) {
-                    var key = el.getAttribute('data-brief-key');
-                    if (!key) return;
-                    el.textContent = valueMap[key] || '--';
-                });
+            document.querySelectorAll('#staff-brief [data-brief-key]').forEach(function (el) {
+                var key = el.getAttribute('data-brief-key');
+                if (!key) return;
+                el.textContent = valueMap[key] || '--';
+                if (key === 'expenses' && expensesBase != null) {
+                    el.setAttribute('data-base-expenses', String(expensesBase));
+                }
+            });
+
+            if (staffBriefCashVal) {
+                staffBriefCashVal.textContent = cashTotal != null ? peso(cashTotal) : '₱0.00';
+            }
+            if (staffBriefGcashVal) {
+                staffBriefGcashVal.textContent = gcashTotal != null ? peso(gcashTotal) : '₱0.00';
             }
 
             var hasAny =
@@ -389,69 +567,8 @@
                 expensesTotal != null ||
                 overAmount != null ||
                 shortAmount != null ||
-                expectedRevenue != null ||
                 wasteTotal != null;
             staffBriefText.textContent = hasAny ? 'Updated just now from staff report.' : 'No staff sales report available yet.';
-        }
-
-        function renderGcashLogs() {
-            if (!gcashLogsList) return;
-            function toRows(title, orders) {
-                var sorted = (orders || []).slice().sort(function (a, b) {
-                    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-                });
-                return sorted.map(function (o) {
-                    var when = new Date(o.created_at || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    var amount = peso(o && o.total_amount || 0);
-                    return {
-                        label: title,
-                        time: when,
-                        amount: amount
-                    };
-                });
-            }
-
-            var cashRows = toRows('Cash', todayCashOrders);
-            var gcashRows = toRows('Gcash', todayGcashOrders);
-
-            var cashTotal = todayCashOrders.reduce(function (sum, o) { return sum + (parseFloat(o && o.total_amount) || 0); }, 0);
-            var gcashTotal = todayGcashOrders.reduce(function (sum, o) { return sum + (parseFloat(o && o.total_amount) || 0); }, 0);
-
-            function renderBlock(title, total, rows) {
-                var body = rows.length
-                    ? rows.map(function (r) {
-                        return (
-                            '<article class="staff-brief-paylog-row">' +
-                                '<div class="staff-brief-paylog-row__meta">' +
-                                    '<strong>' + esc(r.label) + '</strong>' +
-                                    '<span>' + esc(r.time) + '</span>' +
-                                '</div>' +
-                                '<div class="staff-brief-paylog-row__amt">' + esc(r.amount) + '</div>' +
-                            '</article>'
-                        );
-                    }).join('')
-                    : '<p class="staff-brief-paylog-empty">No ' + esc(title) + ' sales found for today.</p>';
-
-                return (
-                    '<section class="staff-brief-paylog-block">' +
-                        '<header class="staff-brief-paylog-head">' +
-                            '<span class="staff-brief-paylog-title">' + esc(title.toUpperCase()) + '</span>' +
-                            '<strong class="staff-brief-paylog-total">' + esc(peso(total)) + '</strong>' +
-                        '</header>' +
-                        '<div class="staff-brief-paylog-items">' + body + '</div>' +
-                    '</section>'
-                );
-            }
-
-            gcashLogsList.innerHTML =
-                renderBlock('Cash', cashTotal, cashRows) +
-                renderBlock('Gcash', gcashTotal, gcashRows);
-        }
-
-        function setGcashLogsOpen(open) {
-            if (!gcashLogsWrap) return;
-            gcashLogsWrap.classList.toggle('is-hidden', !open);
-            if (open) renderGcashLogs();
         }
 
         function loadStaffSalesReportSummary() {
@@ -470,25 +587,26 @@
                 fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
             ]).then(function (results) {
                 var summaryRes = results[0];
-                var weeklySalesRes = results[1];
                 var wasteRes = results[2];
-                var menuRes = results[3];
                 var allOrdersRes = results[4];
 
                 var out = {
                     total_revenue: null,
                     expenses_total: null,
+                    expenses_base: null,
                     short_amount: 0,
                     over_amount: 0,
-                    expected_revenue: null,
+                    cash_revenue: 0,
+                    gcash_revenue: 0,
+                    discount_total: 0,
                     waste_total_est: null
                 };
 
                 if (summaryRes && summaryRes.success && summaryRes.summary) {
                     out.total_revenue = summaryRes.summary.total_revenue || 0;
-                    var cash = parseFloat(summaryRes.summary.cash_revenue || 0);
-                    var gcash = parseFloat(summaryRes.summary.digital_revenue || 0);
-                    out.expected_revenue = cash + gcash;
+                    out.cash_revenue = parseFloat(summaryRes.summary.cash_revenue || 0) || 0;
+                    out.gcash_revenue = parseFloat(summaryRes.summary.digital_revenue || 0) || 0;
+                    out.discount_total = parseFloat(summaryRes.summary.discount_total || 0) || 0;
                     out.expenses_total = parseFloat(summaryRes.summary.receipt_expense_total || 0) || 0;
                 }
                 if (wasteRes && wasteRes.success) {
@@ -500,6 +618,23 @@
                     }, 0);
                     out.waste_total_est = wasteTotal;
                     out.expenses_total = (parseFloat(out.expenses_total || 0) || 0) + wasteTotal;
+                }
+                out.expenses_base = parseFloat(out.expenses_total || 0) || 0;
+
+                try {
+                    var cashMgmtRaw = localStorage.getItem('staff_cash_management_' + localYmd(new Date()));
+                    var cashMgmtEntries = cashMgmtRaw ? JSON.parse(cashMgmtRaw) : [];
+                    if (Array.isArray(cashMgmtEntries)) {
+                        var paidOutTotal = cashMgmtEntries.reduce(function (sum, entry) {
+                            if (!entry || String(entry.type || '') !== 'paid_out') return sum;
+                            return sum + toMoney(entry.amount);
+                        }, 0);
+                        if (paidOutTotal > 0) {
+                            out.expenses_total = out.expenses_base + paidOutTotal;
+                        }
+                    }
+                } catch (eCash) {
+                    // Ignore malformed cash management state.
                 }
 
                 try {
@@ -519,10 +654,10 @@
                 }
 
                 var allOrders = (allOrdersRes && allOrdersRes.success && allOrdersRes.orders) ? allOrdersRes.orders : [];
-                var today = localYmd(new Date());
+                var todayKey = localYmd(new Date());
                 todayGcashOrders = allOrders.filter(function (o) {
                     if (!o || !o.created_at) return false;
-                    if (localYmd(o.created_at) !== today) return false;
+                    if (localYmd(o.created_at) !== todayKey) return false;
                     var pm = String(o.payment_method || '').toLowerCase();
                     if (pm !== 'gcash') return false;
                     var st = String(o.status || '').toLowerCase();
@@ -531,15 +666,28 @@
                 });
                 todayCashOrders = allOrders.filter(function (o) {
                     if (!o || !o.created_at) return false;
-                    if (localYmd(o.created_at) !== today) return false;
+                    if (localYmd(o.created_at) !== todayKey) return false;
                     var pm = String(o.payment_method || '').toLowerCase();
                     if (pm !== 'cash') return false;
                     var st = String(o.status || '').toLowerCase();
                     if (st === 'served' || st === 'confirmed') return true;
                     return st === 'pending' && (parseInt(o.kitchen_returned, 10) === 1 || o.kitchen_returned === true);
                 });
+
+                // Prefer live order totals for the side split when daily summary is empty.
+                if ((!out.cash_revenue && !out.gcash_revenue) && (todayCashOrders.length || todayGcashOrders.length)) {
+                    out.cash_revenue = todayCashOrders.reduce(function (sum, o) {
+                        return sum + (parseFloat(o && o.total_amount) || 0);
+                    }, 0);
+                    out.gcash_revenue = todayGcashOrders.reduce(function (sum, o) {
+                        return sum + (parseFloat(o && o.total_amount) || 0);
+                    }, 0);
+                }
+
                 renderStaffBrief(out);
-                renderGcashLogs();
+                staffBriefMoreCashRevenue = parseFloat(out.cash_revenue || 0) || 0;
+                staffBriefMoreDiscountTotal = parseFloat(out.discount_total || 0) || 0;
+                updateStaffBriefMorePanel();
             }).catch(function (e) {
                 if (staffBriefText) staffBriefText.textContent = 'No staff sales report available yet.';
                 console.warn('Staff sales report summary unavailable:', e && e.message ? e.message : e);
@@ -547,24 +695,24 @@
         }
 
         loadStaffSalesReportSummary();
+        window.__ortusUpdateStaffBriefMore = updateStaffBriefMorePanel;
 
-        if (expectedValueEl) {
-            expectedValueEl.addEventListener('click', function () {
-                var willOpen = !gcashLogsWrap || gcashLogsWrap.classList.contains('is-hidden');
-                setGcashLogsOpen(willOpen);
-            });
-            expectedValueEl.addEventListener('keydown', function (e) {
-                if (e.key !== 'Enter' && e.key !== ' ') return;
-                e.preventDefault();
-                var willOpen = !gcashLogsWrap || gcashLogsWrap.classList.contains('is-hidden');
-                setGcashLogsOpen(willOpen);
+        if (staffBriefMoreBtn) {
+            staffBriefMoreBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var willOpen = !staffBriefMorePanel || staffBriefMorePanel.classList.contains('is-hidden');
+                setStaffBriefMoreOpen(willOpen);
             });
         }
-        if (gcashLogsCloseBtn) {
-            gcashLogsCloseBtn.addEventListener('click', function () {
-                setGcashLogsOpen(false);
-            });
-        }
+        document.addEventListener('click', function (e) {
+            if (!staffBriefMoreWrap || !staffBriefMorePanel) return;
+            if (staffBriefMorePanel.classList.contains('is-hidden')) return;
+            if (staffBriefMoreWrap.contains(e.target)) return;
+            setStaffBriefMoreOpen(false);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') setStaffBriefMoreOpen(false);
+        });
 
         function statusMeta(status) {
             if (status === 'voided') return { label: 'REFUNDED', cls: 'warn' };
@@ -596,35 +744,179 @@
             return 0;
         }
 
+        function parseUnitPrice(item) {
+            var unit = parseFloat(item && item.unit_price);
+            return Number.isFinite(unit) && unit >= 0 ? unit : 0;
+        }
+
+        function parseUnitCost(item) {
+            var unitCost = parseFloat(item && item.unit_cost);
+            if (Number.isFinite(unitCost) && unitCost > 0) return unitCost;
+            var lineCost = parseFloat(item && item.line_cost);
+            var qty = parseFloat(item && item.quantity);
+            if (Number.isFinite(lineCost) && lineCost > 0 && Number.isFinite(qty) && qty > 0) {
+                return lineCost / qty;
+            }
+            var menuCost = parseFloat(item && item.menu_cost_price);
+            return Number.isFinite(menuCost) && menuCost >= 0 ? menuCost : 0;
+        }
+
+        function parseLineCost(item) {
+            var lineCost = parseFloat(item && item.line_cost);
+            if (Number.isFinite(lineCost) && lineCost > 0) return lineCost;
+            var unitCost = parseUnitCost(item);
+            var qty = parseFloat(item && item.quantity);
+            if (Number.isFinite(qty) && qty > 0) return unitCost * qty;
+            return unitCost;
+        }
+
+        function pad2(n) {
+            return String(n).padStart(2, '0');
+        }
+
+        function toIsoDateLocal(dateObj) {
+            return dateObj.getFullYear() + '-' + pad2(dateObj.getMonth() + 1) + '-' + pad2(dateObj.getDate());
+        }
+
+        function getCurrentWeekDateIsos(throughTodayOnly) {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            var day = today.getDay();
+            var diffToMonday = day === 0 ? -6 : (1 - day);
+            var monday = new Date(today.getTime());
+            monday.setDate(today.getDate() + diffToMonday);
+            var dates = [];
+            var i;
+            for (i = 0; i < 7; i += 1) {
+                var d = new Date(monday.getTime());
+                d.setDate(monday.getDate() + i);
+                if (throughTodayOnly && d > today) break;
+                dates.push(toIsoDateLocal(d));
+            }
+            return dates;
+        }
+
+        function applySalesReportWeekDefault() {
+            var weekDates = getCurrentWeekDateIsos(false);
+            salesReportSelectedDates = {};
+            weekDates.forEach(function (iso) {
+                salesReportSelectedDates[iso] = true;
+            });
+            salesReportCalendarMonth = new Date();
+            salesReportCalendarMonth.setDate(1);
+            salesReportCalendarMonth.setHours(0, 0, 0, 0);
+        }
+
+        function getSelectedSalesReportDates() {
+            return Object.keys(salesReportSelectedDates).filter(function (key) {
+                return !!salesReportSelectedDates[key];
+            }).sort();
+        }
+
+        function updateSalesReportDateFilterUi() {
+            var selected = getSelectedSalesReportDates();
+            var weekDates = getCurrentWeekDateIsos(false);
+            var isCurrentWeek = selected.length === weekDates.length &&
+                weekDates.every(function (iso) { return !!salesReportSelectedDates[iso]; });
+            if (salesReportDateToggle) {
+                if (isCurrentWeek) {
+                    salesReportDateToggle.textContent = 'This week';
+                } else if (selected.length) {
+                    salesReportDateToggle.textContent = selected.length === 1
+                        ? selected[0]
+                        : ('Dates (' + selected.length + ')');
+                } else {
+                    salesReportDateToggle.textContent = 'All dates';
+                }
+                salesReportDateToggle.classList.toggle('is-active', selected.length > 0);
+            }
+            if (salesReportCalHint) {
+                if (isCurrentWeek) {
+                    salesReportCalHint.textContent = 'Showing this week (' + weekDates[0] + ' to ' + weekDates[weekDates.length - 1] + '). Tap days to change.';
+                } else if (!selected.length) {
+                    salesReportCalHint.textContent = 'No days selected — showing all dates. Use This week to reset.';
+                } else if (selected.length === 1) {
+                    salesReportCalHint.textContent = 'Showing sales for ' + selected[0] + '.';
+                } else {
+                    salesReportCalHint.textContent = 'Showing sales for ' + selected.length + ' selected days.';
+                }
+            }
+            if (salesReportCalClear) {
+                salesReportCalClear.textContent = 'This week';
+                salesReportCalClear.disabled = isCurrentWeek;
+            }
+        }
+
+        function setSalesReportCalendarOpen(open) {
+            var isOpen = !!open;
+            if (salesReportCalendar) salesReportCalendar.hidden = !isOpen;
+            if (salesReportDateToggle) {
+                salesReportDateToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+            if (isOpen) renderSalesReportCalendar();
+        }
+
+        function renderSalesReportCalendar() {
+            if (!salesReportCalGrid || !salesReportCalLabel) return;
+            var year = salesReportCalendarMonth.getFullYear();
+            var month = salesReportCalendarMonth.getMonth();
+            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            salesReportCalLabel.textContent = monthNames[month] + ' ' + year;
+
+            var firstDay = new Date(year, month, 1);
+            var startWeekday = firstDay.getDay();
+            var daysInMonth = new Date(year, month + 1, 0).getDate();
+            var todayIso = toIsoDateLocal(new Date());
+            var html = '';
+            var i;
+            for (i = 0; i < startWeekday; i += 1) {
+                html += '<span class="sales-report-calendar__day is-empty"></span>';
+            }
+            for (i = 1; i <= daysInMonth; i += 1) {
+                var iso = year + '-' + pad2(month + 1) + '-' + pad2(i);
+                var classes = ['sales-report-calendar__day'];
+                if (salesReportSelectedDates[iso]) classes.push('is-selected');
+                if (iso === todayIso) classes.push('is-today');
+                html += '<button type="button" class="' + classes.join(' ') + '" data-cal-date="' + iso + '">' + i + '</button>';
+            }
+            salesReportCalGrid.innerHTML = html;
+            updateSalesReportDateFilterUi();
+        }
+
+        function toggleSalesReportDate(isoDate) {
+            var key = String(isoDate || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+            if (salesReportSelectedDates[key]) {
+                delete salesReportSelectedDates[key];
+            } else {
+                salesReportSelectedDates[key] = true;
+            }
+            renderSalesReportCalendar();
+            salesReportCurrentPage = 1;
+            renderSalesReportFromCache();
+        }
+
+        function clearSalesReportDatesToWeek() {
+            applySalesReportWeekDefault();
+            renderSalesReportCalendar();
+            salesReportCurrentPage = 1;
+            renderSalesReportFromCache();
+        }
+
         function ymdFromDateLike(dateLike) {
             var dt = new Date(dateLike);
             if (isNaN(dt.getTime())) return '';
-            var y = dt.getFullYear();
-            var m = String(dt.getMonth() + 1).padStart(2, '0');
-            var d = String(dt.getDate()).padStart(2, '0');
-            return y + '-' + m + '-' + d;
+            return toIsoDateLocal(dt);
         }
 
-        function renderRecordedDateOptions(orders) {
-            if (!salesReportRange) return;
-            var selected = salesReportRange.value || 'all';
-            var map = {};
-            (orders || []).forEach(function (o) {
-                var key = ymdFromDateLike(o && o.created_at);
-                if (key) map[key] = true;
+        function filterOrdersBySelectedRange(orders) {
+            var selected = getSelectedSalesReportDates();
+            if (!selected.length) return (orders || []).slice();
+            var dateSet = {};
+            selected.forEach(function (d) { dateSet[d] = true; });
+            return (orders || []).filter(function (o) {
+                return !!dateSet[ymdFromDateLike(o && o.created_at)];
             });
-            var dates = Object.keys(map).sort(function (a, b) {
-                return new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime();
-            });
-            var html = '<option value="all">All Dates</option>' + dates.map(function (d) {
-                return '<option value="' + d + '">' + d + '</option>';
-            }).join('');
-            salesReportRange.innerHTML = html;
-            if (selected !== 'all' && dates.indexOf(selected) !== -1) {
-                salesReportRange.value = selected;
-            } else {
-                salesReportRange.value = 'all';
-            }
         }
 
         function normalizeSalesCategory(name) {
@@ -644,14 +936,6 @@
             } else {
                 salesReportCategory.value = 'all';
             }
-        }
-
-        function filterOrdersBySelectedRange(orders) {
-            var key = salesReportRange ? salesReportRange.value : 'all';
-            if (key === 'all') return (orders || []).slice();
-            return (orders || []).filter(function (o) {
-                return ymdFromDateLike(o && o.created_at) === key;
-            });
         }
 
         function selectedSalesCategory() {
@@ -700,26 +984,45 @@
             });
         }
 
+        function selectedSalesSearchQuery() {
+            return String(salesReportSearch && salesReportSearch.value || '')
+                .trim()
+                .replace(/^#+/, '')
+                .toLowerCase();
+        }
+
         function renderSalesReportTable(orders) {
             if (!salesReportTbody) return;
             var categoryFilter = selectedSalesCategory();
+            var searchQuery = selectedSalesSearchQuery();
             var rows = [];
             (orders || []).forEach(function (o) {
                 var status = String(o && o.status || '').toLowerCase();
                 if (status !== 'confirmed' && status !== 'served') return;
                 var source = String(o && o.order_source || '').toLowerCase();
                 if (source !== 'kiosk' && source !== 'pos') return;
+                var orderCode = String(o && o.order_number || '').trim();
                 (o.items || []).forEach(function (it) {
                     var qty = parseFloat(it && it.quantity || 0);
                     if (!Number.isFinite(qty) || qty <= 0) return;
                     var cat = normalizeSalesCategory(it && (it.category_name || it.category));
                     if (categoryFilter !== 'all' && cat !== categoryFilter) return;
+                    var itemName = it && it.name ? String(it.name) : 'Item';
+                    if (searchQuery) {
+                        var codeHay = orderCode.toLowerCase();
+                        var itemHay = itemName.toLowerCase();
+                        if (codeHay.indexOf(searchQuery) === -1 && itemHay.indexOf(searchQuery) === -1) return;
+                    }
                     rows.push({
                         created_at: o.created_at,
-                        item_name: it && it.name ? it.name : 'Item',
+                        order_code: orderCode,
+                        item_name: itemName,
                         category: cat,
+                        price: parseUnitPrice(it),
+                        cost: parseUnitCost(it),
                         qty: qty,
-                        total: parseLineTotal(it)
+                        total: parseLineTotal(it),
+                        total_cost: parseLineCost(it)
                     });
                 });
             });
@@ -729,13 +1032,17 @@
             });
 
             if (!rows.length) {
-                salesReportTbody.innerHTML = '<tr><td colspan="4" class="sales-report-empty">No sales transactions yet.</td></tr>';
+                var emptyMsg = searchQuery
+                    ? 'No matching order code or item.'
+                    : 'No sales transactions yet.';
+                salesReportTbody.innerHTML = '<tr><td colspan="8" class="sales-report-empty">' + emptyMsg + '</td></tr>';
                 if (salesReportFoot) salesReportFoot.textContent = 'Showing 0 line(s) · Total Sales ₱0.00';
                 renderSalesReportPagination(0, 0);
                 return;
             }
 
             var totalSales = rows.reduce(function (sum, r) { return sum + r.total; }, 0);
+            var totalCosts = rows.reduce(function (sum, r) { return sum + r.total_cost; }, 0);
             var totalPages = Math.max(1, Math.ceil(rows.length / SALES_REPORT_PAGE_SIZE));
             if (salesReportCurrentPage > totalPages) salesReportCurrentPage = totalPages;
             if (salesReportCurrentPage < 1) salesReportCurrentPage = 1;
@@ -748,15 +1055,20 @@
                 return '' +
                     '<tr>' +
                         '<td>' + esc(dt.day + ' ' + dt.time) + '</td>' +
+                        '<td class="sales-report-order-code">' + esc(r.order_code ? ('#' + r.order_code) : '—') + '</td>' +
                         '<td>' + esc(r.item_name) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.price)) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.cost)) + '</td>' +
                         '<td>' + esc(String(r.qty)) + '</td>' +
                         '<td class="sales-report-amt">' + esc(peso(r.total)) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.total_cost)) + '</td>' +
                     '</tr>';
             }).join('');
 
             if (salesReportFoot) {
                 salesReportFoot.textContent = 'Showing ' + (start + 1) + '–' + (start + pageRows.length) +
-                    ' of ' + rows.length + ' line(s) · Total Sales ' + peso(totalSales);
+                    ' of ' + rows.length + ' line(s) · Total Sales ' + peso(totalSales) +
+                    ' · Total Costs ' + peso(totalCosts);
             }
             renderSalesReportPagination(rows.length, totalPages);
         }
@@ -854,20 +1166,68 @@
                         salesReportCategories.sort(function (a, b) { return a.localeCompare(b); });
                     }
                     renderSalesCategoryOptions(salesReportCategories);
-                    renderRecordedDateOptions(salesReportOrdersCache);
+                    if (!getSelectedSalesReportDates().length) {
+                        applySalesReportWeekDefault();
+                    }
+                    updateSalesReportDateFilterUi();
                     renderSalesReportFromCache();
                 })
                 .catch(function (e) { console.warn('Sales data unavailable:', e.message); });
         }
 
-        if (salesReportRange) {
-            salesReportRange.addEventListener('change', function () {
-                salesReportCurrentPage = 1;
-                renderSalesReportFromCache();
+        if (salesReportDateToggle) {
+            salesReportDateToggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var open = !(salesReportCalendar && !salesReportCalendar.hidden);
+                setSalesReportCalendarOpen(open);
+            });
+        }
+        if (salesReportCalendar) {
+            salesReportCalendar.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        }
+        document.addEventListener('click', function (e) {
+            if (!salesReportCalendar || salesReportCalendar.hidden) return;
+            var wrap = salesReportDateToggle && salesReportDateToggle.closest('.sales-report-filter--date');
+            if (wrap && wrap.contains(e.target)) return;
+            setSalesReportCalendarOpen(false);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') setSalesReportCalendarOpen(false);
+        });
+        if (salesReportCalPrev) {
+            salesReportCalPrev.addEventListener('click', function () {
+                salesReportCalendarMonth.setMonth(salesReportCalendarMonth.getMonth() - 1);
+                renderSalesReportCalendar();
+            });
+        }
+        if (salesReportCalNext) {
+            salesReportCalNext.addEventListener('click', function () {
+                salesReportCalendarMonth.setMonth(salesReportCalendarMonth.getMonth() + 1);
+                renderSalesReportCalendar();
+            });
+        }
+        if (salesReportCalGrid) {
+            salesReportCalGrid.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-cal-date]');
+                if (!btn) return;
+                toggleSalesReportDate(btn.getAttribute('data-cal-date'));
+            });
+        }
+        if (salesReportCalClear) {
+            salesReportCalClear.addEventListener('click', function () {
+                clearSalesReportDatesToWeek();
             });
         }
         if (salesReportCategory) {
             salesReportCategory.addEventListener('change', function () {
+                salesReportCurrentPage = 1;
+                renderSalesReportFromCache();
+            });
+        }
+        if (salesReportSearch) {
+            salesReportSearch.addEventListener('input', function () {
                 salesReportCurrentPage = 1;
                 renderSalesReportFromCache();
             });
@@ -886,9 +1246,12 @@
 
         function buildSalesExportUrl() {
             var params = new URLSearchParams();
-            var range = salesReportRange ? salesReportRange.value : 'all';
-            if (range && range !== 'all') {
-                params.set('date', range);
+            var selected = getSelectedSalesReportDates();
+            if (selected.length === 1) {
+                params.set('date', selected[0]);
+            } else if (selected.length > 1) {
+                params.set('from', selected[0]);
+                params.set('to', selected[selected.length - 1]);
             } else {
                 var today = new Date();
                 params.set('from', localYmd(startOfWeekLocal(today)));
@@ -903,6 +1266,8 @@
             });
         });
 
+        applySalesReportWeekDefault();
+        updateSalesReportDateFilterUi();
         loadSales();
     })();
     </script>
@@ -910,10 +1275,7 @@
     (function () {
         var smList = document.getElementById('brief-sm-list');
         var smEmpty = document.getElementById('brief-sm-empty');
-        var acEmpty = document.getElementById('brief-ac-empty');
-        var acDetail = document.getElementById('brief-ac-detail');
-        var acStatus = document.getElementById('brief-ac-status');
-        var acAmount = document.getElementById('brief-ac-amount');
+        var expList = document.getElementById('brief-exp-list');
         if (!smList || !smEmpty) return;
 
         function dayKey() {
@@ -932,8 +1294,42 @@
         function getStartingMoneyLockedKey() {
             return 'staff_sales_report_starting_money_locked_' + dayKey();
         }
-        function getAccuracyStorageKey() {
-            return 'staff_sales_report_accuracy_' + dayKey();
+        function getCashMgmtStorageKey() {
+            return 'staff_cash_management_' + dayKey();
+        }
+        function esc(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function getCashMgmtEntries() {
+            try {
+                var raw = localStorage.getItem(getCashMgmtStorageKey());
+                var parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+        function getCashMgmtEntriesByType(type) {
+            var wantOut = type === 'paid_out';
+            return getCashMgmtEntries().filter(function (entry) {
+                if (!entry || !(toMoney(entry.amount) > 0)) return false;
+                var isOut = String(entry.type || '') === 'paid_out';
+                return wantOut ? isOut : !isOut;
+            }).sort(function (a, b) {
+                var ta = new Date(a && a.created_at ? a.created_at : 0).getTime();
+                var tb = new Date(b && b.created_at ? b.created_at : 0).getTime();
+                return ta - tb;
+            });
+        }
+        function getPaidInEntries() {
+            return getCashMgmtEntriesByType('paid_in');
+        }
+        function getPaidOutEntries() {
+            return getCashMgmtEntriesByType('paid_out');
         }
 
         function parseStartingMoney(raw) {
@@ -960,79 +1356,591 @@
         function renderStartingMoneyReadout() {
             var raw = localStorage.getItem(getStartingMoneyStorageKey());
             var p = parseStartingMoney(raw);
-            if (!p.hasData) {
+            var paidInEntries = getPaidInEntries();
+            if (!p.hasData && !paidInEntries.length) {
                 smList.classList.add('is-hidden');
                 smEmpty.classList.remove('is-hidden');
+                smEmpty.textContent = 'No starting money or paid in saved for today on this device yet.';
                 return;
             }
             smEmpty.classList.add('is-hidden');
             smList.classList.remove('is-hidden');
             var locked = localStorage.getItem(getStartingMoneyLockedKey()) === '1';
             var html = '';
-            html += '<div class="brief-readout__row"><span class="brief-readout__k">Base</span><span class="brief-readout__v">' + peso(p.baseVal) + '</span></div>';
-            p.additionalInputs.forEach(function (amt, i) {
-                var label = p.additionalInputs.length > 1 ? ('Additional ' + (i + 1)) : 'Additional';
-                html += '<div class="brief-readout__row"><span class="brief-readout__k">' + label + '</span><span class="brief-readout__v">' + peso(amt) + '</span></div>';
-            });
-            html += '<div class="brief-readout__row brief-readout__row--total"><span class="brief-readout__k">Total</span><span class="brief-readout__v">' + peso(p.total) + '</span></div>';
-            if (locked) {
-                html += '<p class="brief-readout__meta">Saved / locked for today.</p>';
+
+            if (p.hasData) {
+                html += '<div class="brief-readout__row"><span class="brief-readout__k">Base</span><span class="brief-readout__v">' + peso(p.baseVal) + '</span></div>';
             }
+
+            paidInEntries.forEach(function (entry) {
+                var reason = String(entry && entry.reason || '').trim() || 'Paid In';
+                html +=
+                    '<div class="brief-readout__row brief-readout__row--paid-in">' +
+                        '<span class="brief-readout__k brief-readout__k--reason" title="' + esc(reason) + '">' + esc(reason) + '</span>' +
+                        '<span class="brief-readout__v">' + peso(entry && entry.amount) + '</span>' +
+                    '</div>';
+            });
+
+            if (p.hasData) {
+                p.additionalInputs.forEach(function (amt, i) {
+                    if (!amt) return;
+                    var label = p.additionalInputs.length > 1 ? ('Additional ' + (i + 1)) : 'Additional';
+                    html += '<div class="brief-readout__row"><span class="brief-readout__k">' + label + '</span><span class="brief-readout__v">' + peso(amt) + '</span></div>';
+                });
+                html += '<div class="brief-readout__row brief-readout__row--total"><span class="brief-readout__k">Total</span><span class="brief-readout__v">' + peso(p.total) + '</span></div>';
+                if (locked) {
+                    html += '<p class="brief-readout__meta">Saved / locked for today.</p>';
+                }
+            } else if (paidInEntries.length) {
+                var paidInTotal = paidInEntries.reduce(function (sum, entry) {
+                    return sum + toMoney(entry && entry.amount);
+                }, 0);
+                html +=
+                    '<div class="brief-readout__row brief-readout__row--total">' +
+                        '<span class="brief-readout__k">Paid In Total</span>' +
+                        '<span class="brief-readout__v">' + peso(paidInTotal) + '</span>' +
+                    '</div>';
+            }
+
             smList.innerHTML = html;
         }
 
-        function renderAccuracyReadout() {
-            if (!acEmpty || !acDetail || !acStatus || !acAmount) return;
-            var raw = localStorage.getItem(getAccuracyStorageKey());
-            if (!raw) {
-                acDetail.classList.add('is-hidden');
-                acEmpty.classList.remove('is-hidden');
+        function renderExpensesPaidOutReadout() {
+            if (!expList) return;
+            var paidOutEntries = getPaidOutEntries();
+            var expensesValEl = document.querySelector('#staff-brief [data-brief-key="expenses"]');
+            var baseAttr = expensesValEl && expensesValEl.getAttribute('data-base-expenses');
+            var baseExpenses = baseAttr != null && baseAttr !== '' ? toMoney(baseAttr) : 0;
+            var paidOutTotal = paidOutEntries.reduce(function (sum, entry) {
+                return sum + toMoney(entry && entry.amount);
+            }, 0);
+
+            if (expensesValEl) {
+                expensesValEl.textContent = peso(baseExpenses + paidOutTotal);
+            }
+
+            if (!paidOutEntries.length) {
+                expList.innerHTML = '';
+                expList.classList.add('is-hidden');
                 return;
             }
-            var state = { mode: 'accurate', over_under: 0 };
-            try {
-                state = JSON.parse(raw);
-            } catch (e) {
-                acDetail.classList.add('is-hidden');
-                acEmpty.classList.remove('is-hidden');
-                return;
-            }
-            var mode = String(state.mode || 'accurate').toLowerCase();
-            if (mode !== 'over' && mode !== 'under') mode = 'accurate';
-            var ou = toMoney(state.over_under);
-            acEmpty.classList.add('is-hidden');
-            acDetail.classList.remove('is-hidden');
-            acStatus.className = 'brief-readout__status';
-            acAmount.classList.add('is-hidden');
-            if (mode === 'accurate') {
-                acStatus.textContent = 'Accurate';
-                acStatus.classList.add('brief-readout__status--ok');
-            } else if (mode === 'over') {
-                acStatus.textContent = 'Over';
-                acStatus.classList.add('brief-readout__status--over');
-                acAmount.textContent = peso(ou);
-                acAmount.classList.remove('is-hidden');
-            } else {
-                acStatus.textContent = 'Short';
-                acStatus.classList.add('brief-readout__status--under');
-                acAmount.textContent = peso(ou);
-                acAmount.classList.remove('is-hidden');
-            }
+            expList.classList.remove('is-hidden');
+            expList.innerHTML = paidOutEntries.map(function (entry) {
+                var reason = String(entry && entry.reason || '').trim() || 'Paid Out';
+                return (
+                    '<div class="brief-readout__row brief-readout__row--paid-out">' +
+                        '<span class="brief-readout__k brief-readout__k--reason" title="' + esc(reason) + '">' + esc(reason) + '</span>' +
+                        '<span class="brief-readout__v">' + peso(entry && entry.amount) + '</span>' +
+                    '</div>'
+                );
+            }).join('');
         }
 
         function refreshStaffReportReadout() {
             renderStartingMoneyReadout();
-            renderAccuracyReadout();
+            renderExpensesPaidOutReadout();
+            if (typeof window.__ortusUpdateStaffBriefMore === 'function') {
+                window.__ortusUpdateStaffBriefMore();
+            }
         }
 
         refreshStaffReportReadout();
         window.addEventListener('storage', function (e) {
             if (!e.key) return;
-            if (e.key.indexOf('staff_sales_report_') === 0) refreshStaffReportReadout();
+            if (e.key.indexOf('staff_sales_report_') === 0 || e.key.indexOf('staff_cash_management_') === 0 || e.key.indexOf('staff_cash_refunds_') === 0) {
+                refreshStaffReportReadout();
+            }
         });
         window.addEventListener('focus', refreshStaffReportReadout);
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) refreshStaffReportReadout();
+        });
+    })();
+    </script>
+    <div class="sh-modal-backdrop" id="sh-manage-modal" aria-hidden="true">
+        <div class="sh-modal" role="dialog" aria-modal="true" aria-labelledby="sh-manage-modal-title">
+            <header class="sh-modal__header">
+                <h2 id="sh-manage-modal-title">Add Cashier</h2>
+                <button type="button" class="sh-modal__close" id="sh-manage-modal-close" aria-label="Close">×</button>
+            </header>
+            <div class="sh-modal__body">
+                <p class="sh-modal__hint">Creates a staff account for the POS cashier. They can log in using the username and password below.</p>
+                <p class="sh-modal__error" id="sh-manage-modal-error" hidden role="alert"></p>
+                <label class="sh-modal__field">
+                    <span>Full name</span>
+                    <input type="text" id="sh-manage-name" placeholder="e.g. Carla Mendoza" autocomplete="name">
+                </label>
+                <label class="sh-modal__field">
+                    <span>Username</span>
+                    <input type="text" id="sh-manage-username" placeholder="e.g. carla.mendoza" autocomplete="username">
+                </label>
+                <label class="sh-modal__field">
+                    <span>Password</span>
+                    <input type="password" id="sh-manage-password" placeholder="Min. 6 characters" autocomplete="new-password">
+                </label>
+            </div>
+            <footer class="sh-modal__footer">
+                <button type="button" class="sh-modal__btn sh-modal__btn--muted" id="sh-manage-modal-cancel">Cancel</button>
+                <button type="button" class="sh-modal__btn sh-modal__btn--primary" id="sh-manage-modal-save">Save Cashier</button>
+            </footer>
+        </div>
+    </div>
+    <script>
+    (function () {
+        var activityBox = document.getElementById('staff-brief-activity');
+        if (!activityBox) return;
+
+        var staffBtn = document.getElementById('sh-select-staff-btn');
+        var staffPanel = document.getElementById('sh-select-staff-panel');
+        var staffOptions = document.getElementById('sh-select-staff-options');
+        var staffHint = document.getElementById('sh-select-staff-hint');
+        var shiftBtn = document.getElementById('sh-shift-date-btn');
+        var shiftPanel = document.getElementById('sh-shift-date-panel');
+        var shiftOptions = document.getElementById('sh-shift-date-options');
+        var shiftHint = document.getElementById('sh-shift-date-hint');
+        var manageBtn = document.getElementById('sh-manage-btn');
+        var activityMeta = document.getElementById('sh-activity-meta');
+        var manageModal = document.getElementById('sh-manage-modal');
+        var manageClose = document.getElementById('sh-manage-modal-close');
+        var manageCancel = document.getElementById('sh-manage-modal-cancel');
+        var manageSave = document.getElementById('sh-manage-modal-save');
+        var manageError = document.getElementById('sh-manage-modal-error');
+        var manageName = document.getElementById('sh-manage-name');
+        var manageUsername = document.getElementById('sh-manage-username');
+        var managePassword = document.getElementById('sh-manage-password');
+
+        var drawerEls = {
+            starting: document.getElementById('sh-drawer-starting'),
+            cash: document.getElementById('sh-drawer-cash'),
+            gcash: document.getElementById('sh-drawer-gcash'),
+            discounts: document.getElementById('sh-drawer-discounts'),
+            refunds: document.getElementById('sh-drawer-refunds'),
+            paidIn: document.getElementById('sh-drawer-paid-in'),
+            paidOut: document.getElementById('sh-drawer-paid-out')
+        };
+
+        var cashiers = [];
+        var staffShifts = [];
+        var selectedStaffId = '';
+        var selectedShiftDate = '';
+        var sessionReady = false;
+
+        function peso(v) {
+            return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function toMoney(v) {
+            var n = parseFloat(v);
+            return Number.isFinite(n) && n >= 0 ? n : 0;
+        }
+        function esc(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function localYmd(dateLike) {
+            var d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+            if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+            var y = d.getFullYear();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+        function formatShiftLabel(dateStr) {
+            var d = new Date(String(dateStr) + 'T00:00:00');
+            if (isNaN(d.getTime())) return String(dateStr || 'Shift');
+            return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        function findCashier(id) {
+            var want = String(id || '');
+            for (var i = 0; i < cashiers.length; i++) {
+                if (String(cashiers[i].id) === want) return cashiers[i];
+            }
+            return null;
+        }
+        function setDrawerPlaceholders() {
+            Object.keys(drawerEls).forEach(function (key) {
+                if (drawerEls[key]) drawerEls[key].textContent = '--';
+            });
+        }
+        function setDrawerValues(values) {
+            if (drawerEls.starting) drawerEls.starting.textContent = peso(values.starting);
+            if (drawerEls.cash) drawerEls.cash.textContent = peso(values.cash);
+            if (drawerEls.gcash) drawerEls.gcash.textContent = peso(values.gcash);
+            if (drawerEls.discounts) drawerEls.discounts.textContent = peso(values.discounts);
+            if (drawerEls.refunds) drawerEls.refunds.textContent = peso(values.refunds);
+            if (drawerEls.paidIn) drawerEls.paidIn.textContent = peso(values.paidIn);
+            if (drawerEls.paidOut) drawerEls.paidOut.textContent = peso(values.paidOut);
+        }
+        function closeAllMenus() {
+            setMenuOpen(staffBtn, staffPanel, false);
+            setMenuOpen(shiftBtn, shiftPanel, false);
+        }
+        function setMenuOpen(btn, panel, open) {
+            if (!btn || !panel) return;
+            panel.classList.toggle('is-hidden', !open);
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        function orderCountsAsSale(order) {
+            var st = String(order && order.status || '').toLowerCase();
+            if (st === 'confirmed' || st === 'served') return true;
+            var returned = parseInt(order && order.kitchen_returned, 10) === 1 || (order && order.kitchen_returned === true);
+            return st === 'pending' && returned;
+        }
+        function parseStartingMoney(raw) {
+            if (!raw) return 0;
+            if (typeof raw === 'object') {
+                if (typeof raw.total !== 'undefined') return toMoney(raw.total);
+                var base = toMoney(raw.base);
+                var additional = Array.isArray(raw.additional_inputs)
+                    ? raw.additional_inputs.reduce(function (sum, x) { return sum + toMoney(x); }, 0)
+                    : toMoney(raw.additional);
+                return base + additional;
+            }
+            try {
+                return parseStartingMoney(JSON.parse(raw));
+            } catch (e) {
+                return toMoney(raw);
+            }
+        }
+        function getLocalCashMgmtTotals(dateKey) {
+            try {
+                var raw = localStorage.getItem('staff_cash_management_' + dateKey);
+                var parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) return { paidIn: 0, paidOut: 0 };
+                return parsed.reduce(function (acc, entry) {
+                    var amount = toMoney(entry && entry.amount);
+                    if (!amount) return acc;
+                    if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
+                    else acc.paidIn += amount;
+                    return acc;
+                }, { paidIn: 0, paidOut: 0 });
+            } catch (e) {
+                return { paidIn: 0, paidOut: 0 };
+            }
+        }
+        function getLocalCashRefundsTotal(dateKey) {
+            try {
+                var raw = localStorage.getItem('staff_cash_refunds_' + dateKey);
+                var parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) return 0;
+                return parsed.reduce(function (sum, entry) {
+                    return sum + toMoney(entry && entry.amount);
+                }, 0);
+            } catch (e) {
+                return 0;
+            }
+        }
+        function updateMeta() {
+            if (!activityMeta) return;
+            var cashier = findCashier(selectedStaffId);
+            if (!cashier) {
+                activityMeta.textContent = 'Select a cashier and login shift.';
+                return;
+            }
+            if (!selectedShiftDate) {
+                activityMeta.textContent = cashier.full_name + ' · pick a login shift date.';
+                return;
+            }
+            activityMeta.textContent = cashier.full_name + ' · ' + formatShiftLabel(selectedShiftDate);
+        }
+        function renderStaffOptions() {
+            if (!staffOptions) return;
+            staffOptions.innerHTML = '';
+            if (!cashiers.length) {
+                if (staffHint) staffHint.textContent = 'No active cashiers found.';
+                return;
+            }
+            if (staffHint) staffHint.textContent = 'Choose a cashier';
+            cashiers.forEach(function (user) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'staff-brief-activity__option' + (String(user.id) === String(selectedStaffId) ? ' is-active' : '');
+                btn.setAttribute('role', 'option');
+                btn.setAttribute('aria-selected', String(user.id) === String(selectedStaffId) ? 'true' : 'false');
+                btn.textContent = user.full_name || user.username || ('Staff #' + user.id);
+                btn.addEventListener('click', function () {
+                    selectedStaffId = String(user.id);
+                    selectedShiftDate = '';
+                    if (staffBtn) staffBtn.textContent = user.full_name || 'Select Staff';
+                    closeAllMenus();
+                    updateMeta();
+                    setDrawerPlaceholders();
+                    loadStaffShifts(selectedStaffId);
+                });
+                staffOptions.appendChild(btn);
+            });
+        }
+        function renderShiftOptions() {
+            if (!shiftOptions) return;
+            shiftOptions.innerHTML = '';
+            if (!selectedStaffId) {
+                if (shiftHint) shiftHint.textContent = 'Select a staff first';
+                if (shiftBtn) shiftBtn.textContent = 'Shift Date';
+                return;
+            }
+            if (!staffShifts.length) {
+                if (shiftHint) shiftHint.textContent = 'No login shifts yet for this cashier';
+                if (shiftBtn) shiftBtn.textContent = 'Shift Date';
+                return;
+            }
+            if (shiftHint) shiftHint.textContent = staffShifts.length + ' shift' + (staffShifts.length === 1 ? '' : 's');
+            staffShifts.forEach(function (shift) {
+                var dateStr = String(shift.shift_date || '');
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'staff-brief-activity__option' + (dateStr === String(selectedShiftDate) ? ' is-active' : '');
+                btn.setAttribute('role', 'option');
+                btn.setAttribute('aria-selected', dateStr === String(selectedShiftDate) ? 'true' : 'false');
+                btn.textContent = formatShiftLabel(dateStr);
+                btn.addEventListener('click', function () {
+                    selectedShiftDate = dateStr;
+                    if (shiftBtn) shiftBtn.textContent = formatShiftLabel(dateStr);
+                    closeAllMenus();
+                    updateMeta();
+                    loadDrawerForSelection();
+                });
+                shiftOptions.appendChild(btn);
+            });
+            if (!selectedShiftDate && staffShifts.length) {
+                selectedShiftDate = String(staffShifts[0].shift_date);
+                if (shiftBtn) shiftBtn.textContent = formatShiftLabel(selectedShiftDate);
+                updateMeta();
+                loadDrawerForSelection();
+            }
+        }
+        function loadStaffShifts(staffId) {
+            if (!staffId) {
+                staffShifts = [];
+                renderShiftOptions();
+                return;
+            }
+            if (shiftHint) shiftHint.textContent = 'Loading shifts…';
+            fetch('api/staff_shifts.php?staff_id=' + encodeURIComponent(staffId), { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    staffShifts = (d && d.success && Array.isArray(d.shifts)) ? d.shifts : [];
+                })
+                .catch(function () {
+                    staffShifts = [];
+                })
+                .finally(function () {
+                    renderShiftOptions();
+                });
+        }
+        function loadDrawerForSelection() {
+            if (!selectedStaffId || !selectedShiftDate) {
+                setDrawerPlaceholders();
+                return;
+            }
+            setDrawerValues({
+                starting: 0, cash: 0, gcash: 0, discounts: 0, refunds: 0, paidIn: 0, paidOut: 0
+            });
+            var staffId = selectedStaffId;
+            var shiftDate = selectedShiftDate;
+            Promise.all([
+                fetch('api/orders.php?limit=200&staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); })
+            ]).then(function (results) {
+                if (String(staffId) !== String(selectedStaffId) || String(shiftDate) !== String(selectedShiftDate)) return;
+                var ordersRes = results[0];
+                var reportRes = results[1];
+                var orders = (ordersRes && ordersRes.success && Array.isArray(ordersRes.orders)) ? ordersRes.orders : [];
+                var salesOrders = orders.filter(function (order) {
+                    if (parseInt(order && order.staff_id, 10) !== parseInt(staffId, 10)) return false;
+                    if (localYmd(order.created_at) !== shiftDate) return false;
+                    return orderCountsAsSale(order);
+                });
+                var cash = 0;
+                var gcash = 0;
+                var discounts = 0;
+                salesOrders.forEach(function (order) {
+                    var amount = toMoney(order.total_amount);
+                    var disc = toMoney(order.discount_amount);
+                    discounts += disc;
+                    var pm = String(order.payment_method || '').toLowerCase();
+                    if (pm === 'cash') cash += amount;
+                    else if (pm === 'gcash') gcash += amount;
+                });
+                var report = reportRes && reportRes.success ? reportRes.report : null;
+                var starting = report ? parseStartingMoney(report.starting_money) : 0;
+                var localMgmt = getLocalCashMgmtTotals(shiftDate);
+                var localRefunds = getLocalCashRefundsTotal(shiftDate);
+                setDrawerValues({
+                    starting: starting,
+                    cash: cash,
+                    gcash: gcash,
+                    discounts: discounts,
+                    refunds: localRefunds,
+                    paidIn: localMgmt.paidIn,
+                    paidOut: localMgmt.paidOut
+                });
+            }).catch(function () {
+                setDrawerPlaceholders();
+            });
+        }
+        function loadCashiers(preferId) {
+            if (staffHint) staffHint.textContent = 'Loading cashiers…';
+            fetch('api/staff.php')
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
+                .then(function (result) {
+                    var d = result.data || {};
+                    if (!d.success) {
+                        if (result.status === 401 || d.error === 'Unauthenticated') {
+                            if (staffHint) staffHint.textContent = 'Please log in';
+                            return;
+                        }
+                        if (staffHint) staffHint.textContent = d.error || 'Could not load cashiers';
+                        return;
+                    }
+                    cashiers = (d.users || []).filter(function (u) {
+                        return u.role === 'staff' && u.is_active;
+                    });
+                    if (preferId) selectedStaffId = String(preferId);
+                    renderStaffOptions();
+                    if (selectedStaffId) {
+                        var cashier = findCashier(selectedStaffId);
+                        if (cashier && staffBtn) staffBtn.textContent = cashier.full_name || 'Select Staff';
+                        loadStaffShifts(selectedStaffId);
+                    }
+                    updateMeta();
+                })
+                .catch(function () {
+                    if (staffHint) staffHint.textContent = 'Could not load cashiers';
+                });
+        }
+        function ensureSession(onReady) {
+            fetch('api/auth.php')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success || !d.user) {
+                        sessionReady = false;
+                        if (staffHint) staffHint.textContent = 'Please log in';
+                        return;
+                    }
+                    sessionReady = true;
+                    if (typeof onReady === 'function') onReady();
+                })
+                .catch(function () {
+                    sessionReady = false;
+                    if (staffHint) staffHint.textContent = 'Could not verify session';
+                });
+        }
+        function showManageError(msg) {
+            if (!manageError) return;
+            manageError.textContent = msg || '';
+            manageError.hidden = !msg;
+        }
+        function openManageModal() {
+            if (!manageModal) return;
+            showManageError('');
+            if (manageName) manageName.value = '';
+            if (manageUsername) manageUsername.value = '';
+            if (managePassword) managePassword.value = '';
+            manageModal.classList.add('is-visible');
+            manageModal.setAttribute('aria-hidden', 'false');
+            if (manageName) manageName.focus();
+        }
+        function closeManageModal() {
+            if (!manageModal) return;
+            manageModal.classList.remove('is-visible');
+            manageModal.setAttribute('aria-hidden', 'true');
+            showManageError('');
+        }
+
+        if (staffBtn) {
+            staffBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var willOpen = staffPanel && staffPanel.classList.contains('is-hidden');
+                setMenuOpen(shiftBtn, shiftPanel, false);
+                setMenuOpen(staffBtn, staffPanel, willOpen);
+            });
+        }
+        if (shiftBtn) {
+            shiftBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var willOpen = shiftPanel && shiftPanel.classList.contains('is-hidden');
+                setMenuOpen(staffBtn, staffPanel, false);
+                setMenuOpen(shiftBtn, shiftPanel, willOpen);
+            });
+        }
+        if (manageBtn) manageBtn.addEventListener('click', openManageModal);
+        if (manageClose) manageClose.addEventListener('click', closeManageModal);
+        if (manageCancel) manageCancel.addEventListener('click', closeManageModal);
+        if (manageModal) {
+            manageModal.addEventListener('click', function (e) {
+                if (e.target === manageModal) closeManageModal();
+            });
+        }
+        if (manageSave) {
+            manageSave.addEventListener('click', function () {
+                if (!sessionReady) {
+                    showManageError('Please log in to register cashiers.');
+                    return;
+                }
+                var fullName = String((manageName && manageName.value) || '').trim();
+                var username = String((manageUsername && manageUsername.value) || '').trim();
+                var password = String((managePassword && managePassword.value) || '');
+                showManageError('');
+                if (!fullName) { showManageError('Cashier name is required.'); return; }
+                if (!username) { showManageError('Username is required.'); return; }
+                if (!password || password.length < 6) {
+                    showManageError('Password must be at least 6 characters.');
+                    return;
+                }
+                manageSave.disabled = true;
+                var oldLabel = manageSave.textContent;
+                manageSave.textContent = 'Saving…';
+                fetch('api/staff.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_name: fullName,
+                        username: username,
+                        password: password,
+                        role: 'staff'
+                    })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        showManageError(d.error || 'Could not create cashier account.');
+                        return;
+                    }
+                    closeManageModal();
+                    loadCashiers(d.id || null);
+                })
+                .catch(function () {
+                    showManageError('Network error. Try again.');
+                })
+                .finally(function () {
+                    manageSave.disabled = false;
+                    manageSave.textContent = oldLabel || 'Save Cashier';
+                });
+            });
+        }
+
+        document.addEventListener('click', function (e) {
+            if (activityBox.contains(e.target)) return;
+            closeAllMenus();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeAllMenus();
+                closeManageModal();
+            }
+        });
+        window.addEventListener('focus', function () {
+            if (selectedStaffId && selectedShiftDate) loadDrawerForSelection();
+        });
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && selectedStaffId && selectedShiftDate) loadDrawerForSelection();
+        });
+
+        setDrawerPlaceholders();
+        ensureSession(function () {
+            loadCashiers();
         });
     })();
     </script>

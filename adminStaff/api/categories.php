@@ -3,6 +3,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/menu_helpers.php';
 
 ensure_catalog_icon_columns(db());
+ensure_main_categories_schema(db());
 
 $m = method();
 
@@ -28,16 +29,21 @@ if ($m === 'POST') {
     $name = trim((string)($b['name'] ?? ''));
     $isActive = isset($b['is_active']) ? (int)(bool)$b['is_active'] : 1;
     $iconUrl = array_key_exists('icon_url', $b) ? normalize_catalog_icon_url($b['icon_url']) : null;
+    $mainCategoryId = (int)($b['main_category_id'] ?? 0);
 
     if ($name === '') fail('Category name is required.');
+    if (!$mainCategoryId) fail('Main category is required.');
+    $mainCategoryId = resolve_main_category_id(db(), $mainCategoryId);
 
-    // Check duplicates (case-insensitive match).
+    // Check duplicates within the same main category (case-insensitive).
     $stmt = db()->prepare(
         'SELECT id, name FROM categories
-         WHERE LOWER(name) = LOWER(:name) AND is_active = 1
+         WHERE LOWER(name) = LOWER(:name)
+           AND is_active = 1
+           AND main_category_id = :mcid
          LIMIT 1'
     );
-    $stmt->execute([':name' => $name]);
+    $stmt->execute([':name' => $name, ':mcid' => $mainCategoryId]);
     $existing = $stmt->fetch();
     if ($existing) {
         ok(['id' => (int)$existing['id'], 'message' => 'Category already exists.'], 200);
@@ -47,10 +53,11 @@ if ($m === 'POST') {
     $nextOrder = (int)(db()->query('SELECT COALESCE(MAX(display_order), 0) + 1 FROM categories')->fetchColumn());
 
     $ins = db()->prepare(
-        'INSERT INTO categories (name, icon_url, display_order, is_active)
-         VALUES (:name, :icon, :ord, :act)'
+        'INSERT INTO categories (main_category_id, name, icon_url, display_order, is_active)
+         VALUES (:mcid, :name, :icon, :ord, :act)'
     );
     $ins->execute([
+        ':mcid' => $mainCategoryId,
         ':name' => $name,
         ':icon' => $iconUrl,
         ':ord'  => $nextOrder,
@@ -58,7 +65,7 @@ if ($m === 'POST') {
     ]);
 
     $id = (int)db()->lastInsertId();
-    ok(['id' => $id, 'message' => 'Category created.'], 201);
+    ok(['id' => $id, 'main_category_id' => $mainCategoryId, 'message' => 'Category created.'], 201);
 }
 
 if ($m === 'PUT') {
@@ -68,7 +75,7 @@ if ($m === 'PUT') {
     if (!$id) fail('Category id is required.');
 
     $pdo = db();
-    $row = $pdo->prepare('SELECT id, name, icon_url FROM categories WHERE id = :id AND is_active = 1');
+    $row = $pdo->prepare('SELECT id, name, icon_url, main_category_id FROM categories WHERE id = :id AND is_active = 1');
     $row->execute([':id' => $id]);
     $cat = $row->fetch();
     if (!$cat) {
@@ -84,12 +91,17 @@ if ($m === 'PUT') {
     $name = $hasName ? trim((string)$b['name']) : (string)$cat['name'];
     if ($name === '') fail('Category name is required.');
 
+    $mainCategoryId = isset($cat['main_category_id']) ? (int)$cat['main_category_id'] : 0;
+
     $dup = $pdo->prepare(
         'SELECT id FROM categories
-         WHERE LOWER(name) = LOWER(:name) AND is_active = 1 AND id <> :id
+         WHERE LOWER(name) = LOWER(:name)
+           AND is_active = 1
+           AND id <> :id
+           AND (main_category_id = :mcid OR (:mcid = 0 AND (main_category_id IS NULL OR main_category_id = 0)))
          LIMIT 1'
     );
-    $dup->execute([':name' => $name, ':id' => $id]);
+    $dup->execute([':name' => $name, ':id' => $id, ':mcid' => $mainCategoryId]);
     if ($dup->fetch()) {
         fail('Another category already uses that name.');
     }

@@ -411,7 +411,7 @@ body {
 .table-head,
 .table-row {
     display: grid;
-    grid-template-columns: 2.2fr 1.15fr 1.15fr 1fr minmax(88px, 0.85fr) minmax(88px, 0.85fr) 1fr 1fr;
+    grid-template-columns: 2fr 1.05fr 1.1fr 0.95fr minmax(88px, 0.8fr) minmax(88px, 0.8fr) 0.85fr minmax(118px, 1.15fr);
     gap: 12px;
     align-items: center;
     padding: 12px 16px;
@@ -814,16 +814,85 @@ body {
     font-size: 13px;
 }
 
-.actions button {
+.actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+}
+.actions button,
+.actions .link-btn {
     border: 0;
     background: transparent;
     color: #f48c25;
     cursor: pointer;
-    margin-right: 8px;
+    margin: 0;
+    padding: 0;
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.2;
+    text-align: left;
+}
+.actions .link-btn--muted {
+    color: #94a3b8;
+}
+.actions .link-btn--muted:hover {
+    color: #e2e8f0;
+}
+.actions .link-btn--danger {
+    color: #f87171;
+}
+.actions .link-btn--danger:hover {
+    color: #fca5a5;
+}
+.inv-action-sep {
+    display: none;
+}
+.inv-linked-items-list {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+    max-height: 280px;
+    overflow: auto;
+}
+.inv-linked-items-list li {
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: rgba(18, 14, 10, 0.55);
+    padding: 10px 12px;
+    color: #e2e8f0;
+    font-size: 13px;
+    font-weight: 600;
+}
+.inv-linked-items-list li small {
+    display: block;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+}
+.inv-linked-items-empty {
+    margin: 12px 0 0;
+    color: #94a3b8;
+    font-size: 13px;
+}
+.inv-linked-items-warn {
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(244, 140, 37, 0.45);
+    background: rgba(244, 140, 37, 0.12);
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
 }
 
 .table-foot {
@@ -877,7 +946,10 @@ body {
 }
 .inv-manual-actions {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
 }
 
 .inv-manual-notes-cell {
@@ -1344,6 +1416,48 @@ body {
     gap: 6px;
     margin-bottom: 12px;
 }
+.receipt-supplier-active {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    border: 1px solid rgba(244, 140, 37, 0.45);
+    border-radius: 8px;
+    background: rgba(244, 140, 37, 0.12);
+}
+.receipt-supplier-active[hidden] {
+    display: none;
+}
+.receipt-supplier-active__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #f48c25;
+}
+.receipt-supplier-active strong {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+}
+.receipt-supplier-active__clear {
+    margin-left: auto;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(18, 14, 10, 0.45);
+    color: #e2e8f0;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+.receipt-supplier-active__clear:hover {
+    background: rgba(18, 14, 10, 0.75);
+    color: #fff;
+}
 .receipt-supplier-row {
     display: flex;
     gap: 8px;
@@ -1362,6 +1476,25 @@ body {
 .receipt-supplier-row .btn {
     flex-shrink: 0;
     white-space: nowrap;
+}
+.receipt-supplier-save-link {
+    justify-self: start;
+    border: 0;
+    background: transparent;
+    color: #f48c25;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0;
+    cursor: pointer;
+}
+.receipt-supplier-save-link:hover {
+    text-decoration: underline;
+}
+.receipt-supplier-save-link:disabled {
+    opacity: 0.55;
+    cursor: default;
+    text-decoration: none;
 }
 .receipt-supplier-saved {
     display: flex;
@@ -1416,10 +1549,53 @@ body {
     gap: 8px;
     margin-top: 14px;
     margin-bottom: 4px;
-    padding: 12px;
+    padding: 10px 12px;
     border: 1px solid rgba(61, 48, 37, 0.9);
     border-radius: 10px;
     background: rgba(18, 14, 10, 0.55);
+}
+.receipt-cat-type-manage-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #e2e8f0;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 0;
+    cursor: pointer;
+    text-align: left;
+}
+.receipt-cat-type-manage-toggle:hover {
+    color: #f48c25;
+}
+.receipt-cat-type-manage-caret {
+    color: #9ca3af;
+    font-size: 12px;
+    transition: transform 0.15s ease;
+}
+.receipt-cat-type-manage-toggle[aria-expanded="true"] .receipt-cat-type-manage-caret {
+    transform: rotate(180deg);
+}
+.receipt-cat-type-manage-panel {
+    display: grid;
+    gap: 8px;
+    padding-top: 4px;
+}
+.receipt-cat-type-manage-panel[hidden] {
+    display: none;
+}
+.receipt-cat-type-select-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.03em;
 }
 .receipt-cat-type-select-wrap {
     position: relative;
@@ -1827,6 +2003,23 @@ body {
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 2px 5px;
+}
+.receipt-summary-calendar__day-num {
+    line-height: 1;
+}
+.receipt-summary-calendar__day-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: #f48c25;
+    flex-shrink: 0;
 }
 .receipt-summary-calendar__day.is-empty {
     background: transparent;
@@ -1840,6 +2033,12 @@ body {
     background: #f48c25;
     border-color: #f48c25;
     color: #120e0a;
+}
+.receipt-summary-calendar__day.is-selected .receipt-summary-calendar__day-dot {
+    background: #120e0a;
+}
+.receipt-summary-calendar__day.has-entries:not(.is-selected) {
+    border-color: rgba(244, 140, 37, 0.28);
 }
 .receipt-summary-calendar__day:not(.is-empty):hover {
     border-color: rgba(244, 140, 37, 0.7);

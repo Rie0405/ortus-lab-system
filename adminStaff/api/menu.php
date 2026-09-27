@@ -17,12 +17,18 @@ if ($m === 'GET') {
     ensure_catalog_icon_columns(db());
     ensure_addon_menu_items_synced(db());
 
-    // Fetch categories
+    // Fetch categories (scoped to main category / station)
     $cats = db()->query(
-        'SELECT id, name, icon_url, display_order FROM categories WHERE is_active = 1 ORDER BY display_order'
+        'SELECT id, main_category_id, name, icon_url, display_order
+           FROM categories
+          WHERE is_active = 1
+          ORDER BY display_order'
     )->fetchAll();
     foreach ($cats as &$cat) {
         $cat['id'] = (int)$cat['id'];
+        $cat['main_category_id'] = isset($cat['main_category_id']) && $cat['main_category_id'] !== null
+            ? (int)$cat['main_category_id']
+            : null;
         $cat['display_order'] = (int)$cat['display_order'];
         $cat['icon_url'] = isset($cat['icon_url']) && $cat['icon_url'] !== null && $cat['icon_url'] !== ''
             ? (string)$cat['icon_url']
@@ -62,6 +68,10 @@ if ($m === 'GET') {
     annotate_menu_items_addon_flags(db(), $items);
 
     $fastMoving = fetch_fast_moving_items(db(), 100, 5);
+    $bestSeller = fetch_best_seller(db(), 100);
+    $unavailableProductsCount = (int)db()->query(
+        'SELECT COUNT(*) FROM menu_items WHERE is_available = 0'
+    )->fetchColumn();
 
     ok([
         'categories' => $cats,
@@ -72,6 +82,9 @@ if ($m === 'GET') {
         'fast_moving_item_ids' => array_map(static function ($row) {
             return (int)$row['menu_item_id'];
         }, $fastMoving),
+        'best_seller' => $bestSeller,
+        'best_seller_menu_item_id' => $bestSeller ? (int)$bestSeller['menu_item_id'] : 0,
+        'unavailable_products_count' => $unavailableProductsCount,
     ]);
 }
 
@@ -99,6 +112,7 @@ if ($m === 'POST') {
     if ($price <= 0)   fail('Price must be greater than zero.');
 
     $mainCategoryId = resolve_main_category_id(db(), $mainCategoryId);
+    assert_category_belongs_to_main(db(), $categoryId, $mainCategoryId);
 
     $catName = db()->prepare('SELECT name FROM categories WHERE id = :id');
     $catName->execute([':id' => $categoryId]);
@@ -195,6 +209,18 @@ if ($m === 'PUT') {
     }
 
     if (!$fields) fail('No fields to update.');
+
+    if (isset($b['category_id']) || isset($b['main_category_id'])) {
+        $cur = db()->prepare('SELECT category_id, main_category_id FROM menu_items WHERE id = :id');
+        $cur->execute([':id' => $id]);
+        $curRow = $cur->fetch();
+        if (!$curRow) fail('Item not found.', 404);
+        $effectiveCatId = isset($params[':cid']) ? (int)$params[':cid'] : (int)$curRow['category_id'];
+        $effectiveMainId = isset($params[':mcid']) ? (int)$params[':mcid'] : (int)$curRow['main_category_id'];
+        if ($effectiveCatId && $effectiveMainId) {
+            assert_category_belongs_to_main(db(), $effectiveCatId, $effectiveMainId);
+        }
+    }
 
     if (array_key_exists('subcategory_id', $b) && $params[':scid'] ?? null) {
         $curCat = db()->prepare('SELECT category_id FROM menu_items WHERE id = :id');

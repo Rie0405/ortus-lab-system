@@ -56,6 +56,7 @@ unset($item);
 annotate_menu_items_addon_flags(db(), $items);
 
 $fastMoving = fetch_fast_moving_items(db(), 100, 5);
+$bestSeller = fetch_best_seller(db(), 100);
 
 ok([
     'categories' => $cats,
@@ -65,4 +66,6 @@ ok([
     'fast_moving_item_ids' => array_map(static function ($row) {
         return (int)$row['menu_item_id'];
     }, $fastMoving),
+    'best_seller' => $bestSeller,
+    'best_seller_menu_item_id' => $bestSeller ? (int)$bestSeller['menu_item_id'] : 0,
 ]);

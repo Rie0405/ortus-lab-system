@@ -3,267 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Recipes</title>
+    <title>Ortus Lab Recipe Builder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #050608;
-            --panel: #101216;
-            --panel-border: #1a202b;
-            --text: #e5e7eb;
-            --muted: #8a94a6;
-            --accent: #f59e0b;
-            --danger: #ef4444;
-            --ok: #22c55e;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: "Space Grotesk", sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
-        .page {
-            min-height: 100vh;
-            padding: 0 24px 24px;
-        }
-        .topbar {
-            height: 66px;
-            display: grid;
-            grid-template-columns: 120px 1fr 120px;
-            align-items: center;
-            border-bottom: 1px solid #111827;
-            margin-bottom: 18px;
-        }
-        .back-btn, .save-btn {
-            border: 0;
-            border-radius: 8px;
-            font: inherit;
-            font-weight: 700;
-            font-size: 13px;
-            letter-spacing: .04em;
-            padding: 9px 14px;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-        .back-btn { background: #b91c1c; color: #fff; justify-self: start; }
-        .save-btn { background: var(--accent); color: #1f2937; justify-self: end; }
-        .top-title {
-            text-align: center;
-            margin: 0;
-            font-size: 35px;
-            font-style: italic;
-            letter-spacing: .05em;
-            text-transform: uppercase;
-        }
-        .panel {
-            max-width: 1280px;
-            margin: 0 auto;
-            background: linear-gradient(180deg, #11151b 0%, #0d1117 100%);
-            border: 1px solid var(--panel-border);
-            border-radius: 12px;
-            padding: 28px;
-        }
-        .product-name {
-            margin: 0;
-            font-size: 46px;
-            font-weight: 500;
-        }
-        .hint {
-            margin: 6px 0 24px;
-            color: var(--muted);
-            font-size: 14px;
-        }
-        .ingredient-grid-head, .ingredient-row {
-            display: grid;
-            grid-template-columns: minmax(260px, 1fr) 36px;
-            gap: 10px;
-            align-items: center;
-        }
-        /* Temporarily hidden — Amount / Units / Line Cost / summary */
-        .ingredient-row [data-field="qty"],
-        .ingredient-row [data-field="unit"],
-        .ingredient-row .cost-input-wrap,
-        .summary {
-            display: none !important;
-        }
-        .ingredient-grid-head {
-            margin: 18px 0 10px;
-        }
-        .ingredient-grid-head span {
-            color: var(--muted);
-            font-size: 13px;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            font-weight: 700;
-        }
-        .ingredient-row { margin-bottom: 10px; }
-        input, select {
-            width: 100%;
-            border: 1px solid #243041;
-            background: #0b0f14;
-            color: var(--text);
-            border-radius: 8px;
-            padding: 11px 12px;
-            font: inherit;
-        }
-        input::placeholder { color: #6b7280; }
-        .cost-input-wrap {
-            position: relative;
-        }
-        .cost-input-wrap span {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #9ca3af;
-            font-weight: 700;
-            font-size: 13px;
-        }
-        .cost-input-wrap input { padding-left: 28px; }
-        .remove-ingredient {
-            width: 32px;
-            height: 32px;
-            border: 1px solid #3b4250;
-            border-radius: 8px;
-            background: transparent;
-            color: #9ca3af;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-        }
-        .add-ingredient {
-            margin-top: 4px;
-            border: 0;
-            background: transparent;
-            color: var(--accent);
-            font: inherit;
-            font-weight: 700;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 0;
-        }
-        .summary {
-            margin-top: 26px;
-            border-top: 1px solid #1f2937;
-            padding-top: 22px;
-            display: grid;
-            justify-content: end;
-            gap: 10px;
-        }
-        .summary-row {
-            display: grid;
-            grid-template-columns: 160px 180px;
-            align-items: center;
-            gap: 10px;
-        }
-        .summary-row label {
-            color: #4ade80;
-            font-size: 14px;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            font-weight: 700;
-            text-align: right;
-        }
-        @media (max-width: 980px) {
-            .ingredient-grid-head, .ingredient-row {
-                grid-template-columns: 1fr 36px;
-            }
-            .topbar { grid-template-columns: 1fr; height: auto; gap: 10px; padding: 10px 0; }
-            .top-title { order: -1; }
-            .back-btn, .save-btn { justify-self: stretch; }
-        }
-        .variant-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 0 0 18px;
-        }
-        .variant-tab {
-            border: 1px solid #243041;
-            border-radius: 999px;
-            background: #0b0f14;
-            color: var(--muted);
-            padding: 8px 16px;
-            font: inherit;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: .04em;
-            cursor: pointer;
-        }
-        .variant-tab.active {
-            background: var(--accent);
-            color: #111827;
-            border-color: var(--accent);
-        }
-        .recipe-partition {
-            display: none;
-        }
-        .recipe-partition.active {
-            display: block;
-        }
-        .partition-title {
-            margin: 0 0 12px;
-            font-size: 18px;
-            font-weight: 600;
-            color: #cbd5e1;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260924-addon-cost">
+    <link rel="stylesheet" href="brand_role_label.css">
+    <link rel="stylesheet" href="recipe_builder_styles.css?v=20260926-admin-ui">
 </head>
 <body>
-    <div class="page">
-        <header class="topbar">
-            <button type="button" class="back-btn" id="btn-back-recipes">&lt; Back</button>
-            <h1 class="top-title">Create Recipes</h1>
-            <button type="button" class="save-btn" id="btn-save-recipe">Save Recipe</button>
+    <div class="order-page">
+        <header class="top-nav">
+            <div class="brand-block">
+                <div class="brand-name-group">
+                    <span class="brand-name">ORTUS LAB</span>
+                    <span class="brand-role brand-role--admin">Admin</span>
+                </div>
+            </div>
+
+            <nav class="top-links">
+                <a href="admin_dashboard.html" class="top-link">Dashboard</a>
+                <a href="inventory_dashboard.html" class="top-link">Inventory</a>
+                <a href="ordering_dashboard.html" class="top-link top-link--active">Ordering System</a>
+                <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
+                <a href="sales_history_dashboard.html" class="top-link">Staff Activity</a>
+            </nav>
+
+            <div class="top-actions">
+                <button type="button" class="icon-btn" title="Notifications" aria-label="Notifications"><img src="icons_admin/bell_icon.svg" alt=""></button>
+                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/wrench_icon.svg" alt=""></button>
+            </div>
         </header>
 
-        <section class="panel">
-            <h2 class="product-name" id="recipe-product-name">Menu Item</h2>
-            <p class="hint" id="recipe-builder-hint">Select ingredients for this product. Cost fields are hidden for now.</p>
-
-            <div class="variant-tabs" id="variant-tabs" hidden></div>
-            <div id="recipe-partitions"></div>
-
-            <template id="recipe-partition-template">
-                <div class="recipe-partition" data-variant-signature="">
-                    <h3 class="partition-title"></h3>
-                    <div class="ingredient-grid-head">
-                        <span>Ingredients</span>
-                        <span></span>
-                    </div>
-                    <div class="ingredient-rows"></div>
-                    <button type="button" class="add-ingredient">+ Add ingredient</button>
-                    <div class="summary" hidden>
-                        <div class="summary-row">
-                            <label>Cost of Goods (COGS):</label>
-                            <div class="cost-input-wrap">
-                                <span>P</span>
-                                <input type="number" class="partition-unit-cost" step="0.01" value="0.00" readonly>
-                            </div>
-                        </div>
-                        <div class="summary-row">
-                            <label>Gross Profit:</label>
-                            <div class="cost-input-wrap">
-                                <span>P</span>
-                                <input type="number" class="partition-gross-profit" step="0.01" value="0.00" readonly>
-                            </div>
-                        </div>
-                        <div class="summary-row">
-                            <label>Sale Price:</label>
-                            <div class="cost-input-wrap">
-                                <span>P</span>
-                                <input type="number" class="partition-sale-price" step="0.01" value="0.00">
-                            </div>
-                        </div>
-                    </div>
+        <main class="order-main">
+            <section class="heading-row">
+                <div>
+                    <h1>RECIPE BUILDER</h1>
+                    <p id="recipe-builder-hint">Registered product variants appear as tabs below. Build ingredients for each one.</p>
                 </div>
-            </template>
-        </section>
+                <div class="heading-actions">
+                    <button type="button" class="gcash-config-btn" id="btn-back-recipes">← Back to Menu</button>
+                    <button type="button" class="cta-btn" id="btn-save-recipe">Save Recipe</button>
+                </div>
+            </section>
+
+            <section class="recipe-builder-panel">
+                <h2 class="recipe-builder-product-name" id="recipe-product-name">Menu Item</h2>
+
+                <div class="variant-tabs" id="variant-tabs" hidden></div>
+                <div id="recipe-partitions"></div>
+
+                <template id="recipe-partition-template">
+                    <div class="recipe-partition" data-variant-signature="">
+                        <h3 class="partition-title"></h3>
+                        <div class="ingredient-grid-head">
+                            <span>Ingredients</span>
+                            <span></span>
+                        </div>
+                        <div class="ingredient-rows"></div>
+                        <button type="button" class="add-ingredient">+ Add ingredient</button>
+                        <div class="summary" hidden>
+                            <div class="summary-row">
+                                <label>Cost of Goods (COGS):</label>
+                                <div class="cost-input-wrap">
+                                    <span>P</span>
+                                    <input type="number" class="partition-unit-cost" step="0.01" value="0.00" readonly>
+                                </div>
+                            </div>
+                            <div class="summary-row">
+                                <label>Gross Profit:</label>
+                                <div class="cost-input-wrap">
+                                    <span>P</span>
+                                    <input type="number" class="partition-gross-profit" step="0.01" value="0.00" readonly>
+                                </div>
+                            </div>
+                            <div class="summary-row">
+                                <label>Sale Price:</label>
+                                <div class="cost-input-wrap">
+                                    <span>P</span>
+                                    <input type="number" class="partition-sale-price" step="0.01" value="0.00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </section>
+        </main>
     </div>
 
+    <script src="dashboard_script.js"></script>
     <script>
     (function () {
         var qp = new URLSearchParams(window.location.search || '');
@@ -275,11 +103,34 @@
         var partitionsWrap = document.getElementById('recipe-partitions');
         var partitionTemplate = document.getElementById('recipe-partition-template');
         var inventoryItems = [];
+        var allInventoryItems = [];
         var saveInFlight = false;
         var menuItem = null;
         var variantDefs = [];
         var recipesByVariant = {};
         var activeVariantSignature = '';
+
+        function menuStationKey() {
+            return String(menuItem && menuItem.main_category_name || '').trim().toLowerCase();
+        }
+
+        function inventoryStationKey(item) {
+            return String(item && item.category_name || '').trim().toLowerCase();
+        }
+
+        function applyStationInventoryFilter() {
+            var station = menuStationKey();
+            if (!station) {
+                inventoryItems = allInventoryItems.slice();
+            } else {
+                inventoryItems = allInventoryItems.filter(function (it) {
+                    return inventoryStationKey(it) === station;
+                });
+            }
+            inventoryItems.sort(function (a, b) {
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+        }
 
         function variantSignatureFromParsed(v) {
             if (!v) return '';
@@ -415,10 +266,6 @@
             return lineCost;
         }
 
-        function computeIngredientLineCostForRow(row) {
-            return autoFillRowLineCost(row, false);
-        }
-
         function recalcPartition(partition, options) {
             options = options || {};
             if (!partition) return;
@@ -436,28 +283,80 @@
             if (grossInput) grossInput.value = (sale - unitCost).toFixed(2);
         }
 
-        function buildIngredientOptions(selectedName) {
+        function getUsedIngredientKeys(partition, exceptRow) {
+            var used = {};
+            var wrap = getRowsWrap(partition);
+            if (!wrap) return used;
+            wrap.querySelectorAll('.ingredient-row').forEach(function (row) {
+                if (exceptRow && row === exceptRow) return;
+                var sel = row.querySelector('[data-field="name"]');
+                var name = sel ? String(sel.value || '').trim() : '';
+                var invId = getSelectedInventoryId(row);
+                if (invId) used['id:' + invId] = true;
+                if (name) used['name:' + name.toLowerCase()] = true;
+            });
+            return used;
+        }
+
+        function buildIngredientOptions(selectedName, partition, currentRow) {
             var html = '<option value="">Select ingredient</option>';
+            var seen = {};
+            var used = partition ? getUsedIngredientKeys(partition, currentRow) : {};
+            var selectedKey = selectedName ? String(selectedName).toLowerCase() : '';
+
             inventoryItems.forEach(function (item) {
                 var name = item.name || '';
-                var selected = selectedName && String(selectedName) === String(name) ? ' selected' : '';
+                if (!name) return;
+                var isCurrent = selectedKey && String(name).toLowerCase() === selectedKey;
+                if (!isCurrent && (used['id:' + item.id] || used['name:' + String(name).toLowerCase()])) {
+                    return;
+                }
+                seen[String(name).toLowerCase()] = true;
+                var selected = isCurrent ? ' selected' : '';
                 html += '<option value="' + escAttr(name) + '" data-inv-id="' + item.id + '"' + selected + '>' +
                     escAttr(name) + '</option>';
             });
+            // Keep a previously saved off-station ingredient visible so legacy recipes don't break.
+            if (selectedName && !seen[selectedKey]) {
+                var orphan = allInventoryItems.find(function (it) {
+                    return String(it.name || '') === String(selectedName);
+                });
+                if (orphan) {
+                    html += '<option value="' + escAttr(orphan.name) + '" data-inv-id="' + orphan.id + '" selected>' +
+                        escAttr(orphan.name) + ' (other station)</option>';
+                } else {
+                    html += '<option value="' + escAttr(selectedName) + '" selected>' +
+                        escAttr(selectedName) + '</option>';
+                }
+            }
             return html;
+        }
+
+        function refreshPartitionIngredientOptions(partition) {
+            var wrap = getRowsWrap(partition);
+            if (!wrap) return;
+            wrap.querySelectorAll('.ingredient-row').forEach(function (row) {
+                var sel = row.querySelector('[data-field="name"]');
+                if (!sel) return;
+                var current = String(sel.value || '');
+                sel.innerHTML = buildIngredientOptions(current, partition, row);
+                if (current) sel.value = current;
+            });
         }
 
         function applyIngredientSelection(row) {
             if (!row) return;
             autoFillRowLineCost(row, true);
+            var partition = row.closest('.recipe-partition');
+            if (partition) refreshPartitionIngredientOptions(partition);
         }
 
-        function ingredientRowHtml(defaults) {
+        function ingredientRowHtml(defaults, partition, currentRow) {
             defaults = defaults || {};
             var unit = defaults.unit || 'unit';
             return '' +
                 '<div class="ingredient-row">' +
-                    '<select data-field="name">' + buildIngredientOptions(defaults.name) + '</select>' +
+                    '<select data-field="name">' + buildIngredientOptions(defaults.name, partition, currentRow) + '</select>' +
                     '<input data-field="qty" type="number" min="0" step="0.01" value="' + (defaults.qty || '1') + '">' +
                     '<select data-field="unit">' +
                         '<option value="unit"' + (unit === 'unit' ? ' selected' : '') + '>Units</option>' +
@@ -480,12 +379,13 @@
             var rowsWrap = getRowsWrap(partition);
             if (!rowsWrap) return null;
             var tmp = document.createElement('div');
-            tmp.innerHTML = ingredientRowHtml(defaults);
+            tmp.innerHTML = ingredientRowHtml(defaults, partition, null);
             var row = tmp.firstChild;
             rowsWrap.appendChild(row);
             if (defaults.persistLineCost) {
                 row.setAttribute('data-persist-line-cost', '1');
             }
+            refreshPartitionIngredientOptions(partition);
             if (!options.skipRecalc) {
                 recalcPartition(partition);
             }
@@ -510,6 +410,7 @@
                     persistLineCost: true
                 }, { skipRecalc: true });
             });
+            refreshPartitionIngredientOptions(partition);
             recalcPartition(partition);
         }
 
@@ -750,6 +651,8 @@
             if (row) row.remove();
             if (partition && !getRowsWrap(partition).querySelector('.ingredient-row')) {
                 addIngredientRow(partition);
+            } else if (partition) {
+                refreshPartitionIngredientOptions(partition);
             }
             if (partition) recalcPartition(partition);
         });
@@ -775,6 +678,7 @@
                     menuItem = d.items.find(function (it) { return String(it.id) === String(menuId); }) || null;
                     if (!menuItem) return;
                     if (productNameEl) productNameEl.textContent = menuItem.name || ('Menu #' + menuId);
+                    applyStationInventoryFilter();
                     variantDefs = parseVariantsFromDescription(menuItem.description || '').map(function (v) {
                         var sig = variantSignatureFromParsed(v);
                         return {
@@ -783,6 +687,13 @@
                             price: parseMoney(v.price)
                         };
                     });
+                    var hintEl = document.getElementById('recipe-builder-hint');
+                    if (hintEl) {
+                        var stationLabel = String(menuItem.main_category_name || '').trim();
+                        hintEl.textContent = stationLabel
+                            ? ('Showing ' + stationLabel + ' inventory only. Registered variants appear as tabs below.')
+                            : 'Registered product variants appear as tabs below. Build ingredients for each one.';
+                    }
                 })
                 .catch(function () {})
                 .finally(function () {
@@ -795,9 +706,8 @@
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (d && d.success && d.items) {
-                        inventoryItems = d.items.slice().sort(function (a, b) {
-                            return String(a.name || '').localeCompare(String(b.name || ''));
-                        });
+                        allInventoryItems = d.items.slice();
+                        applyStationInventoryFilter();
                     }
                 })
                 .catch(function () {})

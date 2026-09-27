@@ -245,6 +245,27 @@ body.modal-open {
     color: #ef4444;
     text-transform: lowercase;
 }
+.stat-best-seller {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    line-height: 1.15;
+}
+.stat-best-seller__name {
+    color: #fff !important;
+    font-size: 28px !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+.stat-best-seller__cat {
+    color: #94a3b8 !important;
+    font-size: 12px !important;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
 .stat-card--green { border-left: 3px solid #f48c25; }
 .stat-card--blue { border-left: 3px solid #334155; }
 .stat-card--red { border-left: 3px solid #ef4444; }
@@ -1741,7 +1762,7 @@ body.modal-open {
 
 .variant-input-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 0.9fr auto;
+    grid-template-columns: 1.4fr 0.9fr auto;
     gap: 10px;
     align-items: end;
 }
@@ -1756,18 +1777,6 @@ body.modal-open {
 .variant-input--label,
 .variant-input--price {
     width: 100%;
-}
-
-select.variant-input--size {
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: linear-gradient(45deg, transparent 50%, #f48c25 50%),
-        linear-gradient(135deg, #f48c25 50%, transparent 50%);
-    background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
-    background-size: 6px 6px, 6px 6px;
-    background-repeat: no-repeat;
-    padding-right: 32px;
 }
 
 .variant-remove {

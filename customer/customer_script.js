@@ -20,6 +20,7 @@ let ingredientModalCurrentItemName = '';
 
 let menuData = { categories: [], items: [], subcategories: [] };
 let fastMovingItemIds = [];
+let bestSellerMenuItemId = 0;
 /** Top tab key: 'beverages' | 'cat-{id}' (same category chips as POS). */
 let selectedMenuGroup = null;
 /** Category ids merged into the Beverages tab (POS-aligned). */
@@ -556,7 +557,7 @@ function openIngredientModal(menuItem, initial, openOpts) {
             .join('');
         tempSectionHtml =
             '<div class="kiosk-temp-section">' +
-            '<p class="ingredient-modal-section-label">Temperature</p>' +
+            '<p class="ingredient-modal-section-label">Choose option</p>' +
             '<div class="kiosk-temp-row">' +
             tempPills +
             '</div></div>';
@@ -566,9 +567,9 @@ function openIngredientModal(menuItem, initial, openOpts) {
         if (!variants.length) {
             sub.textContent = 'Tap add-ons to include them. Tap again to remove. Extra charges may apply at pickup.';
         } else if (variants.length === 1) {
-            sub.textContent = 'Temperature is set. Add optional add-ons, or continue.';
+            sub.textContent = 'Option is set. Add optional add-ons, or continue.';
         } else {
-            sub.textContent = 'Choose a temperature, then optional add-ons. Tap an add-on again to remove it.';
+            sub.textContent = 'Choose a size or option, then optional add-ons. Tap an add-on again to remove it.';
         }
     }
 
@@ -1226,12 +1227,18 @@ function getItemsForGroup(group) {
     });
 }
 
+function applyBestSellerId(id) {
+    bestSellerMenuItemId = parseInt(id, 10) || 0;
+    fastMovingItemIds = bestSellerMenuItemId > 0 ? [bestSellerMenuItemId] : [];
+}
+
 function applyFastMovingIds(ids) {
-    fastMovingItemIds = (ids || []).map(function (id) { return parseInt(id, 10) || 0; }).filter(Boolean);
+    var list = (ids || []).map(function (id) { return parseInt(id, 10) || 0; }).filter(Boolean);
+    applyBestSellerId(list.length ? list[0] : 0);
 }
 
 function isFastMovingMenuItem(menuItemId) {
-    return fastMovingItemIds.indexOf(parseInt(menuItemId, 10)) !== -1;
+    return bestSellerMenuItemId > 0 && parseInt(menuItemId, 10) === bestSellerMenuItemId;
 }
 
 function refreshFastMovingBadges() {
@@ -1239,7 +1246,11 @@ function refreshFastMovingBadges() {
         .then(function (r) { return r.json(); })
         .then(function (res) {
             if (!res || !res.success) return;
-            applyFastMovingIds(res.menu_item_ids || []);
+            if (res.best_seller_menu_item_id != null) {
+                applyBestSellerId(res.best_seller_menu_item_id);
+            } else {
+                applyFastMovingIds(res.menu_item_ids || []);
+            }
             renderCurrentMenuView();
         })
         .catch(function () {});
@@ -1881,7 +1892,11 @@ function loadMenuData() {
             menuData.categories = res.categories || [];
             menuData.subcategories = res.subcategories || [];
             menuData.items = res.items || [];
-            applyFastMovingIds(res.fast_moving_item_ids || []);
+            if (res.best_seller_menu_item_id != null) {
+                applyBestSellerId(res.best_seller_menu_item_id);
+            } else {
+                applyFastMovingIds(res.fast_moving_item_ids || []);
+            }
             rebuildMenuGroupTabs(selectedMenuGroup || BEVERAGES_MERGED_KEY);
             wireSearch();
             if (selectedMenuGroup) {
@@ -1894,6 +1909,7 @@ function loadMenuData() {
             menuData = { categories: [], items: [], subcategories: [] };
             beverageCategoryIds = [];
             fastMovingItemIds = [];
+            bestSellerMenuItemId = 0;
             if (selectedMenuGroup) {
                 showMenuForGroup(selectedMenuGroup);
             }

@@ -12,7 +12,7 @@ $pdo = db();
 ensure_order_discount_schema($pdo);
 $today = date('Y-m-d');
 
-function receipt_expense_between(PDO $pdo, string $fromDate, string $toDate): float {
+function receipt_expense_between(PDO $pdo, string $fromDate, string $toDate, ?array $onlyDates = null): float {
     static $hasReceiptsTable = null;
     if ($hasReceiptsTable === null) {
         try {
@@ -26,12 +26,15 @@ function receipt_expense_between(PDO $pdo, string $fromDate, string $toDate): fl
         return 0.0;
     }
     try {
+        $dates = normalize_cashflow_dates($onlyDates);
+        $params = [];
+        $dateSql = cashflow_date_sql('`Date`', $dates, $fromDate, $toDate, $params);
         $stmt = $pdo->prepare(
             'SELECT COALESCE(SUM(TotalAmount), 0)
              FROM Receipts
-             WHERE `Date` BETWEEN :from AND :to'
+             WHERE ' . $dateSql
         );
-        $stmt->execute([':from' => $fromDate, ':to' => $toDate]);
+        $stmt->execute($params);
         return (float)$stmt->fetchColumn();
     } catch (Throwable $e) {
         return 0.0;
@@ -50,20 +53,39 @@ if ($fromDate > $toDate) {
     [$fromDate, $toDate] = [$toDate, $fromDate];
 }
 
-$periodDays = max(1, (int)floor((strtotime($toDate) - strtotime($fromDate)) / 86400) + 1);
+$selectedDates = [];
+$datesRaw = trim((string)($_GET['dates'] ?? ''));
+if ($datesRaw !== '') {
+    foreach (explode(',', $datesRaw) as $part) {
+        $part = trim($part);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $part)) {
+            $selectedDates[$part] = true;
+        }
+    }
+    $selectedDates = array_keys($selectedDates);
+    sort($selectedDates);
+    if ($selectedDates) {
+        $fromDate = $selectedDates[0];
+        $toDate = $selectedDates[count($selectedDates) - 1];
+    }
+}
+
+$periodDays = max(1, count($selectedDates) ?: ((int)floor((strtotime($toDate) - strtotime($fromDate)) / 86400) + 1));
 $prevTo = date('Y-m-d', strtotime($fromDate . ' -1 day'));
 $prevFrom = date('Y-m-d', strtotime($prevTo . ' -' . ($periodDays - 1) . ' day'));
 
 $saleCond = sql_order_counts_as_sale();
+$orderDateParams = [];
+$orderDateSql = cashflow_date_sql('created_at', $selectedDates, $fromDate, $toDate, $orderDateParams);
 $summaryStmt = $pdo->prepare(
     'SELECT COUNT(*) AS total_orders
      FROM orders
-     WHERE DATE(created_at) BETWEEN :from AND :to
+     WHERE ' . $orderDateSql . '
        AND ' . $saleCond
 );
-$summaryStmt->execute([':from' => $fromDate, ':to' => $toDate]);
+$summaryStmt->execute($orderDateParams);
 $orderCountRow = $summaryStmt->fetch();
-$cashflow = fetch_cashflow_summary($pdo, $fromDate, $toDate);
+$cashflow = fetch_cashflow_summary($pdo, $fromDate, $toDate, $selectedDates ?: null);
 $totalOrders = (int)($orderCountRow['total_orders'] ?? $cashflow['total_orders']);
 $totalRevenue = (float)$cashflow['net_sales'];
 $grossRevenue = (float)$cashflow['gross_revenue'];
@@ -71,19 +93,21 @@ $discountsTotal = (float)$cashflow['discounts_total'];
 $refundsTotal = (float)$cashflow['refunds_total'];
 $totalCogs = (float)$cashflow['total_cogs'];
 $grossProfit = (float)$cashflow['gross_profit'];
-$receiptExpenseTotal = receipt_expense_between($pdo, $fromDate, $toDate);
+$receiptExpenseTotal = receipt_expense_between($pdo, $fromDate, $toDate, $selectedDates ?: null);
 $adjustedRevenue = $totalRevenue - $receiptExpenseTotal;
 $totalSellingPrice = (float)($cashflow['total_selling_price'] ?? $grossRevenue);
 $totalCostPrice = (float)($cashflow['total_cost_price'] ?? 0);
 $netCashFlow = round((float)($cashflow['net_cash_flow'] ?? ($totalSellingPrice - $totalCostPrice)), 2);
 $avgOrder = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
 
+$wasteParams = [];
+$wasteDateSql = cashflow_date_sql('logged_at', $selectedDates, $fromDate, $toDate, $wasteParams);
 $wasteStmt = $pdo->prepare(
     'SELECT COALESCE(SUM(estimated_value), 0) AS waste_total
      FROM waste_log
-     WHERE DATE(logged_at) BETWEEN :from AND :to'
+     WHERE ' . $wasteDateSql
 );
-$wasteStmt->execute([':from' => $fromDate, ':to' => $toDate]);
+$wasteStmt->execute($wasteParams);
 $wasteTotal = (float)$wasteStmt->fetchColumn();
 $otherExpensesTotal = max(0, (float)($_GET['other_expenses_total'] ?? 0));
 $netEstimate = $grossProfit - ($wasteTotal + $otherExpensesTotal + $receiptExpenseTotal);
@@ -98,14 +122,18 @@ $pct = function (float $current, float $previous): ?float {
     return round((($current - $previous) / $previous) * 100, 1);
 };
 
+$countParams = [];
+$countDateSql = cashflow_date_sql('created_at', $selectedDates, $fromDate, $toDate, $countParams);
 $countStmt = $pdo->prepare(
     'SELECT COUNT(*)
      FROM orders
-     WHERE DATE(created_at) BETWEEN :from AND :to'
+     WHERE ' . $countDateSql
 );
-$countStmt->execute([':from' => $fromDate, ':to' => $toDate]);
+$countStmt->execute($countParams);
 $resultsTotal = (int)$countStmt->fetchColumn();
 
+$listParams = [];
+$listDateSql = cashflow_date_sql('o.created_at', $selectedDates, $fromDate, $toDate, $listParams);
 $listStmt = $pdo->prepare(
     'SELECT
         o.id,
@@ -127,13 +155,14 @@ $listStmt = $pdo->prepare(
      LEFT JOIN users u ON u.id = o.staff_id
      LEFT JOIN order_items oi ON oi.order_id = o.id
      LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
-     WHERE DATE(o.created_at) BETWEEN :from AND :to
+     WHERE ' . $listDateSql . '
      GROUP BY o.id
      ORDER BY o.created_at DESC
      LIMIT :lim OFFSET :off'
 );
-$listStmt->bindValue(':from', $fromDate);
-$listStmt->bindValue(':to', $toDate);
+foreach ($listParams as $key => $value) {
+    $listStmt->bindValue($key, $value);
+}
 $listStmt->bindValue(':lim', $limit, PDO::PARAM_INT);
 $listStmt->bindValue(':off', $offset, PDO::PARAM_INT);
 $listStmt->execute();
@@ -150,6 +179,7 @@ unset($order);
 ok([
     'from'           => $fromDate,
     'to'             => $toDate,
+    'dates'          => $selectedDates,
     'today'          => $today,
     'summary'        => [
         'net_sales'         => $totalRevenue,

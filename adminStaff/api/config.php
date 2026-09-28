@@ -1,10 +1,10 @@
 <?php
 // ─── Database Configuration ───────────────────────────────────────────────────
-define('DB_HOST', 'localhost');
-define('DB_PORT', '3308');
-define('DB_NAME', 'ortus_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', getenv('MYSQLHOST') ?: 'localhost');
+define('DB_PORT', getenv('MYSQLPORT') ?: '3308');
+define('DB_NAME', getenv('MYSQLDATABASE') ?: 'ortus_db');
+define('DB_USER', getenv('MYSQLUSER') ?: 'root');
+define('DB_PASS', getenv('MYSQLPASSWORD') ?: '');
 
 // ─── Session ─────────────────────────────────────────────────────────────────
 if (session_status() === PHP_SESSION_NONE) {

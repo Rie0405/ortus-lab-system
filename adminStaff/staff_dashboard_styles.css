@@ -97,6 +97,59 @@ button {
     border-bottom-color: #f48c25;
 }
 
+.header-station-filter {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 0 2px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    overflow: visible;
+    background: rgba(18, 14, 10, 0.55);
+    position: relative;
+}
+
+.header-station-btn {
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.62);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.header-station-btn:first-child {
+    border-radius: 999px 0 0 999px;
+}
+
+.header-station-btn:last-child {
+    border-radius: 0 999px 999px 0;
+}
+
+.header-station-btn + .header-station-btn {
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.header-station-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.header-station-btn.is-active {
+    background: #f48c25;
+    color: #120e0a;
+}
+
+.header-station-filter.is-station-active {
+    border-color: rgba(244, 140, 37, 0.55);
+}
+
 .header-main-tab--notify::after {
     content: '';
     position: absolute;
@@ -1169,8 +1222,63 @@ button {
     margin-top: 0;
 }
 
+.pay-modal__section--order-details {
+    padding: 20px 32px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(180deg, rgba(18, 18, 18, 0.55) 0%, rgba(30, 30, 30, 0.2) 100%);
+}
+
+.pay-modal__section--order-details .pay-modal__section-label {
+    margin-bottom: 12px;
+}
+
+.pay-order-details-card {
+    display: grid;
+    gap: 12px;
+}
+
+.pay-order-customer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(244, 140, 37, 0.35);
+    background:
+        linear-gradient(135deg, rgba(244, 140, 37, 0.16) 0%, rgba(244, 140, 37, 0.05) 55%, rgba(18, 18, 18, 0.4) 100%);
+}
+
+.pay-order-customer[hidden] {
+    display: none !important;
+}
+
+.pay-order-customer__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.65);
+}
+
+.pay-order-customer__name {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #f48c25;
+    color: #120e0a;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    box-shadow: 0 6px 16px rgba(244, 140, 37, 0.28);
+}
+
 .pay-order-items-summary {
-    margin-top: 12px;
+    margin-top: 0;
 }
 
 .pay-order-items-summary[hidden] {
@@ -1178,9 +1286,9 @@ button {
 }
 
 .pay-order-summary-card {
-    background: rgba(18, 18, 18, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
+    background: rgba(12, 10, 8, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -1202,13 +1310,23 @@ button {
     color: #f48c25;
 }
 
+.pay-order-summary-group__items {
+    padding: 2px 0 4px;
+}
+
 .pay-order-summary-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    padding: 10px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin: 0 8px;
+    padding: 11px 10px;
+    border-radius: 8px;
+    border-bottom: 0;
+}
+
+.pay-order-summary-row:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .pay-order-summary-row:last-child {
@@ -3024,12 +3142,28 @@ button {
     border-bottom: 1px solid #3d3025;
 }
 
+.waste-tab-head-left {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+}
+
 .waste-tab-title {
     margin: 0;
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+.waste-tab-shift-date {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    white-space: nowrap;
 }
 
 .waste-tab-badge {
@@ -4745,6 +4879,12 @@ button {
 .shortage-restock-help {
     margin: -8px 22px 8px;
     font-size: 12px;
+    color: #94a3b8;
+}
+.shortage-restock-stocks-hint {
+    margin: 8px 2px 0;
+    font-size: 11px;
+    line-height: 1.35;
     color: #94a3b8;
 }
 .shortage-restock-staff-field {

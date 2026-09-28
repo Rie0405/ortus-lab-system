@@ -168,6 +168,9 @@
         .then(function (res) { return res.json(); })
         .then(function (data) {
             if (data.success) {
+                if (typeof window.ortusBeginAuthSession === 'function') {
+                    window.ortusBeginAuthSession();
+                }
                 var redirect = data.redirect || '';
                 var role     = data.user && data.user.role ? String(data.user.role).toLowerCase() : '';
                 var isStaff  = role === 'staff' || redirect.indexOf('staff_dashboard') !== -1;

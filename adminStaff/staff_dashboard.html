@@ -26,7 +26,10 @@
             <nav class="header-main-tabs">
                 <button class="header-main-tab header-main-tab--active" data-main-tab="pos">POS</button>
                 <button class="header-main-tab" data-main-tab="queue-kiosk" data-queue-source="kiosk">KIOSK Processing Queue</button>
-                <button class="header-main-tab" data-main-tab="kitchen">Kitchen</button>
+                <div class="header-station-filter" role="group" aria-label="Bar or Kitchen station">
+                    <button type="button" class="header-station-btn" data-main-tab="kitchen" data-kitchen-cat="bar">Bar</button>
+                    <button type="button" class="header-station-btn" data-main-tab="kitchen" data-kitchen-cat="kitchen">Kitchen</button>
+                </div>
                 <button class="header-main-tab" data-main-tab="waste">SALES REPORT</button>
             </nav>
 
@@ -386,7 +389,7 @@
             <div class="opq-main">
                 <div class="opq-topbar">
                     <div class="opq-topbar-left">
-                        <h2 class="opq-title">PENDING ORDERS</h2>
+                        <h2 class="opq-title" id="kitchen-station-title">BAR ORDERS</h2>
                         <span class="opq-badge" id="kitchen-pending-count">0 ACTIVE</span>
                     </div>
                     <button type="button" class="opq-done-all-btn" id="done-all-orders-btn">DONE ALL</button>
@@ -399,9 +402,9 @@
                             </div>
                         </article>
                     </div>
-                    <aside class="kitchen-serving-panel" aria-label="Serving actions">
+                    <aside class="kitchen-serving-panel" aria-label="Served orders">
                         <div class="kitchen-serving-head">
-                            <h3 class="kitchen-serving-title">SERVING</h3>
+                            <h3 class="kitchen-serving-title">SERVED ORDERS</h3>
                             <span class="kitchen-serving-badge" id="kitchen-serving-count">0</span>
                             <button type="button" class="opq-done-all-btn" id="served-all-orders-btn" style="margin-left:auto;">SERVED ALL</button>
                         </div>
@@ -491,7 +494,10 @@
             <div class="waste-tab-layout">
                 <section class="waste-tab-history">
                     <div class="waste-tab-head">
-                        <h2 class="waste-tab-title">ORDER HISTORY</h2>
+                        <div class="waste-tab-head-left">
+                            <h2 class="waste-tab-title">ORDER HISTORY</h2>
+                            <span class="waste-tab-shift-date" id="order-history-shift-date">—</span>
+                        </div>
                         <span class="waste-tab-badge" id="waste-order-history-count">0 PROCESSED</span>
                     </div>
                     <div class="order-history-tabs" id="order-history-tabs" aria-label="Order history views">
@@ -632,7 +638,7 @@
                 <header class="pay-modal__header">
                     <div class="pay-modal__header-left">
                         <h2 class="pay-modal__title" id="pay-modal-title">PAYMENT CONFIRMATION</h2>
-                        <p class="pay-modal__order-id">Order #GB-8842</p>
+                        <p class="pay-modal__order-id" id="pay-modal-order-id">Order —</p>
                     </div>
                     <div class="pay-modal__header-right">
                         <span class="pay-modal__total-label">ORDER TOTAL</span>
@@ -640,13 +646,15 @@
                     </div>
                 </header>
 
-                <section class="pay-modal__section">
+                <section class="pay-modal__section pay-modal__section--order-details">
                     <p class="pay-modal__section-label">ORDER DETAILS</p>
-                    <div class="cash-modal-meta-row" id="pay-order-customer-row" hidden>
-                        <span class="cash-modal-meta-label">Customer Name</span>
-                        <span class="cash-modal-meta-value" id="pay-order-customer-label">-</span>
+                    <div class="pay-order-details-card">
+                        <div class="pay-order-customer" id="pay-order-customer-row" hidden>
+                            <span class="pay-order-customer__label">Customer</span>
+                            <span class="pay-order-customer__name" id="pay-order-customer-label">—</span>
+                        </div>
+                        <div id="pay-order-items-summary" class="pay-order-items-summary" hidden></div>
                     </div>
-                    <div id="pay-order-items-summary" class="pay-order-items-summary" hidden></div>
                 </section>
 
                 <!-- ── CASH BODY ─────────────────────────────────────── -->
@@ -767,7 +775,7 @@
                 <div class="pay-modal__body shortage-modal__body">
                     <p class="shortage-modal__intro">This order cannot be completed because some ingredients or materials are out of stock or missing.</p>
                     <div class="shortage-modal__list" id="shortage-modal-list"></div>
-                    <p class="shortage-modal__note">Use Restock Inventory to add stock for the items below, then try the order again.</p>
+                    <p class="shortage-modal__note">Use Restock Inventory to add stock for the items below, then press Complete Transaction again to finish the order.</p>
                 </div>
                 <footer class="pay-modal__footer shortage-modal__footer">
                     <button type="button" class="pay-modal__btn pay-modal__btn--cancel" id="shortage-modal-ok">OK</button>
@@ -805,6 +813,7 @@
                             </div>
                             <div id="shortage-restock-lines-body"></div>
                         </div>
+                        <p class="shortage-restock-stocks-hint">Stocks column is a suggested shortage amount only — not your current inventory count.</p>
                     </div>
                 </div>
                 <p class="shortage-restock-help">If restocking takes too long, reload the page and check Stock Log.</p>
@@ -1412,6 +1421,7 @@
             </div>
         </footer>
     </div>
+    <script src="auth_session.js"></script>
     <script src="../shared/gcash_ref_digits.js"></script>
     <script>
         /* ─── POS: Dynamic menu, cart, totals, confirm payment ─── */
@@ -3412,11 +3422,13 @@
             });
         })();
 
-        // Header main tabs (POS / Kiosk Queue / Kitchen / BI Insights)
+        // Header main tabs (POS / Kiosk Queue / Bar|Kitchen / Sales Report)
         (function () {
             var mainTabs = document.querySelectorAll("[data-main-tab]");
             var mainPanels = document.querySelectorAll("[data-main-panel]");
+            var stationFilter = document.querySelector(".header-station-filter");
             window.staffQueueSource = window.staffQueueSource || "pos";
+            window.staffKitchenCategory = window.staffKitchenCategory || "bar";
 
             function activatePanel(panelName) {
                 var normalized = panelName;
@@ -3428,21 +3440,52 @@
                 });
             }
 
+            function clearHeaderTabActive() {
+                mainTabs.forEach(function (btn) {
+                    btn.classList.remove("header-main-tab--active");
+                    if (btn.classList.contains("header-station-btn")) {
+                        btn.classList.remove("is-active");
+                    }
+                });
+                if (stationFilter) stationFilter.classList.remove("is-station-active");
+            }
+
+            function setStationHeaderActive(cat) {
+                var wanted = String(cat || window.staffKitchenCategory || "bar").toLowerCase();
+                if (wanted !== "bar" && wanted !== "kitchen") wanted = "bar";
+                clearHeaderTabActive();
+                mainTabs.forEach(function (btn) {
+                    if (btn.getAttribute("data-main-tab") !== "kitchen") return;
+                    var g = String(btn.getAttribute("data-kitchen-cat") || "").toLowerCase();
+                    btn.classList.toggle("is-active", g === wanted);
+                });
+                if (stationFilter) {
+                    stationFilter.classList.add("is-station-active");
+                    stationFilter.classList.remove("header-main-tab--notify");
+                }
+            }
+
             mainTabs.forEach(function (tab) {
                 tab.addEventListener("click", function () {
                     var target = tab.getAttribute("data-main-tab");
                     var queueSource = tab.getAttribute("data-queue-source");
-                    mainTabs.forEach(function (btn) {
-                        btn.classList.remove("header-main-tab--active");
-                    });
-                    tab.classList.add("header-main-tab--active");
+                    var kitchenCat = tab.getAttribute("data-kitchen-cat");
+
+                    if (target === "kitchen" && kitchenCat) {
+                        window.staffKitchenCategory = String(kitchenCat).toLowerCase();
+                        setStationHeaderActive(window.staffKitchenCategory);
+                    } else {
+                        clearHeaderTabActive();
+                        tab.classList.add("header-main-tab--active");
+                    }
+
                     if (queueSource) {
                         window.staffQueueSource = queueSource;
                         window.dispatchEvent(new CustomEvent("staff-queue-source-changed", {
                             detail: { source: queueSource }
                         }));
                     }
-                    if (target === "queue-kiosk" || target === "kitchen") {
+                    if (target === "queue-kiosk") {
                         tab.classList.remove("header-main-tab--notify");
                     }
                     activatePanel(target);
@@ -3451,12 +3494,21 @@
 
             window.staffActivateMainTab = function (panelName) {
                 var targetTab = null;
-                mainTabs.forEach(function (btn) {
-                    var target = btn.getAttribute("data-main-tab");
-                    var isMatch = target === panelName;
-                    btn.classList.toggle("header-main-tab--active", isMatch);
-                    if (isMatch) targetTab = btn;
-                });
+                if (panelName === "kitchen") {
+                    setStationHeaderActive(window.staffKitchenCategory || "bar");
+                    targetTab = document.querySelector(
+                        '[data-main-tab="kitchen"][data-kitchen-cat="' +
+                        String(window.staffKitchenCategory || "bar").toLowerCase() + '"]'
+                    );
+                } else {
+                    clearHeaderTabActive();
+                    mainTabs.forEach(function (btn) {
+                        var target = btn.getAttribute("data-main-tab");
+                        var isMatch = target === panelName;
+                        btn.classList.toggle("header-main-tab--active", isMatch);
+                        if (isMatch) targetTab = btn;
+                    });
+                }
                 if (targetTab) {
                     var queueSource = targetTab.getAttribute("data-queue-source");
                     if (queueSource) {
@@ -3474,6 +3526,7 @@
         (function () {
             var payBackdrop   = document.getElementById("payment-confirm-modal");
             var payTitle      = document.getElementById("pay-modal-title");
+            var payOrderIdEl  = document.getElementById("pay-modal-order-id");
             var payTotal      = document.getElementById("pay-modal-total");
             var payCancel     = document.getElementById("pay-modal-cancel");
             var payComplete   = document.getElementById("pay-modal-complete");
@@ -3505,6 +3558,29 @@
 
             function formatPHP(val) {
                 return "₱" + (Number(val) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+
+            function setPayModalOrderLabel(orderNumber) {
+                if (!payOrderIdEl) return;
+                var raw = String(orderNumber == null ? "" : orderNumber).trim();
+                if (!raw || raw === "-" || raw === "—" || /^new order$/i.test(raw)) {
+                    payOrderIdEl.textContent = "New order";
+                    return;
+                }
+                var code = raw.replace(/^#+\s*/, "");
+                payOrderIdEl.textContent = code ? ("Order #" + code) : "New order";
+            }
+
+            function resolveOrderLabelFromCard(card) {
+                if (!card) return "";
+                var fromAttr = card.getAttribute("data-order-number") || card.getAttribute("data-order-id") || "";
+                if (fromAttr) return String(fromAttr).trim();
+                var metaEl = card.querySelector("[data-order-number], .opq-order-code, .opq-order-number");
+                if (metaEl) {
+                    var metaVal = metaEl.getAttribute("data-order-number") || metaEl.textContent || "";
+                    return String(metaVal).trim();
+                }
+                return "";
             }
 
             function buildSuggestedAmounts(total) {
@@ -3678,6 +3754,7 @@
                 // Set totals
                 if (payTotal) payTotal.textContent = formatPHP(orderTotal);
                 if (gcashTotal) gcashTotal.textContent = formatPHP(orderTotal);
+                setPayModalOrderLabel(resolveOrderLabelFromCard(card));
                 renderOrderCustomerName({ customer_name: "" });
 
                 // Reset cash fields
@@ -3771,6 +3848,8 @@
                 orderTotal = detail.total || 0;
                 if (payTotal) payTotal.textContent = formatPHP(orderTotal);
                 if (gcashTotal) gcashTotal.textContent = formatPHP(orderTotal);
+                var existingCode = (detail && (detail.order_number || detail.order_code)) || "";
+                setPayModalOrderLabel(existingCode || "New order");
                 renderOrderCustomerName(detail);
                 renderPosPayOrderSummary(detail);
                 if (payReceived) payReceived.value = "";
@@ -3991,14 +4070,32 @@
                             .then(function (r) { return r.json(); })
                             .then(function (data) {
                                 if (!data.success) {
+                                    if (typeof window.showPaymentSuccessToast === "function") {
+                                        window.showPaymentSuccessToast({
+                                            ok: false,
+                                            title: "Restock not recorded"
+                                        });
+                                    }
                                     alert(data.error || "Could not save restock entry.");
                                     saveBtn.disabled = false;
                                     saveBtn.textContent = "Restock Now";
                                     return;
                                 }
+                                if (typeof window.showPaymentSuccessToast === "function") {
+                                    window.showPaymentSuccessToast({
+                                        ok: true,
+                                        title: "Restock recorded"
+                                    });
+                                }
                                 cleanup(true);
                             })
                             .catch(function () {
+                                if (typeof window.showPaymentSuccessToast === "function") {
+                                    window.showPaymentSuccessToast({
+                                        ok: false,
+                                        title: "Restock not recorded"
+                                    });
+                                }
                                 alert("Network error while saving restock entry.");
                                 saveBtn.disabled = false;
                                 saveBtn.textContent = "Restock Now";
@@ -4056,7 +4153,9 @@
                     if (restockBtn) {
                         restockBtn.onclick = function () {
                             openShortageRestockModal(shortages).then(function (didRestock) {
-                                cleanup(!!didRestock);
+                                // Close shortage UI after restock; do not treat as order success.
+                                // Staff must press Complete Transaction again on the pay modal.
+                                cleanup(didRestock ? "restocked" : false);
                             });
                         };
                     }
@@ -4155,20 +4254,12 @@
                 return postPosOrder(payload).then(function (data) {
                     if (data && data.success) return data;
                     if (data && data.code === "inventory_shortage") {
-                        return openInventoryShortageModal(data.shortages || [], payload).then(function (restocked) {
-                            if (!restocked) return { success: false, error: "Order cancelled due to inventory shortage." };
-                            if (payComplete) payComplete.disabled = true;
-                            return postPosOrder(payload).then(function (data2) {
-                                if (data2 && data2.success) return data2;
-                                if (data2 && data2.code === "inventory_shortage") {
-                                    return openInventoryShortageModal(data2.shortages || [], payload).then(function () {
-                                        return { success: false, error: "Inventory still insufficient after restock." };
-                                    });
-                                }
-                                return data2 && typeof data2 === "object"
-                                    ? data2
-                                    : { success: false, error: "Failed to create order after restock." };
-                            });
+                        return openInventoryShortageModal(data.shortages || [], payload).then(function (result) {
+                            // Restock only closes shortage/restock modals. Payment is not auto-completed.
+                            if (result === "restocked") {
+                                return { success: false, restocked: true };
+                            }
+                            return { success: false, error: "Order cancelled due to inventory shortage." };
                         });
                     }
                     return data && typeof data === "object"
@@ -4210,6 +4301,7 @@
                     var expectedJobs = 0;
                     var recordedCount = 0;
                     var lastError = "";
+                    var restockOnly = false;
                     var chain = Promise.resolve();
                     jobs.forEach(function (job, idx) {
                         chain = chain.then(function () {
@@ -4217,6 +4309,10 @@
                             if (!payload.items.length) return null;
                             expectedJobs += 1;
                             return postPosOrderWithShortageHandling(payload).then(function (res) {
+                                if (res && res.restocked) {
+                                    restockOnly = true;
+                                    return res;
+                                }
                                 if (typeof window.isOrderFullyRecorded === "function"
                                     ? window.isOrderFullyRecorded(res)
                                     : (res && res.success && res.order_id && res.order_number && res.kitchen_ticket_number)) {
@@ -4229,6 +4325,10 @@
                         });
                     });
                     chain.then(function () {
+                        // After restock: keep pay modal open so staff can complete payment again.
+                        if (restockOnly && recordedCount === 0) {
+                            return;
+                        }
                         var allRecorded = expectedJobs > 0 && recordedCount === expectedJobs;
                         if (recordedCount > 0) {
                             if (window.posOrderCompleted) window.posOrderCompleted();
@@ -5061,6 +5161,12 @@
         var logoutBtn = document.getElementById('staff-logout-btn') || document.getElementById('btn-logout');
         if (!logoutBtn) return;
         logoutBtn.addEventListener('click', function () {
+            if (typeof window.ortusClearAuthSession === 'function') {
+                window.ortusClearAuthSession();
+            }
+            if (typeof window.ortusMarkInternalNav === 'function') {
+                window.ortusMarkInternalNav();
+            }
             fetch('api/auth.php', { method: 'DELETE' })
                 .finally(function () { window.location.href = 'admin.html'; });
         });
@@ -5370,10 +5476,24 @@
             });
         }
         function syncKitchenCategoryButtons() {
+            window.staffKitchenCategory = activeKitchenCategory;
             kitchenCatButtons.forEach(function (btn) {
                 var g = String(btn.getAttribute('data-kitchen-cat') || '').toLowerCase();
-                btn.classList.toggle('kitchen-cat-btn--active', g === activeKitchenCategory);
+                var isActive = g === activeKitchenCategory;
+                btn.classList.toggle('kitchen-cat-btn--active', isActive);
+                if (btn.classList.contains('header-station-btn')) {
+                    btn.classList.toggle('is-active', isActive);
+                }
             });
+            var stationFilter = document.querySelector('.header-station-filter');
+            var kitchenPanelActive = !!document.querySelector('[data-main-panel="kitchen"].is-active');
+            if (stationFilter) {
+                stationFilter.classList.toggle('is-station-active', kitchenPanelActive);
+            }
+            var titleEl = document.getElementById('kitchen-station-title');
+            if (titleEl) {
+                titleEl.textContent = activeKitchenCategory === 'bar' ? 'BAR ORDERS' : 'KITCHEN ORDERS';
+            }
         }
         function toMoney(v) {
             var n = parseFloat(v);
@@ -5642,6 +5762,13 @@
             return document.querySelector('[data-main-tab="' + name + '"]');
         }
         function markTabRealtimeNotify(name) {
+            if (name === 'kitchen') {
+                var stationFilter = document.querySelector('.header-station-filter');
+                var kitchenActive = !!document.querySelector('[data-main-panel="kitchen"].is-active');
+                if (!stationFilter || kitchenActive) return;
+                stationFilter.classList.add('header-main-tab--notify');
+                return;
+            }
             var btn = getMainTabBtn(name);
             if (!btn || btn.classList.contains('header-main-tab--active')) return;
             btn.classList.add('header-main-tab--notify');
@@ -6776,6 +6903,27 @@
             var n = parseInt(raw || '0', 10);
             return Number.isFinite(n) && n > 0 ? n : 0;
         }
+        function formatShiftDateLabel(dateObj) {
+            var d = dateObj instanceof Date ? dateObj : new Date();
+            if (isNaN(d.getTime())) d = new Date();
+            return d.toLocaleDateString('en-PH', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            }).toUpperCase();
+        }
+        function getCurrentShiftDateLabel() {
+            var clearAfterMs = getShiftHistoryClearAfterMs();
+            if (clearAfterMs > 0) {
+                return formatShiftDateLabel(new Date(clearAfterMs));
+            }
+            return formatShiftDateLabel(new Date());
+        }
+        function updateOrderHistoryShiftDate() {
+            var el = document.getElementById('order-history-shift-date');
+            if (!el) return;
+            el.textContent = getCurrentShiftDateLabel();
+        }
         function markShiftHistoryClearedNow() {
             try {
                 localStorage.setItem(getShiftHistoryClearKey(), String(Date.now()));
@@ -7280,6 +7428,8 @@
                 queueLabelClass = ' opq-fcfs-label--queue';
                 card.className = 'opq-card';
             }
+            if (order && order.id != null) card.setAttribute('data-order-id', String(order.id));
+            if (order && order.order_number) card.setAttribute('data-order-number', String(order.order_number));
             var dtype = String(order.discount_type || 'none').toLowerCase();
             var discountLine = '';
             if (dtype === 'senior' || dtype === 'pwd' || dtype === 'custom') {
@@ -7987,7 +8137,8 @@
             if (!orderedKitchen.length) {
                 kitchenGrid.innerHTML = '';
                 kitchenGrid.classList.remove('opq-queue-partitions');
-                kitchenGrid.innerHTML = '<article class="opq-card"><div class="opq-card-items"><div class="opq-item"><span>No kitchen orders.</span></div></div></article>';
+                var emptyLabel = activeKitchenCategory === 'bar' ? 'No bar orders.' : 'No kitchen orders.';
+                kitchenGrid.innerHTML = '<article class="opq-card"><div class="opq-card-items"><div class="opq-item"><span>' + emptyLabel + '</span></div></div></article>';
             } else {
                 renderPartitionedOrderGrid(
                     kitchenGrid,
@@ -8103,6 +8254,7 @@
 
         function renderWasteOrderHistory() {
             if (!wasteHistoryList) return;
+            updateOrderHistoryShiftDate();
             wasteHistoryList.innerHTML = '';
             var clearAfterMs = getShiftHistoryClearAfterMs();
             var isRefundedView = orderHistoryView === 'refunded';
@@ -8726,11 +8878,15 @@
                     var next = String(btn.getAttribute('data-kitchen-cat') || '').toLowerCase();
                     if (next !== 'bar' && next !== 'kitchen') return;
                     activeKitchenCategory = next;
+                    window.staffKitchenCategory = next;
                     syncKitchenCategoryButtons();
                     renderKitchenOrders();
                     renderServingOrders();
                 });
             });
+            if (window.staffKitchenCategory === 'bar' || window.staffKitchenCategory === 'kitchen') {
+                activeKitchenCategory = window.staffKitchenCategory;
+            }
             syncKitchenCategoryButtons();
         }
 
@@ -9065,6 +9221,90 @@
                 }
             }
 
+            function moneyFromTextEl(el) {
+                if (!el) return 0;
+                var s = String(el.textContent || '').replace(/,/g, '');
+                var m = s.match(/-?\d+(?:\.\d+)?/);
+                return m ? toMoney(m[0]) : 0;
+            }
+
+            function buildShiftArchivePayload(cashDeclared, verification) {
+                var info = typeof window.getCurrentShiftStaffInfo === 'function'
+                    ? window.getCurrentShiftStaffInfo()
+                    : { id: null, name: 'Staff' };
+                var cashMgmtTotals = typeof computeCashMgmtTotals === 'function'
+                    ? computeCashMgmtTotals()
+                    : { paidIn: 0, paidOut: 0 };
+                var expectedCash = typeof getExpectedCashDrawerAmount === 'function'
+                    ? getExpectedCashDrawerAmount()
+                    : moneyFromTextEl(cashDrawerExpectedCashEl);
+                if (verification && verification.expected_cash_drawer != null) {
+                    expectedCash = toMoney(verification.expected_cash_drawer);
+                }
+                var declared = toMoney(cashDeclared);
+                var difference = verification && verification.difference != null
+                    ? toSignedMoney(verification.difference)
+                    : toSignedMoney(declared - expectedCash);
+                var status = verification && verification.status
+                    ? String(verification.status)
+                    : (Math.abs(difference) < 0.005 ? 'accurate' : (difference > 0 ? 'over' : 'short'));
+
+                var cashPayments = moneyFromTextEl(cashDrawerCashPaymentsEl);
+                var gcashPayments = moneyFromTextEl(cashDrawerGcashPaymentsEl);
+                var totalRevenue = moneyFromTextEl(salesReportTotalLineEl);
+                if (!totalRevenue) {
+                    totalRevenue = cashPayments + gcashPayments;
+                }
+
+                var shiftDate = new Date().toISOString().slice(0, 10);
+                var startedMs = typeof getShiftHistoryClearAfterMs === 'function'
+                    ? getShiftHistoryClearAfterMs()
+                    : 0;
+
+                return {
+                    staff_id: info.id || null,
+                    staff_name: info.name || 'Staff',
+                    shift_date: shiftDate,
+                    closed_at: new Date().toISOString(),
+                    snapshot: {
+                        shift_started_ms: startedMs || null,
+                        notes: (sesNotes && sesNotes.value) || '',
+                        summary: {
+                            total_orders: moneyFromTextEl(shiftOrdersEl) || (servedOrders ? servedOrders.length : 0),
+                            total_revenue: totalRevenue,
+                            cash_revenue: cashPayments,
+                            gcash_revenue: gcashPayments,
+                            discount_total: moneyFromTextEl(cashDrawerDiscountsEl),
+                            waste_total: moneyFromTextEl(shiftWasteEl),
+                            coffee_sold_cups: moneyFromTextEl(salesReportCoffeeSoldEl)
+                        },
+                        drawer: {
+                            starting_money: typeof getSavedStartingMoneyTotal === 'function'
+                                ? getSavedStartingMoneyTotal()
+                                : moneyFromTextEl(salesReportStartingMoneySaved),
+                            cash_payments: cashPayments,
+                            gcash_payments: gcashPayments,
+                            discounts: moneyFromTextEl(cashDrawerDiscountsEl),
+                            paid_in: cashMgmtTotals.paidIn || 0,
+                            paid_out: cashMgmtTotals.paidOut || 0,
+                            cash_refunds: typeof computeCashRefundsTotal === 'function'
+                                ? computeCashRefundsTotal()
+                                : moneyFromTextEl(cashDrawerCashRefundsEl),
+                            expected_cash: expectedCash,
+                            counted_cash: declared
+                        },
+                        accuracy: {
+                            cash_declared: declared,
+                            expected_cash: expectedCash,
+                            difference: difference,
+                            status: status
+                        },
+                        cash_mgmt: typeof getCashMgmtEntries === 'function' ? getCashMgmtEntries() : [],
+                        cash_refunds: typeof getCashRefundEntries === 'function' ? getCashRefundEntries() : []
+                    }
+                };
+            }
+
             function finalizeCloseShift(cashDeclared) {
                 var reportDate = new Date().toISOString().slice(0, 10);
                 return fetch('api/revenue_verification.php', {
@@ -9085,15 +9325,37 @@
                           over_under: Math.abs(toSignedMoney(d.difference)),
                           locked: true
                       });
-                      markShiftHistoryClearedNow();
-                      if (typeof window.resetShiftSessionState === 'function') {
-                          window.resetShiftSessionState();
-                      } else {
-                          clearStartingMoneyForToday();
-                      }
-                      closeSesCloseVerifyModal();
-                      closeSesOverlay();
-                      loadStaffData();
+
+                      var archivePayload = buildShiftArchivePayload(cashDeclared, d);
+                      return fetch('api/shift_archive.php', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'same-origin',
+                          body: JSON.stringify(archivePayload)
+                      }).then(function (ar) {
+                          return ar.text().then(function (text) {
+                              var adata = null;
+                              try { adata = JSON.parse(text); } catch (err) { adata = null; }
+                              return { ok: ar.ok, status: ar.status, d: adata, raw: text };
+                          });
+                      }).then(function (pack) {
+                          if (!pack.ok || !pack.d || !pack.d.success) {
+                              var msg = (pack.d && pack.d.error)
+                                  ? pack.d.error
+                                  : ('HTTP ' + pack.status + (pack.raw ? (': ' + String(pack.raw).slice(0, 120)) : ''));
+                              console.warn('[shift archive]', msg);
+                              alert('Shift closed, but archive save failed: ' + msg);
+                          }
+                          markShiftHistoryClearedNow();
+                          if (typeof window.resetShiftSessionState === 'function') {
+                              window.resetShiftSessionState();
+                          } else {
+                              clearStartingMoneyForToday();
+                          }
+                          closeSesCloseVerifyModal();
+                          closeSesOverlay();
+                          loadStaffData();
+                      });
                   });
             }
 
@@ -9393,7 +9655,9 @@
                     hideTimer = null;
                 }
                 if (titleEl) {
-                    titleEl.textContent = ok ? 'Transaction successful' : 'Transaction not successful';
+                    titleEl.textContent = opts.title
+                        ? String(opts.title)
+                        : (ok ? 'Transaction successful' : 'Transaction not successful');
                 }
                 toast.classList.toggle('is-failed', !ok);
                 if (iconWrap) iconWrap.classList.toggle('is-failed', !ok);

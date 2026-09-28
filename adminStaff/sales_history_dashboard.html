@@ -95,22 +95,27 @@
                                 <div class="brief-readout__list" id="brief-exp-list"></div>
                             </div>
                         </article>
-                        <div class="staff-brief-more" id="staff-brief-more">
-                            <button type="button" class="staff-brief-more__btn" id="staff-brief-more-btn" aria-expanded="false" aria-haspopup="true" aria-controls="staff-brief-more-panel">
-                                More
+                        <div class="staff-brief-more-actions" id="staff-brief-more-actions">
+                            <button type="button" class="staff-brief-more__btn" id="staff-brief-archive-btn">
+                                Archive
                             </button>
-                            <div class="staff-brief-more__panel is-hidden" id="staff-brief-more-panel" role="dialog" aria-label="More cash drawer details">
-                                <div class="staff-brief-more__row">
-                                    <span>Expected Cash</span>
-                                    <strong id="staff-brief-more-expected">₱0.00</strong>
-                                </div>
-                                <div class="staff-brief-more__row">
-                                    <span>Discount</span>
-                                    <strong id="staff-brief-more-discount">₱0.00</strong>
-                                </div>
-                                <div class="staff-brief-more__row">
-                                    <span>Refund</span>
-                                    <strong id="staff-brief-more-refund">₱0.00</strong>
+                            <div class="staff-brief-more" id="staff-brief-more">
+                                <button type="button" class="staff-brief-more__btn" id="staff-brief-more-btn" aria-expanded="false" aria-haspopup="true" aria-controls="staff-brief-more-panel">
+                                    More
+                                </button>
+                                <div class="staff-brief-more__panel is-hidden" id="staff-brief-more-panel" role="dialog" aria-label="More cash drawer details">
+                                    <div class="staff-brief-more__row">
+                                        <span>Expected Cash</span>
+                                        <strong id="staff-brief-more-expected">₱0.00</strong>
+                                    </div>
+                                    <div class="staff-brief-more__row">
+                                        <span>Discount</span>
+                                        <strong id="staff-brief-more-discount">₱0.00</strong>
+                                    </div>
+                                    <div class="staff-brief-more__row">
+                                        <span>Refund</span>
+                                        <strong id="staff-brief-more-refund">₱0.00</strong>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -332,6 +337,7 @@
         </footer>
     </div>
 
+    <script src="auth_session.js"></script>
     <script src="dashboard_script.js"></script>
     <script>
     (function () {
@@ -713,6 +719,7 @@
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') setStaffBriefMoreOpen(false);
         });
+        window.__ortusSetStaffBriefMoreOpen = setStaffBriefMoreOpen;
 
         function statusMeta(status) {
             if (status === 'voided') return { label: 'REFUNDED', cls: 'warn' };
@@ -1485,6 +1492,212 @@
             </footer>
         </div>
     </div>
+
+    <div class="sh-modal-backdrop" id="shift-archive-modal" aria-hidden="true">
+        <div class="sh-modal sh-modal--archive" role="dialog" aria-modal="true" aria-labelledby="shift-archive-modal-title">
+            <header class="sh-modal__header">
+                <h2 id="shift-archive-modal-title">Shift Archive</h2>
+                <button type="button" class="sh-modal__close" id="shift-archive-modal-close" aria-label="Close">×</button>
+            </header>
+            <div class="sh-modal__body">
+                <p class="sh-modal__hint">Closed shifts saved when staff finalizes &amp; closes a shift.</p>
+                <div class="shift-archive-layout">
+                    <div class="shift-archive-list" id="shift-archive-list" aria-label="Archived shifts">
+                        <p class="shift-archive-empty" id="shift-archive-empty">Loading archives…</p>
+                    </div>
+                    <div class="shift-archive-detail" id="shift-archive-detail">
+                        <p class="shift-archive-empty">Select a closed shift to view details.</p>
+                    </div>
+                </div>
+            </div>
+            <footer class="sh-modal__footer">
+                <button type="button" class="sh-modal__btn sh-modal__btn--muted" id="shift-archive-modal-done">Close</button>
+            </footer>
+        </div>
+    </div>
+    <script>
+    (function setupShiftArchiveModal() {
+        var staffBriefArchiveBtn = document.getElementById('staff-brief-archive-btn');
+        var archiveModal = document.getElementById('shift-archive-modal');
+        var archiveClose = document.getElementById('shift-archive-modal-close');
+        var archiveDone = document.getElementById('shift-archive-modal-done');
+        var archiveList = document.getElementById('shift-archive-list');
+        var archiveEmpty = document.getElementById('shift-archive-empty');
+        var archiveDetail = document.getElementById('shift-archive-detail');
+        if (!staffBriefArchiveBtn || !archiveModal) return;
+
+        function pesoArc(v) {
+            return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        function escArc(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function formatClosedAt(raw) {
+            var d = new Date(raw);
+            if (isNaN(d.getTime())) return String(raw || '—');
+            return d.toLocaleString('en-PH', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+        function openArchiveModal() {
+            if (typeof window.__ortusSetStaffBriefMoreOpen === 'function') {
+                window.__ortusSetStaffBriefMoreOpen(false);
+            }
+            archiveModal.classList.add('is-visible');
+            archiveModal.setAttribute('aria-hidden', 'false');
+            loadArchives();
+        }
+        function closeArchiveModal() {
+            archiveModal.classList.remove('is-visible');
+            archiveModal.setAttribute('aria-hidden', 'true');
+        }
+        function renderDetail(archive) {
+            if (!archiveDetail) return;
+            if (!archive) {
+                archiveDetail.innerHTML = '<p class="shift-archive-empty">Select a closed shift to view details.</p>';
+                return;
+            }
+            var snap = archive.snapshot || {};
+            var summary = snap.summary || {};
+            var drawer = snap.drawer || {};
+            var cashPayments = Number(drawer.cash_payments != null ? drawer.cash_payments : summary.cash_revenue) || 0;
+            var gcashPayments = Number(drawer.gcash_payments != null ? drawer.gcash_payments : summary.gcash_revenue) || 0;
+            var totalPayments = cashPayments + gcashPayments;
+            var discounts = Number(drawer.discounts != null ? drawer.discounts : summary.discount_total) || 0;
+            var rows = [
+                { label: 'Starting Money', value: pesoArc(drawer.starting_money) },
+                { label: 'Cash Payments', value: pesoArc(cashPayments) },
+                { label: 'GCash Payments', value: pesoArc(gcashPayments) },
+                { label: 'Total Payments', value: pesoArc(totalPayments), total: true },
+                { label: 'Discounts', value: pesoArc(discounts) },
+                { label: 'Cash Refunds', value: pesoArc(drawer.cash_refunds) },
+                { label: 'Paid In', value: pesoArc(drawer.paid_in) },
+                { label: 'Paid Out', value: pesoArc(drawer.paid_out) },
+                {
+                    label: 'Expected Cash Amount',
+                    value: pesoArc(drawer.expected_cash),
+                    total: true
+                }
+            ];
+            archiveDetail.innerHTML =
+                '<div class="shift-archive-detail__head">' +
+                    '<h3>' + escArc(archive.staff_name || 'Staff') + '</h3>' +
+                    '<p>' + escArc(archive.shift_date || '') + ' · Closed ' + escArc(formatClosedAt(archive.closed_at)) + '</p>' +
+                '</div>' +
+                '<div class="shift-archive-drawer">' +
+                    '<h4 class="shift-archive-drawer__title">Cash Drawer</h4>' +
+                    rows.map(function (row) {
+                        return (
+                            '<div class="shift-archive-drawer__row' + (row.total ? ' shift-archive-drawer__row--total' : '') + '">' +
+                                '<span>' + escArc(row.label) + '</span>' +
+                                '<strong>' + row.value + '</strong>' +
+                            '</div>'
+                        );
+                    }).join('') +
+                '</div>' +
+                (snap.notes
+                    ? ('<div class="shift-archive-notes">' + escArc(snap.notes) + '</div>')
+                    : '');
+        }
+        function selectArchive(id, btn) {
+            if (archiveList) {
+                Array.prototype.forEach.call(archiveList.querySelectorAll('.shift-archive-item'), function (el) {
+                    el.classList.toggle('is-active', el === btn);
+                });
+            }
+            fetch('api/shift_archive.php?id=' + encodeURIComponent(id), { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success || !d.archive) {
+                        renderDetail(null);
+                        if (archiveDetail) {
+                            archiveDetail.innerHTML = '<p class="shift-archive-empty">' +
+                                escArc((d && d.error) || 'Could not load archive.') + '</p>';
+                        }
+                        return;
+                    }
+                    renderDetail(d.archive);
+                })
+                .catch(function () {
+                    if (archiveDetail) {
+                        archiveDetail.innerHTML = '<p class="shift-archive-empty">Network error loading archive.</p>';
+                    }
+                });
+        }
+        function loadArchives() {
+            if (archiveEmpty) archiveEmpty.textContent = 'Loading archives…';
+            if (archiveList) {
+                archiveList.innerHTML = '';
+                if (archiveEmpty) archiveList.appendChild(archiveEmpty);
+            }
+            renderDetail(null);
+            fetch('api/shift_archive.php?limit=100', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var rows = (d && d.success && Array.isArray(d.archives)) ? d.archives : [];
+                    if (!archiveList) return;
+                    archiveList.innerHTML = '';
+                    if (!rows.length) {
+                        archiveList.innerHTML = '<p class="shift-archive-empty">No closed shifts archived yet.</p>';
+                        return;
+                    }
+                    rows.forEach(function (row, idx) {
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'shift-archive-item';
+                        btn.setAttribute('data-archive-id', String(row.id));
+                        var preview = row.preview || {};
+                        btn.innerHTML =
+                            '<span class="shift-archive-item__title">' +
+                                escArc(row.staff_name || 'Staff') + ' · ' + escArc(row.shift_date || '') +
+                            '</span>' +
+                            '<span class="shift-archive-item__meta">' +
+                                escArc(formatClosedAt(row.closed_at)) +
+                                ' · ' + pesoArc(preview.total_revenue) +
+                                ' · ' + escArc(preview.total_orders || 0) + ' orders' +
+                            '</span>';
+                        btn.addEventListener('click', function () {
+                            selectArchive(row.id, btn);
+                        });
+                        archiveList.appendChild(btn);
+                        if (idx === 0) selectArchive(row.id, btn);
+                    });
+                })
+                .catch(function () {
+                    if (archiveList) {
+                        archiveList.innerHTML = '<p class="shift-archive-empty">Could not load shift archives.</p>';
+                    }
+                });
+        }
+
+        staffBriefArchiveBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openArchiveModal();
+        });
+        if (archiveClose) archiveClose.addEventListener('click', closeArchiveModal);
+        if (archiveDone) archiveDone.addEventListener('click', closeArchiveModal);
+        archiveModal.addEventListener('click', function (e) {
+            if (e.target === archiveModal) closeArchiveModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && archiveModal.classList.contains('is-visible')) {
+                closeArchiveModal();
+            }
+        });
+    })();
+    </script>
     <script>
     (function () {
         var activityBox = document.getElementById('staff-brief-activity');

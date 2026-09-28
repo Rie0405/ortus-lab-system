@@ -8,6 +8,12 @@
     var btn = document.getElementById('btn-logout');
     if (!btn) return;
     btn.addEventListener('click', function () {
+        if (typeof window.ortusClearAuthSession === 'function') {
+            window.ortusClearAuthSession();
+        }
+        if (typeof window.ortusMarkInternalNav === 'function') {
+            window.ortusMarkInternalNav();
+        }
         fetch('api/auth.php', { method: 'DELETE' })
             .finally(function () { window.location.href = 'admin.html'; });
     });
@@ -15,6 +21,12 @@
 
 function switchOrtusAccount(nextPage) {
     var next = nextPage || window.location.pathname.split('/').pop() || 'admin_dashboard.html';
+    if (typeof window.ortusClearAuthSession === 'function') {
+        window.ortusClearAuthSession();
+    }
+    if (typeof window.ortusMarkInternalNav === 'function') {
+        window.ortusMarkInternalNav();
+    }
     fetch('api/auth.php', { method: 'DELETE' })
         .finally(function () {
             window.location.href = 'admin.html?next=' + encodeURIComponent(next);

@@ -1908,7 +1908,7 @@ body.modal-open {
 
 .variant-input-row {
     display: grid;
-    grid-template-columns: 1.4fr 0.9fr auto;
+    grid-template-columns: 1.3fr 0.8fr 0.8fr auto;
     gap: 10px;
     align-items: end;
 }
@@ -1921,7 +1921,8 @@ body.modal-open {
 
 .variant-input--size,
 .variant-input--label,
-.variant-input--price {
+.variant-input--price,
+.variant-input--cost {
     width: 100%;
 }
 

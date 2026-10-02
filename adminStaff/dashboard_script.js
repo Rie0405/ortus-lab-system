@@ -675,6 +675,7 @@ function apiCall(method, url, body) {
     var variantTemplateEl = null;
     var variantAddBtn = null;
     var DEFAULT_COLD_VARIANT_NAME = 'Iced (16oz)';
+    var DEFAULT_HOT_VARIANT_NAME = 'Hot (12oz)';
 
     function resetVariantRows() {
         if (!variantsListEl) return;
@@ -697,19 +698,22 @@ function apiCall(method, url, body) {
 
         var sizeInp = row.querySelector('.variant-input--size');
         var priceInp = row.querySelector('.variant-input--price');
+        var costInp = row.querySelector('.variant-input--cost');
 
         if (data) {
             if (sizeInp) sizeInp.value = formatVariantDisplayName(data) || String(data.size || '').trim();
             if (priceInp) priceInp.value = data.price || '';
+            if (costInp) costInp.value = data.cost != null && data.cost !== '' ? data.cost : (data.cost_price || '');
         }
 
         variantsListEl.appendChild(frag);
     }
 
-    function ensureDefaultColdVariantRow() {
+    function ensureDefaultVariantRows() {
         if (!variantsListEl) return;
         if (variantsListEl.querySelector('.variant-input-row')) return;
         addVariantRow({ size: DEFAULT_COLD_VARIANT_NAME });
+        addVariantRow({ size: DEFAULT_HOT_VARIANT_NAME });
     }
 
     function initVariantInputs() {
@@ -804,10 +808,12 @@ function apiCall(method, url, body) {
 
         var sizeInp = row.querySelector('.variant-input--size');
         var priceInp = row.querySelector('.variant-input--price');
+        var costInp = row.querySelector('.variant-input--cost');
 
         if (data) {
             if (sizeInp) sizeInp.value = formatVariantDisplayName(data);
             if (priceInp) priceInp.value = data.price || '';
+            if (costInp) costInp.value = data.cost != null && data.cost !== '' ? data.cost : (data.cost_price || '');
         }
 
         editVariantsListEl.appendChild(frag);
@@ -843,6 +849,39 @@ function apiCall(method, url, body) {
         newCategoryAddBtn = createBackdrop.querySelector('#prod-add-category-btn');
     }
 
+    function notifyCatalogAlreadyRegistered(res, label) {
+        var msg = String((res && res.message) || '').toLowerCase();
+        if (msg.indexOf('already exists') === -1 && msg.indexOf('already registered') === -1) {
+            return false;
+        }
+        alert(label + ' already registered.');
+        return true;
+    }
+
+    function catalogNamesMatch(a, b) {
+        return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+    }
+
+    function findRegisteredCategoryByName(name) {
+        var n = String(name || '').trim();
+        if (!n) return null;
+        for (var i = 0; i < (categories || []).length; i++) {
+            if (catalogNamesMatch(categories[i].name, n)) return categories[i];
+        }
+        return null;
+    }
+
+    function findRegisteredSubcategoryByName(name, categoryId) {
+        var n = String(name || '').trim();
+        var cid = parseInt(categoryId, 10) || 0;
+        if (!n || !cid) return null;
+        for (var i = 0; i < (subcategories || []).length; i++) {
+            var s = subcategories[i];
+            if (parseInt(s.category_id, 10) === cid && catalogNamesMatch(s.name, n)) return s;
+        }
+        return null;
+    }
+
     function createCategoryFromModal() {
         if (!newCategoryNameInput || !newCategoryAddBtn) return;
         var catName = newCategoryNameInput.value.trim();
@@ -858,6 +897,20 @@ function apiCall(method, url, body) {
             return;
         }
 
+        var existingCategory = findRegisteredCategoryByName(catName);
+        if (existingCategory) {
+            alert('Category already registered.');
+            if (prodMainCategorySelect && existingCategory.main_category_id) {
+                prodMainCategorySelect.value = String(existingCategory.main_category_id);
+            }
+            syncProductCategoryOptions(existingCategory.id);
+            newCategoryNameInput.value = '';
+            if (newCategoryPanel && toggleNewCategoryBtn) {
+                toggleCatalogPanel(newCategoryPanel, toggleNewCategoryBtn, false);
+            }
+            return;
+        }
+
         newCategoryAddBtn.disabled = true;
         var oldText = newCategoryAddBtn.textContent;
         newCategoryAddBtn.textContent = 'ADDING…';
@@ -865,6 +918,7 @@ function apiCall(method, url, body) {
         apiCall('POST', 'api/categories.php', { name: catName, is_active: 1, main_category_id: mainCatId })
             .then(function (res) {
                 if (!res.success) throw new Error(res.error || 'Failed to add category');
+                notifyCatalogAlreadyRegistered(res, 'Category');
                 newCategoryNameInput.value = '';
                 var newId = res.id || null;
                 return loadItems().then(function () {
@@ -994,7 +1048,7 @@ function apiCall(method, url, body) {
             return;
         }
         if (!window.confirm(
-            'Deleting main category "' + cat.name + '" would result in all categories and subcategories registered under it being deleted. Continue?'
+            'Warning: Deleting main category "' + cat.name + '" will also delete all categories, subcategories, and products under it. Continue?'
         )) {
             return;
         }
@@ -1022,6 +1076,7 @@ function apiCall(method, url, body) {
         apiCall('POST', 'api/main_categories.php', { name: name })
             .then(function (res) {
                 if (!res.success) throw new Error(res.error || 'Failed to add main category');
+                notifyCatalogAlreadyRegistered(res, 'Main category');
                 newMainCategoryNameInput.value = '';
                 toggleCatalogPanel(newMainCategoryPanel, toggleNewMainCategoryBtn, false);
                 return loadItems();
@@ -1251,6 +1306,17 @@ function apiCall(method, url, body) {
             return;
         }
 
+        var existingSubcategory = findRegisteredSubcategoryByName(subName, parentId);
+        if (existingSubcategory) {
+            alert('Subcategory already registered.');
+            newSubcategoryNameInput.value = '';
+            syncProductSubcategoryOptions(existingSubcategory.id);
+            if (prodSubcategorySelect) {
+                prodSubcategorySelect.value = String(existingSubcategory.id);
+            }
+            return;
+        }
+
         newSubcategoryAddBtn.disabled = true;
         var oldText = newSubcategoryAddBtn.textContent;
         newSubcategoryAddBtn.textContent = 'ADDING…';
@@ -1262,6 +1328,7 @@ function apiCall(method, url, body) {
         apiCall('POST', 'api/subcategories.php', { name: subName, category_id: parentId, is_active: 1 })
             .then(function (res) {
                 if (!res.success) throw new Error(res.error || 'Failed to add subcategory');
+                notifyCatalogAlreadyRegistered(res, 'Subcategory');
                 newSubcategoryNameInput.value = '';
                 var newId = res.id || null;
                 return loadItems().then(function () {
@@ -1385,7 +1452,7 @@ function apiCall(method, url, body) {
             return;
         }
         if (!window.confirm(
-            'Deleting category "' + cat.name + '" would result in all subcategories registered under it being deleted. Continue?'
+            'Warning: Deleting category "' + cat.name + '" will also delete all subcategories and products under it. Continue?'
         )) {
             return;
         }
@@ -1437,7 +1504,9 @@ function apiCall(method, url, body) {
             alert('Subcategory not found.');
             return;
         }
-        if (!window.confirm('Delete subcategory "' + sub.name + '"? Only allowed when it is not used by any menu items.')) {
+        if (!window.confirm(
+            'Warning: Deleting subcategory "' + sub.name + '" will also delete all products under it. Continue?'
+        )) {
             return;
         }
         apiCall('DELETE', 'api/subcategories.php', { id: parseInt(sub.id, 10) })
@@ -1816,14 +1885,26 @@ function apiCall(method, url, body) {
         return flags;
     }
 
+    function splitVariantPriceCost(right) {
+        var raw = String(right == null ? '' : right).trim();
+        if (!raw) return { price: '', cost: '' };
+        var m = raw.match(/^([\d.,]+)\s*(?:\/\s*cost\s*([\d.,]+))?$/i);
+        if (m) {
+            return { price: m[1], cost: m[2] || '' };
+        }
+        var n = parseFloat(raw.replace(/,/g, ''));
+        return { price: Number.isFinite(n) ? String(n) : raw, cost: '' };
+    }
+
     function collectVariantRowsFromContainer(rowsContainer) {
         var variants = [];
         if (!rowsContainer) return variants;
         rowsContainer.querySelectorAll('.variant-input-row').forEach(function (row) {
             var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
             var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
+            var costRaw = (row.querySelector('.variant-input--cost') && row.querySelector('.variant-input--cost').value || '').trim();
             if (!size) return;
-            variants.push({ size: size, label: '', price: priceRaw });
+            variants.push({ size: size, label: '', price: priceRaw, cost: costRaw });
         });
         return variants;
     }
@@ -1831,7 +1912,12 @@ function apiCall(method, url, body) {
     function formatVariantsDescriptionLine(variants) {
         return variants.map(function (v) {
             var s = v.size || '—';
-            var p = v.price !== '' ? Number(v.price).toFixed(2) : '0.00';
+            var priceNum = Number(v.price);
+            var p = Number.isFinite(priceNum) ? priceNum.toFixed(2) : '0.00';
+            var costNum = Number(v.cost != null && v.cost !== '' ? v.cost : v.cost_price);
+            if (Number.isFinite(costNum) && costNum >= 0) {
+                return s + ' = ' + p + ' / cost ' + costNum.toFixed(2);
+            }
             return s + ' = ' + p;
         }).join('; ');
     }
@@ -1889,7 +1975,7 @@ function apiCall(method, url, body) {
             if (prodBasePriceWrap) prodBasePriceWrap.hidden = false;
             if (prodVariantsSection) {
                 prodVariantsSection.hidden = !prodIsBev;
-                if (prodIsBev) ensureDefaultColdVariantRow();
+                if (prodIsBev) ensureDefaultVariantRows();
             }
         }
         if (editSel) {
@@ -2407,11 +2493,13 @@ function apiCall(method, url, body) {
             if (lastEq === -1) return;
 
             var left = s.substring(0, lastEq).trim();
-            var priceStr = s.substring(lastEq + 1).trim();
+            var right = splitVariantPriceCost(s.substring(lastEq + 1).trim());
+            var priceStr = right.price;
+            var costStr = right.cost;
 
             var firstParen = left.indexOf('(');
             if (firstParen === -1) {
-                out.push({ size: left, label: left, price: priceStr });
+                out.push({ size: left, label: left, price: priceStr, cost: costStr });
                 return;
             }
 
@@ -2419,7 +2507,7 @@ function apiCall(method, url, body) {
             var label = left.substring(firstParen + 1).trim();
             if (label.endsWith(')')) label = label.substring(0, label.length - 1).trim();
 
-            out.push({ size: size, label: label, price: priceStr });
+            out.push({ size: size, label: label, price: priceStr, cost: costStr });
         });
         return out;
     }

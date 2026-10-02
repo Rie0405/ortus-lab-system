@@ -414,7 +414,7 @@
                             </div>
                             <div class="product-section__body">
                                 <p class="product-field-label__note" id="prod-variants-caption" style="margin: 0 0 10px;">
-                                    Default temperature is set to Cold. Start with an iced variant — change or clear it if you need a different format.
+                                    Defaults include Iced and Hot. Edit the names, prices, or remove a row if you only need one temperature.
                                 </p>
                                 <div id="prod-variants-list" class="prod-variants-list"></div>
 
@@ -427,6 +427,10 @@
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>
                                             <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" />
+                                        </div>
+                                        <div class="variant-input-block">
+                                            <label class="product-field-label">COST PRICE (₱)</label>
+                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" />
                                         </div>
                                         <button type="button" class="variant-remove" aria-label="Remove variant">Delete</button>
                                     </div>
@@ -588,7 +592,7 @@
                             </div>
                             <div class="product-section__body">
                                 <p class="product-field-label__note" style="margin: 0 0 10px;">
-                                    Default temperature is set to Cold. Start with an iced variant — change or clear it if you need a different format.
+                                    Defaults include Iced and Hot. Edit the names, prices, or remove a row if you only need one temperature.
                                 </p>
                                 <div id="edit-variants-list" class="prod-variants-list"></div>
 
@@ -601,6 +605,10 @@
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>
                                             <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" />
+                                        </div>
+                                        <div class="variant-input-block">
+                                            <label class="product-field-label">COST PRICE (₱)</label>
+                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" />
                                         </div>
                                         <button type="button" class="variant-remove" aria-label="Remove variant">Delete</button>
                                     </div>
@@ -711,23 +719,23 @@
                 <div class="gcash-config-modal__body">
                     <p id="gcash-config-error" class="gcash-config-error" hidden></p>
                     <div class="gcash-config-field">
-                        <label for="gcash-config-number" class="gcash-config-label">GCASH NUMBER</label>
-                        <input id="gcash-config-number" class="gcash-config-input" type="text" inputmode="numeric" maxlength="11" placeholder="e.g. 09XXXXXXXXX" autocomplete="off">
+                        <label for="gcash-config-number" class="gcash-config-label">GCASH NUMBER <span class="product-field-required" aria-hidden="true">*</span></label>
+                        <input id="gcash-config-number" class="gcash-config-input" type="text" inputmode="numeric" maxlength="11" placeholder="e.g. 09XXXXXXXXX" autocomplete="off" required aria-required="true">
                     </div>
 
                     <div class="gcash-config-field">
-                        <label for="gcash-config-name" class="gcash-config-label">GCASH NAME</label>
-                        <input id="gcash-config-name" class="gcash-config-input" type="text" placeholder="e.g. Juan Dela Cruz" maxlength="160" autocomplete="off">
+                        <label for="gcash-config-name" class="gcash-config-label">GCASH NAME <span class="product-field-required" aria-hidden="true">*</span></label>
+                        <input id="gcash-config-name" class="gcash-config-input" type="text" placeholder="e.g. Juan Dela Cruz" maxlength="160" autocomplete="off" required aria-required="true">
                     </div>
 
                     <div class="gcash-config-field">
-                        <p class="gcash-config-label">QR CODE IMAGE</p>
-                        <div class="product-upload-dropzone product-upload-dropzone--gcash-qr" id="gcash-config-qr-dropzone" role="button" tabindex="0" aria-label="Upload GCash QR image">
+                        <p class="gcash-config-label">QR CODE IMAGE <span class="product-field-required" aria-hidden="true">*</span></p>
+                        <div class="product-upload-dropzone product-upload-dropzone--gcash-qr" id="gcash-config-qr-dropzone" role="button" tabindex="0" aria-label="Upload GCash QR image" aria-required="true">
                             <input type="file" id="gcash-config-qr-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
                             <div class="product-upload-empty" id="gcash-config-qr-empty">
                                 <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
                                 <p class="product-upload-title" id="gcash-config-qr-title">DRAG QR OR CLICK TO UPLOAD</p>
-                                <p class="product-upload-sub">PNG, JPG · Max 800KB</p>
+                                <p class="product-upload-sub">PNG, JPG · Max 800KB · Required</p>
                             </div>
                             <img alt="GCash QR preview" class="product-upload-preview" id="gcash-config-preview-img" hidden>
                             <div class="product-upload-actions">
@@ -1153,9 +1161,22 @@
                 if (gcashNumber.length > 11) return setErr('GCash number must be at most 11 characters.');
                 gcashNumber = gcashNumber.slice(0, 11);
 
+                var gcashName = nameInput ? String(nameInput.value || '').trim() : '';
+                if (!gcashName) {
+                    setErr('GCash name is required.');
+                    if (nameInput) nameInput.focus();
+                    return;
+                }
+
+                var hasQr = !!(pendingQrFile || (savedQrDataUrl && !clearSavedQr));
+                if (!hasQr) {
+                    setErr('GCash QR image is required.');
+                    return;
+                }
+
                 var fd = new FormData();
                 fd.append('gcash_number', gcashNumber);
-                if (nameInput) fd.append('gcash_name', String(nameInput.value || '').trim());
+                fd.append('gcash_name', gcashName);
                 if (pendingQrFile) {
                     fd.append('qr_image', pendingQrFile);
                 } else if (clearSavedQr) {

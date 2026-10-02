@@ -461,9 +461,9 @@ function cast_menu_item_row(array &$item): void
 
 /**
  * Parse "Variants:" line from menu item description.
- * Format: Variants: Hot (8oz) = 100.00; Iced (16oz) = 110.00
+ * Format: Variants: Hot (8oz) = 100.00; Iced (16oz) = 110.00 / cost 45.00
  *
- * @return array<int, array{size:string,label:string,price:float}>
+ * @return array<int, array{size:string,label:string,price:float,cost?:float}>
  */
 function parse_variants_from_description(?string $description): array
 {
@@ -501,14 +501,27 @@ function parse_variants_from_description(?string $description): array
         }
 
         $left = trim(substr($s, 0, $lastEq));
-        $price = (float)str_replace(',', '', trim(substr($s, $lastEq + 1)));
+        $right = trim(substr($s, $lastEq + 1));
+        $cost = null;
+        if (preg_match('/^([\d.,]+)\s*(?:\/\s*cost\s*([\d.,]+))?$/i', $right, $rm)) {
+            $price = (float)str_replace(',', '', $rm[1]);
+            if (isset($rm[2]) && $rm[2] !== '') {
+                $cost = round((float)str_replace(',', '', $rm[2]), 2);
+            }
+        } else {
+            $price = (float)str_replace(',', '', $right);
+        }
         if ($price < 0) {
             continue;
         }
 
         $firstParen = strpos($left, '(');
         if ($firstParen === false) {
-            $out[] = ['size' => $left, 'label' => $left, 'price' => round($price, 2)];
+            $row = ['size' => $left, 'label' => $left, 'price' => round($price, 2)];
+            if ($cost !== null) {
+                $row['cost'] = $cost;
+            }
+            $out[] = $row;
             continue;
         }
 
@@ -518,7 +531,11 @@ function parse_variants_from_description(?string $description): array
             $label = trim(substr($label, 0, -1));
         }
 
-        $out[] = ['size' => $size, 'label' => $label, 'price' => round($price, 2)];
+        $row = ['size' => $size, 'label' => $label, 'price' => round($price, 2)];
+        if ($cost !== null) {
+            $row['cost'] = $cost;
+        }
+        $out[] = $row;
     }
 
     return $out;

@@ -333,23 +333,28 @@ body.modal-open {
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 96px 18px 18px;
+    padding: 72px 16px 24px;
     z-index: 28;
     opacity: 0;
     pointer-events: none;
     transition: opacity 140ms ease-out;
+    overflow-y: auto;
 }
 .menu-filter-backdrop.is-visible {
     opacity: 1;
     pointer-events: auto;
 }
 .menu-filter-popover {
-    width: min(420px, 100%);
+    width: min(460px, 100%);
+    max-height: min(82vh, 720px);
+    margin: 0 auto;
     background: linear-gradient(180deg, #221a14 0%, #1a1410 100%);
     border: 1px solid #4a3828;
     border-radius: 16px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(244, 140, 37, 0.08);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     animation: menu-filter-pop 0.22s ease;
 }
 @keyframes menu-filter-pop {
@@ -363,6 +368,7 @@ body.modal-open {
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
+    flex-shrink: 0;
 }
 .menu-filter-popover__head {
     border-bottom: 1px solid rgba(61, 48, 37, 0.85);
@@ -389,24 +395,96 @@ body.modal-open {
 }
 .menu-filter-popover__close:hover { color: #f8fafc; }
 .menu-filter-popover__body {
-    padding: 18px 16px 20px;
-    max-height: min(52vh, 420px);
+    padding: 14px 16px 16px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(244, 140, 37, 0.45) transparent;
+}
+.menu-filter-popover__body::-webkit-scrollbar {
+    width: 8px;
+}
+.menu-filter-popover__body::-webkit-scrollbar-thumb {
+    background: rgba(244, 140, 37, 0.4);
+    border-radius: 999px;
 }
 .menu-filter-check-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.menu-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 12px 0;
+}
+.menu-filter-group + .menu-filter-group {
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+.menu-filter-check--main {
+    background: rgba(244, 140, 37, 0.08);
+    border-color: rgba(244, 140, 37, 0.35);
+}
+.menu-filter-check--main .menu-filter-check__text {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.menu-filter-group__panel {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    pointer-events: none;
+    transition:
+        max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.24s ease,
+        margin-top 0.28s ease;
+}
+.menu-filter-group:not(.is-collapsed) .menu-filter-group__panel {
+    /* JS sets an exact px max-height; this is the fallback for many categories */
+    max-height: 2400px;
+    opacity: 1;
+    margin-top: 10px;
+    pointer-events: auto;
+}
+.menu-filter-group__panel-inner {
+    min-height: 0;
+}
+.menu-filter-group__cats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 6px;
+}
+.menu-filter-group__empty {
+    margin: 0;
+    padding: 0 8px 4px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+.menu-filter-group.is-collapsed .menu-filter-check--main {
+    opacity: 0.72;
+}
+@media (prefers-reduced-motion: reduce) {
+    .menu-filter-group__panel {
+        transition: none;
+    }
 }
 .menu-filter-check {
     position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 52px;
-    padding: 12px 14px;
+    min-height: 44px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
     border: 1px solid #3d3025;
-    border-radius: 12px;
+    border-radius: 10px;
     background: rgba(11, 15, 20, 0.55);
     cursor: pointer;
     transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
@@ -420,11 +498,14 @@ body.modal-open {
     position: absolute;
     opacity: 0;
     pointer-events: none;
+    width: 0;
+    height: 0;
+    margin: 0;
 }
 .menu-filter-check__box {
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
     border: 2px solid #64748b;
     background: #0f1419;
     flex-shrink: 0;
@@ -434,10 +515,10 @@ body.modal-open {
 .menu-filter-check__box::after {
     content: "";
     position: absolute;
-    left: 5px;
-    top: 1px;
-    width: 6px;
-    height: 11px;
+    left: 4px;
+    top: 0;
+    width: 5px;
+    height: 10px;
     border-right: 2px solid #120e0a;
     border-bottom: 2px solid #120e0a;
     transform: rotate(45deg) scale(0);
@@ -460,12 +541,16 @@ body.modal-open {
 }
 .menu-filter-check__text {
     color: #cbd5e1;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.3;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .menu-filter-empty {
-    grid-column: 1 / -1;
     margin: 0;
     color: #94a3b8;
     font-size: 13px;
@@ -692,6 +777,29 @@ body.modal-open {
     border: 1px solid rgba(61, 48, 37, 0.9);
     box-shadow: 0 40px 80px rgba(0, 0, 0, 0.85);
     overflow: hidden;
+}
+
+.gcash-config-modal--kiosk {
+    width: min(420px, 100%);
+}
+
+.gcash-config-modal--kiosk .product-upload-dropzone--gcash-qr {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    min-height: 0;
+    height: auto;
+}
+
+.gcash-config-modal--kiosk .product-upload-dropzone--gcash-qr.has-preview {
+    padding: 10px;
+}
+
+.gcash-config-modal--kiosk .product-upload-dropzone--gcash-qr .product-upload-preview {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: contain;
+    object-position: center;
 }
 
 .gcash-config-modal__header {
@@ -1033,7 +1141,7 @@ body.modal-open {
     opacity: 0;
     pointer-events: none;
     transition: opacity 160ms ease-out;
-    z-index: 20;
+    z-index: 40;
 }
 
 .product-modal-backdrop.is-visible {
@@ -1202,6 +1310,17 @@ body.modal-open {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 14px;
+    align-items: start;
+}
+
+.product-catalog-row > .product-field-group {
+    min-width: 0;
+    position: relative;
+}
+
+/* Keep subcategory controls above any overflowing category-column content */
+.product-catalog-row > .product-field-group:last-child {
+    z-index: 2;
 }
 
 .product-inline-link {
@@ -1322,6 +1441,16 @@ body.modal-open {
     display: none !important;
 }
 
+/* Author display rules must not override the hidden attribute */
+.product-catalog-row[hidden],
+.product-field-group[hidden],
+.product-manage-mode-help[hidden],
+.product-modal__right[hidden],
+.product-modal__lower[hidden],
+.product-section[hidden] {
+    display: none !important;
+}
+
 .product-catalog-panel {
     margin-top: 8px;
     padding: 10px;
@@ -1374,14 +1503,20 @@ body.modal-open {
     color: #9ca3af;
 }
 
+.product-field-required {
+    color: #f48c25;
+    letter-spacing: 0;
+}
+
 .product-field-label__note {
-    display: inline;
-    margin-left: 6px;
+    display: block;
+    margin: 4px 0 0;
     font-size: 10px;
     font-weight: 500;
     letter-spacing: 0.02em;
     text-transform: none;
     color: #64748b;
+    line-height: 1.35;
 }
 
 .product-input,
@@ -1406,6 +1541,8 @@ body.modal-open {
 
 .product-select-wrap {
     position: relative;
+    z-index: 1;
+    width: 100%;
 }
 
 .product-select {
@@ -1413,6 +1550,15 @@ body.modal-open {
     -moz-appearance: none;
     appearance: none;
     padding-right: 30px;
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+    width: 100%;
+}
+
+.product-select:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }
 
 .product-select-caret {

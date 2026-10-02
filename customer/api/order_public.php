@@ -104,13 +104,14 @@ try {
     if ($discountRequested && $discountRequestType === '') {
         $discountRequestType = 'senior';
     }
-    // Customer PWD/SC request is applied immediately (no staff confirm step).
-    if ($discountRequested && in_array($discountRequestType, ['senior', 'pwd'], true) && ($discount['type'] ?? 'none') === 'none') {
+    // Customer only requests discount type. Staff enters/confirms ID on the counter.
+    // Do not apply Senior/PWD pricing until staff saves the discount with a real ID.
+    if ($discountRequested && in_array($discountRequestType, ['senior', 'pwd'], true)) {
         $discount = [
-            'type' => $discountRequestType,
+            'type' => 'none',
             'rate' => 0.0,
-            'customer_name' => $customerName !== '' ? $customerName : 'Customer',
-            'id_number' => 'KIOSK-REQUEST',
+            'customer_name' => '',
+            'id_number' => '',
         ];
     }
 
@@ -234,9 +235,11 @@ try {
         ':discount_amount' => $pricing['discount_amount'],
         ':total' => $total,
         ':ref' => ($gcashRef !== '' ? $gcashRef : null),
-        // Already applied at create — no staff confirmation queue.
-        ':dreq' => 0,
-        ':dreqtype' => ($discountRequested && $discountAlreadyApplied) ? $discountRequestType : null,
+        // Pending staff ID verification on counter.
+        ':dreq' => ($discountRequested && !$discountAlreadyApplied) ? 1 : 0,
+        ':dreqtype' => ($discountRequested && !$discountAlreadyApplied && $discountRequestType !== '')
+            ? $discountRequestType
+            : (($discountRequested && $discountAlreadyApplied) ? $discountRequestType : null),
     ]);
     $orderId = (int)$pdo->lastInsertId();
     $kitchenTicket = assign_kitchen_ticket_to_order($pdo, $orderId);

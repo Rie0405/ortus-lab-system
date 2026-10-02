@@ -1289,6 +1289,15 @@ body {
     background: rgba(244, 140, 37, 0.08);
 }
 
+/* Pickup (and other single-cart modes): same sheet look as onsite active panel, not a toggle */
+.sidebar-cart-box--static {
+    cursor: default;
+}
+
+.sidebar-cart-box--static.sidebar-cart-box--active {
+    box-shadow: 0 0 0 1px rgba(244, 140, 37, 0.4);
+}
+
 .sidebar-cart-box .sidebar-items {
     margin: 0;
     border: 0;
@@ -1665,16 +1674,20 @@ body {
     flex-shrink: 0;
 }
 
-/* Roboto 500, 14px, #2C2C2C, letter-spacing 0.1px */
+/* Roboto 500, 14px — same product description as POS menu cards */
 .prod-card-desc {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-    color: #f48c25;
-    line-height: 20px;
+    color: #94a3b8;
+    line-height: 1.4;
     letter-spacing: 0.1px;
-    margin-bottom: 16px;
-    display: none; /* Hide item variant/description text (e.g. "Ice Variants", removable ingredients) */
+    margin: 0 0 4px;
+    white-space: pre-line;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* ADD ORDER â€” left: 31px, width: 250px, height: 29px, border-radius: 6px */

@@ -2368,6 +2368,19 @@ button {
     font-weight: 600;
 }
 
+.opq-discount-applied--pending {
+    color: #fbbf24 !important;
+}
+
+.opq-action-btn--verify-discount {
+    border-color: rgba(251, 191, 36, 0.55);
+    color: #fbbf24;
+}
+
+.opq-action-btn--verify-discount:hover {
+    background: rgba(251, 191, 36, 0.14);
+}
+
 .opq-payment-method {
     margin: 6px 0 0;
     font-size: 14px;

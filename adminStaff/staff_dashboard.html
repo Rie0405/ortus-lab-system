@@ -1060,11 +1060,14 @@
                         <input type="text" class="cash-mgmt-modal__text" id="queue-discount-name" maxlength="160" placeholder="Customer name">
                     </label>
                     <label class="cash-mgmt-modal__field" id="queue-discount-id-wrap">
-                        <span class="cash-mgmt-modal__label">ID Number</span>
-                        <input type="text" class="cash-mgmt-modal__text" id="queue-discount-id" maxlength="80" placeholder="Senior/PWD ID">
+                        <span class="cash-mgmt-modal__label">PWD / Senior ID Number</span>
+                        <input type="text" class="cash-mgmt-modal__text" id="queue-discount-id" maxlength="80" placeholder="ID from kiosk or ID card">
                     </label>
                     <p class="cash-mgmt-modal__error" id="queue-discount-error" hidden role="alert"></p>
-                    <button type="button" class="cash-mgmt-modal__submit order-refund-submit" id="queue-discount-submit">SAVE DISCOUNT</button>
+                    <div class="order-refund-confirm-actions">
+                        <button type="button" class="cash-mgmt-modal__submit order-refund-confirm-btn order-refund-confirm-btn--cancel" id="queue-discount-void">VOID DISCOUNT</button>
+                        <button type="button" class="cash-mgmt-modal__submit order-refund-submit order-refund-confirm-btn" id="queue-discount-submit">CONFIRM ID &amp; APPLY</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3555,6 +3558,8 @@
             var currentMethod = "cash";
             var currentFulfillment = "dine_in";
             var posCartData = null;
+            /** When set, Complete Transaction confirms this pending kiosk cash order (no new POS cart). */
+            var queueCashConfirmOrderId = null;
 
             function formatPHP(val) {
                 return "₱" + (Number(val) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -3748,6 +3753,7 @@
             function openPayModal(card) {
                 pendingCard = card;
                 posCartData = null;
+                queueCashConfirmOrderId = null;
                 var totalEl = card ? card.querySelector(".opq-total-val") : null;
                 orderTotal = totalEl ? parseFloat(totalEl.textContent.replace(/[₱,]/g, "")) : 0;
 
@@ -3777,12 +3783,45 @@
                 updateCompleteButtonState();
             }
 
+            /** Kiosk queue: cash Confirm → payment confirmation modal, then confirm order. */
+            function openQueueCashPaymentConfirm(order, card) {
+                if (!order || !order.id || !payBackdrop) return;
+                pendingCard = null;
+                posCartData = null;
+                queueCashConfirmOrderId = parseInt(order.id, 10) || 0;
+                if (!queueCashConfirmOrderId) return;
+
+                orderTotal = Math.max(0, parseFloat(order.total_amount) || 0);
+                if (payTotal) payTotal.textContent = formatPHP(orderTotal);
+                if (gcashTotal) gcashTotal.textContent = formatPHP(orderTotal);
+                setPayModalOrderLabel(order.order_number || order.id);
+                renderOrderCustomerName({ customer_name: order.customer_name || "" });
+
+                if (payReceived) payReceived.value = "";
+                if (payChange) { payChange.textContent = "₱0.00"; payChange.classList.remove("pay-change--negative"); }
+                if (gcashRef) gcashRef.value = "";
+
+                setFulfillment(String(order.order_type || "").toLowerCase() === "take_out" ? "take_out" : "dine_in");
+                switchMethod("cash");
+                loadGcashQrConfig(false);
+
+                payBackdrop.classList.add("is-visible");
+                payBackdrop.setAttribute("aria-hidden", "false");
+                document.body.classList.add("modal-open");
+                if (payReceived) payReceived.focus();
+                renderSuggestedAmounts();
+                updateCompleteButtonState();
+            }
+
+            window.openQueueCashPaymentConfirm = openQueueCashPaymentConfirm;
+
             function closePayModal() {
                 payBackdrop.classList.remove("is-visible");
                 payBackdrop.setAttribute("aria-hidden", "true");
                 document.body.classList.remove("modal-open");
                 pendingCard = null;
                 posCartData = null;
+                queueCashConfirmOrderId = null;
                 if (payOrderItemsSummary) {
                     payOrderItemsSummary.hidden = true;
                     payOrderItemsSummary.innerHTML = "";
@@ -3845,6 +3884,7 @@
             function openPayModalForPOS(detail) {
                 posCartData = detail;
                 pendingCard = null;
+                queueCashConfirmOrderId = null;
                 orderTotal = detail.total || 0;
                 if (payTotal) payTotal.textContent = formatPHP(orderTotal);
                 if (gcashTotal) gcashTotal.textContent = formatPHP(orderTotal);
@@ -4282,6 +4322,39 @@
                         return;
                     }
                 }
+
+                // Kiosk queue cash Confirm → record tender then confirm order.
+                if (queueCashConfirmOrderId) {
+                    var confirmId = queueCashConfirmOrderId;
+                    var receivedAmt = payReceived ? parseFloat(payReceived.value) : NaN;
+                    var payload = { id: confirmId, status: "confirmed" };
+                    if (Number.isFinite(receivedAmt)) {
+                        payload.amount_received = receivedAmt;
+                        payload.change_due = Math.max(0, Math.round((receivedAmt - orderTotal) * 100) / 100);
+                    }
+                    if (payComplete) payComplete.disabled = true;
+                    fetch("api/orders.php", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    }).then(function (r) { return r.json(); })
+                      .then(function (d) {
+                          if (!d || !d.success) {
+                              alert((d && d.error) || "Failed to confirm order.");
+                              return;
+                          }
+                          closePayModal();
+                          if (typeof loadStaffData === "function") loadStaffData();
+                      })
+                      .catch(function () {
+                          alert("Network error while confirming order.");
+                      })
+                      .finally(function () {
+                          updateCompleteButtonState();
+                      });
+                    return;
+                }
+
                 if (posCartData) {
                     var jobs = [];
                     if (posCartData.cartBuckets) {
@@ -5308,6 +5381,7 @@
 
         var queueDiscountModal = document.getElementById('queue-discount-modal');
         var queueDiscountClose = document.getElementById('queue-discount-close');
+        var queueDiscountVoid = document.getElementById('queue-discount-void');
         var queueDiscountSubmit = document.getElementById('queue-discount-submit');
         var queueDiscountType = document.getElementById('queue-discount-type');
         var queueDiscountTypeCustom = document.getElementById('queue-discount-type-custom');
@@ -5331,14 +5405,33 @@
 
         function formatAppliedDiscountIndicator(order) {
             var dtype = String(order && order.discount_type || "none").toLowerCase();
-            if (dtype === "pwd") return "PWD " + SENIOR_PWD_RATE_PERCENT + "%";
-            if (dtype === "senior") return "Senior " + SENIOR_PWD_RATE_PERCENT + "%";
-            if (dtype === "custom") {
+            var idNumber = String(order && order.discount_id_number || "").trim();
+            var label = "";
+            if (dtype === "pwd") label = "PWD " + SENIOR_PWD_RATE_PERCENT + "%";
+            else if (dtype === "senior") label = "Senior " + SENIOR_PWD_RATE_PERCENT + "%";
+            else if (dtype === "custom") {
                 var rate = Math.round(Number(order && order.discount_rate) || 0);
                 if (!rate) rate = readStaffShiftDiscountRate() || 0;
-                return rate > 0 ? rate + "% discount" : "Custom discount";
+                label = rate > 0 ? rate + "% discount" : "Custom discount";
             }
-            return "";
+            if (!label) return "";
+            if (idNumber && idNumber.toUpperCase() !== "KIOSK-REQUEST") {
+                label += " · ID " + idNumber;
+            }
+            return label;
+        }
+
+        function orderHasPendingDiscountRequest(order) {
+            if (!order) return false;
+            if (orderHasActiveDiscount(order)) return false;
+            return !!(parseInt(order.discount_requested, 10) || order.discount_requested === true || order.discount_requested === '1');
+        }
+
+        function formatPendingDiscountRequestIndicator(order) {
+            if (!orderHasPendingDiscountRequest(order)) return "";
+            var req = String(order.discount_request_type || "senior").toLowerCase();
+            if (req === "pwd") return "PWD discount requested — enter ID";
+            return "Senior discount requested — enter ID";
         }
 
         function discountActionButtonLabel() {
@@ -6592,28 +6685,57 @@
             if (!queueDiscountModal || !order) return;
             selectedQueueDiscountOrder = order;
             if (queueDiscountOrderMeta) {
-                queueDiscountOrderMeta.textContent = 'Order ' + (order.order_number || order.id) + ' · ' + peso(order.total_amount);
+                var meta = 'Order ' + (order.order_number || order.id) + ' · ' + peso(order.total_amount);
+                if (orderHasPendingDiscountRequest(order)) {
+                    meta += ' · ' + formatPendingDiscountRequestIndicator(order);
+                }
+                queueDiscountOrderMeta.textContent = meta;
             }
             var dtype = String(order.discount_type || 'none').toLowerCase();
+            var reqType = String(order.discount_request_type || '').toLowerCase();
             var shiftRate = refreshQueueDiscountCustomOption();
             if (queueDiscountType) {
                 if (dtype === 'senior' || dtype === 'pwd') {
                     queueDiscountType.value = dtype;
+                } else if (reqType === 'senior' || reqType === 'pwd') {
+                    queueDiscountType.value = reqType;
                 } else if (dtype === 'custom' && shiftRate) {
                     queueDiscountType.value = 'custom';
-                } else if (shiftRate && orderHasNoQueueDiscount(order)) {
+                } else if (shiftRate && orderHasNoQueueDiscount(order) && !orderHasPendingDiscountRequest(order)) {
                     queueDiscountType.value = 'custom';
                 } else {
                     queueDiscountType.value = 'senior';
                 }
             }
-            if (queueDiscountName) queueDiscountName.value = order.discount_customer_name || '';
-            if (queueDiscountId) queueDiscountId.value = order.discount_id_number || '';
+            if (queueDiscountName) {
+                queueDiscountName.value = order.discount_customer_name || order.customer_name || '';
+            }
+            if (queueDiscountId) {
+                var existingId = String(order.discount_id_number || '').trim();
+                queueDiscountId.value = existingId.toUpperCase() === 'KIOSK-REQUEST' ? '' : existingId;
+            }
             syncQueueDiscountFields();
             showQueueModalError(queueDiscountError, '');
+            if (queueDiscountSubmit) {
+                queueDiscountSubmit.textContent = orderHasPendingDiscountRequest(order)
+                    ? 'CONFIRM ID & APPLY'
+                    : 'SAVE DISCOUNT';
+            }
+            if (queueDiscountVoid) {
+                var canVoid = orderHasActiveDiscount(order) || orderHasPendingDiscountRequest(order);
+                queueDiscountVoid.hidden = !canVoid;
+                queueDiscountVoid.textContent = orderHasPendingDiscountRequest(order)
+                    ? 'VOID REQUEST'
+                    : 'VOID DISCOUNT';
+            }
             queueDiscountModal.classList.add('is-visible');
             queueDiscountModal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('pos-modal-open');
+            setTimeout(function () {
+                if (queueDiscountId && queueDiscountIdWrap && !queueDiscountIdWrap.hidden) {
+                    queueDiscountId.focus();
+                }
+            }, 0);
         }
 
         function closeQueueDiscountModal() {
@@ -6632,11 +6754,20 @@
             return Number(order.discount_amount || 0) > 0;
         }
 
-        function voidQueueOrderDiscount(order) {
+        function voidQueueOrderDiscount(order, opts) {
+            opts = opts || {};
             if (!order) return;
             var orderId = parseInt(order.id, 10) || 0;
             if (!orderId) return;
-            if (!window.confirm('Remove discount from Order ' + (order.order_number || orderId) + '?')) return;
+            var pending = orderHasPendingDiscountRequest(order);
+            var msg = pending
+                ? ('Void discount request for Order ' + (order.order_number || orderId) + '?')
+                : ('Remove discount from Order ' + (order.order_number || orderId) + '?');
+            if (!opts.skipConfirm && !window.confirm(msg)) return;
+            if (queueDiscountVoid) {
+                queueDiscountVoid.disabled = true;
+                queueDiscountVoid.textContent = 'VOIDING…';
+            }
             fetch('api/orders.php', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -6648,14 +6779,34 @@
             }).then(function (r) { return r.json(); })
               .then(function (d) {
                   if (!d.success) {
-                      alert(d.error || 'Failed to void discount.');
+                      if (opts.fromModal) {
+                          showQueueModalError(queueDiscountError, d.error || 'Failed to void discount.');
+                      } else {
+                          alert(d.error || 'Failed to void discount.');
+                      }
                       return;
                   }
+                  if (opts.fromModal) closeQueueDiscountModal();
                   loadStaffData();
               })
               .catch(function () {
-                  alert('Cannot reach server.');
+                  if (opts.fromModal) {
+                      showQueueModalError(queueDiscountError, 'Cannot reach server.');
+                  } else {
+                      alert('Cannot reach server.');
+                  }
+              })
+              .finally(function () {
+                  if (queueDiscountVoid) {
+                      queueDiscountVoid.disabled = false;
+                      queueDiscountVoid.textContent = pending ? 'VOID REQUEST' : 'VOID DISCOUNT';
+                  }
               });
+        }
+
+        function voidQueueDiscountFromModal() {
+            if (!selectedQueueDiscountOrder) return;
+            voidQueueOrderDiscount(selectedQueueDiscountOrder, { fromModal: true });
         }
 
         function openQueueEditModal(order) {
@@ -6737,14 +6888,21 @@
                     return;
                 }
             }
+            var idNumber = queueDiscountId ? String(queueDiscountId.value || '').trim() : '';
+            var customerName = queueDiscountName ? String(queueDiscountName.value || '').trim() : '';
+            if ((type === 'senior' || type === 'pwd') && !idNumber) {
+                showQueueModalError(queueDiscountError, 'PWD / Senior ID number is required.');
+                if (queueDiscountId) queueDiscountId.focus();
+                return;
+            }
             var payload = {
                 id: orderId,
                 action: 'discount',
                 discount: {
                     type: type,
                     rate: type === 'custom' ? shiftRate : 0,
-                    customer_name: queueDiscountName ? queueDiscountName.value.trim() : '',
-                    id_number: queueDiscountId ? queueDiscountId.value.trim() : ''
+                    customer_name: customerName,
+                    id_number: idNumber
                 }
             };
             if (queueDiscountSubmit) {
@@ -7311,9 +7469,15 @@
         function buildOpqActionsFooter(order) {
             var orderId = order && order.id != null ? order.id : order;
             var hasDiscount = orderHasActiveDiscount(order);
-            var discountBtn = hasDiscount
-                ? '<button type="button" class="opq-action-btn opq-action-btn--void-discount" data-void-discount="' + orderId + '">Void Discount</button>'
-                : '<button type="button" class="opq-action-btn opq-action-btn--discount" data-discount-order="' + orderId + '">' + esc(discountActionButtonLabel()) + '</button>';
+            var pendingRequest = orderHasPendingDiscountRequest(order);
+            var discountBtn;
+            if (hasDiscount) {
+                discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--void-discount" data-void-discount="' + orderId + '">Void Discount</button>';
+            } else if (pendingRequest) {
+                discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--discount opq-action-btn--verify-discount" data-discount-order="' + orderId + '">Verify ID</button>';
+            } else {
+                discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--discount" data-discount-order="' + orderId + '">' + esc(discountActionButtonLabel()) + '</button>';
+            }
             return (
                 '<footer class="opq-card-foot staff-opq-actions">' +
                     '<button type="button" class="opq-action-btn opq-action-btn--confirm" data-confirm-order="' + orderId + '">Confirm</button>' +
@@ -7434,6 +7598,8 @@
             var discountLine = '';
             if (dtype === 'senior' || dtype === 'pwd' || dtype === 'custom') {
                 discountLine = '<p class="kitchen-order-type-line opq-discount-applied">' + esc(formatAppliedDiscountIndicator(order)) + '</p>';
+            } else if (orderHasPendingDiscountRequest(order)) {
+                discountLine = '<p class="kitchen-order-type-line opq-discount-applied opq-discount-applied--pending">' + esc(formatPendingDiscountRequestIndicator(order)) + '</p>';
             }
             var customerPaymentRow =
                 '<div class="opq-customer-payment-row">' +
@@ -8752,6 +8918,18 @@
                 var editBtn = e.target.closest('[data-edit-order]');
                 if (confirmBtn) {
                     var id = parseInt(confirmBtn.getAttribute('data-confirm-order'), 10);
+                    var order = findQueueOrder(id);
+                    var isKioskOrder = currentQueueSource === 'kiosk'
+                        || String(order && order.order_source || '').toLowerCase() === 'kiosk';
+                    // Kiosk + Cash → payment confirmation modal. GCash skips modal.
+                    if (isKioskOrder && order && !isGcashOrder(order)) {
+                        if (typeof window.openQueueCashPaymentConfirm === 'function') {
+                            window.openQueueCashPaymentConfirm(order, confirmBtn.closest('.opq-card'));
+                        } else {
+                            alert('Payment confirmation is unavailable. Please refresh and try again.');
+                        }
+                        return;
+                    }
                     fetch('api/orders.php', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -9549,6 +9727,7 @@
             });
         }
         if (queueDiscountClose) queueDiscountClose.addEventListener('click', closeQueueDiscountModal);
+        if (queueDiscountVoid) queueDiscountVoid.addEventListener('click', voidQueueDiscountFromModal);
         if (queueDiscountSubmit) queueDiscountSubmit.addEventListener('click', processQueueDiscount);
         if (queueDiscountType) queueDiscountType.addEventListener('change', syncQueueDiscountFields);
         if (queueDiscountModal) {

@@ -89,13 +89,35 @@ if ($m === 'PUT') {
     $id = (int)($b['id'] ?? 0);
     if (!$id) fail('User ID is required.');
 
+    $exists = db()->prepare('SELECT id, role FROM users WHERE id = :id LIMIT 1');
+    $exists->execute([':id' => $id]);
+    $existing = $exists->fetch();
+    if (!$existing) fail('Account not found.', 404);
+
     $fields = [];
     $params = [':id' => $id];
 
-    if (!empty($b['full_name'])) { $fields[] = 'full_name = :fn';  $params[':fn']   = trim($b['full_name']); }
-    if (!empty($b['username']))  { $fields[] = 'username = :un';   $params[':un']   = trim($b['username']); }
+    if (isset($b['full_name'])) {
+        $fullName = trim((string)$b['full_name']);
+        if ($fullName === '') fail('Full name is required.');
+        $fields[] = 'full_name = :fn';
+        $params[':fn'] = $fullName;
+    }
+    if (isset($b['username'])) {
+        $username = trim((string)$b['username']);
+        if ($username === '') fail('Username is required.');
+        $dup = db()->prepare('SELECT id FROM users WHERE username = :u AND id <> :id LIMIT 1');
+        $dup->execute([':u' => $username, ':id' => $id]);
+        if ($dup->fetch()) fail('Username already exists.');
+        $fields[] = 'username = :un';
+        $params[':un'] = $username;
+    }
     if (!empty($b['email']))     { $fields[] = 'email = :em';      $params[':em']   = trim($b['email']); }
-    if (!empty($b['password']))  { $fields[] = 'password = :pw';   $params[':pw']   = password_hash($b['password'], PASSWORD_BCRYPT); }
+    if (array_key_exists('password', $b) && $b['password'] !== null && $b['password'] !== '') {
+        if (strlen((string)$b['password']) < 6) fail('Password must be at least 6 characters.');
+        $fields[] = 'password = :pw';
+        $params[':pw'] = password_hash((string)$b['password'], PASSWORD_BCRYPT);
+    }
     if (isset($b['is_active']))  { $fields[] = 'is_active = :act'; $params[':act']  = (int)(bool)$b['is_active']; }
     if (isset($b['role']) && in_array($b['role'], ['admin','staff'])) {
                                    $fields[] = 'role = :role';     $params[':role'] = $b['role']; }

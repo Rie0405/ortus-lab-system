@@ -836,8 +836,33 @@ if ($m === 'PUT') {
                 ->execute([':st' => $status, ':reason' => $refundReason, ':id' => $id]);
         } else {
             if ($status === 'confirmed') {
-                $pdo->prepare('UPDATE orders SET status = :st, kitchen_returned = 0, kitchen_return_reason = NULL WHERE id = :id')
-                    ->execute([':st' => $status, ':id' => $id]);
+                $amountReceived = array_key_exists('amount_received', $b) ? (float)$b['amount_received'] : null;
+                $changeDue = array_key_exists('change_due', $b) ? (float)$b['change_due'] : null;
+                if ($amountReceived !== null) {
+                    if ($changeDue === null) {
+                        $totalStmt = $pdo->prepare('SELECT total_amount FROM orders WHERE id = :id');
+                        $totalStmt->execute([':id' => $id]);
+                        $orderTotalAmt = (float)$totalStmt->fetchColumn();
+                        $changeDue = max(0, round($amountReceived - $orderTotalAmt, 2));
+                    }
+                    $pdo->prepare(
+                        'UPDATE orders
+                         SET status = :st,
+                             kitchen_returned = 0,
+                             kitchen_return_reason = NULL,
+                             amount_received = :recv,
+                             change_due = :chg
+                         WHERE id = :id'
+                    )->execute([
+                        ':st' => $status,
+                        ':recv' => $amountReceived,
+                        ':chg' => $changeDue,
+                        ':id' => $id,
+                    ]);
+                } else {
+                    $pdo->prepare('UPDATE orders SET status = :st, kitchen_returned = 0, kitchen_return_reason = NULL WHERE id = :id')
+                        ->execute([':st' => $status, ':id' => $id]);
+                }
             } else {
                 $pdo->prepare('UPDATE orders SET status = :st WHERE id = :id')
                     ->execute([':st' => $status, ':id' => $id]);

@@ -61,10 +61,19 @@ if ($m !== 'POST') {
     fail('Method not allowed.', 405);
 }
 
-$gcashNumber = trim((string)($_POST['gcash_number'] ?? ($b = body())['gcash_number'] ?? ''));
+$gcashNumber = trim((string)($_POST['gcash_number'] ?? ''));
+if ($gcashNumber === '' && empty($_FILES) && empty($_POST)) {
+    $b = body();
+    $gcashNumber = trim((string)($b['gcash_number'] ?? ''));
+} else {
+    $b = [];
+}
 if ($gcashNumber === '') fail('GCash number is required.');
-$gcashNameRaw = trim((string)($_POST['gcash_name'] ?? ($b = body())['gcash_name'] ?? ''));
+if (strlen($gcashNumber) > 11) fail('GCash number must be at most 11 characters.');
+$gcashNumber = substr($gcashNumber, 0, 11);
+$gcashNameRaw = trim((string)($_POST['gcash_name'] ?? $b['gcash_name'] ?? ''));
 $gcashName = $gcashNameRaw !== '' ? substr($gcashNameRaw, 0, 160) : null;
+$clearQr = !empty($_POST['clear_qr']) || !empty($b['clear_qr']);
 
 $qrMime = null;
 $qrB64 = null;
@@ -98,6 +107,7 @@ if (isset($_FILES['qr_image']) && is_array($_FILES['qr_image'])) {
 
         $qrMime = $mime;
         $qrB64 = base64_encode($raw);
+        $clearQr = false;
     }
 }
 
@@ -117,6 +127,19 @@ try {
             ':name' => $gcashName,
             ':mime' => $qrMime,
             ':b64' => $qrB64,
+        ]);
+    } elseif ($clearQr) {
+        $stmt = $pdo->prepare(
+            'UPDATE gcash_config
+             SET gcash_number = :num,
+                 gcash_name = :name,
+                 qr_mime = NULL,
+                 qr_image_b64 = NULL
+             WHERE id = 1'
+        );
+        $stmt->execute([
+            ':num' => $gcashNumber,
+            ':name' => $gcashName,
         ]);
     } else {
         $stmt = $pdo->prepare(

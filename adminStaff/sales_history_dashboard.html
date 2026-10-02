@@ -1388,20 +1388,22 @@
                     '</div>';
             });
 
+            var paidInTotal = paidInEntries.reduce(function (sum, entry) {
+                return sum + toMoney(entry && entry.amount);
+            }, 0);
+
             if (p.hasData) {
                 p.additionalInputs.forEach(function (amt, i) {
                     if (!amt) return;
                     var label = p.additionalInputs.length > 1 ? ('Additional ' + (i + 1)) : 'Additional';
                     html += '<div class="brief-readout__row"><span class="brief-readout__k">' + label + '</span><span class="brief-readout__v">' + peso(amt) + '</span></div>';
                 });
-                html += '<div class="brief-readout__row brief-readout__row--total"><span class="brief-readout__k">Total</span><span class="brief-readout__v">' + peso(p.total) + '</span></div>';
+                var startingTotal = toMoney(p.total) + paidInTotal;
+                html += '<div class="brief-readout__row brief-readout__row--total"><span class="brief-readout__k">Total</span><span class="brief-readout__v">' + peso(startingTotal) + '</span></div>';
                 if (locked) {
                     html += '<p class="brief-readout__meta">Saved / locked for today.</p>';
                 }
             } else if (paidInEntries.length) {
-                var paidInTotal = paidInEntries.reduce(function (sum, entry) {
-                    return sum + toMoney(entry && entry.amount);
-                }, 0);
                 html +=
                     '<div class="brief-readout__row brief-readout__row--total">' +
                         '<span class="brief-readout__k">Paid In Total</span>' +
@@ -1465,29 +1467,42 @@
     })();
     </script>
     <div class="sh-modal-backdrop" id="sh-manage-modal" aria-hidden="true">
-        <div class="sh-modal" role="dialog" aria-modal="true" aria-labelledby="sh-manage-modal-title">
+        <div class="sh-modal sh-modal--manage" role="dialog" aria-modal="true" aria-labelledby="sh-manage-modal-title">
             <header class="sh-modal__header">
-                <h2 id="sh-manage-modal-title">Add Cashier</h2>
+                <h2 id="sh-manage-modal-title">Manage Cashiers</h2>
                 <button type="button" class="sh-modal__close" id="sh-manage-modal-close" aria-label="Close">×</button>
             </header>
             <div class="sh-modal__body">
-                <p class="sh-modal__hint">Creates a staff account for the POS cashier. They can log in using the username and password below.</p>
                 <p class="sh-modal__error" id="sh-manage-modal-error" hidden role="alert"></p>
-                <label class="sh-modal__field">
-                    <span>Full name</span>
-                    <input type="text" id="sh-manage-name" placeholder="e.g. Carla Mendoza" autocomplete="name">
-                </label>
-                <label class="sh-modal__field">
-                    <span>Username</span>
-                    <input type="text" id="sh-manage-username" placeholder="e.g. carla.mendoza" autocomplete="username">
-                </label>
-                <label class="sh-modal__field">
-                    <span>Password</span>
-                    <input type="password" id="sh-manage-password" placeholder="Min. 6 characters" autocomplete="new-password">
-                </label>
+
+                <div id="sh-manage-list-view">
+                    <p class="sh-modal__hint">Add, edit, or remove POS cashier accounts.</p>
+                    <div class="sh-manage-list" id="sh-manage-list" aria-label="Cashier accounts"></div>
+                    <button type="button" class="sh-modal__btn sh-modal__btn--primary sh-manage-add-btn" id="sh-manage-add-btn">+ Add Cashier</button>
+                </div>
+
+                <div id="sh-manage-form-view" hidden>
+                    <p class="sh-modal__hint" id="sh-manage-form-hint">Creates a staff account for the POS cashier.</p>
+                    <input type="hidden" id="sh-manage-edit-id" value="">
+                    <label class="sh-modal__field">
+                        <span>Full name</span>
+                        <input type="text" id="sh-manage-name" placeholder="e.g. Carla Mendoza" autocomplete="name">
+                    </label>
+                    <label class="sh-modal__field">
+                        <span>Username</span>
+                        <input type="text" id="sh-manage-username" placeholder="e.g. carla.mendoza" autocomplete="username">
+                    </label>
+                    <label class="sh-modal__field">
+                        <span id="sh-manage-password-label">Password</span>
+                        <input type="password" id="sh-manage-password" placeholder="Min. 6 characters" autocomplete="new-password">
+                    </label>
+                </div>
             </div>
-            <footer class="sh-modal__footer">
-                <button type="button" class="sh-modal__btn sh-modal__btn--muted" id="sh-manage-modal-cancel">Cancel</button>
+            <footer class="sh-modal__footer" id="sh-manage-footer-list">
+                <button type="button" class="sh-modal__btn sh-modal__btn--muted" id="sh-manage-modal-cancel">Close</button>
+            </footer>
+            <footer class="sh-modal__footer" id="sh-manage-footer-form" hidden>
+                <button type="button" class="sh-modal__btn sh-modal__btn--muted" id="sh-manage-form-back">Back</button>
                 <button type="button" class="sh-modal__btn sh-modal__btn--primary" id="sh-manage-modal-save">Save Cashier</button>
             </footer>
         </div>
@@ -1721,6 +1736,19 @@
         var manageName = document.getElementById('sh-manage-name');
         var manageUsername = document.getElementById('sh-manage-username');
         var managePassword = document.getElementById('sh-manage-password');
+        var manageEditId = document.getElementById('sh-manage-edit-id');
+        var manageTitle = document.getElementById('sh-manage-modal-title');
+        var manageListView = document.getElementById('sh-manage-list-view');
+        var manageFormView = document.getElementById('sh-manage-form-view');
+        var manageList = document.getElementById('sh-manage-list');
+        var manageAddBtn = document.getElementById('sh-manage-add-btn');
+        var manageFormBack = document.getElementById('sh-manage-form-back');
+        var manageFooterList = document.getElementById('sh-manage-footer-list');
+        var manageFooterForm = document.getElementById('sh-manage-footer-form');
+        var manageFormHint = document.getElementById('sh-manage-form-hint');
+        var managePasswordLabel = document.getElementById('sh-manage-password-label');
+        var manageMode = 'list'; // list | add | edit
+        var manageCashiersCache = [];
 
         var drawerEls = {
             starting: document.getElementById('sh-drawer-starting'),
@@ -2045,21 +2073,147 @@
             manageError.textContent = msg || '';
             manageError.hidden = !msg;
         }
+        function escManage(s) {
+            return String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function setManageView(mode) {
+            manageMode = mode === 'add' || mode === 'edit' ? mode : 'list';
+            var isForm = manageMode !== 'list';
+            if (manageListView) manageListView.hidden = isForm;
+            if (manageFormView) manageFormView.hidden = !isForm;
+            if (manageFooterList) manageFooterList.hidden = isForm;
+            if (manageFooterForm) manageFooterForm.hidden = !isForm;
+            if (manageTitle) {
+                manageTitle.textContent = manageMode === 'edit'
+                    ? 'Edit Cashier'
+                    : (manageMode === 'add' ? 'Add Cashier' : 'Manage Cashiers');
+            }
+            if (manageFormHint) {
+                manageFormHint.textContent = manageMode === 'edit'
+                    ? 'Update cashier details. Leave password blank to keep the current one.'
+                    : 'Creates a staff account for the POS cashier. They can log in using the username and password below.';
+            }
+            if (managePasswordLabel) {
+                managePasswordLabel.textContent = manageMode === 'edit' ? 'Password (optional)' : 'Password';
+            }
+            if (managePassword) {
+                managePassword.placeholder = manageMode === 'edit'
+                    ? 'Leave blank to keep current password'
+                    : 'Min. 6 characters';
+            }
+            if (manageSave) {
+                manageSave.textContent = manageMode === 'edit' ? 'Save Changes' : 'Save Cashier';
+            }
+        }
+        function renderManageList(rows) {
+            if (!manageList) return;
+            manageCashiersCache = Array.isArray(rows) ? rows : [];
+            if (!manageCashiersCache.length) {
+                manageList.innerHTML = '<p class="sh-manage-empty">No active cashiers yet. Add one to get started.</p>';
+                return;
+            }
+            manageList.innerHTML = manageCashiersCache.map(function (user) {
+                return (
+                    '<div class="sh-manage-row" data-staff-id="' + escManage(user.id) + '">' +
+                        '<div class="sh-manage-row__meta">' +
+                            '<span class="sh-manage-row__name">' + escManage(user.full_name || 'Staff') + '</span>' +
+                            '<span class="sh-manage-row__user">@' + escManage(user.username || '—') + '</span>' +
+                        '</div>' +
+                        '<div class="sh-manage-row__actions">' +
+                            '<button type="button" class="sh-manage-row__btn" data-manage-edit="' + escManage(user.id) + '">Edit</button>' +
+                            '<button type="button" class="sh-manage-row__btn sh-manage-row__btn--danger" data-manage-delete="' + escManage(user.id) + '">Delete</button>' +
+                        '</div>' +
+                    '</div>'
+                );
+            }).join('');
+        }
+        function loadManageCashiers() {
+            if (manageList) manageList.innerHTML = '<p class="sh-manage-empty">Loading cashiers…</p>';
+            return fetch('api/staff.php', { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        renderManageList([]);
+                        showManageError(d.error || 'Could not load cashiers.');
+                        return;
+                    }
+                    var rows = (d.users || []).filter(function (u) {
+                        return u.role === 'staff' && u.is_active;
+                    });
+                    renderManageList(rows);
+                })
+                .catch(function () {
+                    renderManageList([]);
+                    showManageError('Network error loading cashiers.');
+                });
+        }
+        function openManageForm(mode, user) {
+            showManageError('');
+            if (manageEditId) manageEditId.value = user && user.id ? String(user.id) : '';
+            if (manageName) manageName.value = user && user.full_name ? user.full_name : '';
+            if (manageUsername) manageUsername.value = user && user.username ? user.username : '';
+            if (managePassword) managePassword.value = '';
+            setManageView(mode);
+            if (manageName) manageName.focus();
+        }
         function openManageModal() {
             if (!manageModal) return;
             showManageError('');
-            if (manageName) manageName.value = '';
-            if (manageUsername) manageUsername.value = '';
-            if (managePassword) managePassword.value = '';
+            setManageView('list');
             manageModal.classList.add('is-visible');
             manageModal.setAttribute('aria-hidden', 'false');
-            if (manageName) manageName.focus();
+            loadManageCashiers();
         }
         function closeManageModal() {
             if (!manageModal) return;
             manageModal.classList.remove('is-visible');
             manageModal.setAttribute('aria-hidden', 'true');
             showManageError('');
+            setManageView('list');
+        }
+        function findManageCashier(id) {
+            var sid = String(id || '');
+            for (var i = 0; i < manageCashiersCache.length; i++) {
+                if (String(manageCashiersCache[i].id) === sid) return manageCashiersCache[i];
+            }
+            return null;
+        }
+        function deleteManageCashier(id) {
+            var user = findManageCashier(id);
+            var label = user && user.full_name ? user.full_name : 'this cashier';
+            if (!confirm('Delete / deactivate "' + label + '"? They will no longer appear in the cashier list.')) {
+                return;
+            }
+            showManageError('');
+            fetch('api/staff.php', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: parseInt(id, 10) || 0 })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) {
+                        showManageError(d.error || 'Could not delete cashier.');
+                        return;
+                    }
+                    if (String(selectedStaffId) === String(id)) {
+                        selectedStaffId = '';
+                        selectedShiftDate = '';
+                        if (staffBtn) staffBtn.textContent = 'Select Staff';
+                        if (shiftBtn) shiftBtn.textContent = 'Shift Date';
+                        setDrawerPlaceholders();
+                        updateMeta();
+                    }
+                    loadCashiers();
+                    loadManageCashiers();
+                })
+                .catch(function () {
+                    showManageError('Network error. Try again.');
+                });
         }
 
         if (staffBtn) {
@@ -2081,6 +2235,32 @@
         if (manageBtn) manageBtn.addEventListener('click', openManageModal);
         if (manageClose) manageClose.addEventListener('click', closeManageModal);
         if (manageCancel) manageCancel.addEventListener('click', closeManageModal);
+        if (manageFormBack) {
+            manageFormBack.addEventListener('click', function () {
+                showManageError('');
+                setManageView('list');
+                loadManageCashiers();
+            });
+        }
+        if (manageAddBtn) {
+            manageAddBtn.addEventListener('click', function () {
+                openManageForm('add', null);
+            });
+        }
+        if (manageList) {
+            manageList.addEventListener('click', function (e) {
+                var editBtn = e.target.closest('[data-manage-edit]');
+                var deleteBtn = e.target.closest('[data-manage-delete]');
+                if (editBtn) {
+                    var editId = editBtn.getAttribute('data-manage-edit');
+                    openManageForm('edit', findManageCashier(editId));
+                    return;
+                }
+                if (deleteBtn) {
+                    deleteManageCashier(deleteBtn.getAttribute('data-manage-delete'));
+                }
+            });
+        }
         if (manageModal) {
             manageModal.addEventListener('click', function (e) {
                 if (e.target === manageModal) closeManageModal();
@@ -2089,47 +2269,72 @@
         if (manageSave) {
             manageSave.addEventListener('click', function () {
                 if (!sessionReady) {
-                    showManageError('Please log in to register cashiers.');
+                    showManageError('Please log in to manage cashiers.');
                     return;
                 }
                 var fullName = String((manageName && manageName.value) || '').trim();
                 var username = String((manageUsername && manageUsername.value) || '').trim();
                 var password = String((managePassword && managePassword.value) || '');
+                var editId = parseInt((manageEditId && manageEditId.value) || '0', 10) || 0;
+                var isEdit = manageMode === 'edit' && editId > 0;
                 showManageError('');
                 if (!fullName) { showManageError('Cashier name is required.'); return; }
                 if (!username) { showManageError('Username is required.'); return; }
-                if (!password || password.length < 6) {
+                if (!isEdit && (!password || password.length < 6)) {
                     showManageError('Password must be at least 6 characters.');
+                    return;
+                }
+                if (isEdit && password && password.length < 6) {
+                    showManageError('New password must be at least 6 characters.');
                     return;
                 }
                 manageSave.disabled = true;
                 var oldLabel = manageSave.textContent;
                 manageSave.textContent = 'Saving…';
-                fetch('api/staff.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+
+                var req;
+                if (isEdit) {
+                    var payload = {
+                        id: editId,
                         full_name: fullName,
-                        username: username,
-                        password: password,
-                        role: 'staff'
-                    })
-                })
-                .then(function (r) { return r.json(); })
+                        username: username
+                    };
+                    if (password) payload.password = password;
+                    req = fetch('api/staff.php', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    req = fetch('api/staff.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            full_name: fullName,
+                            username: username,
+                            password: password,
+                            role: 'staff'
+                        })
+                    });
+                }
+
+                req.then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (!d.success) {
-                        showManageError(d.error || 'Could not create cashier account.');
+                        showManageError(d.error || (isEdit ? 'Could not update cashier.' : 'Could not create cashier account.'));
                         return;
                     }
-                    closeManageModal();
-                    loadCashiers(d.id || null);
+                    var preferId = isEdit ? editId : (d.id || null);
+                    loadCashiers(preferId);
+                    setManageView('list');
+                    loadManageCashiers();
                 })
                 .catch(function () {
                     showManageError('Network error. Try again.');
                 })
                 .finally(function () {
                     manageSave.disabled = false;
-                    manageSave.textContent = oldLabel || 'Save Cashier';
+                    manageSave.textContent = oldLabel || (isEdit ? 'Save Changes' : 'Save Cashier');
                 });
             });
         }

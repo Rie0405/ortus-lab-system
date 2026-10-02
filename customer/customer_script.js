@@ -122,8 +122,19 @@ function syncFulfillmentCartBoxHighlights() {
     document.querySelectorAll('[data-fulfillment-box]').forEach(function (box) {
         var key = box.getAttribute('data-fulfillment-box');
         var isActive = show && key === active;
-        box.classList.toggle('sidebar-cart-box--active', isActive);
-        box.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        // Pickup/delivery: same order-sheet chrome as the active onsite cart panel (non-interactive).
+        var isStaticSheet = !show && key === 'dine_in';
+        box.classList.toggle('sidebar-cart-box--active', isActive || isStaticSheet);
+        box.classList.toggle('sidebar-cart-box--static', isStaticSheet);
+        if (show) {
+            box.setAttribute('role', 'button');
+            box.setAttribute('tabindex', '0');
+            box.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        } else {
+            box.removeAttribute('role');
+            box.removeAttribute('tabindex');
+            box.removeAttribute('aria-pressed');
+        }
     });
 }
 
@@ -763,8 +774,9 @@ function applyPaymentRules() {
 
         var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
         var isPickupOrder = orderTypeNorm === 'pickup' || orderTypeNorm === 'pick_up';
+        // Keep the same payment-card layout as onsite (segmented CASH/GCASH); lock to GCASH for pickup.
+        if (paymentSection) paymentSection.style.display = '';
         if (selectedServiceType === 'remote' || isPickupOrder) {
-            if (paymentSection) paymentSection.style.display = 'none';
             cashBtn.setAttribute('disabled', 'disabled');
             cashBtn.classList.add('is-disabled');
             gcashBtn.removeAttribute('disabled');
@@ -772,7 +784,6 @@ function applyPaymentRules() {
             cashBtn.classList.remove('payment-btn--active');
             gcashBtn.classList.add('payment-btn--active');
         } else {
-            if (paymentSection) paymentSection.style.display = '';
             cashBtn.removeAttribute('disabled');
             cashBtn.classList.remove('is-disabled');
             gcashBtn.removeAttribute('disabled');
@@ -2002,9 +2013,8 @@ document.querySelectorAll('.order-type-toggle-section').forEach(function (sectio
 });
 
 document.querySelectorAll('[data-fulfillment-box]').forEach(function (box) {
-    box.setAttribute('role', 'button');
-    box.setAttribute('tabindex', '0');
     box.addEventListener('click', function (e) {
+        if (!isDineTakeOrderSelected()) return;
         if (e.target.closest('button, a, input, select, textarea')) return;
         var key = box.getAttribute('data-fulfillment-box');
         if (key === 'dine_in' || key === 'take_out') {
@@ -2012,6 +2022,7 @@ document.querySelectorAll('[data-fulfillment-box]').forEach(function (box) {
         }
     });
     box.addEventListener('keydown', function (e) {
+        if (!isDineTakeOrderSelected()) return;
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         var key = box.getAttribute('data-fulfillment-box');
@@ -2801,12 +2812,15 @@ function closeGcashModal() {
 function syncDiscountRequestButtons() {
     var pct = Math.round(SENIOR_PWD_RATE * 100);
     var label = discountRequest.active
-        ? ('Requested: ' + (discountRequest.type === 'pwd' ? 'PWD' : 'Senior') + ' (' + pct + '%)')
+        ? ('Requested: ' + (discountRequest.type === 'pwd' ? 'PWD' : 'Senior') + ' (' + pct + '%) — staff will verify ID')
         : 'Request PWD/SC Discount (' + pct + '%)';
     [document.getElementById('cash-request-pwd-sc-btn'), document.getElementById('gcash-request-pwd-sc-btn')].forEach(function (btn) {
         if (!btn) return;
         btn.textContent = label;
         btn.classList.toggle('is-active', !!discountRequest.active);
+        btn.title = discountRequest.active
+            ? 'Discount requested. Staff will enter/verify your ID at the counter. Click to cancel request.'
+            : 'Request PWD/SC discount — staff will verify your ID at the counter';
     });
     renderDiscountRequestPreviews();
 }
@@ -2872,10 +2886,10 @@ function buildDiscountRequestPreviewHtml() {
     }).join('');
 
     return (
-        '<p class="cash-modal-discount-preview__title">' + escapeHtml(typeLabel) + ' — highest item only</p>' +
+        '<p class="cash-modal-discount-preview__title">' + escapeHtml(typeLabel) + ' — highest item only (pending staff ID verify)</p>' +
         rowsHtml +
         '<div class="cash-modal-discount-preview__total">' +
-            '<span class="cash-modal-discount-preview__total-label">Discounted total</span>' +
+            '<span class="cash-modal-discount-preview__total-label">Estimated total after staff confirms</span>' +
             '<strong class="cash-modal-discount-preview__total-amt">' + formatPeso(discountedTotal) + '</strong>' +
         '</div>'
     );
@@ -3149,6 +3163,7 @@ if (cashModalCancelBtn) {
     btn.addEventListener('click', function () {
         if (discountRequest.active) {
             discountRequest = { active: false, type: 'senior' };
+            orderDiscount = { type: 'none', customer_name: '', id_number: '' };
             syncDiscountRequestButtons();
             return;
         }
@@ -3167,6 +3182,8 @@ if (pwdScRequestConfirm) {
             return;
         }
         discountRequest = { active: true, type: type };
+        // Do not apply discount on kiosk — staff enters/confirms ID on the counter.
+        orderDiscount = { type: 'none', customer_name: '', id_number: '' };
         syncDiscountRequestButtons();
         closePwdScRequestModal();
     });

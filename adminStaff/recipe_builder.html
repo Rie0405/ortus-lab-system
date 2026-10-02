@@ -38,7 +38,7 @@
             <section class="heading-row">
                 <div>
                     <h1>RECIPE BUILDER</h1>
-                    <p id="recipe-builder-hint">Registered product variants appear as tabs below. Build ingredients for each one.</p>
+                    <p id="recipe-builder-hint">Link ingredients to this menu item to automatically deduct inventory stock with every order.</p>
                 </div>
                 <div class="heading-actions">
                     <button type="button" class="gcash-config-btn" id="btn-back-recipes">← Back to Menu</button>
@@ -689,10 +689,7 @@
                     });
                     var hintEl = document.getElementById('recipe-builder-hint');
                     if (hintEl) {
-                        var stationLabel = String(menuItem.main_category_name || '').trim();
-                        hintEl.textContent = stationLabel
-                            ? ('Showing ' + stationLabel + ' inventory only. Registered variants appear as tabs below.')
-                            : 'Registered product variants appear as tabs below. Build ingredients for each one.';
+                        hintEl.textContent = 'Link ingredients to this menu item to automatically deduct inventory stock with every order.';
                     }
                 })
                 .catch(function () {})

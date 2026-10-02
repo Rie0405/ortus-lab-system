@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20260924-addon-cost">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261002-cost-required">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -88,7 +88,7 @@
             <div class="menu-filter-backdrop" id="menu-filter-backdrop" aria-hidden="true">
                 <div class="menu-filter-popover" id="menu-filter-popover" role="dialog" aria-modal="true" aria-labelledby="menu-filter-title">
                     <header class="menu-filter-popover__head">
-                        <h3 id="menu-filter-title">Filter Categories</h3>
+                        <h3 id="menu-filter-title">Filter by Station &amp; Category</h3>
                         <button type="button" class="menu-filter-popover__close" id="menu-filter-close" aria-label="Close">×</button>
                     </header>
                     <div class="menu-filter-popover__body">
@@ -210,7 +210,7 @@
 
                             <div class="product-field-group" data-catalog-role="create">
                                 <label class="product-field-label" for="prod-name">PRODUCT NAME</label>
-                                <input id="prod-name" type="text" class="product-input" placeholder="e.g. Turbocharged Cold Brew">
+                                <input id="prod-name" type="text" class="product-input" placeholder="e.g. Turbocharged Cold Brew" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                             </div>
 
                             <div class="product-field-group" data-catalog-role="create">
@@ -242,7 +242,7 @@
                                 <div class="product-field-group">
                                     <label class="product-field-label" for="prod-category">
                                         Category
-                                        <span class="product-field-label__note"><br>Enter menu type for this station (Example: Beverages)</br></span>
+                                        <span class="product-field-label__note">Enter menu type for this station (Example: Beverages)</span>
                                     </label>
                                     <div class="product-select-wrap">
                                         <select id="prod-category" class="product-select">
@@ -267,7 +267,7 @@
                                 <div class="product-field-group">
                                     <label class="product-field-label" for="prod-subcategory">
                                         Subcategory (Optional)
-                                        <span class="product-field-label__note"><br>Enter item group for a menu type (Example: Coffee, Frappe)</br></span>
+                                        <span class="product-field-label__note">Enter item group for a menu type (Example: Coffee, Frappe)</span>
                                     </label>
                                     <div class="product-select-wrap">
                                         <select id="prod-subcategory" class="product-select">
@@ -342,8 +342,8 @@
                             </div>
 
                             <div id="prod-cost-price-wrap" class="product-field-group" data-catalog-role="create">
-                                <label class="product-field-label" for="prod-cost-price">Cost price (₱)</label>
-                                <input id="prod-cost-price" type="number" class="product-input" min="0" step="0.01" placeholder="e.g. 45.00">
+                                <label class="product-field-label" for="prod-cost-price">Cost price (₱) <span class="product-field-required" aria-hidden="true">*</span></label>
+                                <input id="prod-cost-price" type="number" class="product-input" min="0" step="0.01" placeholder="e.g. 45.00" required aria-required="true">
                             </div>
 
                             <div id="prod-base-price-wrap" class="product-field-group" data-catalog-role="create">
@@ -384,7 +384,7 @@
                                             <button type="button" class="product-upload-action product-upload-action--delete" id="prod-cat-icon-delete">Delete</button>
                                         </div>
                                     </div>
-                                    <p class="product-icon-upload-hint" id="prod-cat-icon-hint">Select a category first</p>
+                                    <p class="product-icon-upload-hint" id="prod-cat-icon-hint">Select a category first. Uploading applies this picture to all products in that category.</p>
                                 </div>
                                 <div class="product-icon-upload">
                                     <p class="product-field-label">SUBCATEGORY ICON</p>
@@ -413,8 +413,8 @@
                                 <span class="product-section__title">Variants</span>
                             </div>
                             <div class="product-section__body">
-                                <p class="product-field-label__note" style="margin: 0 0 10px;">
-                                    Add cup sizes or options customers can pick. Each variant gets its own recipe tab.
+                                <p class="product-field-label__note" id="prod-variants-caption" style="margin: 0 0 10px;">
+                                    Default temperature is set to Cold. Start with an iced variant — change or clear it if you need a different format.
                                 </p>
                                 <div id="prod-variants-list" class="prod-variants-list"></div>
 
@@ -422,7 +422,7 @@
                                     <div class="variant-input-row">
                                         <div class="variant-input-block">
                                             <label class="product-field-label">Variant name</label>
-                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. 8oz, Large, Iced 16oz" aria-label="Variant name" />
+                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. Hot (8oz), Iced (12oz)" aria-label="Variant name" autocomplete="off" />
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>
@@ -463,7 +463,7 @@
                         <div class="product-modal__left">
                             <div class="product-field-group">
                                 <label class="product-field-label" for="edit-prod-name">PRODUCT NAME</label>
-                                <input id="edit-prod-name" type="text" class="product-input" placeholder="e.g. Turbocharged Cold Brew">
+                                <input id="edit-prod-name" type="text" class="product-input" placeholder="e.g. Turbocharged Cold Brew" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                             </div>
 
                             <div class="product-field-group">
@@ -516,8 +516,8 @@
                             </div>
 
                             <div id="edit-cost-price-wrap" class="product-field-group">
-                                <label class="product-field-label" for="edit-cost-price">Cost price (₱)</label>
-                                <input id="edit-cost-price" type="number" class="product-input" min="0" step="0.01" placeholder="e.g. 45.00">
+                                <label class="product-field-label" for="edit-cost-price">Cost price (₱) <span class="product-field-required" aria-hidden="true">*</span></label>
+                                <input id="edit-cost-price" type="number" class="product-input" min="0" step="0.01" placeholder="e.g. 45.00" required aria-required="true">
                             </div>
 
                             <div id="edit-base-price-wrap" class="product-field-group">
@@ -558,7 +558,7 @@
                                             <button type="button" class="product-upload-action product-upload-action--delete" id="edit-cat-icon-delete">Delete</button>
                                         </div>
                                     </div>
-                                    <p class="product-icon-upload-hint" id="edit-cat-icon-hint">Select a category first</p>
+                                    <p class="product-icon-upload-hint" id="edit-cat-icon-hint">Select a category first. Uploading applies this picture to all products in that category.</p>
                                 </div>
                                 <div class="product-icon-upload">
                                     <p class="product-field-label">SUBCATEGORY ICON</p>
@@ -588,7 +588,7 @@
                             </div>
                             <div class="product-section__body">
                                 <p class="product-field-label__note" style="margin: 0 0 10px;">
-                                    Add cup sizes or options customers can pick. Each variant gets its own recipe tab.
+                                    Default temperature is set to Cold. Start with an iced variant — change or clear it if you need a different format.
                                 </p>
                                 <div id="edit-variants-list" class="prod-variants-list"></div>
 
@@ -596,7 +596,7 @@
                                     <div class="variant-input-row">
                                         <div class="variant-input-block">
                                             <label class="product-field-label">Variant name</label>
-                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. 8oz, Large, Iced 16oz" aria-label="Variant name" />
+                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. Hot (8oz), Iced (12oz)" aria-label="Variant name" autocomplete="off" />
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>
@@ -651,7 +651,7 @@
                     <div class="gcash-config-field">
                         <span class="gcash-config-label">SHOW IN</span>
                         <div class="addon-station-toggle" id="addon-station-toggle" role="group" aria-label="Addon main category"></div>
-                        <p class="addon-station-hint">Addons appear on menu items assigned to the selected main category (station).</p>
+                        <p class="addon-station-hint">Registered Add-on items will show in all registered menu items under a destination.</p>
                     </div>
 
                     <div class="addon-register-list-wrap">
@@ -699,7 +699,7 @@
 
         <!-- ── GCash Kiosk Config Modal ───────────────────────────── -->
         <div class="gcash-config-backdrop" id="gcash-config-backdrop" aria-hidden="true">
-            <div class="gcash-config-modal" role="dialog" aria-modal="true" aria-labelledby="gcash-config-title">
+            <div class="gcash-config-modal gcash-config-modal--kiosk" role="dialog" aria-modal="true" aria-labelledby="gcash-config-title">
                 <header class="gcash-config-modal__header">
                     <div class="gcash-config-modal__title-block">
                         <p class="gcash-config-modal__eyebrow">KIOSK PAYMENT CONFIG</p>
@@ -712,7 +712,7 @@
                     <p id="gcash-config-error" class="gcash-config-error" hidden></p>
                     <div class="gcash-config-field">
                         <label for="gcash-config-number" class="gcash-config-label">GCASH NUMBER</label>
-                        <input id="gcash-config-number" class="gcash-config-input" type="text" placeholder="e.g. 09XXXXXXXXXX" autocomplete="off">
+                        <input id="gcash-config-number" class="gcash-config-input" type="text" inputmode="numeric" maxlength="11" placeholder="e.g. 09XXXXXXXXX" autocomplete="off">
                     </div>
 
                     <div class="gcash-config-field">
@@ -721,11 +721,19 @@
                     </div>
 
                     <div class="gcash-config-field">
-                        <label for="gcash-config-qr-file" class="gcash-config-label">QR CODE IMAGE</label>
-                        <input id="gcash-config-qr-file" class="gcash-config-file" type="file" accept="image/*">
-                        <div class="gcash-config-qr-preview">
-                            <img id="gcash-config-preview-img" src="" alt="GCash QR preview" class="gcash-config-preview-img-hidden">
-                            <div id="gcash-config-preview-placeholder" class="gcash-config-preview-placeholder">No QR uploaded</div>
+                        <p class="gcash-config-label">QR CODE IMAGE</p>
+                        <div class="product-upload-dropzone product-upload-dropzone--gcash-qr" id="gcash-config-qr-dropzone" role="button" tabindex="0" aria-label="Upload GCash QR image">
+                            <input type="file" id="gcash-config-qr-file" class="product-upload-file" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                            <div class="product-upload-empty" id="gcash-config-qr-empty">
+                                <img src="icons_admin/camera_icon.svg" alt="" class="product-upload-icon">
+                                <p class="product-upload-title" id="gcash-config-qr-title">DRAG QR OR CLICK TO UPLOAD</p>
+                                <p class="product-upload-sub">PNG, JPG · Max 800KB</p>
+                            </div>
+                            <img alt="GCash QR preview" class="product-upload-preview" id="gcash-config-preview-img" hidden>
+                            <div class="product-upload-actions">
+                                <button type="button" class="product-upload-action product-upload-action--update" id="gcash-config-qr-update">Update</button>
+                                <button type="button" class="product-upload-action product-upload-action--delete" id="gcash-config-qr-delete">Delete</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -748,7 +756,7 @@
         </div>
 
         <script src="auth_session.js"></script>
-        <script src="dashboard_script.js?v=20260924-addon-menu-del"></script>
+        <script src="dashboard_script.js?v=20261002-cost-required"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');
@@ -979,11 +987,17 @@
             var errEl = document.getElementById('gcash-config-error');
             var numberInput = document.getElementById('gcash-config-number');
             var nameInput = document.getElementById('gcash-config-name');
+            var qrDropzone = document.getElementById('gcash-config-qr-dropzone');
             var qrFileInput = document.getElementById('gcash-config-qr-file');
             var previewImg = document.getElementById('gcash-config-preview-img');
-            var previewPlaceholder = document.getElementById('gcash-config-preview-placeholder');
+            var qrUpdateBtn = document.getElementById('gcash-config-qr-update');
+            var qrDeleteBtn = document.getElementById('gcash-config-qr-delete');
 
-            if (!btnSet || !backdrop || !saveBtn || !numberInput || !qrFileInput) return;
+            if (!btnSet || !backdrop || !saveBtn || !numberInput || !qrFileInput || !qrDropzone) return;
+
+            var savedQrDataUrl = '';
+            var pendingQrFile = null;
+            var clearSavedQr = false;
 
             function setErr(msg) {
                 if (!errEl) return;
@@ -996,29 +1010,40 @@
                 errEl.hidden = false;
             }
 
+            function setQrPreview(url) {
+                if (!previewImg) return;
+                if (url) {
+                    previewImg.hidden = false;
+                    previewImg.src = url;
+                    qrDropzone.classList.add('has-preview');
+                } else {
+                    previewImg.hidden = true;
+                    previewImg.removeAttribute('src');
+                    qrDropzone.classList.remove('has-preview');
+                    qrDropzone.classList.remove('is-dragover');
+                }
+            }
+
+            function openPicker() {
+                qrFileInput.click();
+            }
+
             function openModal() {
                 setErr('');
+                pendingQrFile = null;
+                clearSavedQr = false;
+                if (qrFileInput) qrFileInput.value = '';
+                setQrPreview('');
                 backdrop.classList.add('is-visible');
                 backdrop.setAttribute('aria-hidden', 'false');
-                // Load current config for preview.
                 fetch('api/gcash_config.php', { method: 'GET', cache: 'no-store' })
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (!d || !d.success) return;
-                        numberInput.value = String(d.gcash_number || '');
+                        numberInput.value = String(d.gcash_number || '').slice(0, 11);
                         if (nameInput) nameInput.value = String(d.gcash_name || '');
-                        if (previewImg) {
-                            var dataUrl = d.qr_data_url;
-                            if (dataUrl) {
-                                previewImg.src = dataUrl;
-                                previewImg.style.display = '';
-                                if (previewPlaceholder) previewPlaceholder.style.display = 'none';
-                            } else {
-                                previewImg.src = '';
-                                previewImg.style.display = 'none';
-                                if (previewPlaceholder) previewPlaceholder.style.display = '';
-                            }
-                        }
+                        savedQrDataUrl = d.qr_data_url ? String(d.qr_data_url) : '';
+                        setQrPreview(savedQrDataUrl);
                     })
                     .catch(function () {
                         // ignore; user can still submit number.
@@ -1028,6 +1053,9 @@
             function closeModal() {
                 backdrop.classList.remove('is-visible');
                 backdrop.setAttribute('aria-hidden', 'true');
+                pendingQrFile = null;
+                clearSavedQr = false;
+                if (qrFileInput) qrFileInput.value = '';
             }
 
             btnSet.addEventListener('click', openModal);
@@ -1037,34 +1065,101 @@
                 if (e.target === backdrop) closeModal();
             });
 
-            qrFileInput.addEventListener('change', function (e) {
-                setErr('');
-                var file = qrFileInput.files && qrFileInput.files[0] ? qrFileInput.files[0] : null;
+            qrDropzone.addEventListener('click', function (e) {
+                if (e.target === qrFileInput) return;
+                if (e.target.closest('.product-upload-action')) return;
+                if (qrDropzone.classList.contains('has-preview')) return;
+                openPicker();
+            });
+            qrDropzone.addEventListener('keydown', function (e) {
+                if (qrDropzone.classList.contains('has-preview')) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openPicker();
+                }
+            });
+            if (qrUpdateBtn) {
+                qrUpdateBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openPicker();
+                });
+            }
+            if (qrDeleteBtn) {
+                qrDeleteBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!qrDropzone.classList.contains('has-preview') && !savedQrDataUrl && !pendingQrFile) {
+                        setQrPreview('');
+                        return;
+                    }
+                    if (!confirm('Remove this GCash QR image?')) return;
+                    pendingQrFile = null;
+                    clearSavedQr = !!savedQrDataUrl;
+                    savedQrDataUrl = '';
+                    if (qrFileInput) qrFileInput.value = '';
+                    setQrPreview('');
+                });
+            }
+
+            ['dragenter', 'dragover'].forEach(function (evt) {
+                qrDropzone.addEventListener(evt, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    qrDropzone.classList.add('is-dragover');
+                });
+            });
+            ['dragleave', 'drop'].forEach(function (evt) {
+                qrDropzone.addEventListener(evt, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    qrDropzone.classList.remove('is-dragover');
+                });
+            });
+            qrDropzone.addEventListener('drop', function (e) {
+                var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                if (file) handleQrFile(file);
+            });
+
+            function handleQrFile(file) {
                 if (!file) return;
-                if (file && file.type && !file.type.startsWith('image/')) {
+                setErr('');
+                if (file.type && !file.type.startsWith('image/')) {
                     setErr('Please upload a valid image file for QR.');
                     return;
                 }
+                if (file.size > 800 * 1024) {
+                    setErr('QR image is too large (max ~800KB).');
+                    return;
+                }
+                pendingQrFile = file;
+                clearSavedQr = false;
                 var reader = new FileReader();
                 reader.onload = function (ev) {
-                    if (!previewImg) return;
-                    previewImg.src = String(ev.target.result || '');
-                    previewImg.style.display = '';
-                    if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+                    setQrPreview(String(ev.target.result || ''));
                 };
                 reader.readAsDataURL(file);
+            }
+
+            qrFileInput.addEventListener('change', function () {
+                var file = qrFileInput.files && qrFileInput.files[0] ? qrFileInput.files[0] : null;
+                handleQrFile(file);
             });
 
             saveBtn.addEventListener('click', function () {
                 setErr('');
                 var gcashNumber = String(numberInput.value || '').trim();
                 if (!gcashNumber) return setErr('GCash number is required.');
+                if (gcashNumber.length > 11) return setErr('GCash number must be at most 11 characters.');
+                gcashNumber = gcashNumber.slice(0, 11);
 
                 var fd = new FormData();
                 fd.append('gcash_number', gcashNumber);
                 if (nameInput) fd.append('gcash_name', String(nameInput.value || '').trim());
-                if (qrFileInput.files && qrFileInput.files[0]) {
-                    fd.append('qr_image', qrFileInput.files[0]);
+                if (pendingQrFile) {
+                    fd.append('qr_image', pendingQrFile);
+                } else if (clearSavedQr) {
+                    fd.append('clear_qr', '1');
                 }
 
                 saveBtn.disabled = true;
@@ -1077,6 +1172,12 @@
                         if (!d || !d.success) {
                             setErr(d && d.error ? d.error : 'Failed to save GCash kiosk config.');
                             return;
+                        }
+                        if (pendingQrFile) {
+                            // Keep local preview as the newly saved image until next open reloads.
+                            clearSavedQr = false;
+                        } else if (clearSavedQr) {
+                            savedQrDataUrl = '';
                         }
                         closeModal();
                     })

@@ -150,19 +150,19 @@
                     <span>CATEGORY</span>
                     <div class="table-head--stacked">
                         <span>STOCK USED</span>
-                        <span class="table-head-sub">open items</span>
+                        <span class="table-head-sub">open / active batch remaining</span>
                     </div>
                     <div class="table-head--stacked">
                         <span>STOCK LEVEL</span>
-                        <span class="table-head-sub">Open · Bar only — bottles/packs currently in use</span>
+                        <span class="table-head-sub">Open — amount of items in use or open packs</span>
                     </div>
                     <div class="table-head--stacked">
                         <span>Set orders per stock</span>
-                        <span class="table-head-sub">Bar · consumable only — servings per bottle/pack</span>
+                        <span class="table-head-sub">Estimated servings quantity</span>
                     </div>
                     <div class="table-head--stacked">
                         <span>Batch Size</span>
-                        <span class="table-head-sub">Kitchen / non-consumable</span>
+                        <span class="table-head-sub">Pieces opened per batch (Kitchen / non-consumable)</span>
                     </div>
                     <span>STATUS</span>
                     <span>ACTIONS</span>
@@ -416,7 +416,7 @@
                     <button type="button" class="inv-modal__close" id="restock-notification-close" aria-label="Close">×</button>
                 </header>
                 <div class="inv-modal__body">
-                    <p class="app-modal__hint">Showing current low/out-of-stock items. Per-item restock is UI-only for now (test placeholders).</p>
+                    <p class="app-modal__hint">Set a threshold for the system to know if an item needs restocking alerts.</p>
                     <div id="restock-notification-list" class="stock-movement__list"></div>
                 </div>
             </div>
@@ -1118,14 +1118,14 @@
         function boxCapacityButtonTitle(item) {
             if (isKitchenCategory(item && item.category_name)) {
                 if (isItemCapacityConfigured(item)) {
-                    return getConfiguredItemCapacity(item) + ' yield per stock — used as Kitchen batch size. Click to edit.';
+                    return getConfiguredItemCapacity(item) + ' estimated servings per stock unit — also used as Kitchen batch size. Click to edit.';
                 }
-                return 'Kitchen: set how many servings/orders one stock unit yields (used as batch size).';
+                return 'Kitchen: estimated servings quantity per stock unit (also becomes the batch size).';
             }
             if (isItemCapacityConfigured(item)) {
-                return getConfiguredItemCapacity(item) + ' servings per bottle/pack — Bar · consumable only. Click to edit.';
+                return getConfiguredItemCapacity(item) + ' estimated servings quantity per bottle/pack. Click to edit.';
             }
-            return 'Set orders per stock — Bar items only: estimated servings per bottle/pack (consumable only).';
+            return 'Estimated servings quantity per bottle/pack (Bar · consumable).';
         }
 
         function formatStockUsed(n) {
@@ -3374,20 +3374,20 @@
                     ? String(batchSize)
                     : '—');
             var batchTitle = nonConsumable
-                ? ('Batch size for this non-consumable item. Current setting: ' + batchSize)
+                ? ('Batch size — pieces opened per batch. Current: ' + batchSize)
                 : (isKitchenCategory(item && item.category_name)
                     ? (capacityConfigured
-                        ? ('Kitchen batch size (from Set orders per stock). Current: ' + batchSize)
-                        : 'Kitchen: set orders per stock first — that value becomes the batch size')
+                        ? ('Kitchen batch size = Set orders per stock (' + batchSize + ')')
+                        : 'Kitchen: set Estimated servings quantity first — that value becomes the batch size')
                     : 'Not used for Bar consumable items — use Set orders per stock + Open instead');
             var stockType = getStockType(item);
             var canOpen = !batchDisplay && capacityConfigured;
             var openBtn = canOpen
-                ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open — Bar only: how many bottles/packs are currently in use">Open</button>'
+                ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open — amount of items in use or open packs">Open</button>'
                 : '<span class="btn-open-stock-used btn-open-stock-used--disabled" title="' +
                     (batchDisplay
-                        ? 'Open is Bar only. Kitchen / non-consumable items use batch tracking instead.'
-                        : 'Set orders per stock first (Bar · consumable)') +
+                        ? 'Open is for Bar consumables. Kitchen / non-consumable items auto-track an active batch instead.'
+                        : 'Set estimated servings quantity first, then Open packs in use') +
                   '">Open</span>';
             return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
                 '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +

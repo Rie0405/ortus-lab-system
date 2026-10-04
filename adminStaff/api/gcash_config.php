@@ -73,7 +73,8 @@ if ($gcashNumber === '') fail('GCash number is required.');
 if (strlen($gcashNumber) > 11) fail('GCash number must be at most 11 characters.');
 $gcashNumber = substr($gcashNumber, 0, 11);
 $gcashNameRaw = trim((string)($_POST['gcash_name'] ?? $b['gcash_name'] ?? ''));
-$gcashName = $gcashNameRaw !== '' ? substr($gcashNameRaw, 0, 160) : null;
+if ($gcashNameRaw === '') fail('GCash name is required.');
+$gcashName = substr($gcashNameRaw, 0, 160);
 $clearQr = !empty($_POST['clear_qr']) || !empty($b['clear_qr']);
 
 $qrMime = null;
@@ -109,6 +110,18 @@ if (isset($_FILES['qr_image']) && is_array($_FILES['qr_image'])) {
         $qrMime = $mime;
         $qrB64 = base64_encode($raw);
         $clearQr = false;
+    }
+}
+
+if ($clearQr && !($qrMime && $qrB64)) {
+    fail('GCash QR image is required.');
+}
+
+if (!($qrMime && $qrB64)) {
+    $existingQr = $pdo->query('SELECT qr_mime, qr_image_b64 FROM gcash_config WHERE id = 1 LIMIT 1')->fetch();
+    $hasExistingQr = !empty($existingQr['qr_mime']) && !empty($existingQr['qr_image_b64']);
+    if (!$hasExistingQr) {
+        fail('GCash QR image is required.');
     }
 }
 

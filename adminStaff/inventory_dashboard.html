@@ -606,6 +606,7 @@
                             <span class="receipt-cat-type-manage-caret" aria-hidden="true">▾</span>
                         </button>
                         <div id="receipt-category-type-manage-panel" class="receipt-cat-type-manage-panel" hidden>
+                            <p class="receipt-cat-type-hint">Category types save right away. You do not need to register an inventory item just to add a category.</p>
                             <label class="receipt-cat-type-select-label" for="receipt-category-type-select">Category type</label>
                             <div class="receipt-cat-type-select-wrap">
                                 <select id="receipt-category-type-select" aria-label="Category type"></select>
@@ -1313,8 +1314,25 @@
 
         function setReceiptError(msg) {
             if (!receiptModalError) return;
+            receiptModalError.classList.remove('inv-modal__error--ok');
             receiptModalError.textContent = msg;
             receiptModalError.hidden = !msg;
+        }
+
+        function setReceiptNotice(msg) {
+            if (!receiptModalError) return;
+            receiptModalError.classList.add('inv-modal__error--ok');
+            receiptModalError.textContent = msg;
+            receiptModalError.hidden = !msg;
+        }
+
+        function applyCategoryTypeSlugToLines(slug) {
+            var value = String(slug || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (!receiptLinesBody || !value) return;
+            receiptLinesBody.querySelectorAll('.receipt-category-type').forEach(function (selectEl) {
+                selectEl.innerHTML = buildRegisterCategoryTypeOptionsHtml(value);
+                selectEl.value = value;
+            });
         }
 
         function buildMainCategoryOptionsHtml(selected) {
@@ -1423,10 +1441,9 @@
                 var matches = (items || []).filter(function (item) {
                     return normalizeCategoryType(item) === opt.value;
                 });
-                if (matches.length) {
-                    seen[opt.value] = true;
-                    groups.push({ type: opt.value, label: opt.label, items: matches });
-                }
+                seen[opt.value] = true;
+                // Always show saved category types, even with zero items under them.
+                groups.push({ type: opt.value, label: opt.label, items: matches });
             });
             (items || []).forEach(function (item) {
                 var key = normalizeCategoryType(item);
@@ -1440,6 +1457,13 @@
                 }
             });
             return groups;
+        }
+
+        function appendCategoryEmptyRow(tableEl) {
+            var row = document.createElement('div');
+            row.className = 'table-row table-row--category-empty';
+            row.innerHTML = '<div class="inv-category-empty">No items in this category yet.</div>';
+            tableEl.appendChild(row);
         }
 
         function appendCategoryLabelRow(tableEl, label) {
@@ -1556,10 +1580,20 @@
                         setReceiptError((d && d.error) || 'Failed to add category type.');
                         return false;
                     }
-                    selectedCategoryTypeId = parseInt(d.id, 10) || null;
+                    var newId = parseInt(d.id, 10) || null;
+                    selectedCategoryTypeId = newId;
                     setRegisterCategoryTypes(d.category_types || []);
+                    var created = REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.id === newId; }) || null;
+                    if (created) {
+                        applyCategoryTypeSlugToLines(created.value);
+                    }
                     setCategoryTypeNewPanelOpen(false);
-                    setReceiptError('');
+                    var apiMsg = String(d.message || '');
+                    if (/already exists/i.test(apiMsg)) {
+                        setReceiptNotice('Category type already registered. It was selected for the item line.');
+                    } else {
+                        setReceiptNotice('Category type added and saved. Use Save only when registering inventory items.');
+                    }
                     return true;
                 })
                 .catch(function () {
@@ -2050,7 +2084,7 @@
             if (receiptModalSave) {
                 receiptModalSave.textContent = receiptModalMode === 'add_receipt'
                     ? 'Save Entry'
-                    : 'Save';
+                    : 'Register Item(s)';
             }
             if (receiptModalBackdrop) {
                 receiptModalBackdrop.classList.add('is-visible');
@@ -3421,7 +3455,7 @@
 
             var filtered = getFilteredItems('manual');
             var groups = groupItemsByCategoryType(filtered);
-            if (!groups.length) {
+            if (!REGISTER_CATEGORY_TYPES.length && !filtered.length) {
                 var empty = document.createElement('div');
                 empty.className = 'table-row';
                 empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No manual inventory items found.</div>';
@@ -3431,6 +3465,10 @@
 
             groups.forEach(function (group) {
                 appendCategoryLabelRow(manualTableWrap, group.label);
+                if (!group.items.length) {
+                    appendCategoryEmptyRow(manualTableWrap);
+                    return;
+                }
                 group.items.forEach(function (item) {
                     var stockStatus = getManualStockStatus(item);
                     var status = manualStockStatusMeta(stockStatus);
@@ -3666,7 +3704,7 @@
             var filtered = getFilteredItems('automatic');
             var groups = groupItemsByCategoryType(filtered);
 
-            if (!groups.length) {
+            if (!REGISTER_CATEGORY_TYPES.length && !filtered.length) {
                 var empty = document.createElement('div');
                 empty.className = 'table-row';
                 empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No inventory items found.</div>';
@@ -3674,6 +3712,10 @@
             } else {
                 groups.forEach(function (group) {
                     appendCategoryLabelRow(tableWrap, group.label);
+                    if (!group.items.length) {
+                        appendCategoryEmptyRow(tableWrap);
+                        return;
+                    }
                     group.items.forEach(function (item) {
                         var row = document.createElement('div');
                         row.className = 'table-row' + (item.status === 'out_of_stock' ? ' table-row--out-of-stock' : '');

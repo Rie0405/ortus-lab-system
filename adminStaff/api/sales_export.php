@@ -323,6 +323,45 @@ foreach (range('A', 'K') as $col) {
     $itemsSheet->getColumnDimension($col)->setAutoSize(true);
 }
 
+// ── Discount records sheet (confirmed PWD / Senior IDs) ───────────────────────
+$discountRecords = fetch_confirmed_discount_records($pdo, $fromDate, $toDate, [], 1000);
+$discountSheet = $spreadsheet->createSheet();
+$discountSheet->setTitle('Discount Records');
+
+$discountHeaders = [
+    'Date', 'Time', 'Order #', 'Type', 'Cardholder Name', 'ID No.',
+    'Gross (PHP)', 'Discount (PHP)', 'Net (PHP)', 'Staff',
+];
+$discountSheet->fromArray($discountHeaders, null, 'A1');
+sales_style_header_row($discountSheet, 'A1:J1');
+
+$row = 2;
+foreach ($discountRecords as $rec) {
+    $createdAt = strtotime((string)($rec['created_at'] ?? ''));
+    $discountSheet->fromArray([
+        $createdAt ? date('Y-m-d', $createdAt) : '',
+        $createdAt ? date('h:i A', $createdAt) : '',
+        $rec['order_number'] ?? '',
+        $rec['discount_label'] ?? strtoupper((string)($rec['discount_type'] ?? '')),
+        $rec['customer_name'] ?? '',
+        $rec['id_number'] ?? '',
+        (float)($rec['gross_amount'] ?? 0),
+        (float)($rec['discount_amount'] ?? 0),
+        (float)($rec['net_amount'] ?? 0),
+        $rec['staff_name'] ?? '',
+    ], null, 'A' . $row);
+    $row++;
+}
+
+if ($row > 2) {
+    sales_style_money_columns($discountSheet, 'G2:I' . ($row - 1));
+    $discountSheet->setAutoFilter('A1:J' . ($row - 1));
+}
+
+foreach (range('A', 'J') as $col) {
+    $discountSheet->getColumnDimension($col)->setAutoSize(true);
+}
+
 $spreadsheet->setActiveSheetIndex(0);
 
 $filename = sprintf(

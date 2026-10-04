@@ -448,6 +448,10 @@ if ($m === 'POST') {
                 max_discountable_unit_price_from_rows($itemRows)
             );
         }
+        assert_discount_ids_unused_today(
+            $pdo,
+            collect_discount_id_keys_from_payload($discount, $discountLines ?: [])
+        );
         $total = (float)$pricing['total_amount'];
 
         $changeDue = ($paymentMethod === 'cash' && $amountReceived !== null)
@@ -643,6 +647,11 @@ if ($m === 'PUT') {
                         max_discountable_unit_price_from_rows($itemRows)
                     );
                 }
+                assert_discount_ids_unused_today(
+                    $pdo,
+                    collect_discount_id_keys_from_payload($discount, $discountLines ?: []),
+                    $id
+                );
 
                 $pdo->prepare('DELETE FROM order_items WHERE order_id = :id')->execute([':id' => $id]);
 
@@ -715,6 +724,11 @@ if ($m === 'PUT') {
             } elseif ($action === 'discount') {
                 $discount = normalize_order_discount_payload($b['discount'] ?? null);
                 validate_order_discount_payload($discount);
+                assert_discount_ids_unused_today(
+                    $pdo,
+                    collect_discount_id_keys_from_payload($discount, []),
+                    $id
+                );
                 $gross = round((float)($prev['gross_amount'] ?? 0), 2);
                 $maxUnit = 0.0;
                 $unitStmt = $pdo->prepare('SELECT unit_price FROM order_items WHERE order_id = :id');

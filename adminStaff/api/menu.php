@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/menu_helpers.php';
 require_once __DIR__ . '/addons_helpers.php';
+require_once __DIR__ . '/activity_log_helpers.php';
 
 ensure_menu_serve_schema(db());
 ensure_subcategories_schema(db());
@@ -175,6 +176,13 @@ if ($m === 'POST') {
     ]);
 
     $id = (int)db()->lastInsertId();
+    log_system_activity(db(), [
+        'source_key' => 'create_product',
+        'source_label' => 'Create New Product',
+        'action' => 'product created: ' . $name,
+        'entity_type' => 'menu_item',
+        'entity_id' => $id,
+    ]);
     ok(['id' => $id, 'message' => 'Item created.'], 201);
 }
 
@@ -257,6 +265,17 @@ if ($m === 'PUT') {
     $sql = 'UPDATE menu_items SET ' . implode(', ', $fields) . ' WHERE id = :id';
     db()->prepare($sql)->execute($params);
 
+    $nameStmt = db()->prepare('SELECT name FROM menu_items WHERE id = :id LIMIT 1');
+    $nameStmt->execute([':id' => $id]);
+    $updatedName = trim((string)$nameStmt->fetchColumn()) ?: ('#' . $id);
+    log_system_activity(db(), [
+        'source_key' => 'edit_menu_item',
+        'source_label' => 'Edit Menu Item',
+        'action' => 'menu item edited: ' . $updatedName,
+        'entity_type' => 'menu_item',
+        'entity_id' => $id,
+    ]);
+
     ok(['message' => 'Item updated.']);
 }
 
@@ -268,6 +287,10 @@ if ($m === 'DELETE') {
     if (!$id) fail('Item ID is required.');
 
     $pdo = db();
+
+    $nameStmt = $pdo->prepare('SELECT name FROM menu_items WHERE id = :id LIMIT 1');
+    $nameStmt->execute([':id' => $id]);
+    $deletedName = trim((string)$nameStmt->fetchColumn()) ?: ('#' . $id);
 
     // Detach / deactivate linked addon cards outside the main delete txn so a
     // missing optional table cannot abort the transaction.
@@ -327,6 +350,14 @@ if ($m === 'DELETE') {
         }
         fail('Failed to delete item: ' . $e->getMessage());
     }
+
+    log_system_activity($pdo, [
+        'source_key' => 'delete_menu_item',
+        'source_label' => 'Delete Menu Item',
+        'action' => 'menu item deleted: ' . $deletedName,
+        'entity_type' => 'menu_item',
+        'entity_id' => $id,
+    ]);
 
     ok(['message' => 'Item deleted.']);
 }

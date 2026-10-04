@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/addons_helpers.php';
+require_once __DIR__ . '/activity_log_helpers.php';
 
 ensure_addons_schema(db());
 $m = method();
@@ -97,6 +98,13 @@ if ($m === 'POST') {
             ':id' => $inactiveId,
         ]);
         sync_addon_menu_item($pdo, $inactiveId);
+        log_system_activity($pdo, [
+            'source_key' => 'register_addon',
+            'source_label' => 'Register Add on',
+            'action' => 'add-on registered: ' . $name,
+            'entity_type' => 'addon',
+            'entity_id' => $inactiveId,
+        ]);
         ok([
             'id' => $inactiveId,
             'message' => 'Addon restored.',
@@ -129,6 +137,13 @@ if ($m === 'POST') {
 
     $id = (int)$pdo->lastInsertId();
     sync_addon_menu_item($pdo, $id);
+    log_system_activity($pdo, [
+        'source_key' => 'register_addon',
+        'source_label' => 'Register Add on',
+        'action' => 'add-on registered: ' . $name,
+        'entity_type' => 'addon',
+        'entity_id' => $id,
+    ]);
     ok([
         'id' => $id,
         'message' => 'Addon created.',
@@ -207,6 +222,13 @@ if ($m === 'PUT') {
     ]);
 
     sync_addon_menu_item($pdo, $id);
+    log_system_activity($pdo, [
+        'source_key' => 'register_addon',
+        'source_label' => 'Register Add on',
+        'action' => 'add-on updated: ' . $name,
+        'entity_type' => 'addon',
+        'entity_id' => $id,
+    ]);
     ok(['id' => $id, 'message' => 'Addon updated.', 'addons' => fetch_addons_rows($pdo)]);
 }
 
@@ -225,8 +247,18 @@ if ($m === 'DELETE') {
         fail('Addon not found.', 404);
     }
 
+    $nameStmt = $pdo->prepare('SELECT name FROM addons WHERE id = :id LIMIT 1');
+    $nameStmt->execute([':id' => $id]);
+    $addonName = trim((string)$nameStmt->fetchColumn()) ?: ('#' . $id);
     hide_addon_menu_item($pdo, $id);
     $pdo->prepare('UPDATE addons SET is_active = 0 WHERE id = :id')->execute([':id' => $id]);
+    log_system_activity($pdo, [
+        'source_key' => 'register_addon',
+        'source_label' => 'Register Add on',
+        'action' => 'add-on deleted: ' . $addonName,
+        'entity_type' => 'addon',
+        'entity_id' => $id,
+    ]);
     ok(['id' => $id, 'message' => 'Addon removed.', 'addons' => fetch_addons_rows($pdo)]);
 }
 

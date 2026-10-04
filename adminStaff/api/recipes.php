@@ -3,6 +3,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/recipe_helpers.php';
 require_once __DIR__ . '/recipe_cost_helpers.php';
 require_once __DIR__ . '/menu_helpers.php';
+require_once __DIR__ . '/activity_log_helpers.php';
 require_auth();
 
 function ensure_recipe_schema(PDO $pdo): void {
@@ -398,6 +399,18 @@ try {
     }
 
     $pdo->commit();
+
+    $menuNameStmt = $pdo->prepare('SELECT name FROM menu_items WHERE id = :id LIMIT 1');
+    $menuNameStmt->execute([':id' => $menuId]);
+    $menuName = trim((string)$menuNameStmt->fetchColumn()) ?: ('#' . $menuId);
+    log_system_activity($pdo, [
+        'source_key' => 'add_recipe',
+        'source_label' => 'Add Recipe',
+        'action' => 'recipe saved for ' . $menuName,
+        'entity_type' => 'menu_item',
+        'entity_id' => $menuId,
+    ]);
+
     ok([
         'recipe_ids' => $savedIds,
         'message' => 'Recipe saved.',

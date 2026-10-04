@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/menu_helpers.php';
 require_once __DIR__ . '/recipe_helpers.php';
+require_once __DIR__ . '/activity_log_helpers.php';
 require_auth();
 
 function normalize_receipt_entry_source(string $source): string
@@ -649,6 +650,49 @@ try {
     }
 
     $pdo->commit();
+
+    $isStaffRestock = $entrySource === 'staff' || stripos($supplier, 'Restocked by ') === 0;
+    $restockActor = $isStaffRestock
+        ? activity_actor_from_restock_supplier($supplier)
+        : activity_actor_from_session();
+
+    foreach ($lines as $line) {
+        $itemName = trim((string)($line['item_name'] ?? 'Item')) ?: 'Item';
+        $qty = (float)($line['stocks'] ?? 0);
+        $unit = trim((string)($line['unit'] ?? 'pcs')) ?: 'pcs';
+        $qtyText = activity_format_qty_unit($qty, $unit);
+
+        if ($registerMode) {
+            log_system_activity($pdo, [
+                'source_key' => 'register_inventory',
+                'source_label' => 'Register Inventory Item',
+                'action' => 'inventory item registered: ' . $itemName,
+                'entity_type' => 'inventory_item',
+                'user' => activity_actor_from_session(),
+            ]);
+            continue;
+        }
+
+        if ($isStaffRestock) {
+            log_system_activity($pdo, [
+                'source_key' => 'restock_inventory',
+                'source_label' => 'Restock Inventory',
+                'action' => strtolower($itemName) . ' restock to ' . $qtyText,
+                'entity_type' => 'inventory_item',
+                'user' => $restockActor,
+            ]);
+            continue;
+        }
+
+        log_system_activity($pdo, [
+            'source_key' => 'stock_log',
+            'source_label' => 'Stock Log',
+            'action' => strtolower($itemName) . ' restock to ' . $qtyText,
+            'entity_type' => 'inventory_item',
+            'user' => activity_actor_from_session(),
+        ]);
+    }
+
     ok([
         'receipt_id' => $receiptId,
         'total_amount' => (float)$totalAmount,

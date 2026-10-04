@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/activity_log_helpers.php';
 require_auth();
 
 function ensure_discount_rate_config_schema(PDO $pdo): void
@@ -39,6 +40,12 @@ if ($m === 'PUT' || $m === 'POST') {
 
     $stmt = $pdo->prepare('UPDATE discount_rate_config SET rate = :rate WHERE id = 1');
     $stmt->execute([':rate' => $rate]);
+
+    log_system_activity($pdo, [
+        'source_key' => 'set_discount_rate',
+        'source_label' => 'Set Discount Rate',
+        'action' => 'discount rate set to ' . rtrim(rtrim(number_format($rate, 2, '.', ''), '0'), '.') . '%',
+    ]);
 
     ok([
         'message' => 'Discount rate saved.',

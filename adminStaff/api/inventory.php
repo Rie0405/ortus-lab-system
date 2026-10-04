@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/menu_helpers.php';
 require_once __DIR__ . '/recipe_helpers.php';
+require_once __DIR__ . '/activity_log_helpers.php';
 require_auth();
 
 function ensure_inventory_schema(PDO $pdo): void {
@@ -420,6 +421,14 @@ if ($method === 'POST') {
         sync_applicable_menu_items($pdo, $newId, $b['applicable_menu_ids']);
     }
 
+    log_system_activity($pdo, [
+        'source_key' => 'register_inventory',
+        'source_label' => 'Register Inventory Item',
+        'action' => 'inventory item registered: ' . $name,
+        'entity_type' => 'inventory_item',
+        'entity_id' => $newId,
+    ]);
+
     ok(['id' => $newId, 'message' => 'Inventory item created.'], 201);
 }
 
@@ -438,6 +447,12 @@ if ($method === 'PUT') {
         );
         $stmt->execute([':target' => $targetStock]);
 
+        log_system_activity($pdo, [
+            'source_key' => 'stock_log',
+            'source_label' => 'Stock Log',
+            'action' => 'all inventory restocked to ' . $targetStock,
+        ]);
+
         ok([
             'message' => 'All inventory items restocked to normal level.',
             'target_stock' => $targetStock,
@@ -448,6 +463,11 @@ if ($method === 'PUT') {
     if ($action === 'set_low_stock_fraction') {
         $fractionDen = (int)($b['low_stock_fraction_den'] ?? 50);
         set_low_stock_fraction_den($pdo, $fractionDen);
+        log_system_activity($pdo, [
+            'source_key' => 'low_stock_alert',
+            'source_label' => 'Low Stock Alert',
+            'action' => 'low stock alert set to ' . $fractionDen . '%',
+        ]);
         ok([
             'message' => 'Low stock alert level updated.',
             'low_stock_fraction_den' => $fractionDen,
@@ -463,6 +483,28 @@ if ($method === 'PUT') {
         $restocked = restock_inventory_shortages($pdo, $shortagesRaw);
         if (!$restocked) {
             fail('No matching inventory items were restocked.');
+        }
+        $restockActor = activity_actor_from_session();
+        $staffName = trim((string)($b['staff_name'] ?? ''));
+        if ($staffName !== '') {
+            $restockActor = [
+                'id' => isset($b['staff_id']) && (int)$b['staff_id'] > 0 ? (int)$b['staff_id'] : null,
+                'name' => $staffName,
+                'role' => 'staff',
+            ];
+        }
+        foreach ($restocked as $row) {
+            $itemName = trim((string)($row['item_name'] ?? 'Item')) ?: 'Item';
+            $qty = (float)($row['shortage'] ?? 0);
+            $unit = trim((string)($row['unit'] ?? $row['per_stock_unit'] ?? 'pcs')) ?: 'pcs';
+            log_system_activity($pdo, [
+                'source_key' => 'restock_inventory',
+                'source_label' => 'Restock Inventory',
+                'action' => strtolower($itemName) . ' restock to ' . activity_format_qty_unit($qty, $unit),
+                'entity_type' => 'inventory_item',
+                'entity_id' => (int)($row['inventory_item_id'] ?? 0) ?: null,
+                'user' => $restockActor,
+            ]);
         }
         ok([
             'message' => 'Shortage items restocked.',
@@ -791,6 +833,70 @@ if ($method === 'PUT') {
             $pendingStockEditLog['old_stock_units'] = 0;
         }
         log_inventory_stock_edit($pdo, $pendingStockEditLog);
+        log_system_activity($pdo, [
+            'source_key' => 'stock_log',
+            'source_label' => 'Stock Log',
+            'action' => 'stock edited: ' . $pendingStockEditLog['item_name']
+                . ' (' . (int)$pendingStockEditLog['old_stock_units']
+                . ' → ' . (int)$pendingStockEditLog['new_stock_units'] . ')',
+            'entity_type' => 'inventory_item',
+            'entity_id' => $id,
+            'user' => [
+                'id' => $pendingStockEditLog['staff_id'],
+                'name' => $pendingStockEditLog['staff_name'],
+                'role' => 'staff',
+            ],
+        ]);
+    }
+
+    if (!$pendingStockEditLog) {
+        $itemNameStmt = $pdo->prepare('SELECT item_name, entry_mode FROM inventory_items WHERE id = :id LIMIT 1');
+        $itemNameStmt->execute([':id' => $id]);
+        $itemMeta = $itemNameStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $itemName = trim((string)($itemMeta['item_name'] ?? '')) ?: ('#' . $id);
+        $isManual = normalize_inventory_entry_mode($itemMeta['entry_mode'] ?? ($b['entry_mode'] ?? 'automatic')) === 'manual';
+
+        if (array_key_exists('open_items_count', $b) && (int)$b['open_items_count'] > 0) {
+            log_system_activity($pdo, [
+                'source_key' => 'inventory_open',
+                'source_label' => 'Open Item',
+                'action' => 'opened stock item: ' . $itemName,
+                'entity_type' => 'inventory_item',
+                'entity_id' => $id,
+            ]);
+        } elseif (array_key_exists('orders_per_box', $b)) {
+            log_system_activity($pdo, [
+                'source_key' => 'orders_per_stock',
+                'source_label' => 'Orders Per Stock',
+                'action' => 'orders per stock set for ' . $itemName . ' (' . (int)$b['orders_per_box'] . ')',
+                'entity_type' => 'inventory_item',
+                'entity_id' => $id,
+            ]);
+        } elseif (array_key_exists('per_stock_amount', $b)) {
+            log_system_activity($pdo, [
+                'source_key' => 'batch_size',
+                'source_label' => 'Batch Size',
+                'action' => 'batch size set for ' . $itemName . ' (' . (float)$b['per_stock_amount'] . ')',
+                'entity_type' => 'inventory_item',
+                'entity_id' => $id,
+            ]);
+        } elseif ($isManual && (array_key_exists('stock_status', $b) || array_key_exists('stock_units', $b) || array_key_exists('notes', $b))) {
+            log_system_activity($pdo, [
+                'source_key' => 'manual_inventory',
+                'source_label' => 'Manual Inventory',
+                'action' => 'manual inventory edited: ' . $itemName,
+                'entity_type' => 'inventory_item',
+                'entity_id' => $id,
+            ]);
+        } else {
+            log_system_activity($pdo, [
+                'source_key' => 'edit_inventory_item',
+                'source_label' => 'Edit Inventory Item',
+                'action' => 'inventory item edited: ' . $itemName,
+                'entity_type' => 'inventory_item',
+                'entity_id' => $id,
+            ]);
+        }
     }
 
     ok(['message' => 'Inventory item updated.']);
@@ -800,8 +906,18 @@ if ($method === 'DELETE') {
     $b = body();
     $id = (int)($b['id'] ?? ($_GET['id'] ?? 0));
     if ($id <= 0) fail('Inventory item ID is required.');
+    $nameStmt = $pdo->prepare('SELECT item_name FROM inventory_items WHERE id = :id LIMIT 1');
+    $nameStmt->execute([':id' => $id]);
+    $deletedName = trim((string)$nameStmt->fetchColumn()) ?: ('#' . $id);
     $stmt = $pdo->prepare('UPDATE inventory_items SET is_active = 0 WHERE id = :id');
     $stmt->execute([':id' => $id]);
+    log_system_activity($pdo, [
+        'source_key' => 'delete_inventory_item',
+        'source_label' => 'Delete Inventory Item',
+        'action' => 'inventory item deleted: ' . $deletedName,
+        'entity_type' => 'inventory_item',
+        'entity_id' => $id,
+    ]);
     ok(['message' => 'Inventory item archived.']);
 }
 
@@ -1074,10 +1190,11 @@ foreach ($rows as $row) {
         'reorder_point_ready' => $reorderPointReady,
         'per_stock_amount' => (float)($row['per_stock_amount'] ?? 1),
         'per_stock_unit' => (string)($row['per_stock_unit'] ?? 'pcs'),
-        'reorder_level' => $lowStockFractionDen,
+        'reorder_level' => (int)($row['reorder_level'] ?? 0),
         'total_available' => $totalAvailableOrders,
         'max_capacity' => $maxCapacity,
         'stock_ratio' => round($stockRatio, 4),
+        'alert_stock_ratio' => round(inventory_alert_stock_ratio($row), 4),
         'is_active'     => (bool)$row['is_active'],
         'sold_7d'       => (int)$row['sold_7d'],
         'sold_30d'      => (int)$row['sold_30d'],

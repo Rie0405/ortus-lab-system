@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20260924-txn-icons-v2">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261004-inv-check">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -164,7 +164,7 @@
                         </div>
                     </div>
                     <div class="pos-cart-slider" id="pos-cart-slider" data-active="dine_in">
-                        <p class="pos-discount-pick-hint" id="pos-discount-pick-hint" hidden>Select an order item to apply a discount. Each discount ID can only be used once.</p>
+                        <p class="pos-discount-pick-hint" id="pos-discount-pick-hint" hidden>Select an order item to apply a discount. Each PWD/Senior ID can only be used once per day.</p>
                         <div class="pos-cart-slider__track" id="pos-cart-slider-track">
                             <div class="pos-cart-slider__pane" data-pane="dine_in">
                                 <p class="pos-cart-group__label pos-cart-group__label--dine-in" id="pos-cart-label-dine-in">Orders to dine in:</p>
@@ -801,7 +801,6 @@
                     <div class="shortage-restock-lines">
                         <div class="shortage-restock-lines__head">
                             <span>Line Items</span>
-                            <button type="button" class="pay-modal__btn pay-modal__btn--cancel shortage-restock-addline" id="shortage-restock-addline">Add line</button>
                         </div>
                         <div class="shortage-restock-lines__table">
                             <div class="shortage-restock-lines__row shortage-restock-lines__row--head">
@@ -809,7 +808,6 @@
                                 <span>Item</span>
                                 <span>Stocks</span>
                                 <span>Unit</span>
-                                <span></span>
                             </div>
                             <div id="shortage-restock-lines-body"></div>
                         </div>
@@ -828,6 +826,23 @@
         <div class="gcash-lightbox" id="gcash-lightbox" aria-hidden="true">
             <button class="gcash-lightbox__close" id="gcash-lightbox-close">×</button>
             <img class="gcash-lightbox__img" id="gcash-lightbox-img" src="" alt="GCash QR code enlarged">
+        </div>
+
+        <!-- Inventory Checking popup (after starting money / open shift) -->
+        <div class="cash-mgmt-backdrop" id="inv-check-popup-modal" aria-hidden="true">
+            <div class="cash-mgmt-modal inv-check-modal inv-check-modal--popup" role="dialog" aria-modal="true" aria-labelledby="inv-check-popup-title">
+                <header class="cash-mgmt-modal__header">
+                    <h2 class="cash-mgmt-modal__title" id="inv-check-popup-title">INVENTORY CHECKING</h2>
+                    <button type="button" class="cash-mgmt-modal__close" id="inv-check-popup-close" aria-label="Close inventory checking">×</button>
+                </header>
+                <div class="cash-mgmt-modal__body">
+                    <p class="inv-check-modal__lead">Review these inventory levels before starting POS.</p>
+                    <div class="inv-check-popup-list" id="inv-check-popup-list">
+                        <p class="cash-inout-records-empty">Loading…</p>
+                    </div>
+                    <button type="button" class="cash-mgmt-modal__submit" id="inv-check-popup-done">CONTINUE TO POS</button>
+                </div>
+            </div>
         </div>
 
         <!-- Cash Management Modal -->
@@ -1848,7 +1863,7 @@
                 if (posDiscountPickHint) {
                     posDiscountPickHint.hidden = !posDiscountSelectMode;
                     if (posDiscountSelectMode) {
-                        posDiscountPickHint.textContent = "Select an order item to apply a discount. Each discount ID can only be used once.";
+                        posDiscountPickHint.textContent = "Select an order item to apply a discount. Each PWD/Senior ID can only be used once per day.";
                     }
                 }
                 if (!posDiscountSelectMode) {
@@ -1951,6 +1966,20 @@
                 showPosDiscountModalError("");
             }
 
+            function checkDiscountIdUsedToday(idNumber, excludeOrderId) {
+                var key = normalizeDiscountIdKey(idNumber);
+                if (!key) return Promise.resolve({ used_today: false });
+                var url = "api/discount_records.php?check_id=" + encodeURIComponent(idNumber);
+                if (excludeOrderId) url += "&exclude_order_id=" + encodeURIComponent(excludeOrderId);
+                return fetch(url, { cache: "no-store", credentials: "same-origin" })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) return { used_today: false };
+                        return d;
+                    })
+                    .catch(function () { return { used_today: false }; });
+            }
+
             function submitPosDiscountDetails() {
                 var type = posDiscountModalType ? posDiscountModalType.value : "senior";
                 if (type !== "senior" && type !== "pwd" && type !== "custom") {
@@ -1990,23 +2019,51 @@
                     return;
                 }
 
-                posKioskDiscount = null;
-                upsertLineDiscount({
-                    bucket: posDiscountPendingLine.bucket,
-                    idx: posDiscountPendingLine.idx,
-                    type: type,
-                    rate: type === "custom" ? shiftRate : 0,
-                    customer_name: customerName,
-                    id_number: idNumber,
-                    price: Number(posDiscountPendingLine.price) || 0
-                });
-                posDiscount = { applied: posLineDiscounts.length > 0 };
+                var pendingLine = posDiscountPendingLine;
+                var applyLocal = function () {
+                    posKioskDiscount = null;
+                    upsertLineDiscount({
+                        bucket: pendingLine.bucket,
+                        idx: pendingLine.idx,
+                        type: type,
+                        rate: type === "custom" ? shiftRate : 0,
+                        customer_name: customerName,
+                        id_number: idNumber,
+                        price: Number(pendingLine.price) || 0
+                    });
+                    posDiscount = { applied: posLineDiscounts.length > 0 };
 
-                closePosDiscountDetailsModal();
-                // Stay in select mode so staff can apply another (different) discount ID.
-                posDiscountPendingLine = null;
-                renderOrderList();
-                updateTotals();
+                    closePosDiscountDetailsModal();
+                    // Stay in select mode so staff can apply another (different) discount ID.
+                    posDiscountPendingLine = null;
+                    renderOrderList();
+                    updateTotals();
+                };
+
+                if (type !== "senior" && type !== "pwd") {
+                    applyLocal();
+                    return;
+                }
+
+                var saveBtn = document.getElementById("pos-discount-modal-submit");
+                if (saveBtn) {
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = "CHECKING…";
+                }
+                checkDiscountIdUsedToday(idNumber)
+                    .then(function (d) {
+                        if (d && d.used_today) {
+                            showPosDiscountModalError(d.message || "This discount ID was already used today.");
+                            return;
+                        }
+                        applyLocal();
+                    })
+                    .finally(function () {
+                        if (saveBtn) {
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = "APPLY DISCOUNT";
+                        }
+                    });
             }
 
             function updateConfirmButtonForEditing() {
@@ -3986,8 +4043,7 @@
                     '<input type="number" class="shortage-restock-stocks" min="1" step="1" value="' + String(stocks) + '">' +
                     '<span class="shortage-restock-unit" data-unit="' + escapeHtml(unitValue) + '" title="Fixed from inventory settings">' +
                         escapeHtml(unitDisplay) +
-                    '</span>' +
-                    '<button type="button" class="shortage-restock-lines__remove" title="Remove line">×</button>';
+                    '</span>';
                 var catEl = row.querySelector(".shortage-restock-category");
                 if (catEl) catEl.value = category === "Kitchen" ? "Kitchen" : "Bar";
                 return row;
@@ -3999,7 +4055,6 @@
                     var closeBtn = document.getElementById("shortage-restock-close");
                     var cancelBtn = document.getElementById("shortage-restock-cancel");
                     var saveBtn = document.getElementById("shortage-restock-save");
-                    var addLineBtn = document.getElementById("shortage-restock-addline");
                     var staffSelect = document.getElementById("shortage-restock-staff");
                     var linesBody = document.getElementById("shortage-restock-lines-body");
                     if (!modal || !saveBtn || !linesBody) {
@@ -4030,27 +4085,14 @@
                         modal.setAttribute("aria-hidden", "true");
                         if (cancelBtn) cancelBtn.onclick = null;
                         if (saveBtn) saveBtn.onclick = null;
-                        if (addLineBtn) addLineBtn.onclick = null;
                         if (closeBtn) closeBtn.onclick = null;
+                        linesBody.onclick = null;
                         modal.onclick = null;
                         resolve(result);
                     }
 
                     if (cancelBtn) cancelBtn.onclick = function () { cleanup(false); };
                     if (closeBtn) closeBtn.onclick = function () { cleanup(false); };
-                    if (addLineBtn) {
-                        addLineBtn.onclick = function () {
-                            linesBody.appendChild(createShortageRestockLineRow({ line_type: "Bar", item_name: "", stocks: 1, unit: "pcs" }));
-                        };
-                    }
-                    linesBody.onclick = function (e) {
-                        var removeBtn = e.target.closest(".shortage-restock-lines__remove");
-                        if (!removeBtn) return;
-                        var rows = linesBody.querySelectorAll(".shortage-restock-lines__row");
-                        if (rows.length <= 1) return;
-                        var row = removeBtn.closest(".shortage-restock-lines__row");
-                        if (row) row.remove();
-                    };
 
                     saveBtn.onclick = function () {
                         var rows = Array.prototype.slice.call(linesBody.querySelectorAll(".shortage-restock-lines__row"));
@@ -5482,6 +5524,9 @@
         var wasteMenuSearchDropdownOpen = false;
         var wasteEntriesCache = [];
         var activeKitchenCategory = 'bar';
+        // Per-order station completion for mixed beverage + meal tickets.
+        // { [orderId]: { bar: bool, kitchen: bool } }
+        var kitchenStationDoneById = {};
         var currentQueueSource = window.staffQueueSource || 'pos';
         var staffRealtimeSource = null;
         var staffRealtimeRetryTimer = null;
@@ -5541,20 +5586,64 @@
         function isKioskOrder(order) {
             return String(order && order.order_source || '').toLowerCase() === 'kiosk';
         }
-        function orderMatchesKitchenCategory(order, group) {
+        function itemMatchesKitchenStation(item, group) {
+            var cat = item && item.category_name;
+            if (group === 'bar') return isBarCategoryName(cat);
+            return isKitchenCategoryName(cat);
+        }
+        function filterItemsForKitchenStation(items, group) {
+            return (items || []).filter(function (it) {
+                return itemMatchesKitchenStation(it, group);
+            });
+        }
+        function orderStationParts(order) {
             var items = (order && order.items) || [];
-            if (!items.length) return group === 'kitchen';
-            var barHits = 0;
-            var kitchenHits = 0;
+            var hasBar = false;
+            var hasKitchen = false;
             items.forEach(function (it) {
                 var cat = it && it.category_name;
-                if (isBarCategoryName(cat)) barHits += 1;
-                else if (isKitchenCategoryName(cat)) kitchenHits += 1;
+                if (isBarCategoryName(cat)) hasBar = true;
+                else if (isKitchenCategoryName(cat)) hasKitchen = true;
             });
-            if (group === 'bar') return barHits > 0 && barHits >= kitchenHits;
-            return kitchenHits > 0 || barHits === 0;
+            return { hasBar: hasBar, hasKitchen: hasKitchen };
         }
-        function getFilteredKitchenOrders(list) {
+        function isStationDoneForOrder(orderId, group) {
+            var id = parseInt(orderId, 10) || 0;
+            if (!id) return false;
+            var done = kitchenStationDoneById[id];
+            return !!(done && done[group]);
+        }
+        function markKitchenStationDone(order, station) {
+            var id = parseInt(order && order.id, 10) || 0;
+            var group = String(station || '').toLowerCase() === 'bar' ? 'bar' : 'kitchen';
+            if (!id) return { fullyDone: false };
+            if (!kitchenStationDoneById[id]) {
+                kitchenStationDoneById[id] = { bar: false, kitchen: false };
+            }
+            kitchenStationDoneById[id][group] = true;
+            var parts = orderStationParts(order);
+            var fullyDone =
+                (!parts.hasBar || !!kitchenStationDoneById[id].bar) &&
+                (!parts.hasKitchen || !!kitchenStationDoneById[id].kitchen);
+            return { fullyDone: fullyDone };
+        }
+        function clearKitchenStationDone(orderId) {
+            var id = parseInt(orderId, 10) || 0;
+            if (id && kitchenStationDoneById[id]) delete kitchenStationDoneById[id];
+        }
+        function orderMatchesKitchenCategory(order, group, opts) {
+            opts = opts || {};
+            var items = (order && order.items) || [];
+            if (!items.length) return group === 'kitchen';
+            var stationItems = filterItemsForKitchenStation(items, group);
+            if (!stationItems.length) return false;
+            if (!opts.ignoreStationDone && isStationDoneForOrder(order && order.id, group)) {
+                return false;
+            }
+            return true;
+        }
+        function getFilteredKitchenOrders(list, opts) {
+            opts = opts || {};
             if (!kitchenCatButtons || !kitchenCatButtons.length) {
                 return (list || []).filter(function (order) {
                     // Requested behavior: kiosk pastries should stay in kiosk queue only.
@@ -5565,7 +5654,7 @@
             }
             return (list || []).filter(function (order) {
                 if (isKioskOrder(order) && orderHasPastryItem(order)) return false;
-                return orderMatchesKitchenCategory(order, activeKitchenCategory);
+                return orderMatchesKitchenCategory(order, activeKitchenCategory, opts);
             });
         }
         function syncKitchenCategoryButtons() {
@@ -6541,6 +6630,7 @@
                       kitchenOrders = kitchenOrders.filter(function (o) {
                           return (parseInt(o && o.id, 10) || 0) !== returnOrderId;
                       });
+                      clearKitchenStationDone(returnOrderId);
                       renderKitchenOrders();
                       renderQueueDrawerReturned(returnedKitchenOrders);
                   }
@@ -6905,32 +6995,64 @@
                     id_number: idNumber
                 }
             };
+
+            function saveQueueDiscount() {
+                if (queueDiscountSubmit) {
+                    queueDiscountSubmit.disabled = true;
+                    queueDiscountSubmit.textContent = 'SAVING…';
+                }
+                fetch('api/orders.php', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(function (r) { return r.json(); })
+                  .then(function (d) {
+                      if (!d.success) {
+                          showQueueModalError(queueDiscountError, d.error || 'Failed to apply discount.');
+                          return;
+                      }
+                      closeQueueDiscountModal();
+                      loadStaffData();
+                  })
+                  .catch(function () {
+                      showQueueModalError(queueDiscountError, 'Cannot reach server.');
+                  })
+                  .finally(function () {
+                      if (queueDiscountSubmit) {
+                          queueDiscountSubmit.disabled = false;
+                          queueDiscountSubmit.textContent = 'SAVE DISCOUNT';
+                      }
+                  });
+            }
+
+            if (type !== 'senior' && type !== 'pwd') {
+                saveQueueDiscount();
+                return;
+            }
+
             if (queueDiscountSubmit) {
                 queueDiscountSubmit.disabled = true;
-                queueDiscountSubmit.textContent = 'SAVING…';
+                queueDiscountSubmit.textContent = 'CHECKING…';
             }
-            fetch('api/orders.php', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(function (r) { return r.json(); })
-              .then(function (d) {
-                  if (!d.success) {
-                      showQueueModalError(queueDiscountError, d.error || 'Failed to apply discount.');
-                      return;
-                  }
-                  closeQueueDiscountModal();
-                  loadStaffData();
-              })
-              .catch(function () {
-                  showQueueModalError(queueDiscountError, 'Cannot reach server.');
-              })
-              .finally(function () {
-                  if (queueDiscountSubmit) {
-                      queueDiscountSubmit.disabled = false;
-                      queueDiscountSubmit.textContent = 'SAVE DISCOUNT';
-                  }
-              });
+            var checkUrl = 'api/discount_records.php?check_id=' + encodeURIComponent(idNumber)
+                + '&exclude_order_id=' + encodeURIComponent(orderId);
+            fetch(checkUrl, { cache: 'no-store', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d && d.success && d.used_today) {
+                        showQueueModalError(queueDiscountError, d.message || 'This discount ID was already used today.');
+                        if (queueDiscountSubmit) {
+                            queueDiscountSubmit.disabled = false;
+                            queueDiscountSubmit.textContent = 'SAVE DISCOUNT';
+                        }
+                        return;
+                    }
+                    saveQueueDiscount();
+                })
+                .catch(function () {
+                    // Fall through to server validation.
+                    saveQueueDiscount();
+                });
         }
 
         function processQueueEdit() {
@@ -8200,12 +8322,19 @@
         }
 
         function pruneKitchenPriorityMap(activeOrders) {
+            // Prefer full active kitchen list so mixed orders keep priority/station-done
+            // even when hidden on the currently viewed station.
+            var source = (kitchenOrders && kitchenOrders.length) ? kitchenOrders : (activeOrders || []);
             var keep = {};
-            (activeOrders || []).forEach(function (o) {
+            var keepStationDone = {};
+            (source || []).forEach(function (o) {
                 var id = parseInt(o && o.id, 10) || 0;
-                if (id && kitchenPriorityById[id]) keep[id] = kitchenPriorityById[id];
+                if (!id) return;
+                if (kitchenPriorityById[id]) keep[id] = kitchenPriorityById[id];
+                if (kitchenStationDoneById[id]) keepStationDone[id] = kitchenStationDoneById[id];
             });
             kitchenPriorityById = keep;
+            kitchenStationDoneById = keepStationDone;
         }
 
         function sortKitchenOrdersForDisplay(orders) {
@@ -8227,7 +8356,11 @@
             var orderCustomer = getKitchenOrderCustomerName(order);
             var orderId = parseInt(order && order.id, 10) || 0;
             var isPriority = isKitchenOrderPrioritized(orderId);
-            var itemsHtml = (order.items || [])
+            var stationGroup = opts.stationGroup || activeKitchenCategory || 'bar';
+            var displayItems = filterItemsForKitchenStation(order.items || [], stationGroup);
+            // Fallback: if classification missed, still show something rather than a blank card.
+            if (!displayItems.length) displayItems = order.items || [];
+            var itemsHtml = displayItems
                 .map(function (item) {
                     return (
                         '<div class="opq-item kitchen-line-item">' +
@@ -8322,7 +8455,9 @@
         function renderServingOrders() {
             if (!kitchenServingList) return;
             kitchenServingList.innerHTML = '';
-            var ordered = filterOrdersForCurrentShift(getFilteredKitchenOrders(servingOrdersQueue)).slice().sort(function (a, b) {
+            var ordered = filterOrdersForCurrentShift(
+                getFilteredKitchenOrders(servingOrdersQueue, { ignoreStationDone: true })
+            ).slice().sort(function (a, b) {
                 return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
             });
             ordered.forEach(function (order) {
@@ -8331,7 +8466,9 @@
                 var sourceLabel = String(order.order_source || '').toUpperCase();
                 var typeLine = getOrderTypeDisplayFromOrder(order) || 'N/A';
                 var friendlyTitle = friendlyKitchenOrderTitle(order);
-                var itemsLine = (order.items || [])
+                var stationItems = filterItemsForKitchenStation(order.items || [], activeKitchenCategory || 'bar');
+                if (!stationItems.length) stationItems = order.items || [];
+                var itemsLine = stationItems
                     .map(function (it) {
                         var q = parseInt(it && it.quantity, 10) || 0;
                         var nm = String(it && it.name ? it.name : 'Item').trim();
@@ -8988,14 +9125,21 @@
                 if (!orderId) return;
                 doneBtn.disabled = true;
                 var moved = null;
-                kitchenOrders = kitchenOrders.filter(function (o) {
-                    var hit = parseInt(o && o.id, 10) === orderId;
-                    if (hit) moved = o;
-                    return !hit;
+                kitchenOrders.forEach(function (o) {
+                    if ((parseInt(o && o.id, 10) || 0) === orderId) moved = o;
                 });
-                pendingOrders = pendingOrders.filter(function (o) { return parseInt(o && o.id, 10) !== orderId; });
-                if (kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
-                if (moved) {
+                if (!moved) {
+                    doneBtn.disabled = false;
+                    return;
+                }
+                var stationResult = markKitchenStationDone(moved, activeKitchenCategory || 'bar');
+                if (stationResult.fullyDone) {
+                    kitchenOrders = kitchenOrders.filter(function (o) {
+                        return (parseInt(o && o.id, 10) || 0) !== orderId;
+                    });
+                    pendingOrders = pendingOrders.filter(function (o) { return parseInt(o && o.id, 10) !== orderId; });
+                    if (kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
+                    clearKitchenStationDone(orderId);
                     if (!servingOrdersQueue.some(function (o) { return parseInt(o && o.id, 10) === orderId; })) {
                         servingOrdersQueue.push(moved);
                     }
@@ -9009,16 +9153,29 @@
         var doneAllBtn = document.getElementById('done-all-orders-btn');
         if (doneAllBtn) {
             doneAllBtn.addEventListener('click', function () {
-                if (!kitchenOrders.length) return;
-                if (!window.confirm('Mark as done all pending orders?')) return;
+                var visible = getFilteredKitchenOrders(kitchenOrders);
+                if (!visible.length) return;
+                var stationLabel = activeKitchenCategory === 'bar' ? 'bar' : 'kitchen';
+                if (!window.confirm('Mark as done all pending ' + stationLabel + ' orders?')) return;
+                var stillActive = [];
                 kitchenOrders.forEach(function (o) {
-                    if (!servingOrdersQueue.some(function (s) { return parseInt(s && s.id, 10) === parseInt(o && o.id, 10); })) {
-                        servingOrdersQueue.push(o);
+                    if (!orderMatchesKitchenCategory(o, activeKitchenCategory)) {
+                        stillActive.push(o);
+                        return;
+                    }
+                    var stationResult = markKitchenStationDone(o, activeKitchenCategory || 'bar');
+                    if (stationResult.fullyDone) {
+                        var orderId = parseInt(o && o.id, 10) || 0;
+                        if (orderId && kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
+                        clearKitchenStationDone(orderId);
+                        if (!servingOrdersQueue.some(function (s) { return parseInt(s && s.id, 10) === orderId; })) {
+                            servingOrdersQueue.push(o);
+                        }
+                    } else {
+                        stillActive.push(o);
                     }
                 });
-                kitchenOrders = [];
-                kitchenPriorityById = {};
-                pendingOrders = [];
+                kitchenOrders = stillActive;
                 renderKitchenOrders();
                 renderPendingOrders();
                 renderServingOrders();
@@ -9742,6 +9899,162 @@
                 if (e.target === queueEditModal) closeQueueEditModal();
             });
         }
+
+        // ── Inventory Checking popup (staff login / shift open; list set by admin) ──
+        (function initInventoryChecking() {
+            var popupModal = document.getElementById('inv-check-popup-modal');
+            var popupClose = document.getElementById('inv-check-popup-close');
+            var popupList = document.getElementById('inv-check-popup-list');
+            var popupDone = document.getElementById('inv-check-popup-done');
+
+            function getInvCheckDoneKey() {
+                return 'staff_inventory_check_done_' + new Date().toISOString().slice(0, 10);
+            }
+
+            function getStartingMoneyStorageKeyLocal() {
+                return 'staff_sales_report_starting_money_' + new Date().toISOString().slice(0, 10);
+            }
+
+            function getStartingMoneyLockedKeyLocal() {
+                return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
+            }
+
+            function hasStartingMoneyForTodayLocal() {
+                try {
+                    if (localStorage.getItem(getStartingMoneyLockedKeyLocal()) === '1') return true;
+                    var raw = localStorage.getItem(getStartingMoneyStorageKeyLocal());
+                    if (!raw) return false;
+                    var parsed = JSON.parse(raw);
+                    var total = parseFloat(parsed && (parsed.total != null ? parsed.total : parsed.base));
+                    return Number.isFinite(total) && total > 0;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function markInvCheckDone() {
+                try { localStorage.setItem(getInvCheckDoneKey(), '1'); } catch (e) {}
+                try { sessionStorage.removeItem('ortus_pending_inventory_check'); } catch (e) {}
+            }
+
+            function isInvCheckDoneToday() {
+                try {
+                    return localStorage.getItem(getInvCheckDoneKey()) === '1';
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function shouldShowInvCheckPopup() {
+                if (isInvCheckDoneToday()) return false;
+                try {
+                    if (sessionStorage.getItem('ortus_pending_inventory_check') === '1') return true;
+                } catch (e) {}
+                // Fallback: shift already open (starting money set) but check not done yet.
+                return hasStartingMoneyForTodayLocal();
+            }
+
+            function statusLabel(status) {
+                if (status === 'low_stock') return 'Low';
+                if (status === 'out_of_stock') return 'Out';
+                return 'OK';
+            }
+
+            function formatStockLine(item) {
+                var sealed = Math.max(0, parseInt(item && item.stock_units, 10) || 0);
+                var openLeft = Math.max(0, parseFloat(item && item.units_in_use) || 0);
+                var unit = String((item && item.per_stock_unit) || 'pcs');
+                var openCount = Math.max(0, parseInt(item && item.open_items_count, 10) || 0);
+                var parts = ['Sealed ' + sealed];
+                if (openCount > 0 || openLeft > 0) {
+                    var openText = (Math.abs(openLeft - Math.round(openLeft)) < 0.001)
+                        ? String(Math.round(openLeft))
+                        : String(Math.round(openLeft * 100) / 100);
+                    parts.push('Open ' + openText + unit);
+                }
+                return parts.join(' · ');
+            }
+
+            function setModalVisible(modal, visible) {
+                if (!modal) return;
+                modal.classList.toggle('is-visible', !!visible);
+                modal.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            }
+
+            function renderPopupList(items) {
+                if (!popupList) return;
+                if (!items || !items.length) {
+                    popupList.innerHTML =
+                        '<p class="cash-inout-records-empty">No inventory selected for checking. Ask admin to set items under Inventory → <strong>Inventory Check</strong>.</p>';
+                    return;
+                }
+                popupList.innerHTML = items.map(function (item) {
+                    var st = String(item.status || 'in_stock');
+                    return (
+                        '<div class="inv-check-row">' +
+                            '<div class="inv-check-row__main">' +
+                                '<span class="inv-check-row__name">' + esc(item.name || 'Item') + '</span>' +
+                                '<span class="inv-check-row__cat">' + esc(item.category_name || '') + '</span>' +
+                            '</div>' +
+                            '<div class="inv-check-row__stock">' +
+                                '<span class="inv-check-row__qty">' + esc(formatStockLine(item)) + '</span>' +
+                                '<span class="inv-check-row__status inv-check-row__status--' + esc(st) + '">' +
+                                    esc(statusLabel(st)) +
+                                '</span>' +
+                            '</div>' +
+                        '</div>'
+                    );
+                }).join('');
+            }
+
+            function fetchCheckItems() {
+                return fetch('api/inventory_check.php', { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) {
+                            throw new Error((d && d.error) || 'Failed to load inventory check list');
+                        }
+                        return d;
+                    });
+            }
+
+            function openPopupModal(checkItems) {
+                renderPopupList(checkItems || []);
+                setModalVisible(popupModal, true);
+            }
+
+            function closePopupModal(markDone) {
+                setModalVisible(popupModal, false);
+                if (markDone) markInvCheckDone();
+            }
+
+            function maybeShowShiftOpenCheck() {
+                if (!shouldShowInvCheckPopup()) return;
+                fetchCheckItems()
+                    .then(function (d) {
+                        openPopupModal(d.check_items || []);
+                    })
+                    .catch(function () {
+                        openPopupModal([]);
+                    });
+            }
+
+            if (popupClose) popupClose.addEventListener('click', function () { closePopupModal(true); });
+            if (popupDone) popupDone.addEventListener('click', function () { closePopupModal(true); });
+            if (popupModal) {
+                popupModal.addEventListener('click', function (e) {
+                    if (e.target === popupModal) closePopupModal(true);
+                });
+            }
+
+            window.addEventListener('ortus-shift-reset', function () {
+                try { localStorage.removeItem(getInvCheckDoneKey()); } catch (e) {}
+                try { sessionStorage.removeItem('ortus_pending_inventory_check'); } catch (e) {}
+            });
+
+            // After open-shift starting money (or staff login with open shift), show once/day.
+            window.setTimeout(maybeShowShiftOpenCheck, 250);
+        })();
 
         loadStaffData();
         loadStartingMoney();

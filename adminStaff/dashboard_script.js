@@ -2517,6 +2517,19 @@ function apiCall(method, url, body) {
         return window.confirm(msg);
     }
 
+    function assertCostNotAboveSelling(costPrice, sellingPrice, costInput) {
+        var cost = Number(costPrice);
+        var sell = Number(sellingPrice);
+        if (!Number.isFinite(cost) || !Number.isFinite(sell)) return true;
+        if (cost <= sell) return true;
+        alert(
+            'Cost price (₱' + cost.toFixed(2) + ') cannot be higher than selling price (₱' + sell.toFixed(2) + ').\n\n' +
+            'Please lower the cost or raise the selling price.'
+        );
+        if (costInput) costInput.focus();
+        return false;
+    }
+
     var createPrimaryBtn = createBackdrop.querySelector('.product-modal__footer .product-btn--primary');
     var createGhostBtn   = createBackdrop.querySelector('.product-modal__footer .product-btn--ghost');
 
@@ -2607,6 +2620,9 @@ function apiCall(method, url, body) {
             if (!Number.isFinite(costPrice) || costPrice < 0) {
                 alert('Cost price must be 0 or greater.');
                 if (costPriceInput) costPriceInput.focus();
+                return;
+            }
+            if (!assertCostNotAboveSelling(costPrice, price, costPriceInput)) {
                 return;
             }
 
@@ -2843,6 +2859,9 @@ function apiCall(method, url, body) {
                     if (editCostPriceInput) editCostPriceInput.focus();
                     return;
                 }
+                if (!assertCostNotAboveSelling(costPrice, price, editCostPriceInput)) {
+                    return;
+                }
 
                 var serveHot = 0;
                 var serveCold = 0;
@@ -2973,4 +2992,249 @@ function apiCall(method, url, body) {
 
     // ── Initial load ──────────────────────────────────────────────────────────
     loadItems();
+})();
+
+// ─── System activity notification feed (admin header, near logout) ───────────
+(function () {
+    var PAGE_SIZE = 15;
+    var actions = document.querySelector('.top-actions');
+    if (!actions) return;
+
+    // Shared stylesheet (idempotent).
+    if (!document.getElementById('activity-feed-css')) {
+        var css = document.createElement('link');
+        css.id = 'activity-feed-css';
+        css.rel = 'stylesheet';
+        css.href = 'activity_feed.css';
+        document.head.appendChild(css);
+    }
+
+    var logoutBtn = document.getElementById('btn-logout');
+    var wrap = document.createElement('div');
+    wrap.className = 'activity-bell-wrap';
+    wrap.innerHTML =
+        '<button type="button" class="activity-bell-btn" id="btn-activity-feed" title="System updates" aria-label="System updates" aria-expanded="false" aria-haspopup="true">' +
+            '<img src="icons_admin/bell_icon.svg" alt="">' +
+            '<span class="activity-bell-badge is-hidden" id="activity-feed-badge">0</span>' +
+        '</button>' +
+        '<div class="activity-feed-panel" id="activity-feed-panel" role="dialog" aria-label="System activity" hidden>' +
+            '<div class="activity-feed-panel__head">' +
+                '<h3>System Updates</h3>' +
+                '<button type="button" class="activity-feed-panel__close" id="activity-feed-close" aria-label="Close">×</button>' +
+            '</div>' +
+            '<div class="activity-feed-panel__list" id="activity-feed-list">' +
+                '<p class="activity-feed-empty">Loading…</p>' +
+            '</div>' +
+            '<div class="activity-feed-panel__foot">' +
+                '<button type="button" class="activity-feed-more is-hidden" id="activity-feed-more">See more</button>' +
+            '</div>' +
+        '</div>';
+
+    // Prefer replacing a leftover static bell, else insert before logout.
+    var existingBell = actions.querySelector('button[title="Notifications"], button[aria-label="Notifications"]');
+    if (existingBell && existingBell !== logoutBtn) {
+        existingBell.replaceWith(wrap);
+    } else if (logoutBtn) {
+        actions.insertBefore(wrap, logoutBtn);
+    } else {
+        actions.appendChild(wrap);
+    }
+
+    var bellBtn = document.getElementById('btn-activity-feed');
+    var badgeEl = document.getElementById('activity-feed-badge');
+    var panelEl = document.getElementById('activity-feed-panel');
+    var listEl = document.getElementById('activity-feed-list');
+    var moreBtn = document.getElementById('activity-feed-more');
+    var closeBtn = document.getElementById('activity-feed-close');
+
+    var entries = [];
+    var hasMore = false;
+    var loading = false;
+    var maxSeenInPanel = 0;
+    var unreadCount = 0;
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function formatWhen(iso) {
+        if (!iso) return '';
+        var d = new Date(String(iso).replace(' ', 'T'));
+        if (isNaN(d.getTime())) return String(iso);
+        return d.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    }
+
+    function setBadge(count) {
+        unreadCount = Math.max(0, parseInt(count, 10) || 0);
+        if (!badgeEl) return;
+        if (unreadCount <= 0) {
+            badgeEl.textContent = '0';
+            badgeEl.classList.add('is-hidden');
+            return;
+        }
+        badgeEl.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+        badgeEl.classList.remove('is-hidden');
+    }
+
+    function renderList() {
+        if (!listEl) return;
+        if (!entries.length) {
+            listEl.innerHTML = '<p class="activity-feed-empty">No system updates yet.</p>';
+        } else {
+            listEl.innerHTML = entries.map(function (row) {
+                var unreadClass = row.is_unread ? ' is-unread' : '';
+                return (
+                    '<div class="activity-feed-row' + unreadClass + '" data-id="' + esc(row.id) + '">' +
+                        '<span class="activity-feed-row__text">' + esc(row.display || '') + '</span>' +
+                        '<span class="activity-feed-row__meta">' + esc(formatWhen(row.created_at)) + '</span>' +
+                    '</div>'
+                );
+            }).join('');
+        }
+        if (moreBtn) {
+            moreBtn.classList.toggle('is-hidden', !hasMore);
+            moreBtn.disabled = false;
+            moreBtn.textContent = 'See more';
+        }
+    }
+
+    function fetchPage(beforeId) {
+        if (loading) return Promise.resolve();
+        loading = true;
+        if (moreBtn && beforeId) {
+            moreBtn.disabled = true;
+            moreBtn.textContent = 'Loading…';
+        }
+        var url = 'api/activity_log.php?limit=' + PAGE_SIZE;
+        if (beforeId) url += '&before_id=' + encodeURIComponent(beforeId);
+        return fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d || !d.success) {
+                    throw new Error((d && d.error) || 'Failed to load activity');
+                }
+                var page = Array.isArray(d.entries) ? d.entries : [];
+                if (!beforeId) {
+                    entries = page;
+                } else {
+                    entries = entries.concat(page);
+                }
+                hasMore = !!d.has_more;
+                setBadge(d.unread_count);
+                page.forEach(function (row) {
+                    maxSeenInPanel = Math.max(maxSeenInPanel, parseInt(row.id, 10) || 0);
+                });
+                renderList();
+            })
+            .catch(function () {
+                if (!beforeId && listEl) {
+                    listEl.innerHTML = '<p class="activity-feed-empty">Could not load updates.</p>';
+                }
+                if (moreBtn) {
+                    moreBtn.disabled = false;
+                    moreBtn.textContent = 'See more';
+                }
+            })
+            .finally(function () {
+                loading = false;
+            });
+    }
+
+    function refreshBadgeOnly() {
+        fetch('api/activity_log.php?limit=1', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d && d.success) setBadge(d.unread_count);
+            })
+            .catch(function () { /* ignore */ });
+    }
+
+    function isOpen() {
+        return !!(panelEl && panelEl.classList.contains('is-open'));
+    }
+
+    function markReadAndClear() {
+        var seenId = maxSeenInPanel;
+        entries.forEach(function (row) { row.is_unread = false; });
+        renderList();
+        setBadge(0);
+        return fetch('api/activity_log.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark_read', last_seen_id: seenId || 0 })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d && d.success) setBadge(d.unread_count);
+            })
+            .catch(function () { /* ignore */ });
+    }
+
+    function closePanel() {
+        if (!isOpen()) return;
+        if (panelEl) {
+            panelEl.classList.remove('is-open');
+            panelEl.setAttribute('hidden', 'hidden');
+        }
+        if (bellBtn) {
+            bellBtn.classList.remove('is-open');
+            bellBtn.setAttribute('aria-expanded', 'false');
+        }
+        markReadAndClear();
+    }
+
+    function openPanel() {
+        if (!panelEl || !bellBtn) return;
+        panelEl.classList.add('is-open');
+        panelEl.removeAttribute('hidden');
+        bellBtn.classList.add('is-open');
+        bellBtn.setAttribute('aria-expanded', 'true');
+        maxSeenInPanel = 0;
+        fetchPage(0);
+    }
+
+    function togglePanel() {
+        if (isOpen()) closePanel();
+        else openPanel();
+    }
+
+    if (bellBtn) bellBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        togglePanel();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closePanel();
+    });
+    if (moreBtn) moreBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!entries.length) return;
+        var last = entries[entries.length - 1];
+        fetchPage(last && last.id ? last.id : 0);
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!isOpen()) return;
+        if (wrap.contains(e.target)) return;
+        closePanel();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && isOpen()) closePanel();
+    });
+
+    // Initial badge + light polling while the page is open.
+    refreshBadgeOnly();
+    window.setInterval(function () {
+        if (!isOpen()) refreshBadgeOnly();
+    }, 45000);
 })();

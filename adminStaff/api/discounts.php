@@ -274,3 +274,243 @@ function max_discountable_unit_price_from_rows(array $itemRows): float
     }
     return round($max, 2);
 }
+
+/** Normalize discount ID for comparison (case/space insensitive). */
+function discount_id_key(string $id): string
+{
+    return strtoupper(preg_replace('/\s+/', '', trim($id)) ?? '');
+}
+
+/**
+ * Extract usable PWD/Senior ID keys from a discount payload (single or lines).
+ *
+ * @return list<string> normalized keys
+ */
+function collect_discount_id_keys_from_payload(array $discount, array $discountLines = []): array
+{
+    $keys = [];
+    if ($discountLines) {
+        foreach ($discountLines as $line) {
+            $type = strtolower(trim((string)($line['type'] ?? 'none')));
+            if ($type !== 'pwd' && $type !== 'senior') {
+                continue;
+            }
+            $key = discount_id_key((string)($line['id_number'] ?? ''));
+            if ($key !== '' && !is_placeholder_discount_id($key)) {
+                $keys[$key] = true;
+            }
+        }
+        return array_keys($keys);
+    }
+
+    $type = strtolower(trim((string)($discount['type'] ?? 'none')));
+    if ($type === 'pwd' || $type === 'senior') {
+        $key = discount_id_key((string)($discount['id_number'] ?? ''));
+        if ($key !== '' && !is_placeholder_discount_id($key)) {
+            $keys[$key] = true;
+        }
+    }
+    return array_keys($keys);
+}
+
+/**
+ * Find if a discount ID was already used on a confirmed order today.
+ * @return array{order_id:int,order_number:string}|null
+ */
+function find_discount_id_used_today(PDO $pdo, string $idKey, ?int $excludeOrderId = null): ?array
+{
+    $idKey = discount_id_key($idKey);
+    if ($idKey === '' || is_placeholder_discount_id($idKey)) {
+        return null;
+    }
+
+    ensure_order_discount_schema($pdo);
+    if (!function_exists('sql_order_counts_as_sale')) {
+        require_once __DIR__ . '/cashflow_helpers.php';
+    }
+
+    $saleCond = sql_order_counts_as_sale('o');
+    $sql = 'SELECT o.id, o.order_number, o.discount_id_number
+            FROM orders o
+            WHERE DATE(o.created_at) = CURDATE()
+              AND ' . $saleCond . '
+              AND o.discount_type IN (\'pwd\', \'senior\')
+              AND COALESCE(o.discount_amount, 0) > 0
+              AND COALESCE(o.discount_requested, 0) = 0
+              AND o.discount_id_number IS NOT NULL
+              AND TRIM(o.discount_id_number) <> \'\'';
+    $params = [];
+    if ($excludeOrderId !== null && $excludeOrderId > 0) {
+        $sql .= ' AND o.id <> :exclude_id';
+        $params[':exclude_id'] = $excludeOrderId;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $parts = preg_split('/\s*\|\s*/', (string)($row['discount_id_number'] ?? '')) ?: [];
+        foreach ($parts as $part) {
+            if (discount_id_key($part) === $idKey) {
+                return [
+                    'order_id' => (int)$row['id'],
+                    'order_number' => (string)$row['order_number'],
+                ];
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Fail if any ID was already used today (one-time use per calendar day).
+ *
+ * @param list<string> $idNumbers
+ */
+function assert_discount_ids_unused_today(PDO $pdo, array $idNumbers, ?int $excludeOrderId = null): void
+{
+    $seen = [];
+    foreach ($idNumbers as $raw) {
+        $key = discount_id_key((string)$raw);
+        if ($key === '' || is_placeholder_discount_id($key)) {
+            continue;
+        }
+        if (isset($seen[$key])) {
+            fail('This discount ID can only be used once per day.');
+        }
+        $seen[$key] = true;
+        $used = find_discount_id_used_today($pdo, $key, $excludeOrderId);
+        if ($used) {
+            $orderNo = trim((string)($used['order_number'] ?? ''));
+            if ($orderNo !== '') {
+                fail('This discount ID was already used today on order ' . $orderNo . '.');
+            }
+            fail('This discount ID was already used today.');
+        }
+    }
+}
+
+/** Placeholder IDs used before staff confirms a real PWD/SC ID. */
+function is_placeholder_discount_id(string $id): bool
+{
+    $key = strtoupper(trim($id));
+    if ($key === '') {
+        return true;
+    }
+    $blocked = [
+        'KIOSK-REQUEST',
+        'KIOSK_REQUEST',
+        'PENDING',
+        'REQUEST',
+        'N/A',
+        'NA',
+        'NONE',
+        'TBD',
+    ];
+    return in_array($key, $blocked, true);
+}
+
+/**
+ * Confirmed PWD/Senior discount credentials (real ID after staff apply).
+ *
+ * @param list<string> $selectedDates
+ * @return list<array<string,mixed>>
+ */
+function fetch_confirmed_discount_records(
+    PDO $pdo,
+    string $fromDate,
+    string $toDate,
+    array $selectedDates = [],
+    int $limit = 500
+): array {
+    ensure_order_discount_schema($pdo);
+    $limit = max(1, min(1000, $limit));
+
+    if (!function_exists('cashflow_date_sql') || !function_exists('sql_order_counts_as_sale')) {
+        require_once __DIR__ . '/cashflow_helpers.php';
+    }
+
+    $params = [];
+    $dateSql = cashflow_date_sql('o.created_at', $selectedDates, $fromDate, $toDate, $params);
+    $saleCond = sql_order_counts_as_sale('o');
+
+    $stmt = $pdo->prepare(
+        'SELECT
+            o.id,
+            o.order_number,
+            o.created_at,
+            o.discount_type,
+            o.discount_customer_name,
+            o.discount_id_number,
+            o.gross_amount,
+            o.discount_amount,
+            o.total_amount,
+            o.discount_rate,
+            o.status,
+            COALESCE(u.full_name, "Unknown") AS staff_name
+         FROM orders o
+         LEFT JOIN users u ON u.id = o.staff_id
+         WHERE ' . $dateSql . '
+           AND ' . $saleCond . '
+           AND o.discount_type IN (\'pwd\', \'senior\')
+           AND COALESCE(o.discount_amount, 0) > 0
+           AND COALESCE(o.discount_requested, 0) = 0
+           AND o.discount_id_number IS NOT NULL
+           AND TRIM(o.discount_id_number) <> \'\'
+           AND UPPER(TRIM(o.discount_id_number)) NOT IN (
+                \'KIOSK-REQUEST\', \'KIOSK_REQUEST\', \'PENDING\', \'REQUEST\', \'N/A\', \'NA\', \'NONE\', \'TBD\'
+           )
+         ORDER BY o.created_at DESC
+         LIMIT ' . (int)$limit
+    );
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $records = [];
+    foreach ($rows as $row) {
+        $type = strtolower(trim((string)($row['discount_type'] ?? '')));
+        $names = array_values(array_filter(array_map(
+            'trim',
+            preg_split('/\s*\|\s*/', (string)($row['discount_customer_name'] ?? ''))
+        )));
+        $ids = array_values(array_filter(array_map(
+            'trim',
+            preg_split('/\s*\|\s*/', (string)($row['discount_id_number'] ?? ''))
+        )));
+        if (!$ids) {
+            continue;
+        }
+
+        $gross = (float)($row['gross_amount'] ?? 0);
+        $discountAmt = (float)($row['discount_amount'] ?? 0);
+        $net = (float)($row['total_amount'] ?? max(0, $gross - $discountAmt));
+        $count = max(count($ids), count($names) ?: 1);
+
+        for ($i = 0; $i < $count; $i++) {
+            $idNo = $ids[$i] ?? ($ids[0] ?? '');
+            if (is_placeholder_discount_id($idNo)) {
+                continue;
+            }
+            $name = $names[$i] ?? ($names[0] ?? '');
+            if ($name === '') {
+                continue;
+            }
+            $records[] = [
+                'order_id' => (int)$row['id'],
+                'order_number' => (string)$row['order_number'],
+                'created_at' => (string)$row['created_at'],
+                'discount_type' => $type,
+                'discount_label' => $type === 'pwd' ? 'PWD' : 'Senior Citizen',
+                'customer_name' => $name,
+                'id_number' => $idNo,
+                'gross_amount' => $gross,
+                'discount_amount' => $discountAmt,
+                'net_amount' => $net,
+                'discount_rate' => $row['discount_rate'] !== null ? (float)$row['discount_rate'] : 20.0,
+                'staff_name' => (string)$row['staff_name'],
+                'status' => (string)$row['status'],
+            ];
+        }
+    }
+
+    return $records;
+}

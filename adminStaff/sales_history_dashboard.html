@@ -223,6 +223,44 @@
                 <p class="sales-report-foot" id="sales-report-foot">Showing 0 line(s) · Total Sales ₱0.00</p>
             </section>
 
+            <section class="sales-report-block discount-purchases-block" id="discount-purchases-block" aria-label="Discounted purchases">
+                <div class="sales-report-block__head">
+                    <div>
+                        <h2>Discounted Purchases</h2>
+                        <p>Confirmed PWD / Senior Citizen discounted orders.</p>
+                    </div>
+                    <div class="sales-report-block__actions">
+                        <button type="button" class="export-btn sales-report-discount-btn" id="discount-record-btn">
+                            Discount Record
+                        </button>
+                        <label class="sales-report-filter sales-report-filter--search">
+                            <span>Search</span>
+                            <input type="search" id="discount-purchases-search" placeholder="Name or ID no.…" autocomplete="off">
+                        </label>
+                    </div>
+                </div>
+                <div class="sales-report-table-wrap">
+                    <table class="sales-report-table discount-purchases-table">
+                        <thead>
+                            <tr>
+                                <th>Date / Time</th>
+                                <th>Order</th>
+                                <th>Type</th>
+                                <th>Cardholder Name</th>
+                                <th>ID No.</th>
+                                <th>Gross</th>
+                                <th>Discount</th>
+                                <th>Net</th>
+                            </tr>
+                        </thead>
+                        <tbody id="discount-purchases-tbody">
+                            <tr><td colspan="8" class="sales-report-empty">No discounted purchases yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="sales-report-foot" id="discount-purchases-foot">Showing 0 record(s)</p>
+            </section>
+
             <section class="metrics-grid">
                 <article class="metric-card">
                     <h3>Net Sales</h3>
@@ -335,6 +373,35 @@
             </div>
             <span class="foot-right">© 2024 GARAGE CAFE CO. BI DASHBOARD</span>
         </footer>
+    </div>
+
+    <div class="sh-modal-backdrop" id="discount-record-modal" aria-hidden="true">
+        <div class="sh-modal sh-modal--discount-record" role="dialog" aria-modal="true" aria-labelledby="discount-record-modal-title">
+            <header class="sh-modal__header">
+                <h2 id="discount-record-modal-title">Discount Record</h2>
+                <button type="button" class="sh-modal__close" id="discount-record-modal-close" aria-label="Close">×</button>
+            </header>
+            <div class="sh-modal__body">
+                <p class="sh-modal__hint">Confirmed PWD / Senior Citizen IDs used in the system.</p>
+                <label class="sh-modal__field discount-record-search-field">
+                    <span>Search</span>
+                    <input type="search" id="discount-records-search" placeholder="Name or ID no.…" autocomplete="off">
+                </label>
+                <div class="discount-record-list-wrap">
+                    <div class="discount-record-list-head" aria-hidden="true">
+                        <span>Type</span>
+                        <span>Name</span>
+                        <span>ID No.</span>
+                    </div>
+                    <div class="discount-record-list" id="discount-records-list">
+                        <p class="discount-record-empty">No discount records yet.</p>
+                    </div>
+                </div>
+            </div>
+            <footer class="sh-modal__footer">
+                <button type="button" class="sh-modal__btn sh-modal__btn--muted" id="discount-record-modal-cancel">Close</button>
+            </footer>
+        </div>
     </div>
 
     <script src="auth_session.js"></script>
@@ -901,6 +968,7 @@
             renderSalesReportCalendar();
             salesReportCurrentPage = 1;
             renderSalesReportFromCache();
+            loadDiscountPurchasesTable();
         }
 
         function clearSalesReportDatesToWeek() {
@@ -908,6 +976,7 @@
             renderSalesReportCalendar();
             salesReportCurrentPage = 1;
             renderSalesReportFromCache();
+            loadDiscountPurchasesTable();
         }
 
         function ymdFromDateLike(dateLike) {
@@ -1124,6 +1193,180 @@
             renderSalesReportTable(filterOrdersBySelectedRange(salesReportOrdersCache));
         }
 
+        var discountRecordsCache = [];
+        var discountPurchasesCache = [];
+        var discountPurchasesSearch = document.getElementById('discount-purchases-search');
+        var discountPurchasesTbody = document.getElementById('discount-purchases-tbody');
+        var discountPurchasesFoot = document.getElementById('discount-purchases-foot');
+
+        function getDiscountRecordEls() {
+            return {
+                btn: document.getElementById('discount-record-btn'),
+                modal: document.getElementById('discount-record-modal'),
+                closeBtn: document.getElementById('discount-record-modal-close'),
+                cancelBtn: document.getElementById('discount-record-modal-cancel'),
+                search: document.getElementById('discount-records-search'),
+                list: document.getElementById('discount-records-list')
+            };
+        }
+
+        function formatDiscountDateTime(iso) {
+            if (!iso) return '—';
+            var d = new Date(String(iso).replace(' ', 'T'));
+            if (isNaN(d.getTime())) return String(iso);
+            return d.toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        function renderDiscountRecordModalList() {
+            var els = getDiscountRecordEls();
+            if (!els.list) return;
+            var q = String((els.search && els.search.value) || '').trim().toLowerCase();
+            var rows = (discountRecordsCache || []).filter(function (rec) {
+                if (!q) return true;
+                var hay = [rec.customer_name, rec.id_number, rec.discount_label, rec.discount_type].join(' ').toLowerCase();
+                return hay.indexOf(q) !== -1;
+            });
+
+            if (!rows.length) {
+                els.list.innerHTML = '<p class="discount-record-empty">No confirmed discount IDs found.</p>';
+                return;
+            }
+
+            els.list.innerHTML = rows.map(function (rec) {
+                var type = String(rec.discount_type || 'senior').toLowerCase();
+                var typeClass = type === 'pwd' ? 'pwd' : 'senior';
+                var typeLabel = type === 'pwd' ? 'PWD' : 'Senior';
+                return (
+                    '<div class="discount-record-row">' +
+                        '<span class="discount-records-type discount-records-type--' + typeClass + '">' + esc(typeLabel) + '</span>' +
+                        '<span class="discount-record-name">' + esc(rec.customer_name || '—') + '</span>' +
+                        '<span class="discount-records-id">' + esc(rec.id_number || '—') + '</span>' +
+                    '</div>'
+                );
+            }).join('');
+        }
+
+        function renderDiscountPurchasesTable() {
+            if (!discountPurchasesTbody) return;
+            var q = String((discountPurchasesSearch && discountPurchasesSearch.value) || '').trim().toLowerCase();
+            var rows = (discountPurchasesCache || []).filter(function (rec) {
+                if (!q) return true;
+                var hay = [
+                    rec.customer_name,
+                    rec.id_number,
+                    rec.order_number,
+                    rec.discount_label,
+                    rec.discount_type
+                ].join(' ').toLowerCase();
+                return hay.indexOf(q) !== -1;
+            });
+
+            if (!rows.length) {
+                discountPurchasesTbody.innerHTML =
+                    '<tr><td colspan="8" class="sales-report-empty">No discounted purchases for this filter.</td></tr>';
+                if (discountPurchasesFoot) discountPurchasesFoot.textContent = 'Showing 0 record(s)';
+                return;
+            }
+
+            discountPurchasesTbody.innerHTML = rows.map(function (rec) {
+                var type = String(rec.discount_type || 'senior').toLowerCase();
+                var typeClass = type === 'pwd' ? 'pwd' : 'senior';
+                var typeLabel = rec.discount_label || (type === 'pwd' ? 'PWD' : 'Senior Citizen');
+                return (
+                    '<tr>' +
+                        '<td>' + esc(formatDiscountDateTime(rec.created_at)) + '</td>' +
+                        '<td><span class="sales-report-order-code">' + esc(rec.order_number || '—') + '</span></td>' +
+                        '<td><span class="discount-records-type discount-records-type--' + typeClass + '">' + esc(typeLabel) + '</span></td>' +
+                        '<td>' + esc(rec.customer_name || '—') + '</td>' +
+                        '<td><span class="discount-records-id">' + esc(rec.id_number || '—') + '</span></td>' +
+                        '<td>' + peso(rec.gross_amount || 0) + '</td>' +
+                        '<td>' + peso(rec.discount_amount || 0) + '</td>' +
+                        '<td>' + peso(rec.net_amount || 0) + '</td>' +
+                    '</tr>'
+                );
+            }).join('');
+            if (discountPurchasesFoot) {
+                discountPurchasesFoot.textContent = 'Showing ' + rows.length + ' record(s)';
+            }
+        }
+
+        function buildDiscountRecordsUrl(opts) {
+            opts = opts || {};
+            var params = new URLSearchParams();
+            if (opts.fullHistory) {
+                params.set('from', '2000-01-01');
+                params.set('to', localYmd(new Date()));
+            } else {
+                var selected = typeof getSelectedSalesReportDates === 'function' ? getSelectedSalesReportDates() : [];
+                if (selected.length === 1) {
+                    params.set('from', selected[0]);
+                    params.set('to', selected[0]);
+                } else if (selected.length > 1) {
+                    params.set('from', selected[0]);
+                    params.set('to', selected[selected.length - 1]);
+                    params.set('dates', selected.join(','));
+                } else {
+                    var today = new Date();
+                    params.set('from', localYmd(startOfWeekLocal(today)));
+                    params.set('to', localYmd(today));
+                }
+            }
+            params.set('limit', opts.fullHistory ? '500' : '400');
+            return 'api/discount_records.php?' + params.toString();
+        }
+
+        function loadDiscountPurchasesTable() {
+            return fetch(buildDiscountRecordsUrl({ fullHistory: false }), { cache: 'no-store', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    discountPurchasesCache = (d && d.success && Array.isArray(d.records)) ? d.records : [];
+                    renderDiscountPurchasesTable();
+                })
+                .catch(function () {
+                    discountPurchasesCache = [];
+                    renderDiscountPurchasesTable();
+                });
+        }
+
+        function loadDiscountRecordsForModal() {
+            return fetch(buildDiscountRecordsUrl({ fullHistory: true }), { cache: 'no-store', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    discountRecordsCache = (d && d.success && Array.isArray(d.records)) ? d.records : [];
+                    renderDiscountRecordModalList();
+                })
+                .catch(function () {
+                    discountRecordsCache = [];
+                    renderDiscountRecordModalList();
+                });
+        }
+
+        function openDiscountRecordModal() {
+            var els = getDiscountRecordEls();
+            if (!els.modal) return;
+            if (els.search) els.search.value = '';
+            if (els.list) els.list.innerHTML = '<p class="discount-record-empty">Loading…</p>';
+            els.modal.classList.add('is-visible');
+            els.modal.setAttribute('aria-hidden', 'false');
+            loadDiscountRecordsForModal().finally(function () {
+                var searchEl = document.getElementById('discount-records-search');
+                if (searchEl) searchEl.focus();
+            });
+        }
+
+        function closeDiscountRecordModal() {
+            var els = getDiscountRecordEls();
+            if (!els.modal) return;
+            els.modal.classList.remove('is-visible');
+            els.modal.setAttribute('aria-hidden', 'true');
+        }
+
         function loadSales() {
             Promise.all([
                 fetch('api/sales.php?limit=200').then(function (r) { return r.json(); }),
@@ -1178,6 +1421,7 @@
                     }
                     updateSalesReportDateFilterUi();
                     renderSalesReportFromCache();
+                    loadDiscountPurchasesTable();
                 })
                 .catch(function (e) { console.warn('Sales data unavailable:', e.message); });
         }
@@ -1239,6 +1483,27 @@
                 renderSalesReportFromCache();
             });
         }
+        (function bindDiscountRecordUi() {
+            var els = getDiscountRecordEls();
+            if (els.btn) els.btn.addEventListener('click', openDiscountRecordModal);
+            if (els.closeBtn) els.closeBtn.addEventListener('click', closeDiscountRecordModal);
+            if (els.cancelBtn) els.cancelBtn.addEventListener('click', closeDiscountRecordModal);
+            if (els.modal) {
+                els.modal.addEventListener('click', function (e) {
+                    if (e.target === els.modal) closeDiscountRecordModal();
+                });
+            }
+            if (els.search) els.search.addEventListener('input', renderDiscountRecordModalList);
+            if (discountPurchasesSearch) {
+                discountPurchasesSearch.addEventListener('input', renderDiscountPurchasesTable);
+            }
+            document.addEventListener('keydown', function (e) {
+                var modal = document.getElementById('discount-record-modal');
+                if (e.key === 'Escape' && modal && modal.classList.contains('is-visible')) {
+                    closeDiscountRecordModal();
+                }
+            });
+        })();
 
         function startOfWeekLocal(dateLike) {
             var d = dateLike instanceof Date ? new Date(dateLike.getTime()) : new Date(dateLike);
@@ -1466,6 +1731,7 @@
         });
     })();
     </script>
+
     <div class="sh-modal-backdrop" id="sh-manage-modal" aria-hidden="true">
         <div class="sh-modal sh-modal--manage" role="dialog" aria-modal="true" aria-labelledby="sh-manage-modal-title">
             <header class="sh-modal__header">

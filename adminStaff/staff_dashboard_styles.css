@@ -228,6 +228,228 @@ button {
     justify-content: center;
 }
 
+.meta-cell--inv-check {
+    justify-content: center;
+}
+
+.header-inv-check-btn {
+    border: 1px solid #5a4535;
+    background: rgba(18, 14, 10, 0.2);
+    color: #e8ceb0;
+    border-radius: 10px;
+    padding: 8px 12px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, color .15s, border-color .15s, transform .05s;
+}
+
+.header-inv-check-btn:hover {
+    background: #f48c25;
+    color: #120e0a;
+    border-color: #f48c25;
+}
+
+.header-inv-check-btn:active {
+    transform: translateY(1px);
+}
+
+.inv-check-modal {
+    width: min(560px, calc(100vw - 28px));
+    max-height: min(84vh, 720px);
+}
+
+.inv-check-modal--popup {
+    width: min(520px, calc(100vw - 28px));
+}
+
+.inv-check-modal .cash-mgmt-modal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: calc(min(84vh, 720px) - 72px);
+    overflow: hidden;
+}
+
+.inv-check-modal__lead {
+    margin: 0;
+    color: rgba(255, 247, 237, 0.65);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.inv-check-modal__toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.inv-check-modal__toolbar-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.inv-check-link-btn {
+    border: 0;
+    background: transparent;
+    color: #f48c25;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 0;
+}
+
+.inv-check-link-btn:hover {
+    color: #ffb15a;
+}
+
+.inv-check-config-list,
+.inv-check-popup-list {
+    flex: 1;
+    min-height: 180px;
+    max-height: 46vh;
+    overflow-y: auto;
+    border: 1px solid #3d3025;
+    border-radius: 10px;
+    background: rgba(12, 9, 7, 0.55);
+    padding: 8px;
+}
+
+.inv-check-group + .inv-check-group {
+    margin-top: 10px;
+}
+
+.inv-check-group__title {
+    margin: 0 0 6px;
+    padding: 0 4px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 247, 237, 0.45);
+}
+
+.inv-check-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    margin: 0 0 4px;
+    padding: 10px 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: #fff7ed;
+}
+
+.inv-check-option:hover {
+    background: rgba(244, 140, 37, 0.08);
+}
+
+.inv-check-option input {
+    margin-top: 2px;
+    accent-color: #f48c25;
+}
+
+.inv-check-option__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.inv-check-option__name {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.inv-check-option__meta {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: rgba(255, 247, 237, 0.5);
+}
+
+.inv-check-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 12px;
+    border-radius: 8px;
+    border: 1px solid #33261c;
+    background: rgba(18, 14, 10, 0.35);
+    margin-bottom: 6px;
+}
+
+.inv-check-row__main {
+    min-width: 0;
+}
+
+.inv-check-row__name {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff7ed;
+}
+
+.inv-check-row__cat {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: rgba(255, 247, 237, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.inv-check-row__stock {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.inv-check-row__qty {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #e8ceb0;
+}
+
+.inv-check-row__status {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 999px;
+}
+
+.inv-check-row__status--in_stock {
+    background: rgba(34, 197, 94, 0.18);
+    color: #86efac;
+}
+
+.inv-check-row__status--low_stock {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+}
+
+.inv-check-row__status--out_of_stock {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
+}
+
 .header-logout-btn {
     border: 1px solid #5a4535;
     background: rgba(18, 14, 10, 0.2);
@@ -4925,7 +5147,7 @@ button {
 .shortage-restock-lines__head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     margin-bottom: 10px;
 }
 .shortage-restock-lines__head > span {
@@ -4935,16 +5157,6 @@ button {
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
-.shortage-restock-addline {
-    width: auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    padding: 8px 14px;
-    min-width: 120px;
-    min-height: 0;
-}
 .shortage-restock-lines__table {
     border: 1px solid rgba(244, 140, 37, 0.22);
     border-radius: 12px;
@@ -4953,7 +5165,7 @@ button {
 }
 .shortage-restock-lines__row {
     display: grid;
-    grid-template-columns: minmax(100px, 1fr) minmax(220px, 1.7fr) 90px 90px 40px;
+    grid-template-columns: minmax(100px, 1fr) minmax(220px, 1.7fr) 90px 90px;
     gap: 8px;
     align-items: center;
     padding: 8px 10px;
@@ -4993,17 +5205,6 @@ button {
     font: inherit;
     cursor: default;
     user-select: none;
-}
-.shortage-restock-lines__remove {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    border: 1px solid rgba(239, 68, 68, 0.6);
-    background: rgba(239, 68, 68, 0.15);
-    color: #fecaca;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
 }
 
 /* ─── GCash body layout ─────────────────────────────────────── */

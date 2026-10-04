@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20260910-stocklog-total">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261004-inv-check-admin">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -43,6 +43,7 @@
                     </div>
                 </div>
                 <div class="title-actions">
+                    <button type="button" class="btn btn-primary" id="btn-inventory-check" title="Choose inventory items for staff shift-open check">Inventory Check</button>
                     <button class="btn btn-muted" id="btn-low-stock-level">Low Stock Alert Level</button>
                     <button class="btn btn-muted" id="btn-add-inventory">Register Inventory Item</button>
                     <button class="btn btn-muted" id="btn-view-receipts">Stock Log</button>
@@ -419,6 +420,33 @@
                     <p class="app-modal__hint">Set a threshold for the system to know if an item needs restocking alerts.</p>
                     <div id="restock-notification-list" class="stock-movement__list"></div>
                 </div>
+            </div>
+        </div>
+
+        <div class="inv-modal-backdrop" id="inv-check-config-backdrop" aria-hidden="true">
+            <div class="inv-modal inv-modal--inv-check" role="dialog" aria-modal="true" aria-labelledby="inv-check-config-title">
+                <header class="inv-modal__header">
+                    <h2 id="inv-check-config-title">INVENTORY CHECK LIST</h2>
+                    <button type="button" class="inv-modal__close" id="inv-check-config-close" aria-label="Close inventory check list">×</button>
+                </header>
+                <div class="inv-modal__body inv-check-modal__body">
+                    <p class="app-modal__hint">Select which inventory items appear in the staff Inventory Checking popup on login / shift open.</p>
+                    <div class="inv-check-modal__toolbar">
+                        <input type="search" class="inv-check-search" id="inv-check-config-search" placeholder="Search inventory…" autocomplete="off">
+                        <div class="inv-check-modal__toolbar-actions">
+                            <button type="button" class="inv-check-link-btn" id="inv-check-select-all">Select all</button>
+                            <button type="button" class="inv-check-link-btn" id="inv-check-clear-all">Clear</button>
+                        </div>
+                    </div>
+                    <div class="inv-check-config-list" id="inv-check-config-list">
+                        <p class="inv-check-empty">Loading inventory…</p>
+                    </div>
+                    <p class="inv-modal__error" id="inv-check-config-error" hidden role="alert"></p>
+                </div>
+                <footer class="inv-modal__footer">
+                    <button type="button" class="btn btn-muted" id="inv-check-config-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="inv-check-config-save">Save Selection</button>
+                </footer>
             </div>
         </div>
 
@@ -1214,10 +1242,36 @@
             return getItemTotalAvailable(item) / max;
         }
 
+        function getItemAlertStockRatio(item) {
+            if (item && item.alert_stock_ratio != null) {
+                return Math.max(0, parseFloat(item.alert_stock_ratio) || 0);
+            }
+            var stockUnits = Math.max(0, parseInt(item && item.stock_units, 10) || 0);
+            var openCount = getOpenItemsCount(item);
+            var parUnits = Math.max(
+                1,
+                stockUnits + Math.max(0, openCount),
+                parseInt(item && item.reorder_level, 10) || 0,
+                Math.ceil(parseFloat(item && item.safety_stock) || 0)
+            );
+            var total = getItemTotalAvailable(item);
+            if (usesBatchStockDisplay(item)) {
+                var batchSize = Math.max(1, getBatchSize(item));
+                var remainingUnits = stockUnits + (getBatchRemaining(item) / batchSize);
+                return parUnits > 0 ? remainingUnits / parUnits : 0;
+            }
+            var capacity = getConfiguredItemCapacity(item);
+            if (capacity <= 0) {
+                return parUnits > 0 ? stockUnits / parUnits : 0;
+            }
+            var reference = parUnits * capacity;
+            return reference > 0 ? total / reference : 0;
+        }
+
         function isItemLowStockByFraction(item) {
             var total = getItemTotalAvailable(item);
             if (total <= 0) return false;
-            return getItemStockRatio(item) <= (getLowStockFractionDen() / 100);
+            return getItemAlertStockRatio(item) <= (getLowStockFractionDen() / 100);
         }
 
         function getStockLevelColor(item) {
@@ -3075,6 +3129,7 @@
                 '<div class="low-stock-fraction-group">' +
                     '<p class="low-stock-fraction-label">Mark as low stock when remaining stock is at or below</p>' +
                     '<div class="low-stock-fraction-options" id="low-stock-fraction-options">' + buttonsHtml + '</div>' +
+                    '<p class="app-modal__hint" style="margin-top:12px;">Uses each item&rsquo;s reorder / safety baseline so 75% is stricter (more alerts) and 25% is looser.</p>' +
                 '</div>';
 
             var optionsEl = document.getElementById('low-stock-fraction-options');
@@ -3083,12 +3138,21 @@
                     var btn = e.target.closest('[data-fraction-den]');
                     if (!btn) return;
                     var den = parseInt(btn.getAttribute('data-fraction-den'), 10);
-                    if (!lowStockFractionOptions.includes(den)) return;
+                    if (lowStockFractionOptions.indexOf(den) === -1) return;
                     lowStockFractionDen = den;
                     optionsEl.querySelectorAll('[data-fraction-den]').forEach(function (el) {
                         el.classList.toggle('low-stock-fraction-btn--active', parseInt(el.getAttribute('data-fraction-den'), 10) === den);
                     });
+                    if (appModalSave) {
+                        appModalSave.disabled = false;
+                        appModalSave.textContent = 'Save';
+                    }
                 });
+            }
+
+            if (appModalSave) {
+                appModalSave.disabled = false;
+                appModalSave.textContent = 'Save';
             }
 
             if (appModalBackdrop) {
@@ -3106,7 +3170,18 @@
         }
 
         function saveLowStockLevel() {
-            var fractionDen = getLowStockFractionDen();
+            var activeBtn = document.querySelector('#low-stock-fraction-options .low-stock-fraction-btn--active');
+            var fractionDen = activeBtn
+                ? parseInt(activeBtn.getAttribute('data-fraction-den'), 10)
+                : getLowStockFractionDen();
+            if (lowStockFractionOptions.indexOf(fractionDen) === -1) {
+                fractionDen = 50;
+            }
+
+            if (appModalSave) {
+                appModalSave.disabled = true;
+                appModalSave.textContent = 'Saving…';
+            }
 
             fetch('api/inventory.php', {
                 method: 'PUT',
@@ -3123,10 +3198,26 @@
                         return;
                     }
                     lowStockFractionDen = fractionDen;
-                    closeApplicableModal();
-                    loadInventory();
+                    if (appModalSave) {
+                        appModalSave.textContent = 'Saved';
+                    }
+                    window.setTimeout(function () {
+                        closeApplicableModal();
+                        loadInventory();
+                    }, 350);
                 })
-                .catch(function () { alert('Network error while saving.'); });
+                .catch(function () { alert('Network error while saving.'); })
+                .finally(function () {
+                    if (appModalSave && appModalSave.textContent !== 'Saved') {
+                        appModalSave.disabled = false;
+                        appModalSave.textContent = 'Save';
+                    } else if (appModalSave) {
+                        window.setTimeout(function () {
+                            appModalSave.disabled = false;
+                            appModalSave.textContent = 'Save';
+                        }, 400);
+                    }
+                });
         }
 
         function openOrdersPerBoxModal(itemId, mode) {
@@ -3211,6 +3302,17 @@
         }
 
         function handleRowAction(e) {
+            var blockedOpenBtn = e.target.closest('[data-open-stock-blocked]');
+            if (blockedOpenBtn) {
+                e.preventDefault();
+                var blockReason = blockedOpenBtn.getAttribute('data-open-block-reason') || 'capacity';
+                if (blockReason === 'batch') {
+                    alert('Open is for Bar consumables only.\n\nKitchen / non-consumable items auto-track an active batch instead.');
+                } else {
+                    alert('Please set the Set orders per stock value first before opening this item.');
+                }
+                return;
+            }
             var openStockBtn = e.target.closest('[data-open-stock-id]');
             if (openStockBtn) {
                 e.preventDefault();
@@ -3223,7 +3325,7 @@
                     return;
                 }
                 if (!isItemCapacityConfigured(targetItem)) {
-                    alert('Set Orders per Stock Item first before opening +1.');
+                    alert('Please set the Set orders per stock value first before opening this item.');
                     return;
                 }
                 // Open popup to ask how many sealed stock items to open.
@@ -3382,13 +3484,13 @@
                     : 'Not used for Bar consumable items — use Set orders per stock + Open instead');
             var stockType = getStockType(item);
             var canOpen = !batchDisplay && capacityConfigured;
+            var openBlockedReason = batchDisplay ? 'batch' : 'capacity';
+            var openBlockedMsg = batchDisplay
+                ? 'Open is for Bar consumables. Kitchen / non-consumable items auto-track an active batch instead.'
+                : 'Please set the Set orders per stock value first before opening this item.';
             var openBtn = canOpen
                 ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open — amount of items in use or open packs">Open</button>'
-                : '<span class="btn-open-stock-used btn-open-stock-used--disabled" title="' +
-                    (batchDisplay
-                        ? 'Open is for Bar consumables. Kitchen / non-consumable items auto-track an active batch instead.'
-                        : 'Set estimated servings quantity first, then Open packs in use') +
-                  '">Open</span>';
+                : '<button type="button" class="btn-open-stock-used btn-open-stock-used--disabled" data-open-stock-blocked="1" data-open-block-reason="' + openBlockedReason + '" title="' + escAttr(openBlockedMsg) + '" aria-disabled="true">Open</button>';
             return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
                 '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
                 '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
@@ -3629,6 +3731,7 @@
             if (saveBtn) {
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Saving...';
+                saveBtn.classList.remove('is-saved');
             }
 
             fetch('api/inventory.php', {
@@ -3641,26 +3744,41 @@
                 if (!d.success) {
                     alert(d.error || 'Failed to save notes.');
                     loadInventory();
+                    if (saveBtn) {
+                        saveBtn.textContent = 'Save';
+                        saveBtn.disabled = false;
+                        saveBtn.classList.remove('is-saved');
+                    }
                     return;
                 }
                 if (saveBtn) {
                     saveBtn.textContent = 'Saved';
-                    window.setTimeout(function () {
-                        saveBtn.textContent = 'Save';
-                        saveBtn.disabled = false;
-                    }, 1200);
+                    saveBtn.disabled = false;
+                    saveBtn.classList.add('is-saved');
+                    saveBtn.setAttribute('data-saved-value', value);
                 }
             })
             .catch(function () {
                 alert('Network error while saving notes.');
                 loadInventory();
-            })
-            .finally(function () {
-                if (saveBtn && saveBtn.textContent === 'Saving...') {
+                if (saveBtn) {
                     saveBtn.textContent = 'Save';
                     saveBtn.disabled = false;
+                    saveBtn.classList.remove('is-saved');
                 }
             });
+        }
+
+        function markManualNotesSaveDirty(notesInput) {
+            if (!notesInput) return;
+            var row = notesInput.closest('.table-row');
+            var saveBtn = row ? row.querySelector('[data-save-notes-id]') : null;
+            if (!saveBtn) return;
+            if (saveBtn.classList.contains('is-saved') || String(saveBtn.textContent || '').toLowerCase() === 'saved') {
+                saveBtn.textContent = 'Save';
+                saveBtn.classList.remove('is-saved');
+                saveBtn.disabled = false;
+            }
         }
 
         function collectFormData() {
@@ -4153,6 +4271,11 @@
                 }
                 handleRowAction(e);
             });
+            manualTableWrap.addEventListener('input', function (e) {
+                var notesInput = e.target && e.target.closest ? e.target.closest('input[data-notes-id]') : null;
+                if (!notesInput) return;
+                markManualNotesSaveDirty(notesInput);
+            });
             manualTableWrap.addEventListener('change', function (e) {
                 var input = e.target && e.target.closest ? e.target.closest('input[data-stock-status-id]') : null;
                 if (!input) return;
@@ -4549,6 +4672,216 @@
                 setMovementSource(btn.getAttribute('data-movement-source'));
             });
         }
+
+        // ── Inventory Check list (admin configures staff shift-open popup) ────
+        (function initAdminInventoryCheck() {
+            var openBtn = document.getElementById('btn-inventory-check');
+            var backdrop = document.getElementById('inv-check-config-backdrop');
+            var closeBtn = document.getElementById('inv-check-config-close');
+            var cancelBtn = document.getElementById('inv-check-config-cancel');
+            var saveBtn = document.getElementById('inv-check-config-save');
+            var listEl = document.getElementById('inv-check-config-list');
+            var searchEl = document.getElementById('inv-check-config-search');
+            var errorEl = document.getElementById('inv-check-config-error');
+            var selectAllBtn = document.getElementById('inv-check-select-all');
+            var clearAllBtn = document.getElementById('inv-check-clear-all');
+            var catalogItems = [];
+            var selectedIds = {};
+
+            function getInvCheckDoneKey() {
+                return 'staff_inventory_check_done_' + new Date().toISOString().slice(0, 10);
+            }
+
+            function showError(msg) {
+                if (!errorEl) return;
+                if (!msg) {
+                    errorEl.hidden = true;
+                    errorEl.textContent = '';
+                    return;
+                }
+                errorEl.hidden = false;
+                errorEl.textContent = msg;
+            }
+
+            function setVisible(visible) {
+                if (!backdrop) return;
+                backdrop.classList.toggle('is-visible', !!visible);
+                backdrop.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            }
+
+            function formatStockLine(item) {
+                var sealed = Math.max(0, parseInt(item && item.stock_units, 10) || 0);
+                var openLeft = Math.max(0, parseFloat(item && item.units_in_use) || 0);
+                var unit = String((item && item.per_stock_unit) || 'pcs');
+                var openCount = Math.max(0, parseInt(item && item.open_items_count, 10) || 0);
+                var parts = ['Sealed ' + sealed];
+                if (openCount > 0 || openLeft > 0) {
+                    var openText = (Math.abs(openLeft - Math.round(openLeft)) < 0.001)
+                        ? String(Math.round(openLeft))
+                        : String(Math.round(openLeft * 100) / 100);
+                    parts.push('Open ' + openText + unit);
+                }
+                return parts.join(' · ');
+            }
+
+            function renderList() {
+                if (!listEl) return;
+                var q = String((searchEl && searchEl.value) || '').trim().toLowerCase();
+                var filtered = catalogItems.filter(function (item) {
+                    if (!q) return true;
+                    var hay = ((item.name || '') + ' ' + (item.category_name || '')).toLowerCase();
+                    return hay.indexOf(q) !== -1;
+                });
+                if (!filtered.length) {
+                    listEl.innerHTML = '<p class="inv-check-empty">No inventory items found.</p>';
+                    return;
+                }
+                var byCat = {};
+                filtered.forEach(function (item) {
+                    var cat = String(item.category_name || 'Other').trim() || 'Other';
+                    if (!byCat[cat]) byCat[cat] = [];
+                    byCat[cat].push(item);
+                });
+                var html = '';
+                Object.keys(byCat).sort(function (a, b) { return a.localeCompare(b); }).forEach(function (cat) {
+                    html += '<div class="inv-check-group">';
+                    html += '<p class="inv-check-group__title">' + esc(cat) + '</p>';
+                    byCat[cat].forEach(function (item) {
+                        var checked = selectedIds[item.id] ? ' checked' : '';
+                        html +=
+                            '<label class="inv-check-option">' +
+                                '<input type="checkbox" data-inv-check-id="' + esc(item.id) + '"' + checked + '>' +
+                                '<span class="inv-check-option__body">' +
+                                    '<span class="inv-check-option__name">' + esc(item.name) + '</span>' +
+                                    '<span class="inv-check-option__meta">' + esc(formatStockLine(item)) + '</span>' +
+                                '</span>' +
+                            '</label>';
+                    });
+                    html += '</div>';
+                });
+                listEl.innerHTML = html;
+            }
+
+            function syncSelectedFromDom() {
+                if (!listEl) return;
+                listEl.querySelectorAll('input[data-inv-check-id]').forEach(function (input) {
+                    var id = parseInt(input.getAttribute('data-inv-check-id'), 10);
+                    if (!id) return;
+                    if (input.checked) selectedIds[id] = true;
+                    else delete selectedIds[id];
+                });
+            }
+
+            function fetchCatalog() {
+                return fetch('api/inventory_check.php', { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) {
+                            throw new Error((d && d.error) || 'Failed to load inventory check list');
+                        }
+                        catalogItems = Array.isArray(d.items) ? d.items : [];
+                        selectedIds = {};
+                        (d.selected_ids || []).forEach(function (id) {
+                            selectedIds[parseInt(id, 10)] = true;
+                        });
+                        return d;
+                    });
+            }
+
+            function openModal() {
+                showError('');
+                setVisible(true);
+                if (searchEl) searchEl.value = '';
+                if (listEl) listEl.innerHTML = '<p class="inv-check-empty">Loading inventory…</p>';
+                fetchCatalog()
+                    .then(function () { renderList(); })
+                    .catch(function (err) {
+                        if (listEl) {
+                            listEl.innerHTML = '<p class="inv-check-empty">' +
+                                esc(err && err.message ? err.message : 'Could not load inventory.') +
+                                '</p>';
+                        }
+                    });
+            }
+
+            function closeModal() {
+                setVisible(false);
+                showError('');
+            }
+
+            if (openBtn) openBtn.addEventListener('click', openModal);
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+            if (backdrop) {
+                backdrop.addEventListener('click', function (e) {
+                    if (e.target === backdrop) closeModal();
+                });
+            }
+            if (searchEl) {
+                searchEl.addEventListener('input', function () {
+                    syncSelectedFromDom();
+                    renderList();
+                });
+            }
+            if (listEl) {
+                listEl.addEventListener('change', function (e) {
+                    var input = e.target && e.target.closest ? e.target.closest('input[data-inv-check-id]') : null;
+                    if (!input) return;
+                    var id = parseInt(input.getAttribute('data-inv-check-id'), 10);
+                    if (!id) return;
+                    if (input.checked) selectedIds[id] = true;
+                    else delete selectedIds[id];
+                });
+            }
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', function () {
+                    catalogItems.forEach(function (item) { selectedIds[item.id] = true; });
+                    renderList();
+                });
+            }
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', function () {
+                    selectedIds = {};
+                    renderList();
+                });
+            }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function () {
+                    syncSelectedFromDom();
+                    showError('');
+                    var ids = Object.keys(selectedIds).map(function (k) { return parseInt(k, 10); }).filter(Boolean);
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'Saving…';
+                    fetch('api/inventory_check.php', {
+                        method: 'PUT',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ inventory_item_ids: ids })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (d) {
+                            if (!d || !d.success) {
+                                throw new Error((d && d.error) || 'Could not save selection.');
+                            }
+                            catalogItems = Array.isArray(d.items) ? d.items : catalogItems;
+                            selectedIds = {};
+                            (d.selected_ids || []).forEach(function (id) {
+                                selectedIds[parseInt(id, 10)] = true;
+                            });
+                            // Staff popup should show the updated list on next login/shift check.
+                            try { localStorage.removeItem(getInvCheckDoneKey()); } catch (e) {}
+                            closeModal();
+                        })
+                        .catch(function (err) {
+                            showError(err && err.message ? err.message : 'Could not save selection.');
+                        })
+                        .finally(function () {
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = 'Save Selection';
+                        });
+                });
+            }
+        })();
     })();
     </script>
 </body>

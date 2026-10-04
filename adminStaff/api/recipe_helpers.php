@@ -781,6 +781,42 @@ function inventory_stock_ratio(array $row): float
     return total_available_orders_for_inventory_row($row) / $max;
 }
 
+/**
+ * Stock fullness for low-stock % alerts.
+ * Uses reorder_level / safety_stock as a stable "full" baseline so the ratio
+ * does not stay near 100% as sealed units are consumed.
+ */
+function inventory_alert_stock_ratio(array $row): float
+{
+    $stockUnits = max(0, (int)($row['stock_units'] ?? 0));
+    $ordersLeft = max(0.0, (float)($row['units_in_use'] ?? 0));
+    $openCount = open_items_count_for_row($row);
+    $parUnits = max(
+        1,
+        $stockUnits + max(0, $openCount),
+        (int)($row['reorder_level'] ?? 0),
+        (int)ceil((float)($row['safety_stock'] ?? 0))
+    );
+
+    if (inventory_uses_batch_logic($row)) {
+        $batchSize = max(1.0, (float)batch_size_for_inventory_row($row));
+        $remainingUnits = $stockUnits + ($ordersLeft / $batchSize);
+        return max(0.0, $remainingUnits / $parUnits);
+    }
+
+    $capacity = (int)($row['orders_per_box'] ?? 0);
+    if ($capacity <= 0) {
+        return max(0.0, $stockUnits / $parUnits);
+    }
+
+    $remaining = total_available_orders_for_inventory_row($row);
+    $reference = $parUnits * $capacity;
+    if ($reference <= 0) {
+        return 0.0;
+    }
+    return max(0.0, $remaining / $reference);
+}
+
 function is_low_stock_for_inventory_row(array $row, int $alertPercent): bool
 {
     $alertPercent = max(1, min(100, $alertPercent));
@@ -788,11 +824,7 @@ function is_low_stock_for_inventory_row(array $row, int $alertPercent): bool
     if ($total <= 0) {
         return false;
     }
-    $max = max_capacity_for_inventory_row($row);
-    if ($max <= 0) {
-        return false;
-    }
-    return ($total / $max) <= ($alertPercent / 100.0);
+    return inventory_alert_stock_ratio($row) <= ($alertPercent / 100.0);
 }
 
 /**
@@ -1595,7 +1627,7 @@ function restock_inventory_shortages(PDO $pdo, array $shortages): array
     }
 
     $selectStmt = $pdo->prepare(
-        'SELECT id, item_name, stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, stock_type, category_name
+        'SELECT id, item_name, stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, per_stock_unit, stock_type, category_name
          FROM inventory_items
          WHERE id = :id
            AND is_active = 1
@@ -1640,6 +1672,8 @@ function restock_inventory_shortages(PDO $pdo, array $shortages): array
             'inventory_item_id' => $invId,
             'item_name' => (string)($row['item_name'] ?? $s['item_name'] ?? 'Item'),
             'shortage' => round($shortage, 2),
+            'per_stock_unit' => (string)($row['per_stock_unit'] ?? $s['per_stock_unit'] ?? 'pcs'),
+            'unit' => (string)($row['per_stock_unit'] ?? $s['unit'] ?? $s['per_stock_unit'] ?? 'pcs'),
         ];
     }
 

@@ -68,6 +68,25 @@
         }
     }
 
+    function getInventoryCheckDoneKey() {
+        return 'staff_inventory_check_done_' + new Date().toISOString().slice(0, 10);
+    }
+
+    function hasInventoryCheckDoneForToday() {
+        try {
+            return localStorage.getItem(getInventoryCheckDoneKey()) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function markPendingInventoryCheck() {
+        if (hasInventoryCheckDoneForToday()) return;
+        try {
+            sessionStorage.setItem('ortus_pending_inventory_check', '1');
+        } catch (e) {}
+    }
+
     function continueStaffRedirect() {
         window.location.href = loginNext || pendingStaffRedirect || 'staff_dashboard.html';
     }
@@ -127,6 +146,7 @@
         moneySaveBtn.addEventListener('click', function () {
             if (!saveStartingMoney()) return;
             hideStartingMoneyOverlay();
+            markPendingInventoryCheck();
             if (pendingStaffRedirect) {
                 continueStaffRedirect();
             }
@@ -179,6 +199,8 @@
                     pendingStaffRedirect = loginNext || redirect || 'staff_dashboard.html';
                     // Shared float for the day — only prompt on the first staff login / shift open.
                     if (hasStartingMoneyForToday()) {
+                        // Still show inventory checking on POS if not completed yet today.
+                        markPendingInventoryCheck();
                         continueStaffRedirect();
                         return;
                     }

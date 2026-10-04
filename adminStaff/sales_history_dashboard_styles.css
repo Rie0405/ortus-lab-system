@@ -915,6 +915,111 @@ body {
     border-radius: 10px;
     padding: 14px;
 }
+
+.sales-report-discount-btn {
+    align-self: flex-end;
+    white-space: nowrap;
+}
+
+.discount-purchases-block {
+    margin-top: 18px;
+}
+
+.sh-modal--discount-record {
+    width: min(520px, calc(100vw - 28px));
+    max-height: min(80vh, 640px);
+}
+
+.discount-record-search-field {
+    margin-bottom: 10px;
+}
+
+.discount-record-list-wrap {
+    border: 1px solid #3d3025;
+    border-radius: 10px;
+    background: rgba(12, 9, 7, 0.45);
+    overflow: hidden;
+}
+
+.discount-record-list-head,
+.discount-record-row {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+}
+
+.discount-record-list-head {
+    border-bottom: 1px solid #33261c;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.discount-record-list {
+    max-height: min(48vh, 380px);
+    overflow-y: auto;
+}
+
+.discount-record-row + .discount-record-row {
+    border-top: 1px solid rgba(51, 38, 28, 0.85);
+}
+
+.discount-record-name {
+    color: #fff7ed;
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.discount-record-empty {
+    margin: 0;
+    padding: 28px 16px;
+    text-align: center;
+    color: rgba(255, 247, 237, 0.45);
+    font-size: 13px;
+}
+
+.discount-records-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 54px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.discount-records-type--pwd {
+    background: rgba(96, 165, 250, 0.16);
+    color: #93c5fd;
+}
+
+.discount-records-type--senior {
+    background: rgba(244, 140, 37, 0.16);
+    color: #fdba74;
+}
+
+.discount-records-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0.02em;
+    color: #e2e8f0;
+    font-weight: 700;
+    font-size: 12px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .sales-report-block__head h2 {
     margin: 0;
     font-size: 12px;

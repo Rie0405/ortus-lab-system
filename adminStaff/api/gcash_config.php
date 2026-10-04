@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/activity_log_helpers.php';
 require_auth();
 
 function ensure_gcash_config_schema(PDO $pdo): void
@@ -154,6 +155,12 @@ try {
         ]);
     }
     $pdo->commit();
+
+    log_system_activity($pdo, [
+        'source_key' => 'set_gcash',
+        'source_label' => 'Set GCash',
+        'action' => 'GCash settings updated',
+    ]);
 
     ok(['message' => 'GCash kiosk config updated.']);
 } catch (Throwable $e) {

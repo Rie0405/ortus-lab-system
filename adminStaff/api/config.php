@@ -1,12 +1,17 @@
 <?php
 // ─── Load .env (local + Hostinger) without committing secrets ─────────────────
-// Search order:
-//   1) project root .env          → Ortus/.env (local XAMPP)
-//   2) parent of web root .env    → domains/yoursite.com/.env (Hostinger; survives Git deploy)
+// Search order (first readable file wins):
+//   1) project root .env                 → public_html/.env
+//   2) parent of web root .env           → domains/yoursite.com/.env (best on Hostinger)
+//   3) adminStaff/runtime/.env           → easy to create in File Manager; survives better
+//   4) two more parents (shared hosting path quirks)
 (function (): void {
     $candidates = [
         __DIR__ . '/../../.env',
         __DIR__ . '/../../../.env',
+        __DIR__ . '/../runtime/.env',
+        __DIR__ . '/../../../../.env',
+        __DIR__ . '/.env',
     ];
     foreach ($candidates as $envFile) {
         if (!is_file($envFile) || !is_readable($envFile)) {

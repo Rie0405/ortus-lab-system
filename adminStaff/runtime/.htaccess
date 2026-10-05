@@ -1,0 +1,2 @@
+# Deny web access to anything in this folder (runtime state + optional .env)
+Require all denied

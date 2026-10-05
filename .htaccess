@@ -1,0 +1,9 @@
+# Block direct web access to env / secrets
+<FilesMatch "^\.env">
+  Require all denied
+</FilesMatch>
+<IfModule mod_authz_core.c>
+  <Files ".env">
+    Require all denied
+  </Files>
+</IfModule>

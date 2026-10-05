@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261004-inv-check">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261004-ses-cleanup">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -246,6 +246,23 @@
                     </div>
             </aside>
         </main>
+
+            <div class="queue-drawer-shell" id="queue-slide-drawer" aria-hidden="true">
+                <aside class="queue-drawer-panel" id="queue-drawer-panel" aria-label="Returned orders panel">
+                    <header class="queue-drawer-panel__head">
+                        <h3 class="queue-drawer-panel__title">Returned Orders</h3>
+                    </header>
+                    <div class="queue-drawer-panel__body">
+                        <div class="queue-drawer-returned-list" id="queue-drawer-returned-list">
+                            <p class="queue-drawer-empty">No returned orders from kitchen.</p>
+                        </div>
+                    </div>
+                </aside>
+                <button type="button" class="queue-drawer-tab" id="queue-drawer-tab" aria-expanded="false" aria-controls="queue-drawer-panel" aria-label="Open returned orders panel">
+                    <span class="queue-drawer-tab__badge" id="queue-drawer-badge" hidden>0</span>
+                    <span class="queue-drawer-tab__chev" aria-hidden="true"></span>
+                </button>
+            </div>
         </div><!-- end staff-main-panel--pos -->
 
         <!-- ═══════════════════════════════════════════════════ -->
@@ -362,23 +379,6 @@
                     </div>
                 </div>
 
-            </div>
-
-            <div class="queue-drawer-shell" id="queue-slide-drawer" aria-hidden="true">
-                <aside class="queue-drawer-panel" id="queue-drawer-panel" aria-label="Queue panel">
-                    <header class="queue-drawer-panel__head">
-                        <h3 class="queue-drawer-panel__title">Returned Orders</h3>
-                    </header>
-                    <div class="queue-drawer-panel__body">
-                        <div class="queue-drawer-returned-list" id="queue-drawer-returned-list">
-                            <p class="queue-drawer-empty">No returned orders from kitchen.</p>
-                        </div>
-                    </div>
-                </aside>
-                <button type="button" class="queue-drawer-tab" id="queue-drawer-tab" aria-expanded="false" aria-controls="queue-drawer-panel" aria-label="Open queue panel">
-                    <span class="queue-drawer-tab__badge" id="queue-drawer-badge" hidden>0</span>
-                    <span class="queue-drawer-tab__chev" aria-hidden="true"></span>
-                </button>
             </div>
         </div><!-- end staff-main-panel--queue -->
 
@@ -575,6 +575,11 @@
                                 <strong id="cash-drawer-paid-out">₱0.00</strong>
                             </div>
                             <div class="sales-detail-card__divider"></div>
+                            <div class="sales-detail-card__row">
+                                <span>Waste</span>
+                                <strong id="cash-drawer-waste">₱0.00</strong>
+                            </div>
+                            <div class="sales-detail-card__divider"></div>
                             <div class="sales-detail-card__row sales-detail-card__row--total">
                                 <span>Expected Cash Amount</span>
                                 <strong id="cash-drawer-expected-cash">₱0.00</strong>
@@ -601,28 +606,30 @@
                             <p class="sales-accuracy__note" id="sales-report-accuracy-note">Enter the cash in drawer to check accuracy.</p>
                         </div>
                     </section>
-                    <section class="opq-sidebar-section">
+                    <section class="opq-sidebar-section opq-sidebar-section--shift-summary">
                         <h3 class="opq-sidebar-title">
-                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="16" height="16" rx="3" stroke="#f1f5f9" stroke-width="1.5"/><path d="M5 9h8M5 6h8M5 12h4" stroke="#f1f5f9" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="1" y="1" width="16" height="16" rx="3" stroke="#f1f5f9" stroke-width="1.5"/><path d="M5 9h8M5 6h8M5 12h4" stroke="#f1f5f9" stroke-width="1.5" stroke-linecap="round"/></svg>
                             SHIFT SUMMARY
                         </h3>
                         <div class="opq-summary-card">
                             <div class="opq-summary-rows">
                                 <div class="opq-summary-row">
-                                    <span>Total Orders Processed</span>
-                                    <strong id="staff-shift-orders">0</strong>
+                                    <span class="opq-summary-row__label">Total Orders Processed</span>
+                                    <strong class="opq-summary-row__value" id="staff-shift-orders">0</strong>
                                 </div>
                                 <div class="opq-summary-row">
-                                    <span>Waste Adjustments</span>
-                                    <strong class="opq-red" id="staff-shift-waste">₱0.00</strong>
+                                    <span class="opq-summary-row__label">Waste Adjustments</span>
+                                    <strong class="opq-summary-row__value opq-red" id="staff-shift-waste">₱0.00</strong>
                                 </div>
                             </div>
                             <div class="opq-summary-footer">
                                 <div class="opq-verify-row">
-                                    <span>VERIFICATION REQUIRED</span>
-                                    <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M5 1L9 3v3c0 2.5-1.8 4.7-4 5.5C1.8 10.7 1 8.5 1 6V3L5 1z" stroke="#f48c25" stroke-width="1.2"/></svg>
+                                    <span class="opq-verify-row__text">Verification required</span>
+                                    <span class="opq-verify-row__icon" aria-hidden="true">
+                                        <svg width="12" height="14" viewBox="0 0 10 12" fill="none"><path d="M5 1L9 3v3c0 2.5-1.8 4.7-4 5.5C1.8 10.7 1 8.5 1 6V3L5 1z" stroke="currentColor" stroke-width="1.2"/></svg>
+                                    </span>
                                 </div>
-                                <button class="opq-finalize-btn" id="opq-finalize-btn">FINALIZE &amp; CLOSE SHIFT</button>
+                                <button type="button" class="opq-finalize-btn" id="opq-finalize-btn">FINALIZE &amp; CLOSE SHIFT</button>
                             </div>
                         </div>
                     </section>
@@ -1186,57 +1193,6 @@
                     </section>
 
                     <div class="ses-right-column">
-                        <!-- Revenue Section -->
-                        <div class="ses-revenue-row">
-
-                            <!-- System Expected Revenue -->
-                            <div class="ses-card ses-card--blue">
-                                <div class="ses-card-heading ses-card-heading--blue">SYSTEM EXPECTED REVENUE</div>
-
-                        <div class="ses-stat-row ses-stat-row--divider">
-                            <span class="ses-stat-label">Total Shift Orders</span>
-                            <span class="ses-stat-val" id="ses-total-orders">0</span>
-                        </div>
-                        <div class="ses-stat-row">
-                            <span class="ses-stat-label">Today Sales</span>
-                            <span class="ses-stat-val" id="ses-today-sales">₱0.00</span>
-                        </div>
-                        <div class="ses-stat-row">
-                            <span class="ses-stat-label">Weekly Sales</span>
-                            <span class="ses-stat-val" id="ses-weekly-sales">₱0.00</span>
-                        </div>
-                        <div class="ses-stat-row">
-                            <span class="ses-stat-label">Digital Payments</span>
-                            <span class="ses-stat-val ses-blue" id="ses-digital-payments">₱0.00</span>
-                        </div>
-
-                        <div class="ses-txn-section">
-                            <p class="ses-txn-title">TRANSACTION STATUS SUMMARY</p>
-                            <p class="ses-txn-note">* Voided/Cancelled orders are excluded from inventory deductions.</p>
-                            <div class="ses-txn-row">
-                                <div class="ses-txn-left">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#4ade80" stroke-width="1.5"/><path d="M5 8l2.5 2.5 4-4" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    <span class="ses-green">Confirmed Orders</span>
-                                </div>
-                                <span class="ses-mono" id="ses-confirmed-summary">0 / ₱0.00</span>
-                            </div>
-                            <div class="ses-txn-row">
-                                <div class="ses-txn-left">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#ef4444" stroke-width="1.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/></svg>
-                                    <span class="ses-red">Voided / Cancelled</span>
-                                </div>
-                                <span class="ses-mono" id="ses-voided-summary">0 / ₱0.00</span>
-                            </div>
-                        </div>
-
-                        <div class="ses-calc-cash">
-                            <span class="ses-calc-label">SYSTEM CALCULATED CASH</span>
-                            <span class="ses-calc-val" id="ses-calc-val">₱0.00</span>
-                        </div>
-                            </div>
-
-                        </div>
-
                         <section class="ses-section ses-section--all-staff-sales">
                             <div class="ses-section-head">
                                 <div class="ses-section-title ses-section-title--yellow">SALES REPORT</div>
@@ -1271,31 +1227,15 @@
                                     <span class="ses-stat-label">Paid Out</span>
                                     <span class="ses-stat-val" id="ses-all-staff-paid-out">₱0.00</span>
                                 </div>
+                                <div class="ses-stat-row ses-stat-row--divider">
+                                    <span class="ses-stat-label">Waste</span>
+                                    <span class="ses-stat-val" id="ses-all-staff-waste">₱0.00</span>
+                                </div>
                                 <div class="ses-stat-row">
                                     <span class="ses-stat-label">Expected Cash Amount</span>
                                     <span class="ses-stat-val ses-green" id="ses-all-staff-expected-cash">₱0.00</span>
                                 </div>
                             </div>
-                        </section>
-
-                        <!-- Shift Wastage Log -->
-                        <section class="ses-section">
-                            <div class="ses-section-head">
-                                <div class="ses-section-title ses-section-title--red">SHIFT WASTAGE LOG</div>
-                                <span class="ses-loss-badge" id="ses-shift-loss-badge">Shift Total Loss: ₱0.00</span>
-                            </div>
-                            <table class="ses-table">
-                                <thead>
-                                    <tr>
-                                        <th>TIME</th>
-                                        <th>ITEM</th>
-                                        <th>QTY</th>
-                                        <th>REASON</th>
-                                        <th class="ses-table-right">VALUE</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ses-waste-tbody"></tbody>
-                            </table>
                         </section>
                     </div>
                 </div>
@@ -1307,7 +1247,6 @@
                         <textarea class="ses-notes-input" id="ses-notes-input" rows="3" placeholder="Enter any notes regarding today's cash count..."></textarea>
                     </div>
                     <div class="ses-footer-actions">
-                        <button type="button" class="ses-export-btn" id="ses-export-btn">EXPORT TO EXCEL</button>
                         <button type="button" class="ses-confirm-btn" id="ses-confirm-btn">
                             CLOSE SHIFT
                         </button>
@@ -4615,6 +4554,7 @@
             var sesAllStaffCashRefundsEl = document.getElementById("ses-all-staff-cash-refunds");
             var sesAllStaffPaidInEl = document.getElementById("ses-all-staff-paid-in");
             var sesAllStaffPaidOutEl = document.getElementById("ses-all-staff-paid-out");
+            var sesAllStaffWasteEl = document.getElementById("ses-all-staff-waste");
             var sesAllStaffExpectedCashEl = document.getElementById("ses-all-staff-expected-cash");
             var sesInventoryUsedMetaEl = document.getElementById("ses-inventory-used-meta");
             var sesInventoryUsedTbody = document.getElementById("ses-inventory-used-tbody");
@@ -5078,6 +5018,7 @@
                     if (sesAllStaffCashRefundsEl) sesAllStaffCashRefundsEl.textContent = copyText('cash-drawer-cash-refunds');
                     if (sesAllStaffPaidInEl) sesAllStaffPaidInEl.textContent = copyText('cash-drawer-paid-in');
                     if (sesAllStaffPaidOutEl) sesAllStaffPaidOutEl.textContent = copyText('cash-drawer-paid-out');
+                    if (sesAllStaffWasteEl) sesAllStaffWasteEl.textContent = copyText('cash-drawer-waste');
                     if (sesAllStaffExpectedCashEl) sesAllStaffExpectedCashEl.textContent = copyText('cash-drawer-expected-cash');
 
                     renderSesRecentOrders(shiftOrders.slice(0, 5));
@@ -5343,6 +5284,7 @@
         var cashDrawerCashRefundsEl = document.getElementById('cash-drawer-cash-refunds');
         var cashDrawerPaidInEl = document.getElementById('cash-drawer-paid-in');
         var cashDrawerPaidOutEl = document.getElementById('cash-drawer-paid-out');
+        var cashDrawerWasteEl = document.getElementById('cash-drawer-waste');
         var cashDrawerExpectedCashEl = document.getElementById('cash-drawer-expected-cash');
 
         var cashMgmtBtn = document.getElementById('cash-management-btn');
@@ -6635,10 +6577,8 @@
                       renderQueueDrawerReturned(returnedKitchenOrders);
                   }
                   queueDrawerOpenReturnedPending = true;
-                  currentQueueSource = 'kiosk';
-                  window.staffQueueSource = 'kiosk';
                   if (typeof window.staffActivateMainTab === 'function') {
-                      window.staffActivateMainTab('queue-kiosk');
+                      window.staffActivateMainTab('pos');
                   }
                   loadStaffData();
               })
@@ -7289,6 +7229,7 @@
             if (cashDrawerCashRefundsEl) cashDrawerCashRefundsEl.textContent = peso(0);
             if (cashDrawerPaidInEl) cashDrawerPaidInEl.textContent = peso(0);
             if (cashDrawerPaidOutEl) cashDrawerPaidOutEl.textContent = peso(0);
+            if (cashDrawerWasteEl) cashDrawerWasteEl.textContent = peso(0);
             if (cashDrawerExpectedCashEl) cashDrawerExpectedCashEl.textContent = peso(0);
             if (sesCalcVal) sesCalcVal.textContent = peso(0);
             try {
@@ -8980,6 +8921,7 @@
                     }, 0);
                 }
                 if (shiftWasteEl) shiftWasteEl.textContent = '-' + peso(wasteTotal);
+                if (cashDrawerWasteEl) cashDrawerWasteEl.textContent = peso(wasteTotal);
                 staffSalesBrief.waste_total_est = wasteTotal;
                 updateWasteItemIndicator();
 
@@ -9603,7 +9545,7 @@
                     closed_at: new Date().toISOString(),
                     snapshot: {
                         shift_started_ms: startedMs || null,
-                        notes: (sesNotes && sesNotes.value) || '',
+                        notes: String((sesNotes && sesNotes.value) || '').trim(),
                         summary: {
                             total_orders: moneyFromTextEl(shiftOrdersEl) || (servedOrders ? servedOrders.length : 0),
                             total_revenue: totalRevenue,
@@ -9625,6 +9567,9 @@
                             cash_refunds: typeof computeCashRefundsTotal === 'function'
                                 ? computeCashRefundsTotal()
                                 : moneyFromTextEl(cashDrawerCashRefundsEl),
+                            waste: typeof cashDrawerWasteEl !== 'undefined' && cashDrawerWasteEl
+                                ? moneyFromTextEl(cashDrawerWasteEl)
+                                : moneyFromTextEl(shiftWasteEl),
                             expected_cash: expectedCash,
                             counted_cash: declared
                         },
@@ -9649,7 +9594,7 @@
                         report_date: reportDate,
                         cash_declared: cashDeclared,
                         opening_float: getSavedStartingMoneyTotal(),
-                        notes: (sesNotes && sesNotes.value) || ''
+                        notes: String((sesNotes && sesNotes.value) || '').trim()
                     })
                 }).then(function (r) { return r.json(); })
                   .then(function (d) {

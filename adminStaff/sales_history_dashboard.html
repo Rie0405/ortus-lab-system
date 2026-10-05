@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="sales_history_dashboard_styles.css">
+    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261004-archive-notes">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -148,14 +148,59 @@
                             <button type="button" class="staff-brief-activity__btn staff-brief-activity__btn--manage" id="sh-manage-btn">Manage</button>
                         </div>
                         <p class="staff-brief-activity__meta" id="sh-activity-meta">Select a cashier and login shift.</p>
-                        <div class="brief-readout staff-brief-activity__list" id="sh-drawer-list">
-                            <div class="brief-readout__row"><span class="brief-readout__k">Starting Money</span><strong class="brief-readout__v" id="sh-drawer-starting">--</strong></div>
-                            <div class="brief-readout__row"><span class="brief-readout__k">Cash Payments</span><strong class="brief-readout__v" id="sh-drawer-cash">--</strong></div>
-                            <div class="brief-readout__row"><span class="brief-readout__k">GCash Payments</span><strong class="brief-readout__v" id="sh-drawer-gcash">--</strong></div>
-                            <div class="brief-readout__row"><span class="brief-readout__k">Discounts</span><strong class="brief-readout__v" id="sh-drawer-discounts">--</strong></div>
-                            <div class="brief-readout__row"><span class="brief-readout__k">Cash Refunds</span><strong class="brief-readout__v" id="sh-drawer-refunds">--</strong></div>
-                            <div class="brief-readout__row"><span class="brief-readout__k">Paid In</span><strong class="brief-readout__v" id="sh-drawer-paid-in">--</strong></div>
-                            <div class="brief-readout__row"><span class="brief-readout__k">Paid Out</span><strong class="brief-readout__v" id="sh-drawer-paid-out">--</strong></div>
+                        <div class="sales-detail-card sales-detail-card--in-brief staff-brief-activity__drawer" id="sh-drawer-list">
+                            <h3 class="sales-detail-card__title">CASH DRAWER</h3>
+                            <div class="sales-detail-card__rows">
+                                <div class="sales-detail-card__row">
+                                    <span>Starting Money</span>
+                                    <strong id="sh-drawer-starting">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row">
+                                    <span>Cash Payments</span>
+                                    <strong id="sh-drawer-cash">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row">
+                                    <span>GCash Payments</span>
+                                    <strong id="sh-drawer-gcash">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row sales-detail-card__row--total">
+                                    <span>Total Payments</span>
+                                    <strong id="sh-drawer-total">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row">
+                                    <span>Discounts</span>
+                                    <strong id="sh-drawer-discounts">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row">
+                                    <span>Cash Refunds</span>
+                                    <strong id="sh-drawer-refunds">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row">
+                                    <span>Paid In</span>
+                                    <strong id="sh-drawer-paid-in">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row">
+                                    <span>Paid Out</span>
+                                    <strong id="sh-drawer-paid-out">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row">
+                                    <span>Waste</span>
+                                    <strong id="sh-drawer-waste">--</strong>
+                                </div>
+                                <div class="sales-detail-card__divider"></div>
+                                <div class="sales-detail-card__row sales-detail-card__row--total">
+                                    <span>Expected Cash Amount</span>
+                                    <strong id="sh-drawer-expected">--</strong>
+                                </div>
+                            </div>
                         </div>
                     </article>
                 </div>
@@ -1856,6 +1901,11 @@
             var gcashPayments = Number(drawer.gcash_payments != null ? drawer.gcash_payments : summary.gcash_revenue) || 0;
             var totalPayments = cashPayments + gcashPayments;
             var discounts = Number(drawer.discounts != null ? drawer.discounts : summary.discount_total) || 0;
+            var wasteTotal = Number(
+                drawer.waste != null
+                    ? drawer.waste
+                    : (summary.waste_total != null ? summary.waste_total : 0)
+            ) || 0;
             var rows = [
                 { label: 'Starting Money', value: pesoArc(drawer.starting_money) },
                 { label: 'Cash Payments', value: pesoArc(cashPayments) },
@@ -1865,12 +1915,39 @@
                 { label: 'Cash Refunds', value: pesoArc(drawer.cash_refunds) },
                 { label: 'Paid In', value: pesoArc(drawer.paid_in) },
                 { label: 'Paid Out', value: pesoArc(drawer.paid_out) },
+                { label: 'Waste', value: pesoArc(wasteTotal) },
                 {
                     label: 'Expected Cash Amount',
                     value: pesoArc(drawer.expected_cash),
                     total: true
                 }
             ];
+            var accuracy = snap.accuracy || {};
+            var countedCash = Number(
+                accuracy.cash_declared != null ? accuracy.cash_declared : drawer.counted_cash
+            );
+            if (!Number.isFinite(countedCash)) countedCash = 0;
+            var expectedCash = Number(
+                accuracy.expected_cash != null ? accuracy.expected_cash : drawer.expected_cash
+            );
+            if (!Number.isFinite(expectedCash)) expectedCash = 0;
+            var difference = Number(accuracy.difference);
+            if (!Number.isFinite(difference)) difference = countedCash - expectedCash;
+            var statusRaw = String(accuracy.status || '').toLowerCase();
+            if (statusRaw === 'under') statusRaw = 'short';
+            if (statusRaw !== 'accurate' && statusRaw !== 'over' && statusRaw !== 'short') {
+                statusRaw = Math.abs(difference) < 0.005 ? 'accurate' : (difference > 0 ? 'over' : 'short');
+            }
+            var statusLabel = statusRaw === 'over' ? 'OVER' : (statusRaw === 'short' ? 'SHORT' : 'ACCURATE');
+            var varianceAbs = Math.abs(difference);
+            var varianceLabel = statusRaw === 'accurate'
+                ? 'No variance'
+                : ((statusRaw === 'over' ? 'Over by ' : 'Short by ') + pesoArc(varianceAbs));
+            var hasAccuracy = accuracy.cash_declared != null
+                || accuracy.expected_cash != null
+                || accuracy.status != null
+                || drawer.counted_cash != null;
+
             archiveDetail.innerHTML =
                 '<div class="shift-archive-detail__head">' +
                     '<h3>' + escArc(archive.staff_name || 'Staff') + '</h3>' +
@@ -1887,9 +1964,44 @@
                         );
                     }).join('') +
                 '</div>' +
-                (snap.notes
-                    ? ('<div class="shift-archive-notes">' + escArc(snap.notes) + '</div>')
-                    : '');
+                (hasAccuracy
+                    ? (
+                        '<div class="shift-archive-drawer shift-archive-drawer--accuracy">' +
+                            '<h4 class="shift-archive-drawer__title">Sales Accuracy Check</h4>' +
+                            '<div class="shift-archive-accuracy-status">' +
+                                '<span class="shift-archive-accuracy-badge shift-archive-accuracy-badge--' + statusRaw + '">' +
+                                    escArc(statusLabel) +
+                                '</span>' +
+                                '<span class="shift-archive-accuracy-variance">' + escArc(varianceLabel) + '</span>' +
+                            '</div>' +
+                            '<div class="shift-archive-drawer__row">' +
+                                '<span>Counted Cash</span>' +
+                                '<strong>' + pesoArc(countedCash) + '</strong>' +
+                            '</div>' +
+                            '<div class="shift-archive-drawer__row">' +
+                                '<span>Expected Cash</span>' +
+                                '<strong>' + pesoArc(expectedCash) + '</strong>' +
+                            '</div>' +
+                            '<div class="shift-archive-drawer__row shift-archive-drawer__row--total">' +
+                                '<span>Difference</span>' +
+                                '<strong class="shift-archive-diff shift-archive-diff--' + statusRaw + '">' +
+                                    (difference > 0 ? '+' : (difference < 0 ? '-' : '')) +
+                                    pesoArc(varianceAbs) +
+                                '</strong>' +
+                            '</div>' +
+                        '</div>'
+                    )
+                    : '') +
+                (function () {
+                    var notesText = String(snap.notes || '').trim();
+                    if (!notesText) return '';
+                    return (
+                        '<div class="shift-archive-drawer shift-archive-drawer--notes">' +
+                            '<h4 class="shift-archive-drawer__title">Manager Notes / Discrepancy</h4>' +
+                            '<div class="shift-archive-notes">' + escArc(notesText) + '</div>' +
+                        '</div>'
+                    );
+                })();
         }
         function selectArchive(id, btn) {
             if (archiveList) {
@@ -2020,10 +2132,13 @@
             starting: document.getElementById('sh-drawer-starting'),
             cash: document.getElementById('sh-drawer-cash'),
             gcash: document.getElementById('sh-drawer-gcash'),
+            total: document.getElementById('sh-drawer-total'),
             discounts: document.getElementById('sh-drawer-discounts'),
             refunds: document.getElementById('sh-drawer-refunds'),
             paidIn: document.getElementById('sh-drawer-paid-in'),
-            paidOut: document.getElementById('sh-drawer-paid-out')
+            paidOut: document.getElementById('sh-drawer-paid-out'),
+            waste: document.getElementById('sh-drawer-waste'),
+            expected: document.getElementById('sh-drawer-expected')
         };
 
         var cashiers = [];
@@ -2072,13 +2187,28 @@
             });
         }
         function setDrawerValues(values) {
-            if (drawerEls.starting) drawerEls.starting.textContent = peso(values.starting);
-            if (drawerEls.cash) drawerEls.cash.textContent = peso(values.cash);
-            if (drawerEls.gcash) drawerEls.gcash.textContent = peso(values.gcash);
-            if (drawerEls.discounts) drawerEls.discounts.textContent = peso(values.discounts);
-            if (drawerEls.refunds) drawerEls.refunds.textContent = peso(values.refunds);
-            if (drawerEls.paidIn) drawerEls.paidIn.textContent = peso(values.paidIn);
-            if (drawerEls.paidOut) drawerEls.paidOut.textContent = peso(values.paidOut);
+            var starting = toMoney(values.starting);
+            var cash = toMoney(values.cash);
+            var gcash = toMoney(values.gcash);
+            var discounts = toMoney(values.discounts);
+            var refunds = toMoney(values.refunds);
+            var paidIn = toMoney(values.paidIn);
+            var paidOut = toMoney(values.paidOut);
+            var waste = toMoney(values.waste);
+            var total = values.total != null ? toMoney(values.total) : (cash + gcash);
+            var expected = values.expected != null
+                ? toMoney(values.expected)
+                : Math.max(0, starting + cash - refunds + paidIn - paidOut);
+            if (drawerEls.starting) drawerEls.starting.textContent = peso(starting);
+            if (drawerEls.cash) drawerEls.cash.textContent = peso(cash);
+            if (drawerEls.gcash) drawerEls.gcash.textContent = peso(gcash);
+            if (drawerEls.total) drawerEls.total.textContent = peso(total);
+            if (drawerEls.discounts) drawerEls.discounts.textContent = peso(discounts);
+            if (drawerEls.refunds) drawerEls.refunds.textContent = peso(refunds);
+            if (drawerEls.paidIn) drawerEls.paidIn.textContent = peso(paidIn);
+            if (drawerEls.paidOut) drawerEls.paidOut.textContent = peso(paidOut);
+            if (drawerEls.waste) drawerEls.waste.textContent = peso(waste);
+            if (drawerEls.expected) drawerEls.expected.textContent = peso(expected);
         }
         function closeAllMenus() {
             setMenuOpen(staffBtn, staffPanel, false);
@@ -2242,17 +2372,20 @@
                 return;
             }
             setDrawerValues({
-                starting: 0, cash: 0, gcash: 0, discounts: 0, refunds: 0, paidIn: 0, paidOut: 0
+                starting: 0, cash: 0, gcash: 0, total: 0, discounts: 0,
+                refunds: 0, paidIn: 0, paidOut: 0, waste: 0, expected: 0
             });
             var staffId = selectedStaffId;
             var shiftDate = selectedShiftDate;
             Promise.all([
                 fetch('api/orders.php?limit=200&staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); })
+                fetch('api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); })
             ]).then(function (results) {
                 if (String(staffId) !== String(selectedStaffId) || String(shiftDate) !== String(selectedShiftDate)) return;
                 var ordersRes = results[0];
                 var reportRes = results[1];
+                var wasteRes = results[2];
                 var orders = (ordersRes && ordersRes.success && Array.isArray(ordersRes.orders)) ? ordersRes.orders : [];
                 var salesOrders = orders.filter(function (order) {
                     if (parseInt(order && order.staff_id, 10) !== parseInt(staffId, 10)) return false;
@@ -2274,14 +2407,26 @@
                 var starting = report ? parseStartingMoney(report.starting_money) : 0;
                 var localMgmt = getLocalCashMgmtTotals(shiftDate);
                 var localRefunds = getLocalCashRefundsTotal(shiftDate);
+                var waste = 0;
+                if (wasteRes && wasteRes.success && wasteRes.summary) {
+                    waste = toMoney(wasteRes.summary.total_estimated_value);
+                }
+                var accuracyExpected = report && report.accuracy && report.accuracy.expected_cash != null
+                    ? toMoney(report.accuracy.expected_cash)
+                    : null;
                 setDrawerValues({
                     starting: starting,
                     cash: cash,
                     gcash: gcash,
+                    total: cash + gcash,
                     discounts: discounts,
                     refunds: localRefunds,
                     paidIn: localMgmt.paidIn,
-                    paidOut: localMgmt.paidOut
+                    paidOut: localMgmt.paidOut,
+                    waste: waste,
+                    expected: accuracyExpected != null
+                        ? accuracyExpected
+                        : Math.max(0, starting + cash - localRefunds + localMgmt.paidIn - localMgmt.paidOut)
                 });
             }).catch(function () {
                 setDrawerPlaceholders();

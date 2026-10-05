@@ -1,5 +1,51 @@
 <?php
+// ─── Load .env (local + Hostinger) without committing secrets ─────────────────
+// Search order:
+//   1) project root .env          → Ortus/.env (local XAMPP)
+//   2) parent of web root .env    → domains/yoursite.com/.env (Hostinger; survives Git deploy)
+(function (): void {
+    $candidates = [
+        __DIR__ . '/../../.env',
+        __DIR__ . '/../../../.env',
+    ];
+    foreach ($candidates as $envFile) {
+        if (!is_file($envFile) || !is_readable($envFile)) {
+            continue;
+        }
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            continue;
+        }
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) {
+                continue;
+            }
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            if ($key === '') {
+                continue;
+            }
+            $len = strlen($value);
+            if ($len >= 2) {
+                $q = $value[0];
+                if (($q === '"' || $q === "'") && $value[$len - 1] === $q) {
+                    $value = substr($value, 1, -1);
+                }
+            }
+            // Do not override real server env vars if already set.
+            if (getenv($key) === false) {
+                putenv($key . '=' . $value);
+                $_ENV[$key] = $value;
+            }
+        }
+        break; // first found .env wins
+    }
+})();
+
 // ─── Database Configuration ───────────────────────────────────────────────────
+// Local defaults = XAMPP. Production = set via .env / host env (never commit secrets).
 define('DB_HOST', getenv('MYSQLHOST') ?: 'localhost');
 define('DB_PORT', getenv('MYSQLPORT') ?: '3308');
 define('DB_NAME', getenv('MYSQLDATABASE') ?: 'ortus_db');

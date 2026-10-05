@@ -1,2 +1,7 @@
 /vendor/
 /composer.phar
+
+# Secrets — never commit real credentials
+.env
+.env.local
+.env.*.local

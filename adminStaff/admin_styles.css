@@ -242,105 +242,39 @@ body {
     transform: translateY(1px);
 }
 
-.demo-creds {
-    margin-top: 12px;
-    color: rgba(244, 140, 37, 0.65);
-    font-size: 11px;
-    line-height: 16px;
-    text-transform: uppercase;
-}
-
-.demo-creds strong {
-    color: #d6d3d1;
-    font-weight: 700;
-}
-
 .info-panel {
     margin-top: 25px;
     padding-top: 25px;
     border-top: 1px solid rgba(41, 37, 36, 0.5);
 }
 
-.info-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-}
-
-.info-icon {
-    width: 15px;
-    height: 17px;
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-
-.info-content p {
-    color: #78716c;
-    font-size: 11px;
-    line-height: 17.88px;
-    text-transform: uppercase;
-}
-
-.info-content strong {
-    color: #d6d3d1;
-    font-weight: 500;
-}
-
-.info-content span {
-    color: rgba(244, 140, 37, 0.7);
-}
-
-.admin-footer {
+.kiosk-open-btn {
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding-top: 32px;
-}
-
-.status-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #78716c;
-    font-size: 10px;
-    line-height: 15px;
-    letter-spacing: 0.1em;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid rgba(244, 140, 37, 0.55);
+    border-radius: 8px;
+    background: transparent;
+    color: #f48c25;
+    font-family: inherit;
+    font-size: 15px;
     font-weight: 700;
-}
-
-.status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #22c55e;
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-}
-
-.footer-divider {
-    width: 1px;
-    height: 16px;
-    background: #292524;
-}
-
-.support-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: #78716c;
-    font-size: 10px;
-    line-height: 15px;
-    letter-spacing: 0.1em;
-    font-weight: 700;
+    letter-spacing: 0.06em;
     text-decoration: none;
+    text-transform: uppercase;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.support-link:hover {
-    color: rgba(244, 140, 37, 0.8);
+.kiosk-open-btn:hover {
+    background: rgba(244, 140, 37, 0.12);
+    border-color: #f48c25;
+    color: #ffb65c;
 }
 
-.support-link img {
-    width: 9px;
-    height: 9px;
+.kiosk-open-btn:active {
+    transform: translateY(1px);
 }
 
 .starting-money-overlay {

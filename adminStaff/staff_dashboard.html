@@ -4369,7 +4369,8 @@
                                 }
                                 if (typeof window.isOrderFullyRecorded === "function"
                                     ? window.isOrderFullyRecorded(res)
-                                    : (res && res.success && res.order_id && res.order_number && res.kitchen_ticket_number)) {
+                                    : (res && res.success && res.order_id && res.order_number &&
+                                        (res.kitchen_ticket_number || res.bar_ticket_number))) {
                                     recordedCount += 1;
                                 } else if (res && res.error) {
                                     lastError = String(res.error || "");
@@ -8194,8 +8195,18 @@
             );
         }
 
-        function friendlyKitchenOrderTitle(order) {
-            var ticket = parseInt(order && order.kitchen_ticket_number, 10) || 0;
+        function friendlyKitchenOrderTitle(order, stationOpt) {
+            var station = String(stationOpt || activeKitchenCategory || 'bar').toLowerCase();
+            if (station !== 'bar' && station !== 'kitchen') station = 'bar';
+            var ticket = 0;
+            if (station === 'bar') {
+                ticket = parseInt(order && order.bar_ticket_number, 10) || 0;
+                // Legacy orders: only kitchen_ticket_number existed.
+                if (ticket <= 0) ticket = parseInt(order && order.kitchen_ticket_number, 10) || 0;
+            } else {
+                ticket = parseInt(order && order.kitchen_ticket_number, 10) || 0;
+                if (ticket <= 0) ticket = parseInt(order && order.bar_ticket_number, 10) || 0;
+            }
             if (ticket > 0) return 'Order #' + ticket;
             var id = parseInt(order && order.id, 10) || 0;
             if (id > 0) return 'Order #' + id;
@@ -10066,7 +10077,8 @@
                 var orderId = parseInt(res.order_id, 10) || 0;
                 var orderNumber = String(res.order_number || '').trim();
                 var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
-                return orderId > 0 && orderNumber !== '' && kitchenTicket > 0;
+                var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
+                return orderId > 0 && orderNumber !== '' && (kitchenTicket > 0 || barTicket > 0);
             }
             window.isOrderFullyRecorded = isOrderFullyRecorded;
 

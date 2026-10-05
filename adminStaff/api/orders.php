@@ -252,7 +252,7 @@ if ($m === 'GET') {
     $limit  = min((int)($_GET['limit'] ?? 50), 200);
     $offset = (int)($_GET['offset'] ?? 0);
 
-    $sql    = 'SELECT o.id, o.order_number, o.kitchen_ticket_number, o.order_source, o.status, o.kitchen_returned, o.kitchen_return_reason, o.payment_method, o.order_type,
+    $sql    = 'SELECT o.id, o.order_number, o.kitchen_ticket_number, o.bar_ticket_number, o.order_source, o.status, o.kitchen_returned, o.kitchen_return_reason, o.payment_method, o.order_type,
                       o.staff_id,
                       o.customer_name, o.refund_reason, o.gcash_ref,
                       o.discount_type, o.discount_customer_name, o.discount_id_number,
@@ -325,6 +325,9 @@ if ($m === 'GET') {
             $order['staff_id'] = (int)($order['staff_id'] ?? 0);
             $order['kitchen_ticket_number'] = isset($order['kitchen_ticket_number']) && $order['kitchen_ticket_number'] !== null
                 ? (int)$order['kitchen_ticket_number']
+                : null;
+            $order['bar_ticket_number'] = isset($order['bar_ticket_number']) && $order['bar_ticket_number'] !== null
+                ? (int)$order['bar_ticket_number']
                 : null;
             $order['gross_amount'] = (float)$order['gross_amount'];
             $order['vat_exempt_amount'] = (float)$order['vat_exempt_amount'];
@@ -485,7 +488,12 @@ if ($m === 'POST') {
             ':ref'    => $gcashRef ?: null,
         ]);
         $orderId = (int)$pdo->lastInsertId();
-        $kitchenTicket = assign_kitchen_ticket_to_order($pdo, $orderId);
+        $menuIdsForTickets = array_map(static function ($row) {
+            return (int)$row[0];
+        }, $itemRows);
+        $stationTickets = assign_station_tickets_to_order($pdo, $orderId, $menuIdsForTickets);
+        $kitchenTicket = $stationTickets['kitchen'];
+        $barTicket = $stationTickets['bar'];
 
         $insItem = $pdo->prepare(
             'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
@@ -519,6 +527,7 @@ if ($m === 'POST') {
             'order_id' => $orderId,
             'order_number' => $orderNumber,
             'kitchen_ticket_number' => $kitchenTicket,
+            'bar_ticket_number' => $barTicket,
             'receipt_token' => $receiptToken,
             'gross_amount' => $pricing['gross_amount'],
             'vat_exempt_amount' => $pricing['vat_exempt_amount'],

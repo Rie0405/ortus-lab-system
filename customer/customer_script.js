@@ -2502,7 +2502,8 @@ function isOrderFullyRecorded(res) {
     var orderId = parseInt(res.order_id, 10) || 0;
     var orderNumber = String(res.order_number || '').trim();
     var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
-    return orderId > 0 && orderNumber !== '' && kitchenTicket > 0;
+    var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
+    return orderId > 0 && orderNumber !== '' && (kitchenTicket > 0 || barTicket > 0);
 }
 
 function showPaymentSuccessToast(onDoneOrOpts, maybeOnDone) {

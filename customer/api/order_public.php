@@ -242,7 +242,12 @@ try {
             : (($discountRequested && $discountAlreadyApplied) ? $discountRequestType : null),
     ]);
     $orderId = (int)$pdo->lastInsertId();
-    $kitchenTicket = assign_kitchen_ticket_to_order($pdo, $orderId);
+    $menuIdsForTickets = array_map(static function ($row) {
+        return (int)$row[0];
+    }, $itemRows);
+    $stationTickets = assign_station_tickets_to_order($pdo, $orderId, $menuIdsForTickets);
+    $kitchenTicket = $stationTickets['kitchen'];
+    $barTicket = $stationTickets['bar'];
 
     $insItem = $pdo->prepare(
         'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
@@ -275,6 +280,7 @@ try {
         'order_id' => $orderId,
         'order_number' => $orderNumber,
         'kitchen_ticket_number' => $kitchenTicket,
+        'bar_ticket_number' => $barTicket,
         'receipt_token' => $receiptToken,
         'gross_amount' => $pricing['gross_amount'],
         'vat_exempt_amount' => $pricing['vat_exempt_amount'],

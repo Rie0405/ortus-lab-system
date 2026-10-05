@@ -143,31 +143,12 @@ body {
 .field label {
     display: block;
     margin-left: 4px;
+    margin-bottom: 8px;
     color: #78716c;
     font-size: 12px;
     line-height: 16px;
     letter-spacing: 0.1em;
     font-weight: 700;
-}
-
-.field-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
-.forgot-link {
-    color: #78716c;
-    font-size: 10px;
-    letter-spacing: -0.05em;
-    line-height: 15px;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.forgot-link:hover {
-    color: rgba(244, 140, 37, 0.8);
 }
 
 .input-wrap {

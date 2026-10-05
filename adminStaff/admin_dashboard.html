@@ -107,19 +107,23 @@
                 </article>
 
                 <article class="diag-column">
-                    <h2 class="diag-title">FORECASTING</h2>
-                    <div class="diag-card diag-card--clickable" id="forecast-warning-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="forecast-modal" title="Click to view full list">
-                        <h3>Stock at risk (next 2 days)</h3>
-                        <p id="forecast-warning-text">Checking which items may run out soon…</p>
-                        <ul id="forecast-warning-list" class="forecast-warning-list" hidden></ul>
-                        <p id="forecast-warning-more" class="forecast-card-more" hidden></p>
-                    </div>
-                    <h2 class="diag-title">SUGGESTIVE ACTIONS</h2>
-                    <div class="diag-card diag-card--clickable" id="forecast-suggest-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="forecast-modal" title="Click to view full list">
-                        <h3>Suggested restock</h3>
-                        <p id="forecast-suggest-text">Checking how much to buy…</p>
-                        <ul id="forecast-suggest-list" class="forecast-warning-list" hidden></ul>
-                        <p id="forecast-suggest-more" class="forecast-card-more" hidden></p>
+                    <header class="diag-head">
+                        <h2 class="diag-title">Stock Monitoring and Suggestive Decision Making</h2>
+                        <p class="diag-subtitle">Forecasting future product demand based on sales.</p>
+                    </header>
+                    <div
+                        class="diag-card diag-card--clickable"
+                        id="forecast-monitor-card"
+                        role="button"
+                        tabindex="0"
+                        aria-haspopup="dialog"
+                        aria-controls="forecast-modal"
+                        title="Click to view full list"
+                    >
+                        <h3>Items to watch</h3>
+                        <p id="forecast-monitor-text">Checking stock risk and restock needs…</p>
+                        <ul id="forecast-monitor-list" class="forecast-warning-list" hidden></ul>
+                        <p id="forecast-monitor-more" class="forecast-card-more" hidden></p>
                     </div>
                 </article>
             </section>
@@ -858,16 +862,12 @@
                 console.warn('[admin_dashboard] dashboard fetch', e);
             });
 
-            // Forecast: at-risk warning + suggested buy qty (sales pace × lead time)
+            // Forecast: unified stock monitoring + restock suggestions (sales pace × lead time)
             (function loadInventoryForecast() {
-                var warnTextEl = document.getElementById('forecast-warning-text');
-                var warnListEl = document.getElementById('forecast-warning-list');
-                var warnMoreEl = document.getElementById('forecast-warning-more');
-                var warnCardEl = document.getElementById('forecast-warning-card');
-                var suggestTextEl = document.getElementById('forecast-suggest-text');
-                var suggestListEl = document.getElementById('forecast-suggest-list');
-                var suggestMoreEl = document.getElementById('forecast-suggest-more');
-                var suggestCardEl = document.getElementById('forecast-suggest-card');
+                var textEl = document.getElementById('forecast-monitor-text');
+                var listEl = document.getElementById('forecast-monitor-list');
+                var moreEl = document.getElementById('forecast-monitor-more');
+                var cardEl = document.getElementById('forecast-monitor-card');
                 var modalEl = document.getElementById('forecast-modal');
                 var modalTitleEl = document.getElementById('forecast-modal-title');
                 var modalIntroEl = document.getElementById('forecast-modal-intro');
@@ -875,9 +875,8 @@
                 var modalCloseEl = document.getElementById('forecast-modal-close');
                 var LEAD_DAYS = 2;
                 var MA_DAYS = 2;
-                var PREVIEW_LIMIT = 3;
-                var cachedWarn = { introHtml: '', rowsHtml: [] };
-                var cachedSuggest = { introHtml: '', rowsHtml: [] };
+                var PREVIEW_LIMIT = 5;
+                var cached = { introHtml: '', rowsHtml: [] };
 
                 function fmtQty(n) {
                     if (n === null || n === undefined || !Number.isFinite(Number(n))) return null;
@@ -918,54 +917,52 @@
                     return buy;
                 }
 
-                function warnRowHtml(f) {
-                    var name = esc(f.item_name || 'Item');
+                function isAtRisk(f) {
                     var u = String(f.urgency || '').toUpperCase();
-                    var detail;
-                    if (u === 'OUT') {
-                        detail = 'already empty';
-                    } else {
-                        var d = fmtDays(f.days_remaining);
-                        detail = d == null
-                            ? 'may run out soon'
-                            : ('~' + d + ' day' + (d === '1' ? '' : 's') + ' left');
-                    }
-                    return '<li><span>' + name + '</span> — ' + detail + '</li>';
+                    if (u === 'OUT' || u === 'CRITICAL' || u === 'LOW') return true;
+                    var days = f.days_remaining;
+                    return days != null && Number.isFinite(Number(days)) && Number(days) <= LEAD_DAYS;
                 }
 
-                function suggestRowHtml(row) {
+                /** One row: risk status + suggested buy (aligned to monitoring + decision making). */
+                function monitorRowHtml(row) {
                     var f = row.item;
                     var name = esc(f.item_name || 'Item');
-                    var ops = Number(f.orders_per_stock_item || 0);
-                    var packs = ops > 0 ? Math.max(1, Math.ceil(row.buy / ops)) : null;
-                    var orderSlots = fmtQty(row.buy);
-                    var adu = fmtQty(f.avg_daily_usage);
-                    var days = fmtDays(f.days_remaining);
                     var u = String(f.urgency || '').toUpperCase();
-                    var line;
-                    if (packs != null) {
-                        line = '<li><span>' + name + '</span> — buy about <span>' +
-                            packs + '</span> pack' + (packs === 1 ? '' : 's');
-                        if (orderSlots != null) {
-                            line += ' <small>(~' + esc(orderSlots) + ' orders)</small>';
-                        }
-                    } else {
-                        line = '<li><span>' + name + '</span> — buy about <span>' +
-                            esc(orderSlots) + '</span> units';
-                    }
+                    var days = fmtDays(f.days_remaining);
+                    var adu = fmtQty(f.avg_daily_usage);
+                    var ops = Number(f.orders_per_stock_item || 0);
+                    var packs = ops > 0 && row.buy > 0.0001
+                        ? Math.max(1, Math.ceil(row.buy / ops))
+                        : null;
+                    var orderSlots = fmtQty(row.buy);
+
+                    var status;
                     if (u === 'OUT') {
-                        line += ' <small>· empty now</small>';
+                        status = 'already empty';
                     } else if (days != null) {
-                        line += ' <small>· ~' + esc(days) + 'd left</small>';
+                        status = '~' + days + ' day' + (days === '1' ? '' : 's') + ' left';
+                    } else {
+                        status = 'may run out soon';
                     }
-                    if (adu != null) {
-                        line += ' <small>· ~' + esc(adu) + '/day</small>';
+
+                    var action = '';
+                    if (row.buy > 0.0001) {
+                        if (packs != null) {
+                            action = ' · restock ~<span>' + packs + '</span> pack' + (packs === 1 ? '' : 's');
+                            if (orderSlots != null) {
+                                action += ' <small>(~' + esc(orderSlots) + ' orders)</small>';
+                            }
+                        } else if (orderSlots != null) {
+                            action = ' · restock ~<span>' + esc(orderSlots) + '</span> units';
+                        }
                     }
-                    line += '</li>';
-                    return line;
+
+                    var pace = adu != null ? ' <small>· ~' + esc(adu) + '/day</small>' : '';
+                    return '<li><span>' + name + '</span> — ' + status + action + pace + '</li>';
                 }
 
-                function setCardActive(cardEl, hasItems) {
+                function setCardActive(hasItems) {
                     if (!cardEl) return;
                     if (hasItems) {
                         cardEl.classList.add('diag-card--has-popup');
@@ -976,17 +973,13 @@
                     }
                 }
 
-                function openForecastModal(kind) {
-                    if (!modalEl) return;
-                    var data = kind === 'suggest' ? cachedSuggest : cachedWarn;
-                    if (!data.rowsHtml.length) return;
+                function openForecastModal() {
+                    if (!modalEl || !cached.rowsHtml.length) return;
                     if (modalTitleEl) {
-                        modalTitleEl.textContent = kind === 'suggest'
-                            ? 'Suggested restock'
-                            : 'Stock at risk (next 2 days)';
+                        modalTitleEl.textContent = 'Stock Monitoring and Suggestive Decision Making';
                     }
-                    if (modalIntroEl) modalIntroEl.innerHTML = data.introHtml || '';
-                    if (modalListEl) modalListEl.innerHTML = data.rowsHtml.join('');
+                    if (modalIntroEl) modalIntroEl.innerHTML = cached.introHtml || '';
+                    if (modalListEl) modalListEl.innerHTML = cached.rowsHtml.join('');
                     modalEl.classList.add('is-visible');
                     modalEl.setAttribute('aria-hidden', 'false');
                 }
@@ -997,11 +990,10 @@
                     modalEl.setAttribute('aria-hidden', 'true');
                 }
 
-                function bindCardClick(cardEl, kind) {
-                    if (!cardEl) return;
+                if (cardEl) {
                     function activate() {
                         if (cardEl.getAttribute('aria-disabled') === 'true') return;
-                        openForecastModal(kind);
+                        openForecastModal();
                     }
                     cardEl.addEventListener('click', activate);
                     cardEl.addEventListener('keydown', function (e) {
@@ -1011,9 +1003,6 @@
                         }
                     });
                 }
-
-                bindCardClick(warnCardEl, 'warn');
-                bindCardClick(suggestCardEl, 'suggest');
                 if (modalCloseEl) modalCloseEl.addEventListener('click', closeForecastModal);
                 if (modalEl) {
                     modalEl.addEventListener('click', function (e) {
@@ -1026,21 +1015,14 @@
                     }
                 });
 
-                function renderEmptyLists() {
-                    if (warnListEl) {
-                        warnListEl.innerHTML = '';
-                        warnListEl.hidden = true;
+                function renderEmptyList() {
+                    if (listEl) {
+                        listEl.innerHTML = '';
+                        listEl.hidden = true;
                     }
-                    if (suggestListEl) {
-                        suggestListEl.innerHTML = '';
-                        suggestListEl.hidden = true;
-                    }
-                    if (warnMoreEl) warnMoreEl.hidden = true;
-                    if (suggestMoreEl) suggestMoreEl.hidden = true;
-                    setCardActive(warnCardEl, false);
-                    setCardActive(suggestCardEl, false);
-                    cachedWarn = { introHtml: '', rowsHtml: [] };
-                    cachedSuggest = { introHtml: '', rowsHtml: [] };
+                    if (moreEl) moreEl.hidden = true;
+                    setCardActive(false);
+                    cached = { introHtml: '', rowsHtml: [] };
                 }
 
                 fetch('api/forecast.php?ma_days=' + MA_DAYS + '&lead_time_days=' + LEAD_DAYS, {
@@ -1050,115 +1032,61 @@
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
                         if (!res || !res.success) {
-                            var err = (res && res.error) ? res.error : 'Could not load forecast.';
-                            if (warnTextEl) warnTextEl.textContent = err;
-                            if (suggestTextEl) suggestTextEl.textContent = err;
-                            renderEmptyLists();
+                            if (textEl) {
+                                textEl.textContent = (res && res.error) ? res.error : 'Could not load forecast.';
+                            }
+                            renderEmptyList();
                             return;
                         }
 
                         var items = res.items || [];
-                        var atRisk = sortFewerDaysFirst(items.filter(function (f) {
-                            var u = String(f.urgency || '').toUpperCase();
-                            if (u === 'OUT' || u === 'CRITICAL') return true;
-                            var days = f.days_remaining;
-                            return days != null && Number.isFinite(Number(days)) && Number(days) <= LEAD_DAYS;
-                        }));
-
-                        var warnRows = atRisk.map(warnRowHtml);
-                        var warnPreview = atRisk.slice(0, PREVIEW_LIMIT);
-
-                        if (warnTextEl) {
-                            if (!atRisk.length) {
-                                warnTextEl.innerHTML =
-                                    'No stock is predicted to run out in the next <span>' + LEAD_DAYS +
-                                    '</span> days based on recent usage.';
-                                if (warnListEl) {
-                                    warnListEl.innerHTML = '';
-                                    warnListEl.hidden = true;
-                                }
-                                if (warnMoreEl) warnMoreEl.hidden = true;
-                                setCardActive(warnCardEl, false);
-                                cachedWarn = { introHtml: '', rowsHtml: [] };
-                            } else {
-                                var warnIntro =
-                                    'Warning: these may run out within <span>' + LEAD_DAYS + '</span> days ' +
-                                    '(soonest first):';
-                                warnTextEl.innerHTML = warnIntro;
-                                if (warnListEl) {
-                                    warnListEl.innerHTML = warnPreview.map(warnRowHtml).join('');
-                                    warnListEl.hidden = false;
-                                }
-                                if (warnMoreEl) {
-                                    if (atRisk.length > PREVIEW_LIMIT) {
-                                        warnMoreEl.textContent = 'more';
-                                        warnMoreEl.hidden = false;
-                                    } else {
-                                        warnMoreEl.hidden = true;
-                                    }
-                                }
-                                setCardActive(warnCardEl, true);
-                                cachedWarn = { introHtml: warnIntro, rowsHtml: warnRows };
-                            }
-                        }
-
-                        var toBuy = sortFewerDaysFirst(
+                        var watch = sortFewerDaysFirst(
                             items
                                 .map(function (f) {
                                     return { item: f, buy: suggestedBuyQty(f) };
                                 })
                                 .filter(function (row) {
-                                    if (!(row.buy > 0.0001)) return false;
-                                    var u = String(row.item.urgency || '').toUpperCase();
-                                    var days = row.item.days_remaining;
-                                    var atRiskItem = u === 'OUT' || u === 'CRITICAL' || u === 'LOW' ||
-                                        (days != null && Number.isFinite(Number(days)) && Number(days) <= LEAD_DAYS);
-                                    return atRiskItem || Number(row.item.suggested_restock || 0) > 0;
+                                    return isAtRisk(row.item) || row.buy > 0.0001 ||
+                                        Number(row.item.suggested_restock || 0) > 0;
                                 }),
                             function (row) { return row.item; }
                         );
 
-                        var buyRows = toBuy.map(suggestRowHtml);
-                        var buyPreview = toBuy.slice(0, PREVIEW_LIMIT);
+                        var rowsHtml = watch.map(monitorRowHtml);
+                        var preview = watch.slice(0, PREVIEW_LIMIT);
 
-                        if (suggestTextEl) {
-                            if (!toBuy.length) {
-                                suggestTextEl.innerHTML =
-                                    'No restock buy needed right now based on sales pace and the <span>' +
-                                    LEAD_DAYS + '</span>-day supplier wait.';
-                                if (suggestListEl) {
-                                    suggestListEl.innerHTML = '';
-                                    suggestListEl.hidden = true;
-                                }
-                                if (suggestMoreEl) suggestMoreEl.hidden = true;
-                                setCardActive(suggestCardEl, false);
-                                cachedSuggest = { introHtml: '', rowsHtml: [] };
+                        if (!watch.length) {
+                            if (textEl) {
+                                textEl.innerHTML =
+                                    'Stock looks stable for the next <span>' + LEAD_DAYS +
+                                    '</span> days based on recent sales. No restock action needed right now.';
+                            }
+                            renderEmptyList();
+                            return;
+                        }
+
+                        var intro =
+                            'Based on sales pace, these may need attention within <span>' + LEAD_DAYS +
+                            '</span> days (soonest first). Status + suggested restock:';
+                        if (textEl) textEl.innerHTML = intro;
+                        if (listEl) {
+                            listEl.innerHTML = preview.map(monitorRowHtml).join('');
+                            listEl.hidden = false;
+                        }
+                        if (moreEl) {
+                            if (watch.length > PREVIEW_LIMIT) {
+                                moreEl.textContent = 'more';
+                                moreEl.hidden = false;
                             } else {
-                                var suggestIntro =
-                                    'Buy enough packs to cover sales until new stock arrives (~<span>' +
-                                    LEAD_DAYS + '</span> days). Soonest to run out first:';
-                                suggestTextEl.innerHTML = suggestIntro;
-                                if (suggestListEl) {
-                                    suggestListEl.innerHTML = buyPreview.map(suggestRowHtml).join('');
-                                    suggestListEl.hidden = false;
-                                }
-                                if (suggestMoreEl) {
-                                    if (toBuy.length > PREVIEW_LIMIT) {
-                                        suggestMoreEl.textContent = 'more';
-                                        suggestMoreEl.hidden = false;
-                                    } else {
-                                        suggestMoreEl.hidden = true;
-                                    }
-                                }
-                                setCardActive(suggestCardEl, true);
-                                cachedSuggest = { introHtml: suggestIntro, rowsHtml: buyRows };
+                                moreEl.hidden = true;
                             }
                         }
+                        setCardActive(true);
+                        cached = { introHtml: intro, rowsHtml: rowsHtml };
                     })
                     .catch(function (e) {
-                        if (warnTextEl) warnTextEl.textContent = 'Could not load forecast. Try refreshing.';
-                        if (suggestTextEl) suggestTextEl.textContent = 'Could not load suggestions. Try refreshing.';
-                        renderEmptyLists();
+                        if (textEl) textEl.textContent = 'Could not load forecast. Try refreshing.';
+                        renderEmptyList();
                         console.warn('[admin_dashboard] forecast fetch', e);
                     });
             })();

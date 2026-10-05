@@ -665,6 +665,12 @@ body {
     gap: 14px;
 }
 
+.diag-head {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 .diag-title-row {
     display: flex;
     align-items: baseline;
@@ -673,8 +679,24 @@ body {
     flex-wrap: wrap;
 }
 
-.diag-column > .diag-title {
+.diag-column > .diag-title,
+.diag-column > .diag-head {
     margin-top: 4px;
+}
+
+.diag-column .diag-title {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+
+.diag-subtitle {
+    margin: 0;
+    color: rgba(244, 140, 37, 0.55);
+    font-size: 13px;
+    line-height: 1.35;
 }
 
 .diag-title-row .diag-title {

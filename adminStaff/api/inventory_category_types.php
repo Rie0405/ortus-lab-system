@@ -131,9 +131,6 @@ if ($m === 'DELETE') {
     }
 
     $slug = (string)$row['slug'];
-    if ($slug === 'main') {
-        fail('The Main category type cannot be deleted.');
-    }
 
     $inUse = $pdo->prepare(
         'SELECT COUNT(*) FROM inventory_items WHERE category_type = :slug AND is_active = 1'

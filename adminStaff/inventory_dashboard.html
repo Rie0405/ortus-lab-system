@@ -1534,9 +1534,8 @@
 
         function syncCategoryTypeCrudButtons() {
             var selected = getSelectedManagedCategoryType();
-            var canDelete = !!(selected && selected.value !== 'main');
             if (receiptCategoryTypeRenameBtn) receiptCategoryTypeRenameBtn.disabled = !selected;
-            if (receiptCategoryTypeDeleteBtn) receiptCategoryTypeDeleteBtn.disabled = !canDelete;
+            if (receiptCategoryTypeDeleteBtn) receiptCategoryTypeDeleteBtn.disabled = !selected;
         }
 
         function renderManagedCategoryTypes() {
@@ -1652,10 +1651,6 @@
                 : getSelectedManagedCategoryType();
             if (!selected) {
                 setReceiptError('Select a category type to delete.');
-                return Promise.resolve(false);
-            }
-            if (selected.value === 'main') {
-                setReceiptError('The Main category type cannot be deleted.');
                 return Promise.resolve(false);
             }
             if (!window.confirm('Delete category type "' + selected.label + '"?')) {

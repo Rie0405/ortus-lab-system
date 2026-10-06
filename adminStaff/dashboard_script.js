@@ -714,6 +714,8 @@ function apiCall(method, url, body) {
     var createVariantsListEl = createBackdrop ? createBackdrop.querySelector('#prod-variants-list') : null;
     var createVariantTemplateEl = createBackdrop ? createBackdrop.querySelector('#prod-variant-template') : null;
     var createVariantAddBtn = createBackdrop ? createBackdrop.querySelector('#prod-variant-add') : null;
+    var createVariantsNeedMainEl = createBackdrop ? createBackdrop.querySelector('#prod-variants-need-main') : null;
+    var createVariantsDirty = false;
 
     function formatVariantDisplayName(data) {
         if (!data) return '';
@@ -726,6 +728,10 @@ function apiCall(method, url, body) {
     function selectedCreateMainCategoryId() {
         var sel = createBackdrop ? createBackdrop.querySelector('#prod-main-category') : null;
         return sel && sel.value ? sel.value : '';
+    }
+
+    function setCreateVariantsNeedMainWarning(show) {
+        if (createVariantsNeedMainEl) createVariantsNeedMainEl.hidden = !show;
     }
 
     function resetCreateVariantRows() {
@@ -798,15 +804,24 @@ function apiCall(method, url, body) {
             else costInp.setAttribute('required', 'required');
         }
         if (enabled) ensureDefaultCreateVariantRows();
+        if (!enabled) setCreateVariantsNeedMainWarning(false);
     }
 
-    function loadCreateVariantsForSelectedMain() {
+    function loadCreateVariantsForSelectedMain(opts) {
+        opts = opts || {};
         if (!createVariantsPanel) return;
+        // Don't overwrite in-progress edits when a background menu refresh finishes
+        // (common on slow domain). Only force-reset when caller asks (modal open / main cat change).
+        if (!opts.force && createVariantsDirty && createBackdrop && createBackdrop.classList.contains('is-visible')) {
+            return;
+        }
         createVariantsPanel.hidden = false;
+        setCreateVariantsNeedMainWarning(false);
         var selectedId = selectedCreateMainCategoryId();
         if (!selectedId) {
             resetCreateVariantRows();
             if (createEnableVariantsEl) createEnableVariantsEl.checked = false;
+            createVariantsDirty = false;
             syncCreateVariantsUI();
             return;
         }
@@ -822,6 +837,7 @@ function apiCall(method, url, body) {
                 ensureDefaultCreateVariantRows();
             }
         }
+        createVariantsDirty = false;
         syncCreateVariantsUI();
     }
 
@@ -830,7 +846,10 @@ function apiCall(method, url, body) {
         var quiet = !!opts.quiet;
         var selectedId = parseInt(selectedCreateMainCategoryId(), 10) || 0;
         if (!selectedId) {
-            if (!quiet) alert('Select a main category first.');
+            if (!quiet) {
+                setCreateVariantsNeedMainWarning(true);
+                alert('Select a main category first.');
+            }
             return Promise.resolve(null);
         }
         var enabled = !!(createEnableVariantsEl && createEnableVariantsEl.checked);
@@ -851,9 +870,10 @@ function apiCall(method, url, body) {
             variants: variants
         }).then(function (res) {
             if (!res.success) throw new Error(res.error || 'Failed to save variants');
+            createVariantsDirty = false;
             return loadItems().then(function () {
                 if (prodMainCategorySelect) prodMainCategorySelect.value = String(selectedId);
-                loadCreateVariantsForSelectedMain();
+                loadCreateVariantsForSelectedMain({ force: true });
                 return res;
             });
         });
@@ -865,16 +885,21 @@ function apiCall(method, url, body) {
             createEnableVariantsEl.addEventListener('change', function () {
                 if (createEnableVariantsEl.checked && !selectedCreateMainCategoryId()) {
                     createEnableVariantsEl.checked = false;
-                    alert('Select a main category first.');
+                    setCreateVariantsNeedMainWarning(true);
                     syncCreateVariantsUI();
                     return;
                 }
+                setCreateVariantsNeedMainWarning(false);
+                createVariantsDirty = true;
                 syncCreateVariantsUI();
                 if (!createEnableVariantsEl.checked) resetCreateVariantRows();
             });
         }
         if (createVariantAddBtn) {
-            createVariantAddBtn.addEventListener('click', function () { addCreateVariantRow(); });
+            createVariantAddBtn.addEventListener('click', function () {
+                createVariantsDirty = true;
+                addCreateVariantRow();
+            });
         }
         if (createVariantsListEl) {
             createVariantsListEl.addEventListener('click', function (e) {
@@ -882,10 +907,14 @@ function apiCall(method, url, body) {
                 if (!btn) return;
                 var row = btn.closest('.variant-input-row');
                 if (row) row.remove();
+                createVariantsDirty = true;
                 if (createEnableVariantsEl && createEnableVariantsEl.checked
                     && createVariantsListEl && !createVariantsListEl.querySelector('.variant-input-row')) {
                     ensureDefaultCreateVariantRows();
                 }
+            });
+            createVariantsListEl.addEventListener('input', function () {
+                createVariantsDirty = true;
             });
         }
         syncCreateVariantsUI();
@@ -1197,7 +1226,7 @@ function apiCall(method, url, body) {
                     }
                 }
                 syncProductCategoryOptions('');
-                loadCreateVariantsForSelectedMain();
+                loadCreateVariantsForSelectedMain({ force: true });
             })
             .catch(function (err) { alert('Error: ' + err.message); })
             .finally(function () {
@@ -1685,7 +1714,8 @@ function apiCall(method, url, body) {
         if (backdrop === createBackdrop && prodMainCategorySelect) {
             prodMainCategorySelect.value = '';
             syncProductCategoryOptions('');
-            loadCreateVariantsForSelectedMain();
+            createVariantsDirty = false;
+            loadCreateVariantsForSelectedMain({ force: true });
         }
         if (backdrop === createBackdrop) {
             setCatalogMode('create');
@@ -1834,7 +1864,8 @@ function apiCall(method, url, body) {
     if (prodMainCategorySelect) {
         prodMainCategorySelect.addEventListener('change', function () {
             syncProductCategoryOptions('');
-            loadCreateVariantsForSelectedMain();
+            createVariantsDirty = false;
+            loadCreateVariantsForSelectedMain({ force: true });
         });
     }
     if (editMainCategorySelect) {
@@ -2516,7 +2547,8 @@ function apiCall(method, url, body) {
             allItems   = res.items;
             fillCategorySelects(categories);
             fillMainCategorySelects();
-            loadCreateVariantsForSelectedMain();
+            // Do not reset create-modal variant UI here — slow domain menu reloads were
+            // wiping the Enable variants checkbox while the user was editing.
             renderFilterChips();
 
             // Update stats
@@ -2810,7 +2842,8 @@ function apiCall(method, url, body) {
                     if (customizableIngredientsInput) customizableIngredientsInput.value = '';
                     createImageIsCustom = false;
                     clearProductVisual('prod');
-                    loadCreateVariantsForSelectedMain();
+                    createVariantsDirty = false;
+                    loadCreateVariantsForSelectedMain({ force: true });
                     loadItems();
                 } else {
                     alert('Error: ' + res.error);

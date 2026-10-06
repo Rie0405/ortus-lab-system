@@ -1511,11 +1511,13 @@ body.modal-open {
     margin-top: 2px;
 }
 
-.product-field-hint {
-    margin: 4px 0 0;
-    font-size: 11px;
-    color: #94a3b8;
-    line-height: 1.4;
+.product-field-hint--warn {
+    color: #fbbf24;
+    margin-top: 6px;
+}
+
+.product-main-variants-check .product-field-hint--warn {
+    margin-left: 26px;
 }
 
 .product-drink-panel {

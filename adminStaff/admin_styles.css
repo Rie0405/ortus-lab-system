@@ -229,12 +229,16 @@ body {
     border-top: 1px solid rgba(41, 37, 36, 0.5);
 }
 
-.kiosk-open-btn {
+a.kiosk-open-btn,
+a.kiosk-open-btn:link,
+a.kiosk-open-btn:visited,
+a.kiosk-open-btn:any-link {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
     min-height: 48px;
+    box-sizing: border-box;
     border: 1px solid rgba(244, 140, 37, 0.55);
     border-radius: 8px;
     background: transparent;
@@ -245,17 +249,22 @@ body {
     letter-spacing: 0.06em;
     text-decoration: none;
     text-transform: uppercase;
+    cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.kiosk-open-btn:hover {
+a.kiosk-open-btn:hover,
+a.kiosk-open-btn:focus-visible {
     background: rgba(244, 140, 37, 0.12);
     border-color: #f48c25;
     color: #ffb65c;
+    text-decoration: none;
 }
 
-.kiosk-open-btn:active {
+a.kiosk-open-btn:active {
     transform: translateY(1px);
+    color: #f48c25;
+    text-decoration: none;
 }
 
 .starting-money-overlay {

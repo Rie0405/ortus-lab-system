@@ -3395,6 +3395,11 @@ function connectKioskRealtimeStream() {
         if (!e || !e.data) return;
         try {
             var evt = JSON.parse(e.data);
+            var type = String((evt && evt.type) || '').toLowerCase();
+            if (type === 'catalog_updated' || type === 'inventory_updated') {
+                scheduleKioskRealtimeRefresh();
+                return;
+            }
             var payload = (evt && evt.payload) || {};
             var source = String(payload.order_source || '').toLowerCase();
             if (source === 'kiosk' || !source) {

@@ -651,6 +651,11 @@ try {
 
     $pdo->commit();
 
+    publish_realtime_event('inventory_updated', [
+        'action' => $registerMode ? 'inventory_registered' : 'stock_receipt_saved',
+        'receipt_id' => $receiptId,
+    ]);
+
     $isStaffRestock = $entrySource === 'staff' || stripos($supplier, 'Restocked by ') === 0;
     $restockActor = $isStaffRestock
         ? activity_actor_from_restock_supplier($supplier)

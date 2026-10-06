@@ -429,6 +429,10 @@ if ($method === 'POST') {
         'entity_id' => $newId,
     ]);
 
+    publish_realtime_event('inventory_updated', [
+        'action' => 'inventory_item_created',
+        'inventory_item_id' => $newId,
+    ]);
     ok(['id' => $newId, 'message' => 'Inventory item created.'], 201);
 }
 
@@ -453,6 +457,10 @@ if ($method === 'PUT') {
             'action' => 'all inventory restocked to ' . $targetStock,
         ]);
 
+        publish_realtime_event('inventory_updated', [
+            'action' => 'restock_all',
+            'target_stock' => $targetStock,
+        ]);
         ok([
             'message' => 'All inventory items restocked to normal level.',
             'target_stock' => $targetStock,
@@ -506,6 +514,10 @@ if ($method === 'PUT') {
                 'user' => $restockActor,
             ]);
         }
+        publish_realtime_event('inventory_updated', [
+            'action' => 'restock_shortages',
+            'restocked_count' => count($restocked),
+        ]);
         ok([
             'message' => 'Shortage items restocked.',
             'restocked' => $restocked,
@@ -899,6 +911,10 @@ if ($method === 'PUT') {
         }
     }
 
+    publish_realtime_event('inventory_updated', [
+        'action' => 'inventory_item_updated',
+        'inventory_item_id' => $id,
+    ]);
     ok(['message' => 'Inventory item updated.']);
 }
 
@@ -917,6 +933,10 @@ if ($method === 'DELETE') {
         'action' => 'inventory item deleted: ' . $deletedName,
         'entity_type' => 'inventory_item',
         'entity_id' => $id,
+    ]);
+    publish_realtime_event('inventory_updated', [
+        'action' => 'inventory_item_deleted',
+        'inventory_item_id' => $id,
     ]);
     ok(['message' => 'Inventory item archived.']);
 }

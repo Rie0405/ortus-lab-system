@@ -3399,6 +3399,7 @@
             posActiveFulfillment = "dine_in";
             renderOrderList();
             loadMenu();
+            window.reloadPosMenu = loadMenu;
             setInterval(refreshFastMovingBadges, 90000);
         })();
 
@@ -5489,6 +5490,7 @@
         var staffRealtimeSource = null;
         var staffRealtimeRetryTimer = null;
         var staffRealtimeReloadTimer = null;
+        var staffCatalogReloadTimer = null;
         var staffLastRealtimeEventId = 0;
 
         function peso(v) {
@@ -6024,10 +6026,27 @@
                 loadStaffData();
             }, 350);
         }
+        function scheduleStaffCatalogRefresh() {
+            if (staffCatalogReloadTimer) return;
+            staffCatalogReloadTimer = setTimeout(function () {
+                staffCatalogReloadTimer = null;
+                if (typeof window.reloadPosMenu === 'function') {
+                    window.reloadPosMenu();
+                }
+            }, 400);
+        }
         function handleStaffRealtimeEvent(evt) {
             var evtId = parseInt((evt && evt.id) || 0, 10);
             if (evtId && evtId <= staffLastRealtimeEventId) return;
             if (evtId) staffLastRealtimeEventId = evtId;
+
+            var type = String((evt && evt.type) || '').toLowerCase();
+            if (type === 'catalog_updated' || type === 'inventory_updated') {
+                // Soft-refresh POS menu/availability; do not flash queue/kitchen badges.
+                scheduleStaffCatalogRefresh();
+                return;
+            }
+
             var payload = (evt && evt.payload) || {};
             var source = String(payload.order_source || '').toLowerCase();
             var status = String(payload.status || '').toLowerCase();
@@ -10160,6 +10179,10 @@
             if (staffRealtimeReloadTimer) {
                 clearTimeout(staffRealtimeReloadTimer);
                 staffRealtimeReloadTimer = null;
+            }
+            if (staffCatalogReloadTimer) {
+                clearTimeout(staffCatalogReloadTimer);
+                staffCatalogReloadTimer = null;
             }
             if (staffRealtimeSource) {
                 try { staffRealtimeSource.close(); } catch (e) {}

@@ -106,7 +106,12 @@ if ($m === 'POST') {
         ':act' => $isActive,
     ]);
 
-    ok(['id' => (int)db()->lastInsertId(), 'message' => 'Subcategory created.'], 201);
+    $newId = (int)db()->lastInsertId();
+    publish_realtime_event('catalog_updated', [
+        'action' => 'subcategory_created',
+        'subcategory_id' => $newId,
+    ]);
+    ok(['id' => $newId, 'message' => 'Subcategory created.'], 201);
 }
 
 if ($m === 'PUT') {
@@ -150,6 +155,10 @@ if ($m === 'PUT') {
 
     $upd = $pdo->prepare('UPDATE subcategories SET name = :name, icon_url = :icon WHERE id = :id');
     $upd->execute([':name' => $name, ':icon' => $iconUrl, ':id' => $id]);
+    publish_realtime_event('catalog_updated', [
+        'action' => 'subcategory_updated',
+        'subcategory_id' => $id,
+    ]);
     ok([
         'id' => $id,
         'icon_url' => $iconUrl,
@@ -195,6 +204,10 @@ if ($m === 'DELETE') {
         fail('Failed to delete subcategory: ' . $e->getMessage());
     }
 
+    publish_realtime_event('catalog_updated', [
+        'action' => 'subcategory_deleted',
+        'subcategory_id' => $id,
+    ]);
     ok([
         'id' => $id,
         'deleted_menu_items' => count($itemIds),

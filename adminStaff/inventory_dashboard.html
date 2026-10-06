@@ -1662,10 +1662,21 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: selected.id })
             })
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    if (!d || !d.success) {
-                        setReceiptError((d && d.error) || 'Failed to delete category type.');
+                .then(function (r) {
+                    return r.text().then(function (text) {
+                        var d = null;
+                        try { d = text ? JSON.parse(text) : null; } catch (e) { d = null; }
+                        return { ok: r.ok, status: r.status, d: d };
+                    });
+                })
+                .then(function (res) {
+                    var d = res.d;
+                    if (!d || typeof d !== 'object') {
+                        setReceiptError('Failed to delete category type. Server returned an invalid response (HTTP ' + res.status + ').');
+                        return false;
+                    }
+                    if (!d.success) {
+                        setReceiptError(d.error || 'Failed to delete category type.');
                         return false;
                     }
                     selectedCategoryTypeId = null;
@@ -2183,8 +2194,22 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
+                .then(function (r) {
+                    return r.text().then(function (text) {
+                        var d = null;
+                        try { d = text ? JSON.parse(text) : null; } catch (e) { d = null; }
+                        return { ok: r.ok, status: r.status, d: d, raw: text };
+                    });
+                })
+                .then(function (res) {
+                    var d = res.d;
+                    if (!d || typeof d !== 'object') {
+                        setReceiptError(
+                            (isRegisterMode ? 'Failed to register inventory item.' : 'Failed to save stock entry.') +
+                            ' Server returned an invalid response (HTTP ' + res.status + ').'
+                        );
+                        return;
+                    }
                     if (!d.success) {
                         setReceiptError(d.error || (isRegisterMode ? 'Failed to register inventory item.' : 'Failed to save stock entry.'));
                         return;

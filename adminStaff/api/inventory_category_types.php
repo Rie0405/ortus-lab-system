@@ -43,6 +43,10 @@ if ($m === 'POST') {
                 ':ord' => $ord,
                 ':id' => (int)$existing['id'],
             ]);
+            publish_realtime_event('inventory_updated', [
+                'action' => 'category_type_restored',
+                'category_type_id' => (int)$existing['id'],
+            ]);
             ok([
                 'id' => (int)$existing['id'],
                 'message' => 'Category type restored.',
@@ -67,8 +71,13 @@ if ($m === 'POST') {
         ':ord' => $ord,
     ]);
 
+    $newId = (int)$pdo->lastInsertId();
+    publish_realtime_event('inventory_updated', [
+        'action' => 'category_type_created',
+        'category_type_id' => $newId,
+    ]);
     ok([
-        'id' => (int)$pdo->lastInsertId(),
+        'id' => $newId,
         'message' => 'Category type created.',
         'category_types' => fetch_active_inventory_category_types($pdo),
     ], 201);
@@ -108,6 +117,10 @@ if ($m === 'PUT') {
     $pdo->prepare('UPDATE inventory_category_types SET name = :name WHERE id = :id')
         ->execute([':name' => $name, ':id' => $id]);
 
+    publish_realtime_event('inventory_updated', [
+        'action' => 'category_type_updated',
+        'category_type_id' => $id,
+    ]);
     ok([
         'id' => $id,
         'message' => 'Category type updated.',
@@ -132,17 +145,45 @@ if ($m === 'DELETE') {
 
     $slug = (string)$row['slug'];
 
+    // Only block on registered inventory (shown in Inventory UI).
+    // Menu-linked / auto rows also default to category_type='main' and are hidden from the list.
     $inUse = $pdo->prepare(
-        'SELECT COUNT(*) FROM inventory_items WHERE category_type = :slug AND is_active = 1'
+        'SELECT COUNT(*) FROM inventory_items
+          WHERE category_type = :slug
+            AND is_active = 1
+            AND menu_item_id IS NULL'
     );
     $inUse->execute([':slug' => $slug]);
-    if ((int)$inUse->fetchColumn() > 0) {
-        fail('Cannot delete a category type that is still used by inventory items.');
+    $usedCount = (int)$inUse->fetchColumn();
+    if ($usedCount > 0) {
+        fail(
+            'Cannot delete a category type that is still used by ' . $usedCount .
+            ' registered inventory item' . ($usedCount === 1 ? '' : 's') . '.'
+        );
+    }
+
+    // Detach leftover non-registered rows so the slug can be retired cleanly.
+    // When deleting "main", leave menu-linked defaults alone (they're not shown in Register UI).
+    if ($slug !== 'main') {
+        try {
+            $pdo->prepare(
+                'UPDATE inventory_items
+                    SET category_type = \'main\'
+                  WHERE category_type = :slug
+                    AND menu_item_id IS NOT NULL'
+            )->execute([':slug' => $slug]);
+        } catch (Throwable $e) {
+            // Non-fatal: delete can continue even if reassignment fails.
+        }
     }
 
     $pdo->prepare('UPDATE inventory_category_types SET is_active = 0 WHERE id = :id')
         ->execute([':id' => $id]);
 
+    publish_realtime_event('inventory_updated', [
+        'action' => 'category_type_deleted',
+        'category_type_id' => $id,
+    ]);
     ok([
         'id' => $id,
         'message' => 'Category type deleted.',

@@ -348,25 +348,15 @@ body.modal-open {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
-    display: flex;
+    display: none;
     align-items: flex-start;
     justify-content: center;
     padding: 72px 16px 24px;
     z-index: 28;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 140ms ease-out, visibility 140ms ease-out;
     overflow-y: auto;
 }
 .menu-filter-backdrop.is-visible {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
-.menu-filter-backdrop:not(.is-visible),
-.menu-filter-backdrop:not(.is-visible) * {
-    pointer-events: none !important;
+    display: flex;
 }
 .menu-filter-popover {
     width: min(460px, 100%);
@@ -779,26 +769,15 @@ body.modal-open {
     background: rgba(0, 0, 0, 0.75);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     padding: 24px;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 160ms ease-out, visibility 160ms ease-out;
     z-index: 50;
 }
 
 .gcash-config-backdrop.is-visible {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
-
-.gcash-config-backdrop:not(.is-visible),
-.gcash-config-backdrop:not(.is-visible) * {
-    pointer-events: none !important;
+    display: flex;
 }
 
 .gcash-config-modal {
@@ -1168,26 +1147,15 @@ body.modal-open {
     background: rgba(0, 0, 0, 0.75);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     padding: 24px;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 160ms ease-out, visibility 160ms ease-out;
     z-index: 40;
 }
 
 .product-modal-backdrop.is-visible {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
-
-.product-modal-backdrop:not(.is-visible),
-.product-modal-backdrop:not(.is-visible) * {
-    pointer-events: none !important;
+    display: flex;
 }
 
 .product-modal {

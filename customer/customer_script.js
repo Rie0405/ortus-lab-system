@@ -2503,7 +2503,16 @@ function isOrderFullyRecorded(res) {
     var orderNumber = String(res.order_number || '').trim();
     var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
     var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
-    return orderId > 0 && orderNumber !== '' && (kitchenTicket > 0 || barTicket > 0);
+    var stationTickets = res.station_tickets && typeof res.station_tickets === 'object'
+        ? res.station_tickets
+        : null;
+    var hasStationTicket = false;
+    if (stationTickets) {
+        Object.keys(stationTickets).forEach(function (k) {
+            if ((parseInt(stationTickets[k], 10) || 0) > 0) hasStationTicket = true;
+        });
+    }
+    return orderId > 0 && orderNumber !== '' && (kitchenTicket > 0 || barTicket > 0 || hasStationTicket);
 }
 
 function showPaymentSuccessToast(onDoneOrOpts, maybeOnDone) {

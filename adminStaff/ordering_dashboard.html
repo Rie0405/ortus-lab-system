@@ -29,7 +29,7 @@
 
             <div class="top-actions">
                 <button type="button" class="icon-btn" title="Notifications" aria-label="Notifications"><img src="icons_admin/bell_icon.svg" alt=""></button>
-                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/wrench_icon.svg" alt=""></button>
+                <button type="button" class="icon-btn icon-btn--logout" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/logout-svgrepo-com.svg" alt=""></button>
             </div>
         </header>
 
@@ -236,6 +236,13 @@
                                                 class="product-btn product-btn--ghost product-btn--compact">Add</button>
                                     </div>
                                 </div>
+
+                                <div id="prod-main-variants-panel" class="product-main-variants-check">
+                                    <label class="product-check product-check--variants" for="prod-enable-variants">
+                                        <input type="checkbox" id="prod-enable-variants" value="1">
+                                        <span>Enable variants for this main category</span>
+                                    </label>
+                                </div>
                             </div>
 
                             <div class="product-catalog-row" data-catalog-role="create">
@@ -304,6 +311,7 @@
                                         <button type="button" class="manage-action-btn manage-action-btn--delete" id="prod-delete-main-category-btn">Delete main category</button>
                                     </div>
                                 </div>
+
                                 <div class="product-field-group">
                                     <label class="product-field-label" for="manage-category-select">Category</label>
                                     <div class="product-select-wrap">
@@ -408,7 +416,7 @@
                     </div>
 
                     <div class="product-modal__lower">
-                        <div id="prod-variants-section" class="product-section" data-catalog-role="create">
+                        <div id="prod-variants-fields" class="product-section" hidden>
                             <div class="product-section__head">
                                 <span class="product-section__title">Variants</span>
                             </div>
@@ -585,39 +593,9 @@
                         </div>
                     </div>
 
-                    <div class="product-modal__lower">
-                        <div id="edit-variants-section" class="product-section">
-                            <div class="product-section__head">
-                                <span class="product-section__title">Variants</span>
-                            </div>
-                            <div class="product-section__body">
-                                <p class="product-field-label__note" style="margin: 0 0 10px;">
-                                    Defaults include Iced and Hot. Edit the names, prices, or remove a row if you only need one temperature.
-                                </p>
-                                <div id="edit-variants-list" class="prod-variants-list"></div>
-
-                                <template id="edit-variant-template">
-                                    <div class="variant-input-row">
-                                        <div class="variant-input-block">
-                                            <label class="product-field-label">Variant name</label>
-                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. Hot (8oz), Iced (12oz)" aria-label="Variant name" autocomplete="off" />
-                                        </div>
-                                        <div class="variant-input-block">
-                                            <label class="product-field-label">PRICE (₱)</label>
-                                            <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" />
-                                        </div>
-                                        <div class="variant-input-block">
-                                            <label class="product-field-label">COST PRICE (₱)</label>
-                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" />
-                                        </div>
-                                        <button type="button" class="variant-remove" aria-label="Remove variant">Delete</button>
-                                    </div>
-                                </template>
-
-                                <button type="button" class="variant-add" id="edit-variant-add">+ ADD VARIANT</button>
-                            </div>
-                        </div>
                     </div>
+
+                    <!-- Variants are configured on the selected main category (Create form), not per product. -->
                 </div>
 
                 <footer class="product-modal__footer">

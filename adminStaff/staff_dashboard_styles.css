@@ -1,4 +1,4 @@
-﻿*,
+*,
 *::before,
 *::after {
     box-sizing: border-box;
@@ -454,7 +454,7 @@ button {
 .header-logout-btn {
     border: 1px solid #5a4535;
     background: rgba(18, 14, 10, 0.2);
-    color: #e8ceb0;
+    color: #f87171;
     border-radius: 10px;
     padding: 0;
     width: 40px;
@@ -470,10 +470,20 @@ button {
     line-height: 1;
 }
 
+.header-logout-btn img {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
 .header-logout-btn:hover {
-    background: #f48c25;
-    color: #120e0a;
-    border-color: #f48c25;
+    background: rgba(248, 113, 113, 0.14);
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.55);
+}
+
+.header-logout-btn:hover img {
+    filter: brightness(1.18);
 }
 
 .header-logout-btn:active {

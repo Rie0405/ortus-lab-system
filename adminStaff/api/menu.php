@@ -48,12 +48,17 @@ if ($m === 'GET') {
                    m.serve_hot, m.serve_cold,
                    m.created_at, m.updated_at
               FROM menu_items m
-              JOIN categories c ON c.id = m.category_id
-              LEFT JOIN main_categories mc ON mc.id = m.main_category_id
-              LEFT JOIN subcategories sc ON sc.id = m.subcategory_id';
+              JOIN categories c ON c.id = m.category_id AND c.is_active = 1
+              LEFT JOIN main_categories mc ON mc.id = COALESCE(m.main_category_id, c.main_category_id)
+              LEFT JOIN subcategories sc ON sc.id = m.subcategory_id AND sc.is_active = 1
+             WHERE (c.main_category_id IS NULL OR c.main_category_id = 0
+                    OR EXISTS (
+                        SELECT 1 FROM main_categories mcx
+                         WHERE mcx.id = c.main_category_id AND mcx.is_active = 1
+                    ))';
     $params = [];
     if ($categoryId) {
-        $sql    .= ' WHERE m.category_id = :cid';
+        $sql    .= ' AND m.category_id = :cid';
         $params[':cid'] = $categoryId;
     }
     $sql .= ' ORDER BY c.display_order, m.name';
@@ -67,6 +72,15 @@ if ($m === 'GET') {
     }
     unset($item);
     annotate_menu_items_addon_flags(db(), $items);
+
+    $mainCatsById = [];
+    foreach ($mainCats as $mc) {
+        $mainCatsById[(int)$mc['id']] = $mc;
+    }
+    foreach ($items as &$item) {
+        apply_main_category_variants_to_menu_item($item, $mainCatsById);
+    }
+    unset($item);
 
     $fastMoving = fetch_fast_moving_items(db(), 100, 5);
     $bestSeller = fetch_best_seller(db(), 100);
@@ -115,24 +129,34 @@ if ($m === 'POST') {
     $mainCategoryId = resolve_main_category_id(db(), $mainCategoryId);
     assert_category_belongs_to_main(db(), $categoryId, $mainCategoryId);
 
+    // New products inherit the category icon when no product-specific image was uploaded.
+    if ($imageUrl === '') {
+        $iconStmt = db()->prepare(
+            'SELECT icon_url FROM categories WHERE id = :id AND is_active = 1 LIMIT 1'
+        );
+        $iconStmt->execute([':id' => $categoryId]);
+        $catIcon = $iconStmt->fetchColumn();
+        if ($catIcon !== false && $catIcon !== null && trim((string)$catIcon) !== '') {
+            $imageUrl = trim((string)$catIcon);
+        }
+    }
+
     $catName = db()->prepare('SELECT name FROM categories WHERE id = :id');
     $catName->execute([':id' => $categoryId]);
     $catRow = $catName->fetch();
-    $isDrink = $catRow && strtolower((string)$catRow['name']) === 'drinks';
+    $isDrink = $catRow && (
+        strtolower((string)$catRow['name']) === 'drinks'
+        || strtolower((string)$catRow['name']) === 'beverages'
+    );
 
-    if ($isDrink) {
-        if ($serveHot === null || $serveCold === null) {
-            $inferred = infer_serve_flags_from_description($description);
-            $serveHot = $serveHot ?? (int)$inferred['hot'];
-            $serveCold = $serveCold ?? (int)$inferred['cold'];
-        }
-        if (!$serveHot && !$serveCold) {
-            fail('Add a Hot or Cold temperature variant for drink items.');
-        }
-    } else {
-        $serveHot = 0;
-        $serveCold = 0;
+    // Serve flags come from client / Variants: line (Hot/Iced in names). Optional for any category.
+    if ($serveHot === null || $serveCold === null) {
+        $inferred = infer_serve_flags_from_description($description);
+        $serveHot = $serveHot ?? (int)$inferred['hot'];
+        $serveCold = $serveCold ?? (int)$inferred['cold'];
     }
+    $serveHot = (int)(bool)$serveHot;
+    $serveCold = (int)(bool)$serveCold;
 
     if ($subcategoryId) {
         $sub = db()->prepare(
@@ -243,22 +267,30 @@ if ($m === 'PUT') {
         }
     }
 
-    if (isset($b['serve_hot']) || isset($b['serve_cold'])) {
+    if (isset($b['serve_hot']) || isset($b['serve_cold']) || isset($b['description'])) {
         $cur = db()->prepare(
-            'SELECT m.serve_hot, m.serve_cold, c.name AS category_name
+            'SELECT m.serve_hot, m.serve_cold, m.description
                FROM menu_items m
-               JOIN categories c ON c.id = m.category_id
               WHERE m.id = :id'
         );
         $cur->execute([':id' => $id]);
         $row = $cur->fetch();
         if (!$row) fail('Item not found.', 404);
-        if (strtolower((string)$row['category_name']) === 'drinks') {
-            $nextHot = isset($b['serve_hot']) ? (bool)$b['serve_hot'] : (bool)$row['serve_hot'];
-            $nextCold = isset($b['serve_cold']) ? (bool)$b['serve_cold'] : (bool)$row['serve_cold'];
-            if (!$nextHot && !$nextCold) {
-                fail('Add a Hot or Cold temperature variant for drink items.');
-            }
+
+        $descForFlags = isset($b['description']) ? trim((string)$b['description']) : (string)($row['description'] ?? '');
+        $inferred = infer_serve_flags_from_description($descForFlags);
+
+        if (!isset($params[':shot'])) {
+            $fields[] = 'serve_hot = :shot';
+            $params[':shot'] = isset($b['serve_hot'])
+                ? (int)(bool)$b['serve_hot']
+                : (int)$inferred['hot'];
+        }
+        if (!isset($params[':scold'])) {
+            $fields[] = 'serve_cold = :scold';
+            $params[':scold'] = isset($b['serve_cold'])
+                ? (int)(bool)$b['serve_cold']
+                : (int)$inferred['cold'];
         }
     }
 

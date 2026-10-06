@@ -29,7 +29,7 @@
 
             <div class="top-actions">
                 <button type="button" class="icon-btn" title="Notifications" aria-label="Notifications"><img src="icons_admin/bell_icon.svg" alt=""></button>
-                <button type="button" class="icon-btn" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/wrench_icon.svg" alt=""></button>
+                <button type="button" class="icon-btn icon-btn--logout" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/logout-svgrepo-com.svg" alt=""></button>
             </div>
         </header>
 
@@ -53,7 +53,7 @@
 
             <section class="alert-grid" id="inventory-alert-grid">
                 <article class="alert-card alert-red">
-                    <img src="icons_admin/money_icon.svg" alt="" class="alert-thumb">
+                    <img src="icons_admin/misuse-outline-svgrepo-com.svg" alt="" class="alert-thumb">
                     <div>
                         <h3>Coffee Beans</h3>
                         <p class="left red">0 LEFT</p>
@@ -61,7 +61,7 @@
                     </div>
                 </article>
                 <article class="alert-card alert-orange">
-                    <img src="icons_admin/rocket_icon.svg" alt="" class="alert-thumb">
+                    <img src="icons_admin/warning-circle-svgrepo-com.svg" alt="" class="alert-thumb">
                     <div>
                         <h3>Milk</h3>
                         <p class="left orange">5 LEFT</p>
@@ -69,7 +69,7 @@
                     </div>
                 </article>
                 <article class="alert-card alert-orange">
-                    <img src="icons_admin/ai_icon.svg" alt="" class="alert-thumb">
+                    <img src="icons_admin/warning-circle-svgrepo-com.svg" alt="" class="alert-thumb">
                     <div>
                         <h3>Cups</h3>
                         <p class="left orange">8 LEFT</p>
@@ -77,7 +77,7 @@
                     </div>
                 </article>
                 <article class="alert-card alert-red">
-                    <img src="icons_admin/stocks_icon.svg" alt="" class="alert-thumb">
+                    <img src="icons_admin/misuse-outline-svgrepo-com.svg" alt="" class="alert-thumb">
                     <div>
                         <h3>Trash Bags</h3>
                         <p class="left red">0 LEFT</p>
@@ -2755,13 +2755,17 @@
             }
 
             alerts.forEach(function (item) {
+                var isCritical = item.status === 'out_of_stock' || item.status === 'critical';
                 var card = document.createElement('article');
-                card.className = 'alert-card ' + (item.status === 'out_of_stock' ? 'alert-red' : 'alert-orange');
+                card.className = 'alert-card ' + (isCritical ? 'alert-red' : 'alert-orange');
+                var thumbSrc = isCritical
+                    ? 'icons_admin/misuse-outline-svgrepo-com.svg'
+                    : 'icons_admin/warning-circle-svgrepo-com.svg';
                 card.innerHTML =
-                    '<img src="icons_admin/stocks_icon.svg" alt="" class="alert-thumb">' +
+                    '<img src="' + thumbSrc + '" alt="" class="alert-thumb">' +
                     '<div>' +
                         '<h3>' + esc(item.name) + '</h3>' +
-                        '<p class="left ' + (item.status === 'out_of_stock' ? 'red' : 'orange') + '">' +
+                        '<p class="left ' + (isCritical ? 'red' : 'orange') + '">' +
                             esc(formatOrdersLeftSubtitle(item)) +
                         '</p>' +
                         '<button class="mini-link"><img src="icons_admin/watch_icon.svg" alt=""> Reorder Now</button>' +

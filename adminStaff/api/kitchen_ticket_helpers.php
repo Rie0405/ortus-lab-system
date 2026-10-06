@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Station display ticket numbers (Order #1, #2, …) for Bar and Kitchen.
- * Separate counters; both reset each calendar day and on shift finalize.
+ * Per-station display ticket numbers (Order #1, #2, …) keyed by main category.
+ * Resets each calendar day and on shift finalize.
  * Separate from orders.id / order_number (POS-/KIO-).
  */
 
@@ -14,8 +14,7 @@ function ensure_kitchen_ticket_schema(PDO $pdo): void
     }
     $done = true;
 
-    // Migrate legacy single-row counter (id=1) → station_key counters if needed.
-    $legacy = false;
+    // Migrate legacy single-row counter (id=1) if present.
     try {
         $cols = $pdo->query('SHOW COLUMNS FROM kitchen_ticket_counters');
         $colNames = [];
@@ -25,8 +24,9 @@ function ensure_kitchen_ticket_schema(PDO $pdo): void
             }
         }
         if ($colNames && in_array('id', $colNames, true) && !in_array('station_key', $colNames, true)) {
-            $legacy = true;
+            $pdo->exec('DROP TABLE IF EXISTS kitchen_ticket_counters_legacy');
             $pdo->exec('RENAME TABLE kitchen_ticket_counters TO kitchen_ticket_counters_legacy');
+            $pdo->exec('DROP TABLE IF EXISTS kitchen_ticket_counters_legacy');
         }
     } catch (Throwable $e) {
         // Table may not exist yet.
@@ -34,27 +34,22 @@ function ensure_kitchen_ticket_schema(PDO $pdo): void
 
     $pdo->exec(
         'CREATE TABLE IF NOT EXISTS kitchen_ticket_counters (
-            station_key VARCHAR(16) NOT NULL PRIMARY KEY,
+            station_key VARCHAR(32) NOT NULL PRIMARY KEY,
             next_value INT NOT NULL DEFAULT 1,
             counter_date DATE NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
 
-    $today = date('Y-m-d');
     $pdo->exec(
-        "INSERT IGNORE INTO kitchen_ticket_counters (station_key, next_value, counter_date) VALUES
-            ('bar', 1, " . $pdo->quote($today) . "),
-            ('kitchen', 1, " . $pdo->quote($today) . ")"
+        'CREATE TABLE IF NOT EXISTS order_station_tickets (
+            order_id INT NOT NULL,
+            station_key VARCHAR(32) NOT NULL,
+            main_category_id INT NULL DEFAULT NULL,
+            ticket_number INT NOT NULL,
+            PRIMARY KEY (order_id, station_key),
+            KEY idx_ost_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
-
-    if ($legacy) {
-        try {
-            // Do not carry over the shared sequence — start both stations at 1 for today.
-            $pdo->exec('DROP TABLE IF EXISTS kitchen_ticket_counters_legacy');
-        } catch (Throwable $e) {
-            // Ignore.
-        }
-    }
 
     $chk = $pdo->query("SHOW COLUMNS FROM orders LIKE 'kitchen_ticket_number'");
     if ($chk && !$chk->fetch()) {
@@ -64,7 +59,7 @@ function ensure_kitchen_ticket_schema(PDO $pdo): void
                  ADD COLUMN kitchen_ticket_number INT NULL DEFAULT NULL AFTER order_number'
             );
         } catch (Throwable $e) {
-            // Ignore migration issues on restricted environments.
+            // Ignore.
         }
     }
 
@@ -79,85 +74,120 @@ function ensure_kitchen_ticket_schema(PDO $pdo): void
             // Ignore.
         }
     }
+
+    // Seed legacy bar/kitchen keys so old DBs keep working until first dynamic assign.
+    $today = date('Y-m-d');
+    $pdo->exec(
+        "INSERT IGNORE INTO kitchen_ticket_counters (station_key, next_value, counter_date) VALUES
+            ('bar', 1, " . $pdo->quote($today) . "),
+            ('kitchen', 1, " . $pdo->quote($today) . "),
+            ('mc_bar', 1, " . $pdo->quote($today) . "),
+            ('mc_kitchen', 1, " . $pdo->quote($today) . ")"
+    );
 }
 
-/**
- * Match staff_dashboard station rules: beverages → bar, everything else → kitchen.
- */
-function station_for_category_name(string $name): string
+function station_key_for_main_category_id(int $mainCategoryId): string
 {
-    $c = strtolower(trim($name));
-    if ($c === '') {
-        return 'kitchen';
-    }
-    if ($c === 'beverages' || $c === 'drinks' || $c === 'coffee') {
-        return 'bar';
-    }
-    if (preg_match('/\bnon[\s-]*coffee\b/', $c) || $c === 'noncoffee' || $c === 'non coffee') {
-        return 'bar';
-    }
-    if (strpos($c, 'frappe') !== false) {
-        return 'bar';
-    }
-    if (preg_match('/\brefresher/', $c)) {
-        return 'bar';
-    }
-    return 'kitchen';
+    return 'mc_' . max(0, $mainCategoryId);
 }
 
 /**
- * Which stations (bar / kitchen) are present for the given menu item IDs.
+ * Resolve stations present on an order from menu item main categories.
  *
  * @param int[] $menuItemIds
- * @return array{bar:bool,kitchen:bool}
+ * @return array<int, array{id:int,key:string,name:string}>
  */
 function stations_for_menu_item_ids(PDO $pdo, array $menuItemIds): array
 {
     $ids = array_values(array_unique(array_filter(array_map('intval', $menuItemIds))));
-    $out = ['bar' => false, 'kitchen' => false];
     if (!$ids) {
-        // Fallback: treat as kitchen so the order still gets a display number.
-        $out['kitchen'] = true;
-        return $out;
+        return [];
+    }
+
+    if (function_exists('ensure_main_categories_schema')) {
+        ensure_main_categories_schema($pdo);
     }
 
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(c.name, '') AS category_name
+        "SELECT DISTINCT
+                COALESCE(mi.main_category_id, 0) AS main_category_id,
+                COALESCE(mc.name, '') AS main_category_name,
+                COALESCE(c.name, '') AS category_name
            FROM menu_items mi
+           LEFT JOIN main_categories mc ON mc.id = mi.main_category_id AND mc.is_active = 1
            LEFT JOIN categories c ON c.id = mi.category_id
           WHERE mi.id IN ($placeholders)"
     );
     $stmt->execute($ids);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    if (!$rows) {
-        $out['kitchen'] = true;
-        return $out;
+
+    $stations = [];
+    foreach ($rows as $row) {
+        $mcid = (int)($row['main_category_id'] ?? 0);
+        $mcName = trim((string)($row['main_category_name'] ?? ''));
+
+        // Fallback when menu item has no main_category_id: map drink-like → Bar, else Kitchen.
+        if ($mcid <= 0 || $mcName === '') {
+            $cat = strtolower(trim((string)($row['category_name'] ?? '')));
+            $wantBar = ($cat === 'drinks' || $cat === 'beverages' || $cat === 'coffee'
+                || strpos($cat, 'drink') !== false || strpos($cat, 'coffee') !== false
+                || strpos($cat, 'frappe') !== false || strpos($cat, 'refresher') !== false);
+            $fallbackName = $wantBar ? 'Bar' : 'Kitchen';
+            $fb = $pdo->prepare(
+                "SELECT id, name FROM main_categories
+                  WHERE is_active = 1 AND LOWER(TRIM(name)) = LOWER(:n)
+                  LIMIT 1"
+            );
+            $fb->execute([':n' => $fallbackName]);
+            $fbRow = $fb->fetch(PDO::FETCH_ASSOC);
+            if ($fbRow) {
+                $mcid = (int)$fbRow['id'];
+                $mcName = (string)$fbRow['name'];
+            } else {
+                // Last resort: first active main category.
+                $any = $pdo->query(
+                    'SELECT id, name FROM main_categories WHERE is_active = 1 ORDER BY display_order ASC, id ASC LIMIT 1'
+                )->fetch(PDO::FETCH_ASSOC);
+                if ($any) {
+                    $mcid = (int)$any['id'];
+                    $mcName = (string)$any['name'];
+                }
+            }
+        }
+
+        if ($mcid <= 0) {
+            continue;
+        }
+        $key = station_key_for_main_category_id($mcid);
+        $stations[$key] = [
+            'id' => $mcid,
+            'key' => $key,
+            'name' => $mcName !== '' ? $mcName : ('Station ' . $mcid),
+        ];
     }
 
-    foreach ($rows as $row) {
-        $station = station_for_category_name((string)($row['category_name'] ?? ''));
-        $out[$station] = true;
-    }
-    return $out;
+    return array_values($stations);
 }
 
 /**
- * Allocate the next ticket for a station (bar|kitchen).
- * Auto-resets to 1 when the calendar day changes.
- * Call only inside an open DB transaction (uses row lock).
+ * Allocate next ticket for a station_key. Auto-resets when the calendar day changes.
+ * Call inside an open DB transaction.
  */
-function allocate_next_station_ticket(PDO $pdo, string $station): int
+function allocate_next_station_ticket(PDO $pdo, string $stationKey): int
 {
     ensure_kitchen_ticket_schema($pdo);
 
-    $station = strtolower(trim($station)) === 'bar' ? 'bar' : 'kitchen';
+    $stationKey = trim($stationKey);
+    if ($stationKey === '') {
+        $stationKey = 'kitchen';
+    }
     $today = date('Y-m-d');
 
     $stmt = $pdo->prepare(
         'SELECT next_value, counter_date FROM kitchen_ticket_counters WHERE station_key = :k FOR UPDATE'
     );
-    $stmt->execute([':k' => $station]);
+    $stmt->execute([':k' => $stationKey]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$row) {
@@ -165,7 +195,7 @@ function allocate_next_station_ticket(PDO $pdo, string $station): int
             'INSERT INTO kitchen_ticket_counters (station_key, next_value, counter_date)
              VALUES (:k, 2, :d)'
         );
-        $ins->execute([':k' => $station, ':d' => $today]);
+        $ins->execute([':k' => $stationKey, ':d' => $today]);
         return 1;
     }
 
@@ -187,34 +217,38 @@ function allocate_next_station_ticket(PDO $pdo, string $station): int
     $upd->execute([
         ':n' => $next + 1,
         ':d' => $today,
-        ':k' => $station,
+        ':k' => $stationKey,
     ]);
 
     return $next;
 }
 
-/** @deprecated Use allocate_next_station_ticket($pdo, 'kitchen') */
+/** @deprecated */
 function allocate_next_kitchen_ticket(PDO $pdo): int
 {
     return allocate_next_station_ticket($pdo, 'kitchen');
 }
 
 /**
- * Assign station ticket(s) for an order based on its menu items.
+ * Assign station ticket(s) for an order based on menu item main categories.
  *
  * @param int[] $menuItemIds
- * @return array{bar:?int,kitchen:?int}
+ * @return array{tickets: array<string,int>, by_main_id: array<int,int>, bar:?int, kitchen:?int}
  */
 function assign_station_tickets_to_order(PDO $pdo, int $orderId, array $menuItemIds = []): array
 {
-    $result = ['bar' => null, 'kitchen' => null];
+    $result = [
+        'tickets' => [],
+        'by_main_id' => [],
+        'bar' => null,
+        'kitchen' => null,
+    ];
     if ($orderId <= 0) {
         return $result;
     }
 
     ensure_kitchen_ticket_schema($pdo);
 
-    // If menu IDs not passed, resolve from order_items (after insert).
     if (!$menuItemIds) {
         $stmt = $pdo->prepare('SELECT menu_item_id FROM order_items WHERE order_id = :oid');
         $stmt->execute([':oid' => $orderId]);
@@ -222,18 +256,61 @@ function assign_station_tickets_to_order(PDO $pdo, int $orderId, array $menuItem
     }
 
     $stations = stations_for_menu_item_ids($pdo, $menuItemIds);
+    if (!$stations) {
+        // Ensure at least one ticket so UI validation does not fail.
+        $ticket = allocate_next_station_ticket($pdo, 'kitchen');
+        $result['tickets']['kitchen'] = $ticket;
+        $result['kitchen'] = $ticket;
+        $pdo->prepare(
+            'INSERT INTO order_station_tickets (order_id, station_key, main_category_id, ticket_number)
+             VALUES (:oid, :sk, NULL, :tn)
+             ON DUPLICATE KEY UPDATE ticket_number = VALUES(ticket_number)'
+        )->execute([':oid' => $orderId, ':sk' => 'kitchen', ':tn' => $ticket]);
+        $pdo->prepare(
+            'UPDATE orders SET kitchen_ticket_number = :kt, bar_ticket_number = :bt WHERE id = :id'
+        )->execute([':kt' => $ticket, ':bt' => null, ':id' => $orderId]);
+        return $result;
+    }
 
-    if (!empty($stations['bar'])) {
-        $result['bar'] = allocate_next_station_ticket($pdo, 'bar');
-    }
-    if (!empty($stations['kitchen'])) {
-        $result['kitchen'] = allocate_next_station_ticket($pdo, 'kitchen');
+    $barTicket = null;
+    $kitchenTicket = null;
+
+    $insOst = $pdo->prepare(
+        'INSERT INTO order_station_tickets (order_id, station_key, main_category_id, ticket_number)
+         VALUES (:oid, :sk, :mcid, :tn)
+         ON DUPLICATE KEY UPDATE ticket_number = VALUES(ticket_number), main_category_id = VALUES(main_category_id)'
+    );
+
+    foreach ($stations as $st) {
+        $key = (string)$st['key'];
+        $mcid = (int)$st['id'];
+        $nameLower = strtolower(trim((string)$st['name']));
+        $ticket = allocate_next_station_ticket($pdo, $key);
+        $result['tickets'][$key] = $ticket;
+        $result['by_main_id'][$mcid] = $ticket;
+        $insOst->execute([
+            ':oid' => $orderId,
+            ':sk' => $key,
+            ':mcid' => $mcid,
+            ':tn' => $ticket,
+        ]);
+
+        if ($nameLower === 'bar') {
+            $barTicket = $ticket;
+        }
+        if ($nameLower === 'kitchen') {
+            $kitchenTicket = $ticket;
+        }
     }
 
-    // Always give at least one ticket so UI never falls back to raw DB id mid-shift.
-    if ($result['bar'] === null && $result['kitchen'] === null) {
-        $result['kitchen'] = allocate_next_station_ticket($pdo, 'kitchen');
+    // Legacy columns: prefer named Bar/Kitchen; else first ticket for kitchen col.
+    if ($barTicket === null && $kitchenTicket === null) {
+        $first = reset($result['tickets']);
+        $kitchenTicket = $first !== false ? (int)$first : null;
     }
+
+    $result['bar'] = $barTicket;
+    $result['kitchen'] = $kitchenTicket;
 
     $pdo->prepare(
         'UPDATE orders
@@ -241,18 +318,15 @@ function assign_station_tickets_to_order(PDO $pdo, int $orderId, array $menuItem
                 bar_ticket_number = :bt
           WHERE id = :id'
     )->execute([
-        ':kt' => $result['kitchen'],
-        ':bt' => $result['bar'],
+        ':kt' => $kitchenTicket,
+        ':bt' => $barTicket,
         ':id' => $orderId,
     ]);
 
     return $result;
 }
 
-/**
- * @deprecated Prefer assign_station_tickets_to_order with menu IDs.
- * Kept for older call sites — assigns kitchen ticket only.
- */
+/** @deprecated Prefer assign_station_tickets_to_order */
 function assign_kitchen_ticket_to_order(PDO $pdo, int $orderId): int
 {
     $tickets = assign_station_tickets_to_order($pdo, $orderId, []);
@@ -262,18 +336,50 @@ function assign_kitchen_ticket_to_order(PDO $pdo, int $orderId): int
     if ($tickets['bar'] !== null) {
         return (int)$tickets['bar'];
     }
-    return 0;
+    $vals = array_values($tickets['tickets']);
+    return isset($vals[0]) ? (int)$vals[0] : 0;
 }
 
-/** Reset both station sequences to 1 (shift finalize / SES confirm). */
+/**
+ * @param int[] $orderIds
+ * @return array<int, array<string,int>> order_id => [station_key => ticket]
+ */
+function fetch_order_station_tickets_map(PDO $pdo, array $orderIds): array
+{
+    ensure_kitchen_ticket_schema($pdo);
+    $ids = array_values(array_unique(array_filter(array_map('intval', $orderIds))));
+    if (!$ids) {
+        return [];
+    }
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT order_id, station_key, main_category_id, ticket_number
+           FROM order_station_tickets
+          WHERE order_id IN ($placeholders)"
+    );
+    $stmt->execute($ids);
+    $map = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $oid = (int)$row['order_id'];
+        if (!isset($map[$oid])) {
+            $map[$oid] = [];
+        }
+        $map[$oid][(string)$row['station_key']] = (int)$row['ticket_number'];
+        $mcid = (int)($row['main_category_id'] ?? 0);
+        if ($mcid > 0) {
+            $map[$oid]['id:' . $mcid] = (int)$row['ticket_number'];
+        }
+    }
+    return $map;
+}
+
+/** Reset all station sequences to 1 (shift finalize / SES confirm). */
 function reset_kitchen_ticket_counter(PDO $pdo): void
 {
     ensure_kitchen_ticket_schema($pdo);
     $today = date('Y-m-d');
     $pdo->exec(
-        "INSERT INTO kitchen_ticket_counters (station_key, next_value, counter_date) VALUES
-            ('bar', 1, " . $pdo->quote($today) . "),
-            ('kitchen', 1, " . $pdo->quote($today) . ")
-         ON DUPLICATE KEY UPDATE next_value = 1, counter_date = VALUES(counter_date)"
+        'UPDATE kitchen_ticket_counters
+            SET next_value = 1, counter_date = ' . $pdo->quote($today)
     );
 }

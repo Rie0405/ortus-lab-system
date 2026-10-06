@@ -104,10 +104,28 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    text-transform: uppercase;
+    text-transform: none;
     font-size: 10px;
     letter-spacing: 0.08em;
     padding: 0;
+}
+
+#btn-logout img,
+.icon-btn--logout img {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+#btn-logout:hover,
+.icon-btn--logout:hover {
+    border-color: rgba(248, 113, 113, 0.55);
+    background: rgba(248, 113, 113, 0.12);
+}
+
+#btn-logout:hover img,
+.icon-btn--logout:hover img {
+    filter: brightness(1.18);
 }
 
 .avatar-wrap {

@@ -637,6 +637,7 @@ body {
     align-items: center;
     justify-content: center;
     min-width: 92px;
+    flex-shrink: 0;
     padding: 8px 14px;
     border: 1px solid #3d3025;
     border-radius: 8px;
@@ -657,6 +658,8 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
+    align-self: flex-start;
 }
 
 .menu-group-switch {
@@ -665,15 +668,26 @@ body {
     align-items: flex-end;
     gap: 8px;
     flex-wrap: nowrap;
-    width: fit-content;
+    width: 100%;
     max-width: 100%;
-    padding: 0;
+    min-width: 0;
+    padding: 0 2px 4px;
     border-bottom: 0;
-    flex-shrink: 0;
+    flex-shrink: 1;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
+    overscroll-behavior-x: contain;
+}
+
+.menu-group-switch::-webkit-scrollbar {
+    height: 4px;
+}
+
+.menu-group-switch::-webkit-scrollbar-thumb {
+    background: rgba(244, 140, 37, 0.45);
+    border-radius: 999px;
 }
 
 .menu-group-btn {
@@ -684,6 +698,7 @@ body {
     padding: 10px 16px 11px;
     min-height: 0;
     min-width: 0;
+    max-width: min(220px, 70vw);
     margin-bottom: 0;
     display: inline-flex;
     flex-direction: row;
@@ -774,27 +789,34 @@ body {
 
 .menu-group-btn__label {
     line-height: 1;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .menu-grid-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 24px;
     flex-shrink: 0;
     grid-row: 1;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
 }
 
 .menu-grid-title-block {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px 18px;
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    gap: 10px;
     min-width: 0;
-    flex: 1;
+    flex: 1 1 auto;
+    overflow: hidden;
 }
 
 .menu-grid-heading {
@@ -3117,6 +3139,12 @@ body {
 
     .menu-grid-header {
         margin-bottom: 20px;
+        min-width: 0;
+    }
+
+    .menu-grid-title-block {
+        min-width: 0;
+        overflow: hidden;
     }
 
     .menu-grid-heading {
@@ -3131,9 +3159,14 @@ body {
     .menu-group-btn {
         min-height: 0;
         min-width: 0;
+        max-width: min(200px, 68vw);
         padding: 8px 12px 9px;
         font-size: 12px;
         gap: 7px;
+    }
+
+    .menu-group-btn__label {
+        max-width: 120px;
     }
 
     .menu-group-btn__icon-wrap {
@@ -3410,17 +3443,23 @@ body {
 
     .menu-group-switch {
         margin-top: 0;
-        gap: 0;
+        gap: 6px;
         overflow-x: auto;
         max-width: 100%;
+        width: 100%;
     }
 
     .menu-group-btn {
         min-height: 0;
         min-width: 0;
+        max-width: min(180px, 65vw);
         padding: 7px 10px 8px;
         font-size: 11px;
         gap: 6px;
+    }
+
+    .menu-group-btn__label {
+        max-width: 110px;
     }
 
     .menu-group-btn__icon-wrap {

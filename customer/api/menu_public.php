@@ -34,10 +34,15 @@ $sql = 'SELECT m.id, m.category_id, m.main_category_id, mc.name AS main_category
                m.name, m.description, m.price, m.image_url, m.is_available,
                m.serve_hot, m.serve_cold
           FROM menu_items m
-          JOIN categories c ON c.id = m.category_id
-          LEFT JOIN main_categories mc ON mc.id = m.main_category_id
-          LEFT JOIN subcategories sc ON sc.id = m.subcategory_id
-         WHERE c.is_active = 1';
+          JOIN categories c ON c.id = m.category_id AND c.is_active = 1
+          LEFT JOIN main_categories mc ON mc.id = COALESCE(m.main_category_id, c.main_category_id)
+          LEFT JOIN subcategories sc ON sc.id = m.subcategory_id AND sc.is_active = 1
+         WHERE c.is_active = 1
+           AND (c.main_category_id IS NULL OR c.main_category_id = 0
+                OR EXISTS (
+                    SELECT 1 FROM main_categories mcx
+                     WHERE mcx.id = c.main_category_id AND mcx.is_active = 1
+                ))';
 $params = [];
 if ($categoryId) {
     $sql .= ' AND m.category_id = :cid';
@@ -54,6 +59,16 @@ foreach ($items as &$item) {
 }
 unset($item);
 annotate_menu_items_addon_flags(db(), $items);
+
+$mainCats = fetch_active_main_categories(db());
+$mainCatsById = [];
+foreach ($mainCats as $mc) {
+    $mainCatsById[(int)$mc['id']] = $mc;
+}
+foreach ($items as &$item) {
+    apply_main_category_variants_to_menu_item($item, $mainCatsById);
+}
+unset($item);
 
 $fastMoving = fetch_fast_moving_items(db(), 100, 5);
 $bestSeller = fetch_best_seller(db(), 100);

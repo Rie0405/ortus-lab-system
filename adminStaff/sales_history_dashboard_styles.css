@@ -68,6 +68,25 @@ body {
     width: 40px; height: 40px; border-radius: 8px; border: 1px solid #3d3025; background: #221910; display: grid; place-items: center; cursor: pointer;
 }
 .icon-btn img { width: 16px; height: 16px; }
+
+.icon-btn--logout img,
+#btn-logout img {
+    width: 18px;
+    height: 18px;
+    display: block;
+    filter: none;
+}
+
+.icon-btn--logout:hover,
+#btn-logout:hover {
+    border-color: rgba(248, 113, 113, 0.55);
+    background: rgba(248, 113, 113, 0.12);
+}
+
+.icon-btn--logout:hover img,
+#btn-logout:hover img {
+    filter: brightness(1.18);
+}
 .avatar-wrap {
     width: 40px; height: 40px; border-radius: 999px; border: 2px solid #f48c25; background: #2a2118; display: grid; place-items: center;
 }

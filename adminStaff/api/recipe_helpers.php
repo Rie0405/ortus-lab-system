@@ -1279,19 +1279,9 @@ function deduct_linked_materials_for_order(PDO $pdo, int $orderId, array $skipMe
 }
 
 function deduct_menu_sku_stock_for_order(PDO $pdo, int $orderId): void {
-    $missingStmt = $pdo->prepare(
-        'INSERT INTO inventory_items (menu_item_id, item_name, category_name, supplier, stock_units, reorder_level, unit_cost, is_active)
-         SELECT m.id, m.name, c.name, "Unassigned", 0, 10, m.price, 1
-         FROM order_items oi
-         JOIN menu_items m ON m.id = oi.menu_item_id
-         JOIN categories c ON c.id = m.category_id
-         LEFT JOIN inventory_items i ON i.menu_item_id = m.id AND i.is_active = 1
-         WHERE oi.order_id = :oid
-           AND i.id IS NULL
-         GROUP BY m.id'
-    );
-    $missingStmt->execute([':oid' => $orderId]);
-
+    // Only deduct finished-goods inventory that was explicitly linked to a menu item.
+    // Do NOT auto-create inventory rows from menu sales — that pollutes Inventory with
+    // unregistered menu products (and orphans them when the menu item is deleted).
     $deductStmt = $pdo->prepare(
         'UPDATE inventory_items i
          JOIN (
@@ -1301,7 +1291,8 @@ function deduct_menu_sku_stock_for_order(PDO $pdo, int $orderId): void {
             GROUP BY menu_item_id
          ) x ON x.menu_item_id = i.menu_item_id
          SET i.stock_units = GREATEST(0, i.stock_units - x.qty)
-         WHERE i.is_active = 1'
+         WHERE i.is_active = 1
+           AND i.menu_item_id IS NOT NULL'
     );
     $deductStmt->execute([':oid' => $orderId]);
 }

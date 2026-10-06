@@ -248,6 +248,7 @@ try {
     $stationTickets = assign_station_tickets_to_order($pdo, $orderId, $menuIdsForTickets);
     $kitchenTicket = $stationTickets['kitchen'];
     $barTicket = $stationTickets['bar'];
+    $stationTicketsPayload = $stationTickets['by_main_id'];
 
     $insItem = $pdo->prepare(
         'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
@@ -281,6 +282,7 @@ try {
         'order_number' => $orderNumber,
         'kitchen_ticket_number' => $kitchenTicket,
         'bar_ticket_number' => $barTicket,
+        'station_tickets' => $stationTicketsPayload,
         'receipt_token' => $receiptToken,
         'gross_amount' => $pricing['gross_amount'],
         'vat_exempt_amount' => $pricing['vat_exempt_amount'],

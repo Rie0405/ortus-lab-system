@@ -26,9 +26,8 @@
             <nav class="header-main-tabs">
                 <button class="header-main-tab header-main-tab--active" data-main-tab="pos">POS</button>
                 <button class="header-main-tab" data-main-tab="queue-kiosk" data-queue-source="kiosk">KIOSK Processing Queue</button>
-                <div class="header-station-filter" role="group" aria-label="Bar or Kitchen station">
-                    <button type="button" class="header-station-btn" data-main-tab="kitchen" data-kitchen-cat="bar">Bar</button>
-                    <button type="button" class="header-station-btn" data-main-tab="kitchen" data-kitchen-cat="kitchen">Kitchen</button>
+                <div class="header-station-filter" id="header-station-filter" role="group" aria-label="Station filter">
+                    <!-- populated from api/main_categories.php -->
                 </div>
                 <button class="header-main-tab" data-main-tab="waste">SALES REPORT</button>
             </nav>
@@ -44,7 +43,7 @@
                     <select id="staff-acting-select" class="staff-acting-select" hidden aria-label="Select cashier"></select>
                 </div>
                 <div class="meta-cell meta-cell--logout">
-                    <button type="button" class="header-logout-btn" id="staff-logout-btn" title="Logout" aria-label="Logout">&#x21B5;</button>
+                    <button type="button" class="header-logout-btn" id="staff-logout-btn" title="Logout" aria-label="Logout"><img src="icons_admin/logout-svgrepo-com.svg" alt=""></button>
                 </div>
             </div>
         </header>
@@ -3421,13 +3420,18 @@
             });
         })();
 
-        // Header main tabs (POS / Kiosk Queue / Bar|Kitchen / Sales Report)
+        // Header main tabs (POS / Kiosk Queue / Stations / Sales Report)
         (function () {
-            var mainTabs = document.querySelectorAll("[data-main-tab]");
             var mainPanels = document.querySelectorAll("[data-main-panel]");
-            var stationFilter = document.querySelector(".header-station-filter");
+            var stationFilter = document.getElementById("header-station-filter")
+                || document.querySelector(".header-station-filter");
             window.staffQueueSource = window.staffQueueSource || "pos";
-            window.staffKitchenCategory = window.staffKitchenCategory || "bar";
+            window.staffKitchenCategory = window.staffKitchenCategory || "";
+            window.staffStations = window.staffStations || [];
+
+            function allHeaderTabs() {
+                return document.querySelectorAll("[data-main-tab]");
+            }
 
             function activatePanel(panelName) {
                 var normalized = panelName;
@@ -3440,7 +3444,7 @@
             }
 
             function clearHeaderTabActive() {
-                mainTabs.forEach(function (btn) {
+                allHeaderTabs().forEach(function (btn) {
                     btn.classList.remove("header-main-tab--active");
                     if (btn.classList.contains("header-station-btn")) {
                         btn.classList.remove("is-active");
@@ -3450,10 +3454,9 @@
             }
 
             function setStationHeaderActive(cat) {
-                var wanted = String(cat || window.staffKitchenCategory || "bar").toLowerCase();
-                if (wanted !== "bar" && wanted !== "kitchen") wanted = "bar";
+                var wanted = String(cat || window.staffKitchenCategory || "").toLowerCase();
                 clearHeaderTabActive();
-                mainTabs.forEach(function (btn) {
+                allHeaderTabs().forEach(function (btn) {
                     if (btn.getAttribute("data-main-tab") !== "kitchen") return;
                     var g = String(btn.getAttribute("data-kitchen-cat") || "").toLowerCase();
                     btn.classList.toggle("is-active", g === wanted);
@@ -3464,44 +3467,55 @@
                 }
             }
 
-            mainTabs.forEach(function (tab) {
-                tab.addEventListener("click", function () {
-                    var target = tab.getAttribute("data-main-tab");
-                    var queueSource = tab.getAttribute("data-queue-source");
-                    var kitchenCat = tab.getAttribute("data-kitchen-cat");
+            function bindHeaderTabClicks() {
+                allHeaderTabs().forEach(function (tab) {
+                    if (tab.getAttribute("data-header-bound") === "1") return;
+                    tab.setAttribute("data-header-bound", "1");
+                    tab.addEventListener("click", function () {
+                        var target = tab.getAttribute("data-main-tab");
+                        var queueSource = tab.getAttribute("data-queue-source");
+                        var kitchenCat = tab.getAttribute("data-kitchen-cat");
 
-                    if (target === "kitchen" && kitchenCat) {
-                        window.staffKitchenCategory = String(kitchenCat).toLowerCase();
-                        setStationHeaderActive(window.staffKitchenCategory);
-                    } else {
-                        clearHeaderTabActive();
-                        tab.classList.add("header-main-tab--active");
-                    }
+                        if (target === "kitchen" && kitchenCat) {
+                            window.staffKitchenCategory = String(kitchenCat).toLowerCase();
+                            setStationHeaderActive(window.staffKitchenCategory);
+                            window.dispatchEvent(new CustomEvent("staff-kitchen-station-changed", {
+                                detail: { station: window.staffKitchenCategory }
+                            }));
+                        } else {
+                            clearHeaderTabActive();
+                            tab.classList.add("header-main-tab--active");
+                        }
 
-                    if (queueSource) {
-                        window.staffQueueSource = queueSource;
-                        window.dispatchEvent(new CustomEvent("staff-queue-source-changed", {
-                            detail: { source: queueSource }
-                        }));
-                    }
-                    if (target === "queue-kiosk") {
-                        tab.classList.remove("header-main-tab--notify");
-                    }
-                    activatePanel(target);
+                        if (queueSource) {
+                            window.staffQueueSource = queueSource;
+                            window.dispatchEvent(new CustomEvent("staff-queue-source-changed", {
+                                detail: { source: queueSource }
+                            }));
+                        }
+                        if (target === "queue-kiosk") {
+                            tab.classList.remove("header-main-tab--notify");
+                        }
+                        activatePanel(target);
+                    });
                 });
-            });
+            }
+
+            bindHeaderTabClicks();
+            window.staffBindHeaderTabs = bindHeaderTabClicks;
+            window.staffSetStationHeaderActive = setStationHeaderActive;
 
             window.staffActivateMainTab = function (panelName) {
                 var targetTab = null;
                 if (panelName === "kitchen") {
-                    setStationHeaderActive(window.staffKitchenCategory || "bar");
+                    setStationHeaderActive(window.staffKitchenCategory || "");
                     targetTab = document.querySelector(
                         '[data-main-tab="kitchen"][data-kitchen-cat="' +
-                        String(window.staffKitchenCategory || "bar").toLowerCase() + '"]'
+                        String(window.staffKitchenCategory || "").toLowerCase() + '"]'
                     );
                 } else {
                     clearHeaderTabActive();
-                    mainTabs.forEach(function (btn) {
+                    allHeaderTabs().forEach(function (btn) {
                         var target = btn.getAttribute("data-main-tab");
                         var isMatch = target === panelName;
                         btn.classList.toggle("header-main-tab--active", isMatch);
@@ -5237,7 +5251,8 @@
         var kitchenBadge = document.getElementById('kitchen-pending-count');
         var kitchenServingList = document.getElementById('kitchen-serving-list');
         var kitchenServingCount = document.getElementById('kitchen-serving-count');
-        var kitchenCatButtons = document.querySelectorAll('[data-kitchen-cat]');
+        var kitchenCatButtons = [];
+        var staffMainStations = [];
         var wasteHistoryList = document.getElementById('waste-order-history-list');
         var wasteHistoryCount = document.getElementById('waste-order-history-count');
         var orderHistoryTabs = document.querySelectorAll('[data-order-history-view]');
@@ -5466,9 +5481,9 @@
         var wasteMenuSearchHighlightIndex = -1;
         var wasteMenuSearchDropdownOpen = false;
         var wasteEntriesCache = [];
-        var activeKitchenCategory = 'bar';
-        // Per-order station completion for mixed beverage + meal tickets.
-        // { [orderId]: { bar: bool, kitchen: bool } }
+        var activeKitchenCategory = '';
+        // Per-order station completion keyed by main-category station key.
+        // { [orderId]: { [stationKey]: bool } }
         var kitchenStationDoneById = {};
         var currentQueueSource = window.staffQueueSource || 'pos';
         var staffRealtimeSource = null;
@@ -5481,6 +5496,88 @@
         }
         function esc(s) {
             return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function slugStationName(name) {
+            return String(name || '').trim().toLowerCase().replace(/\s+/g, '-');
+        }
+        function stationKeyFromId(id) {
+            return 'mc_' + (parseInt(id, 10) || 0);
+        }
+        function findStationByKey(key) {
+            var k = String(key || '').toLowerCase();
+            for (var i = 0; i < staffMainStations.length; i++) {
+                if (staffMainStations[i].key === k || staffMainStations[i].slug === k) {
+                    return staffMainStations[i];
+                }
+            }
+            return null;
+        }
+        function activeStationMeta() {
+            return findStationByKey(activeKitchenCategory) || staffMainStations[0] || null;
+        }
+        function refreshKitchenCatButtons() {
+            kitchenCatButtons = Array.prototype.slice.call(
+                document.querySelectorAll('[data-kitchen-cat]')
+            );
+        }
+        function renderStaffStationButtons(mainCategories) {
+            var host = document.getElementById('header-station-filter')
+                || document.querySelector('.header-station-filter');
+            if (!host) return;
+
+            var list = (mainCategories || []).map(function (c) {
+                var id = parseInt(c.id, 10) || 0;
+                var name = String(c.name || '').trim() || ('Station ' + id);
+                return {
+                    id: id,
+                    key: stationKeyFromId(id),
+                    name: name,
+                    slug: slugStationName(name)
+                };
+            }).filter(function (c) { return c.id > 0; });
+
+            staffMainStations = list;
+            window.staffStations = list;
+
+            host.innerHTML = '';
+            list.forEach(function (st) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'header-station-btn';
+                btn.setAttribute('data-main-tab', 'kitchen');
+                btn.setAttribute('data-kitchen-cat', st.key);
+                btn.setAttribute('data-station-id', String(st.id));
+                btn.textContent = st.name;
+                host.appendChild(btn);
+            });
+
+            refreshKitchenCatButtons();
+            if (typeof window.staffBindHeaderTabs === 'function') {
+                window.staffBindHeaderTabs();
+            }
+
+            var preferred = String(window.staffKitchenCategory || activeKitchenCategory || '').toLowerCase();
+            var stillValid = list.some(function (s) {
+                return s.key === preferred || s.slug === preferred;
+            });
+            if (!stillValid) {
+                preferred = list.length ? list[0].key : '';
+            }
+            if (preferred === 'bar' || preferred === 'kitchen') {
+                for (var i = 0; i < list.length; i++) {
+                    if (list[i].slug === preferred) {
+                        preferred = list[i].key;
+                        break;
+                    }
+                }
+            }
+            activeKitchenCategory = preferred;
+            window.staffKitchenCategory = preferred;
+            syncKitchenCategoryButtons();
+            if (typeof window.staffSetStationHeaderActive === 'function'
+                && document.querySelector('[data-main-panel="kitchen"].is-active')) {
+                window.staffSetStationHeaderActive(preferred);
+            }
         }
         function normKitchenCategoryName(n) {
             return String(n || '').trim().toLowerCase();
@@ -5529,10 +5626,29 @@
         function isKioskOrder(order) {
             return String(order && order.order_source || '').toLowerCase() === 'kiosk';
         }
+        function stationKeyForItem(item) {
+            var mid = parseInt(item && item.main_category_id, 10) || 0;
+            if (mid > 0) {
+                var byId = findStationByKey(stationKeyFromId(mid));
+                if (byId) return byId.key;
+            }
+            var mcName = slugStationName(item && item.main_category_name);
+            if (mcName) {
+                var byName = findStationByKey(mcName);
+                if (byName) return byName.key;
+            }
+            var wantSlug = isBarCategoryName(item && item.category_name) ? 'bar' : 'kitchen';
+            var legacy = findStationByKey(wantSlug);
+            if (legacy) return legacy.key;
+            return staffMainStations.length ? staffMainStations[0].key : '';
+        }
         function itemMatchesKitchenStation(item, group) {
-            var cat = item && item.category_name;
-            if (group === 'bar') return isBarCategoryName(cat);
-            return isKitchenCategoryName(cat);
+            var want = String(group || '').toLowerCase();
+            var key = stationKeyForItem(item);
+            if (!want || !key) return false;
+            if (key === want) return true;
+            var st = findStationByKey(want);
+            return !!(st && (st.key === key || st.slug === want));
         }
         function filterItemsForKitchenStation(items, group) {
             return (items || []).filter(function (it) {
@@ -5541,33 +5657,32 @@
         }
         function orderStationParts(order) {
             var items = (order && order.items) || [];
-            var hasBar = false;
-            var hasKitchen = false;
+            var present = {};
             items.forEach(function (it) {
-                var cat = it && it.category_name;
-                if (isBarCategoryName(cat)) hasBar = true;
-                else if (isKitchenCategoryName(cat)) hasKitchen = true;
+                var key = stationKeyForItem(it);
+                if (key) present[key] = true;
             });
-            return { hasBar: hasBar, hasKitchen: hasKitchen };
+            return present;
         }
         function isStationDoneForOrder(orderId, group) {
             var id = parseInt(orderId, 10) || 0;
             if (!id) return false;
             var done = kitchenStationDoneById[id];
-            return !!(done && done[group]);
+            return !!(done && done[String(group || '').toLowerCase()]);
         }
         function markKitchenStationDone(order, station) {
             var id = parseInt(order && order.id, 10) || 0;
-            var group = String(station || '').toLowerCase() === 'bar' ? 'bar' : 'kitchen';
-            if (!id) return { fullyDone: false };
+            var group = String(station || activeKitchenCategory || '').toLowerCase();
+            if (!id || !group) return { fullyDone: false };
             if (!kitchenStationDoneById[id]) {
-                kitchenStationDoneById[id] = { bar: false, kitchen: false };
+                kitchenStationDoneById[id] = {};
             }
             kitchenStationDoneById[id][group] = true;
             var parts = orderStationParts(order);
-            var fullyDone =
-                (!parts.hasBar || !!kitchenStationDoneById[id].bar) &&
-                (!parts.hasKitchen || !!kitchenStationDoneById[id].kitchen);
+            var fullyDone = true;
+            Object.keys(parts).forEach(function (k) {
+                if (parts[k] && !kitchenStationDoneById[id][k]) fullyDone = false;
+            });
             return { fullyDone: fullyDone };
         }
         function clearKitchenStationDone(orderId) {
@@ -5577,7 +5692,7 @@
         function orderMatchesKitchenCategory(order, group, opts) {
             opts = opts || {};
             var items = (order && order.items) || [];
-            if (!items.length) return group === 'kitchen';
+            if (!items.length) return false;
             var stationItems = filterItemsForKitchenStation(items, group);
             if (!stationItems.length) return false;
             if (!opts.ignoreStationDone && isStationDoneForOrder(order && order.id, group)) {
@@ -5587,11 +5702,10 @@
         }
         function getFilteredKitchenOrders(list, opts) {
             opts = opts || {};
-            if (!kitchenCatButtons || !kitchenCatButtons.length) {
+            refreshKitchenCatButtons();
+            if (!kitchenCatButtons.length || !activeKitchenCategory) {
                 return (list || []).filter(function (order) {
-                    // Requested behavior: kiosk pastries should stay in kiosk queue only.
                     if (isKioskOrder(order) && orderHasPastryItem(order)) return false;
-                    // Keep non-kiosk pastry-only orders out of kitchen tab as before.
                     return !orderIsPastryOnly(order);
                 });
             }
@@ -5602,22 +5716,26 @@
         }
         function syncKitchenCategoryButtons() {
             window.staffKitchenCategory = activeKitchenCategory;
+            refreshKitchenCatButtons();
             kitchenCatButtons.forEach(function (btn) {
                 var g = String(btn.getAttribute('data-kitchen-cat') || '').toLowerCase();
-                var isActive = g === activeKitchenCategory;
+                var isActive = g === String(activeKitchenCategory || '').toLowerCase();
                 btn.classList.toggle('kitchen-cat-btn--active', isActive);
                 if (btn.classList.contains('header-station-btn')) {
                     btn.classList.toggle('is-active', isActive);
                 }
             });
-            var stationFilter = document.querySelector('.header-station-filter');
+            var stationFilter = document.getElementById('header-station-filter')
+                || document.querySelector('.header-station-filter');
             var kitchenPanelActive = !!document.querySelector('[data-main-panel="kitchen"].is-active');
             if (stationFilter) {
                 stationFilter.classList.toggle('is-station-active', kitchenPanelActive);
             }
             var titleEl = document.getElementById('kitchen-station-title');
             if (titleEl) {
-                titleEl.textContent = activeKitchenCategory === 'bar' ? 'BAR ORDERS' : 'KITCHEN ORDERS';
+                var meta = activeStationMeta();
+                var label = meta ? String(meta.name || '').toUpperCase() : 'STATION';
+                titleEl.textContent = label + ' ORDERS';
             }
         }
         function toMoney(v) {
@@ -8196,16 +8314,26 @@
         }
 
         function friendlyKitchenOrderTitle(order, stationOpt) {
-            var station = String(stationOpt || activeKitchenCategory || 'bar').toLowerCase();
-            if (station !== 'bar' && station !== 'kitchen') station = 'bar';
+            var station = String(stationOpt || activeKitchenCategory || '').toLowerCase();
+            var meta = findStationByKey(station) || activeStationMeta();
+            var tickets = (order && order.station_tickets) || {};
             var ticket = 0;
-            if (station === 'bar') {
-                ticket = parseInt(order && order.bar_ticket_number, 10) || 0;
-                // Legacy orders: only kitchen_ticket_number existed.
-                if (ticket <= 0) ticket = parseInt(order && order.kitchen_ticket_number, 10) || 0;
-            } else {
-                ticket = parseInt(order && order.kitchen_ticket_number, 10) || 0;
-                if (ticket <= 0) ticket = parseInt(order && order.bar_ticket_number, 10) || 0;
+            if (meta) {
+                ticket = parseInt(tickets[meta.key], 10)
+                    || parseInt(tickets['id:' + meta.id], 10)
+                    || 0;
+                if (ticket <= 0 && meta.slug === 'bar') {
+                    ticket = parseInt(order && order.bar_ticket_number, 10) || 0;
+                }
+                if (ticket <= 0 && meta.slug === 'kitchen') {
+                    ticket = parseInt(order && order.kitchen_ticket_number, 10) || 0;
+                }
+            }
+            if (ticket <= 0) {
+                // Legacy fallbacks
+                ticket = parseInt(order && order.bar_ticket_number, 10)
+                    || parseInt(order && order.kitchen_ticket_number, 10)
+                    || 0;
             }
             if (ticket > 0) return 'Order #' + ticket;
             var id = parseInt(order && order.id, 10) || 0;
@@ -8388,7 +8516,10 @@
             if (!orderedKitchen.length) {
                 kitchenGrid.innerHTML = '';
                 kitchenGrid.classList.remove('opq-queue-partitions');
-                var emptyLabel = activeKitchenCategory === 'bar' ? 'No bar orders.' : 'No kitchen orders.';
+                var emptyMeta = activeStationMeta();
+                var emptyLabel = emptyMeta
+                    ? ('No ' + String(emptyMeta.name || 'station').toLowerCase() + ' orders.')
+                    : 'No station orders.';
                 kitchenGrid.innerHTML = '<article class="opq-card"><div class="opq-card-items"><div class="opq-item"><span>' + emptyLabel + '</span></div></div></article>';
             } else {
                 renderPartitionedOrderGrid(
@@ -8800,7 +8931,8 @@
                 fetch('api/revenue_verification.php?opening_float=' + encodeURIComponent(getSavedStartingMoneyTotal()) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/orders.php?status=pending&kitchen_returned=1&limit=50&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
+                fetch('api/orders.php?status=pending&kitchen_returned=1&limit=50&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/main_categories.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
             ]).then(function (results) {
                 var ordersRes = results[0];
                 var kitchenRes = results[1];
@@ -8812,7 +8944,11 @@
                 var menuRes = results[7];
                 var allOrdersRes = results[8];
                 var returnedRes = results[9];
+                var mainCatsRes = results[10];
 
+                if (mainCatsRes && mainCatsRes.success) {
+                    renderStaffStationButtons(mainCatsRes.main_categories || []);
+                }
                 pendingOrders = (ordersRes && ordersRes.success) ? (ordersRes.orders || []) : [];
                 returnedKitchenOrders = (returnedRes && returnedRes.success) ? (returnedRes.orders || []) : [];
                 renderPendingOrders();
@@ -9108,7 +9244,10 @@
             doneAllBtn.addEventListener('click', function () {
                 var visible = getFilteredKitchenOrders(kitchenOrders);
                 if (!visible.length) return;
-                var stationLabel = activeKitchenCategory === 'bar' ? 'bar' : 'kitchen';
+                var stationMeta = activeStationMeta();
+                var stationLabel = stationMeta
+                    ? String(stationMeta.name || 'station').toLowerCase()
+                    : 'station';
                 if (!window.confirm('Mark as done all pending ' + stationLabel + ' orders?')) return;
                 var stillActive = [];
                 kitchenOrders.forEach(function (o) {
@@ -9160,23 +9299,18 @@
             });
         }
 
-        if (kitchenCatButtons && kitchenCatButtons.length) {
-            kitchenCatButtons.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var next = String(btn.getAttribute('data-kitchen-cat') || '').toLowerCase();
-                    if (next !== 'bar' && next !== 'kitchen') return;
-                    activeKitchenCategory = next;
-                    window.staffKitchenCategory = next;
-                    syncKitchenCategoryButtons();
-                    renderKitchenOrders();
-                    renderServingOrders();
-                });
-            });
-            if (window.staffKitchenCategory === 'bar' || window.staffKitchenCategory === 'kitchen') {
-                activeKitchenCategory = window.staffKitchenCategory;
-            }
+        // Station buttons are rebuilt from main categories; keep active station in sync.
+        window.addEventListener('staff-kitchen-station-changed', function (e) {
+            var next = String((e && e.detail && e.detail.station) || '').toLowerCase();
+            if (!next) return;
+            activeKitchenCategory = next;
+            window.staffKitchenCategory = next;
             syncKitchenCategoryButtons();
-        }
+            renderKitchenOrders();
+            renderServingOrders();
+        });
+        refreshKitchenCatButtons();
+        syncKitchenCategoryButtons();
 
         if (kitchenServingList) {
             kitchenServingList.addEventListener('click', function (e) {
@@ -10078,7 +10212,16 @@
                 var orderNumber = String(res.order_number || '').trim();
                 var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
                 var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
-                return orderId > 0 && orderNumber !== '' && (kitchenTicket > 0 || barTicket > 0);
+                var stationTickets = res.station_tickets && typeof res.station_tickets === 'object'
+                    ? res.station_tickets
+                    : null;
+                var hasStationTicket = false;
+                if (stationTickets) {
+                    Object.keys(stationTickets).forEach(function (k) {
+                        if ((parseInt(stationTickets[k], 10) || 0) > 0) hasStationTicket = true;
+                    });
+                }
+                return orderId > 0 && orderNumber !== '' && (kitchenTicket > 0 || barTicket > 0 || hasStationTicket);
             }
             window.isOrderFullyRecorded = isOrderFullyRecorded;
 

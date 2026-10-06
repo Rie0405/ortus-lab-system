@@ -978,6 +978,29 @@ if (isset($_GET['edit_history']) && trim((string)$_GET['edit_history']) === '1')
 
 // Stock opening is now manual via the "Open" button only.
 
+// Clean up orphan "menu SKU" inventory rows. Orders used to auto-create these with
+// menu_item_id set; deleting the menu item nulls that FK and they then appear as if
+// they were manually registered. Hide them unless they're used as ingredients.
+try {
+    $pdo->exec(
+        'UPDATE inventory_items i
+         SET i.is_active = 0
+         WHERE i.is_active = 1
+           AND i.menu_item_id IS NULL
+           AND LOWER(TRIM(COALESCE(i.supplier, ""))) = "unassigned"
+           AND NOT EXISTS (
+                SELECT 1 FROM recipe_ingredients ri
+                 WHERE ri.inventory_item_id = i.id
+           )
+           AND NOT EXISTS (
+                SELECT 1 FROM inventory_applicable_menu am
+                 WHERE am.inventory_item_id = i.id
+           )'
+    );
+} catch (Throwable $e) {
+    // Non-fatal cleanup.
+}
+
 $stmt = $pdo->query(
     'SELECT
         i.id,

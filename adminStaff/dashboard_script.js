@@ -93,6 +93,8 @@ function apiCall(method, url, body) {
     var menuSearchQuery = '';
     var createImageUrl = '';
     var editImageUrl = '';
+    /** True only when the admin uploaded a product-specific image (not inherited from category icon). */
+    var createImageIsCustom = false;
 
     // ── Product visual upload (create + edit) ───────────────────────────────
     var PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -167,13 +169,44 @@ function apiCall(method, url, body) {
         if (!currentUrl && previewSrc.indexOf('uploads/menu/') >= 0) {
             currentUrl = previewSrc;
         }
+        var wasCustom = prefix !== 'prod' || createImageIsCustom;
         setProductImageUrl(prefix, '');
+        if (prefix === 'prod') createImageIsCustom = false;
         var fileInput = document.getElementById(prefix + '-visual-file');
         if (fileInput) fileInput.value = '';
         resetDropzonePreview(prefix);
-        if (deleteFile && currentUrl && currentUrl.indexOf('blob:') !== 0) {
+        // Never delete a shared category icon when clearing an inherited preview.
+        if (deleteFile && wasCustom && currentUrl && currentUrl.indexOf('blob:') !== 0) {
             deleteProductImageFile(currentUrl);
         }
+        if (prefix === 'prod') {
+            syncCreateProductVisualFromCategory();
+        }
+    }
+
+    function resolveCategoryIconForCreate(categoryId) {
+        var catId = parseInt(categoryId, 10) || 0;
+        if (!catId) return '';
+        var cat = findCategoryById(catId);
+        if (cat && cat.icon_url) return String(cat.icon_url).trim();
+        // Beverages umbrella: use any merged sibling that already has an icon.
+        if (cat && categoryNameMergesIntoBeveragesAdmin(cat.name)) {
+            var ids = getCategoryIdsForIconApply(catId);
+            for (var i = 0; i < ids.length; i++) {
+                var sibling = findCategoryById(ids[i]);
+                if (sibling && sibling.icon_url) return String(sibling.icon_url).trim();
+            }
+        }
+        return '';
+    }
+
+    function syncCreateProductVisualFromCategory() {
+        if (createImageIsCustom) return;
+        var catSel = document.getElementById('prod-category');
+        var catId = catSel && catSel.value ? parseInt(catSel.value, 10) : 0;
+        var iconUrl = catId ? resolveCategoryIconForCreate(catId) : '';
+        setProductImageUrl('prod', iconUrl);
+        setDropzonePreview('prod', iconUrl);
     }
 
     function uploadProductImage(file) {
@@ -199,6 +232,7 @@ function apiCall(method, url, body) {
 
         var localUrl = URL.createObjectURL(file);
         var previousUrl = getProductImageUrl(prefix);
+        var previousWasCustom = prefix !== 'prod' || createImageIsCustom;
         setDropzonePreview(prefix, localUrl);
 
         var dropzone = document.getElementById(prefix + '-visual-dropzone');
@@ -210,8 +244,9 @@ function apiCall(method, url, body) {
         uploadProductImage(file).then(function (res) {
             if (res && res.success && res.url) {
                 setProductImageUrl(prefix, res.url);
+                if (prefix === 'prod') createImageIsCustom = true;
                 setDropzonePreview(prefix, res.url);
-                if (previousUrl && previousUrl !== res.url) {
+                if (previousUrl && previousUrl !== res.url && previousWasCustom) {
                     deleteProductImageFile(previousUrl);
                 }
             } else {
@@ -437,6 +472,8 @@ function apiCall(method, url, body) {
                 setDropzonePreview('edit', nextUrl);
             }
         }
+        // New product form: inherit updated category icon unless a custom visual was uploaded.
+        syncCreateProductVisualFromCategory();
         applyChipFilters();
     }
 
@@ -670,83 +707,195 @@ function apiCall(method, url, body) {
 
     initCustomizableIngredientsTags();
 
-    // ── Variants (freeform name + price → recipe tabs + customer options) ──
-    var variantsListEl = null;
-    var variantTemplateEl = null;
-    var variantAddBtn = null;
-    var DEFAULT_COLD_VARIANT_NAME = 'Iced (16oz)';
-    var DEFAULT_HOT_VARIANT_NAME = 'Hot (12oz)';
-
-    function resetVariantRows() {
-        if (!variantsListEl) return;
-        variantsListEl.innerHTML = '';
-    }
+    // ── Main-category variants (Create product — beside station) ─────────────
+    var createVariantsPanel = createBackdrop ? createBackdrop.querySelector('#prod-main-variants-panel') : null;
+    var createEnableVariantsEl = createBackdrop ? createBackdrop.querySelector('#prod-enable-variants') : null;
+    var createVariantsFieldsEl = createBackdrop ? createBackdrop.querySelector('#prod-variants-fields') : null;
+    var createVariantsListEl = createBackdrop ? createBackdrop.querySelector('#prod-variants-list') : null;
+    var createVariantTemplateEl = createBackdrop ? createBackdrop.querySelector('#prod-variant-template') : null;
+    var createVariantAddBtn = createBackdrop ? createBackdrop.querySelector('#prod-variant-add') : null;
 
     function formatVariantDisplayName(data) {
         if (!data) return '';
-        var size = String(data.size || '').trim();
+        var size = String(data.size || data.name || '').trim();
         var label = String(data.label || '').trim();
         if (size && label && size !== label) return size + ' (' + label + ')';
         return size || label || '';
     }
 
-    function addVariantRow(data) {
-        if (!variantTemplateEl || !variantsListEl) return;
-        var frag = variantTemplateEl.content.cloneNode(true);
+    function selectedCreateMainCategoryId() {
+        var sel = createBackdrop ? createBackdrop.querySelector('#prod-main-category') : null;
+        return sel && sel.value ? sel.value : '';
+    }
+
+    function resetCreateVariantRows() {
+        if (!createVariantsListEl) return;
+        createVariantsListEl.innerHTML = '';
+    }
+
+    function addCreateVariantRow(data) {
+        if (!createVariantTemplateEl || !createVariantsListEl) return;
+        var frag = createVariantTemplateEl.content.cloneNode(true);
         var row = frag.firstElementChild;
         if (!row) return;
-
         var sizeInp = row.querySelector('.variant-input--size');
         var priceInp = row.querySelector('.variant-input--price');
         var costInp = row.querySelector('.variant-input--cost');
-
         if (data) {
-            if (sizeInp) sizeInp.value = formatVariantDisplayName(data) || String(data.size || '').trim();
-            if (priceInp) priceInp.value = data.price || '';
-            if (costInp) costInp.value = data.cost != null && data.cost !== '' ? data.cost : (data.cost_price || '');
+            if (sizeInp) sizeInp.value = formatVariantDisplayName(data) || String(data.name || data.size || '').trim();
+            if (priceInp && data.price != null && data.price !== '') priceInp.value = data.price;
+            if (costInp && data.cost != null && data.cost !== '') costInp.value = data.cost;
         }
-
-        variantsListEl.appendChild(frag);
+        createVariantsListEl.appendChild(frag);
     }
 
-    function ensureDefaultVariantRows() {
-        if (!variantsListEl) return;
-        if (variantsListEl.querySelector('.variant-input-row')) return;
-        addVariantRow({ size: DEFAULT_COLD_VARIANT_NAME });
-        addVariantRow({ size: DEFAULT_HOT_VARIANT_NAME });
-    }
-
-    function initVariantInputs() {
-        if (!createBackdrop) return;
-        variantsListEl = createBackdrop.querySelector('#prod-variants-list');
-        variantTemplateEl = createBackdrop.querySelector('#prod-variant-template');
-        variantAddBtn = createBackdrop.querySelector('#prod-variant-add');
-        if (!variantsListEl || !variantTemplateEl || !variantAddBtn) return;
-
-        // Add new rows
-        variantAddBtn.addEventListener('click', function () { addVariantRow(); });
-
-        // Remove rows (event delegation)
-        variantsListEl.addEventListener('click', function (e) {
-            var btn = e.target.closest('.variant-remove');
-            if (!btn) return;
-            var row = btn.closest('.variant-input-row');
-            if (!row) return;
-            row.remove();
+    function collectCreateVariants() {
+        var variants = [];
+        if (!createVariantsListEl) return variants;
+        createVariantsListEl.querySelectorAll('.variant-input-row').forEach(function (row) {
+            var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
+            var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
+            var costRaw = (row.querySelector('.variant-input--cost') && row.querySelector('.variant-input--cost').value || '').trim();
+            if (!size) return;
+            var entry = { name: size, price: null, cost: null };
+            if (priceRaw !== '') {
+                var p = parseFloat(priceRaw);
+                if (Number.isFinite(p) && p >= 0) entry.price = p;
+            }
+            if (costRaw !== '') {
+                var c = parseFloat(costRaw);
+                if (Number.isFinite(c) && c >= 0) entry.cost = c;
+            }
+            variants.push(entry);
         });
-
-        // Start empty — cold default is added when Beverages is selected
-        resetVariantRows();
+        return variants;
     }
 
-    initVariantInputs();
+    var DEFAULT_COLD_VARIANT_NAME = 'Iced (16oz)';
+    var DEFAULT_HOT_VARIANT_NAME = 'Hot (12oz)';
 
-    // ── Edit modal: removable ingredients + variants (same UX as create) ─────
+    function ensureDefaultCreateVariantRows() {
+        if (!createVariantsListEl) return;
+        if (createVariantsListEl.querySelector('.variant-input-row')) return;
+        addCreateVariantRow({ name: DEFAULT_COLD_VARIANT_NAME });
+        addCreateVariantRow({ name: DEFAULT_HOT_VARIANT_NAME });
+    }
+
+    function syncCreateVariantsUI() {
+        var enabled = !!(createEnableVariantsEl && createEnableVariantsEl.checked);
+        var inCreate = typeof activeCatalogMode === 'undefined' || activeCatalogMode !== 'manage';
+        if (createVariantsFieldsEl) createVariantsFieldsEl.hidden = !(inCreate && enabled);
+        var costWrap = document.getElementById('prod-cost-price-wrap');
+        var baseWrap = document.getElementById('prod-base-price-wrap');
+        // Only swap prices when create mode is active; manage mode hides them via catalog role.
+        if (inCreate) {
+            if (costWrap) costWrap.hidden = enabled;
+            if (baseWrap) baseWrap.hidden = enabled;
+        }
+        var costInp = document.getElementById('prod-cost-price');
+        if (costInp) {
+            if (enabled) costInp.removeAttribute('required');
+            else costInp.setAttribute('required', 'required');
+        }
+        if (enabled) ensureDefaultCreateVariantRows();
+    }
+
+    function loadCreateVariantsForSelectedMain() {
+        if (!createVariantsPanel) return;
+        createVariantsPanel.hidden = false;
+        var selectedId = selectedCreateMainCategoryId();
+        if (!selectedId) {
+            resetCreateVariantRows();
+            if (createEnableVariantsEl) createEnableVariantsEl.checked = false;
+            syncCreateVariantsUI();
+            return;
+        }
+        var cat = findMainCategoryById(selectedId);
+        var enabled = !!(cat && Number(cat.variants_enabled) === 1);
+        var variants = (cat && Array.isArray(cat.variants)) ? cat.variants : [];
+        if (createEnableVariantsEl) createEnableVariantsEl.checked = enabled;
+        resetCreateVariantRows();
+        if (enabled) {
+            if (variants.length) {
+                variants.forEach(function (v) { addCreateVariantRow(v); });
+            } else {
+                ensureDefaultCreateVariantRows();
+            }
+        }
+        syncCreateVariantsUI();
+    }
+
+    function persistCreateMainCategoryVariants(opts) {
+        opts = opts || {};
+        var quiet = !!opts.quiet;
+        var selectedId = parseInt(selectedCreateMainCategoryId(), 10) || 0;
+        if (!selectedId) {
+            if (!quiet) alert('Select a main category first.');
+            return Promise.resolve(null);
+        }
+        var enabled = !!(createEnableVariantsEl && createEnableVariantsEl.checked);
+        var variants = enabled ? collectCreateVariants() : [];
+        if (enabled && !variants.length) {
+            if (!quiet) alert('Add at least one variant, or turn off Enable variants.');
+            return Promise.reject(new Error('variants_required'));
+        }
+        var cat = findMainCategoryById(selectedId);
+        if (!cat) {
+            if (!quiet) alert('Main category not found.');
+            return Promise.reject(new Error('main_category_missing'));
+        }
+        return apiCall('PUT', 'api/main_categories.php', {
+            id: selectedId,
+            name: cat.name,
+            variants_enabled: enabled ? 1 : 0,
+            variants: variants
+        }).then(function (res) {
+            if (!res.success) throw new Error(res.error || 'Failed to save variants');
+            return loadItems().then(function () {
+                if (prodMainCategorySelect) prodMainCategorySelect.value = String(selectedId);
+                loadCreateVariantsForSelectedMain();
+                return res;
+            });
+        });
+    }
+
+    function initCreateVariantInputs() {
+        if (!createVariantsPanel) return;
+        if (createEnableVariantsEl) {
+            createEnableVariantsEl.addEventListener('change', function () {
+                if (createEnableVariantsEl.checked && !selectedCreateMainCategoryId()) {
+                    createEnableVariantsEl.checked = false;
+                    alert('Select a main category first.');
+                    syncCreateVariantsUI();
+                    return;
+                }
+                syncCreateVariantsUI();
+                if (!createEnableVariantsEl.checked) resetCreateVariantRows();
+            });
+        }
+        if (createVariantAddBtn) {
+            createVariantAddBtn.addEventListener('click', function () { addCreateVariantRow(); });
+        }
+        if (createVariantsListEl) {
+            createVariantsListEl.addEventListener('click', function (e) {
+                var btn = e.target.closest('.variant-remove');
+                if (!btn) return;
+                var row = btn.closest('.variant-input-row');
+                if (row) row.remove();
+                if (createEnableVariantsEl && createEnableVariantsEl.checked
+                    && createVariantsListEl && !createVariantsListEl.querySelector('.variant-input-row')) {
+                    ensureDefaultCreateVariantRows();
+                }
+            });
+        }
+        syncCreateVariantsUI();
+    }
+
+    initCreateVariantInputs();
+
+    // ── Edit modal: removable ingredients ────────────────────────────────────
     var editCustomizableTagsList = null;
     var editCustomizableIngredientsInput = null;
-    var editVariantsListEl = null;
-    var editVariantTemplateEl = null;
-    var editVariantAddBtn = null;
 
     function addEditIngredientToken(raw) {
         if (!raw || !editCustomizableTagsList) return;
@@ -795,50 +944,7 @@ function apiCall(method, url, body) {
         });
     }
 
-    function resetEditVariantRows() {
-        if (!editVariantsListEl) return;
-        editVariantsListEl.innerHTML = '';
-    }
-
-    function addEditVariantRow(data) {
-        if (!editVariantTemplateEl || !editVariantsListEl) return;
-        var frag = editVariantTemplateEl.content.cloneNode(true);
-        var row = frag.firstElementChild;
-        if (!row) return;
-
-        var sizeInp = row.querySelector('.variant-input--size');
-        var priceInp = row.querySelector('.variant-input--price');
-        var costInp = row.querySelector('.variant-input--cost');
-
-        if (data) {
-            if (sizeInp) sizeInp.value = formatVariantDisplayName(data);
-            if (priceInp) priceInp.value = data.price || '';
-            if (costInp) costInp.value = data.cost != null && data.cost !== '' ? data.cost : (data.cost_price || '');
-        }
-
-        editVariantsListEl.appendChild(frag);
-    }
-
-    function initEditVariantInputs() {
-        if (!editBackdrop) return;
-        editVariantsListEl = editBackdrop.querySelector('#edit-variants-list');
-        editVariantTemplateEl = editBackdrop.querySelector('#edit-variant-template');
-        editVariantAddBtn = editBackdrop.querySelector('#edit-variant-add');
-        if (!editVariantsListEl || !editVariantTemplateEl || !editVariantAddBtn) return;
-
-        editVariantAddBtn.addEventListener('click', function () { addEditVariantRow(); });
-
-        editVariantsListEl.addEventListener('click', function (e) {
-            var btn = e.target.closest('.variant-remove');
-            if (!btn) return;
-            var row = btn.closest('.variant-input-row');
-            if (!row) return;
-            row.remove();
-        });
-    }
-
     initEditCustomizableIngredientsTags();
-    initEditVariantInputs();
 
     // ── New category input (create modal) ───────────────────────────────────
     var newCategoryNameInput = null;
@@ -1091,6 +1197,7 @@ function apiCall(method, url, body) {
                     }
                 }
                 syncProductCategoryOptions('');
+                loadCreateVariantsForSelectedMain();
             })
             .catch(function (err) { alert('Error: ' + err.message); })
             .finally(function () {
@@ -1280,6 +1387,7 @@ function apiCall(method, url, body) {
         Array.prototype.forEach.call(catalogRoleManageEls || [], function (el) {
             el.hidden = activeCatalogMode !== 'manage';
         });
+        if (typeof syncCreateVariantsUI === 'function') syncCreateVariantsUI();
         if (activeCatalogMode !== 'create') {
             if (manageCategorySelect && !manageCategorySelect.value && prodCategorySelect && prodCategorySelect.value) {
                 manageCategorySelect.value = prodCategorySelect.value;
@@ -1564,10 +1672,6 @@ function apiCall(method, url, body) {
             customizableIngredientsInput.value = '';
         }
 
-        if (backdrop === createBackdrop && variantsListEl) {
-            resetVariantRows();
-        }
-
         if (backdrop === createBackdrop && newCategoryNameInput) {
             newCategoryNameInput.value = '';
         }
@@ -1581,6 +1685,7 @@ function apiCall(method, url, body) {
         if (backdrop === createBackdrop && prodMainCategorySelect) {
             prodMainCategorySelect.value = '';
             syncProductCategoryOptions('');
+            loadCreateVariantsForSelectedMain();
         }
         if (backdrop === createBackdrop) {
             setCatalogMode('create');
@@ -1599,6 +1704,7 @@ function apiCall(method, url, body) {
             if (basePrice) basePrice.value = '';
             syncBevSubVisibility();
             clearProductVisual('prod');
+            createImageIsCustom = false;
             syncAllCatalogIconDropzones();
         }
     }
@@ -1666,6 +1772,7 @@ function apiCall(method, url, body) {
         syncProductSubcategoryOptions(keepSub);
         syncBevSubVisibility();
         syncAllCatalogIconDropzones();
+        syncCreateProductVisualFromCategory();
     }
 
     function syncEditCategoryOptions(selectedCategoryId, selectedSubcategoryId) {
@@ -1720,12 +1827,14 @@ function apiCall(method, url, body) {
             s.addEventListener('change', function () {
                 syncBevSubVisibility();
                 syncAllCatalogIconDropzones();
+                if (id === 'prod-category') syncCreateProductVisualFromCategory();
             });
         }
     });
     if (prodMainCategorySelect) {
         prodMainCategorySelect.addEventListener('change', function () {
             syncProductCategoryOptions('');
+            loadCreateVariantsForSelectedMain();
         });
     }
     if (editMainCategorySelect) {
@@ -1858,70 +1967,6 @@ function apiCall(method, url, body) {
         return (d ? d + '\n' : '') + '__pos_bev_section__:' + key;
     }
 
-    function inferServeFlagsFromVariantRows(rowsContainer) {
-        var hot = false;
-        var cold = false;
-        if (!rowsContainer) return { hot: hot, cold: cold };
-        rowsContainer.querySelectorAll('.variant-input-row').forEach(function (row) {
-            var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim().toLowerCase();
-            var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
-            // Ignore incomplete optional rows.
-            if (!size && !priceRaw) return;
-            if (/\b(hot|warm)\b/.test(size)) hot = true;
-            if (/\b(iced|cold|blended|frappe)\b/.test(size)) cold = true;
-        });
-        return { hot: hot, cold: cold };
-    }
-
-    function resolveBeverageServeFlags(rowsContainer) {
-        var flags = inferServeFlagsFromVariantRows(rowsContainer);
-        // Freeform variants: default Cold if no temperature keyword is present.
-        if (!flags.hot && !flags.cold) {
-            return { hot: false, cold: true };
-        }
-        if (flags.hot && !flags.cold) {
-            return { hot: true, cold: true };
-        }
-        return flags;
-    }
-
-    function splitVariantPriceCost(right) {
-        var raw = String(right == null ? '' : right).trim();
-        if (!raw) return { price: '', cost: '' };
-        var m = raw.match(/^([\d.,]+)\s*(?:\/\s*cost\s*([\d.,]+))?$/i);
-        if (m) {
-            return { price: m[1], cost: m[2] || '' };
-        }
-        var n = parseFloat(raw.replace(/,/g, ''));
-        return { price: Number.isFinite(n) ? String(n) : raw, cost: '' };
-    }
-
-    function collectVariantRowsFromContainer(rowsContainer) {
-        var variants = [];
-        if (!rowsContainer) return variants;
-        rowsContainer.querySelectorAll('.variant-input-row').forEach(function (row) {
-            var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
-            var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
-            var costRaw = (row.querySelector('.variant-input--cost') && row.querySelector('.variant-input--cost').value || '').trim();
-            if (!size) return;
-            variants.push({ size: size, label: '', price: priceRaw, cost: costRaw });
-        });
-        return variants;
-    }
-
-    function formatVariantsDescriptionLine(variants) {
-        return variants.map(function (v) {
-            var s = v.size || '—';
-            var priceNum = Number(v.price);
-            var p = Number.isFinite(priceNum) ? priceNum.toFixed(2) : '0.00';
-            var costNum = Number(v.cost != null && v.cost !== '' ? v.cost : v.cost_price);
-            if (Number.isFinite(costNum) && costNum >= 0) {
-                return s + ' = ' + p + ' / cost ' + costNum.toFixed(2);
-            }
-            return s + ' = ' + p;
-        }).join('; ');
-    }
-
     function readServeFlagsFromForm(prefix) {
         var hotEl = document.getElementById(prefix + '-serve-hot');
         var coldEl = document.getElementById(prefix + '-serve-cold');
@@ -1963,26 +2008,14 @@ function apiCall(method, url, body) {
     }
 
     function syncBevSubVisibility() {
-        var prodSel = document.getElementById('prod-category');
         var prodBasePriceWrap = document.getElementById('prod-base-price-wrap');
-        var prodVariantsSection = document.getElementById('prod-variants-section');
-        var editSel = document.getElementById('edit-prod-category');
         var editBasePriceWrap = document.getElementById('edit-base-price-wrap');
-        var editVariantsSection = document.getElementById('edit-variants-section');
-        if (prodSel) {
-            var prodIsBev = isBevMergedOptionSelected(prodSel);
-            // Selling price stays visible for beverages (variants are optional).
-            if (prodBasePriceWrap) prodBasePriceWrap.hidden = false;
-            if (prodVariantsSection) {
-                prodVariantsSection.hidden = !prodIsBev;
-                if (prodIsBev) ensureDefaultVariantRows();
-            }
-        }
-        if (editSel) {
-            var editIsBev = isBevMergedOptionSelected(editSel);
-            if (editBasePriceWrap) editBasePriceWrap.hidden = false;
-            if (editVariantsSection) editVariantsSection.hidden = !editIsBev;
-        }
+        var variantsOn = !!(createEnableVariantsEl && createEnableVariantsEl.checked);
+        // Selling price visible unless create-form variants replace it.
+        if (prodBasePriceWrap) prodBasePriceWrap.hidden = variantsOn;
+        if (editBasePriceWrap) editBasePriceWrap.hidden = false;
+        var prodCostWrap = document.getElementById('prod-cost-price-wrap');
+        if (prodCostWrap) prodCostWrap.hidden = variantsOn;
     }
 
     function resolveBevSubToCategoryId(key, cats) {
@@ -2470,48 +2503,6 @@ function apiCall(method, url, body) {
         return out;
     }
 
-    function parseVariantsFromDescriptionForAdmin(description) {
-        var descStr = String(description || '');
-        var lines = descStr.split(/\r?\n/);
-        var line = null;
-        lines.forEach(function (ln) {
-            if (line) return;
-            if (/^\s*Variants\s*:/i.test(ln || '')) line = ln;
-        });
-        if (!line) return [];
-
-        var payload = String(line).replace(/^\s*Variants\s*:/i, '').trim();
-        if (!payload) return [];
-
-        var parts = payload.split(';');
-        var out = [];
-        parts.forEach(function (seg) {
-            var s = String(seg || '').trim();
-            if (!s) return;
-
-            var lastEq = s.lastIndexOf('=');
-            if (lastEq === -1) return;
-
-            var left = s.substring(0, lastEq).trim();
-            var right = splitVariantPriceCost(s.substring(lastEq + 1).trim());
-            var priceStr = right.price;
-            var costStr = right.cost;
-
-            var firstParen = left.indexOf('(');
-            if (firstParen === -1) {
-                out.push({ size: left, label: left, price: priceStr, cost: costStr });
-                return;
-            }
-
-            var size = left.substring(0, firstParen).trim();
-            var label = left.substring(firstParen + 1).trim();
-            if (label.endsWith(')')) label = label.substring(0, label.length - 1).trim();
-
-            out.push({ size: size, label: label, price: priceStr, cost: costStr });
-        });
-        return out;
-    }
-
     // ── Load items from API ───────────────────────────────────────────────────
     function loadItems() {
         return apiCall('GET', 'api/menu.php').then(function (res) {
@@ -2525,6 +2516,7 @@ function apiCall(method, url, body) {
             allItems   = res.items;
             fillCategorySelects(categories);
             fillMainCategorySelects();
+            loadCreateVariantsForSelectedMain();
             renderFilterChips();
 
             // Update stats
@@ -2661,56 +2653,72 @@ function apiCall(method, url, body) {
                 desc = (desc ? (desc + '\n') : '') + 'Removable ingredients: ' + customizableIngredients.join(', ');
             }
 
-            // Collect variants from the create modal (save into description).
-            var variants = [];
-            if (isBeverageCreate && variantsListEl) {
-                variants = collectVariantRowsFromContainer(variantsListEl);
-            }
-
-            if (isBeverageCreate && variants.length) {
-                // Strip old variant line to avoid duplicates
-                var lines2 = (desc || '').split(/\r?\n/);
-                lines2 = lines2.filter(function (ln) {
-                    return !/^Variants\s*:/i.test(String(ln || '').trim());
-                });
-                desc = lines2.join('\n').trim();
-                desc = (desc ? (desc + '\n') : '') + 'Variants: ' + formatVariantsDescriptionLine(variants);
-            }
-
             var price = parseFloat(basePriceInput && basePriceInput.value || '0');
-            if (!(price > 0) && isBeverageCreate && variants.length) {
-                var pricedVariants = variants
-                    .map(function (v) { return Number(v.price); })
-                    .filter(function (n) { return Number.isFinite(n) && n > 0; });
-                if (pricedVariants.length) {
-                    price = Math.min.apply(null, pricedVariants);
-                }
-            }
+            var formVariantsEnabled = !!(createEnableVariantsEl && createEnableVariantsEl.checked);
+            var formVariants = formVariantsEnabled ? collectCreateVariants() : [];
 
             if (!name || !catId || !mainCatId) {
                 alert('Name, main category, and category are required.');
                 return;
             }
 
-            if (!(price > 0)) {
-                alert('Selling price is required.');
-                if (basePriceInput) basePriceInput.focus();
-                return;
+            if (formVariantsEnabled) {
+                if (!formVariants.length) {
+                    alert('Add at least one variant, or turn off Enable variants.');
+                    return;
+                }
+                var derivedPrice = null;
+                var derivedCost = null;
+                formVariants.forEach(function (v) {
+                    if (derivedPrice == null && v.price != null && Number.isFinite(v.price) && v.price > 0) {
+                        derivedPrice = v.price;
+                    }
+                    if (derivedCost == null && v.cost != null && Number.isFinite(v.cost) && v.cost >= 0) {
+                        derivedCost = v.cost;
+                    }
+                });
+                if (!(derivedPrice > 0)) {
+                    alert('Add a default price on at least one variant (this becomes the product selling price).');
+                    return;
+                }
+                if (derivedCost == null) {
+                    alert('Add a default cost on at least one variant (this becomes the product cost price).');
+                    return;
+                }
+                price = derivedPrice;
+                if (basePriceInput) basePriceInput.value = String(derivedPrice);
+                if (costPriceInput) costPriceInput.value = String(derivedCost);
+                if (!assertCostNotAboveSelling(derivedCost, derivedPrice, null)) {
+                    return;
+                }
+            } else {
+                if (!(price > 0)) {
+                    alert('Selling price is required.');
+                    if (basePriceInput) basePriceInput.focus();
+                    return;
+                }
+
+                var costPriceRaw = costPriceInput ? String(costPriceInput.value || '').trim() : '';
+                if (!costPriceRaw) {
+                    alert('Cost price is required.');
+                    if (costPriceInput) costPriceInput.focus();
+                    return;
+                }
+                var costPriceCheck = parseFloat(costPriceRaw);
+                if (!Number.isFinite(costPriceCheck) || costPriceCheck < 0) {
+                    alert('Cost price must be 0 or greater.');
+                    if (costPriceInput) costPriceInput.focus();
+                    return;
+                }
+                if (!assertCostNotAboveSelling(costPriceCheck, price, costPriceInput)) {
+                    return;
+                }
             }
 
-            var costPriceRaw = costPriceInput ? String(costPriceInput.value || '').trim() : '';
-            if (!costPriceRaw) {
-                alert('Cost price is required.');
-                if (costPriceInput) costPriceInput.focus();
-                return;
-            }
-            var costPrice = parseFloat(costPriceRaw);
+            var costPriceRaw2 = costPriceInput ? String(costPriceInput.value || '').trim() : '';
+            var costPrice = parseFloat(costPriceRaw2);
             if (!Number.isFinite(costPrice) || costPrice < 0) {
                 alert('Cost price must be 0 or greater.');
-                if (costPriceInput) costPriceInput.focus();
-                return;
-            }
-            if (!assertCostNotAboveSelling(costPrice, price, costPriceInput)) {
                 return;
             }
 
@@ -2725,14 +2733,27 @@ function apiCall(method, url, body) {
             }
 
             desc = stripPosBevSectionLine(desc);
+            // Variants live on main category — never store a product-level Variants line.
+            desc = String(desc || '').split(/\r?\n/).filter(function (ln) {
+                return !/^Variants\s*:/i.test(String(ln || '').trim());
+            }).join('\n').trim();
 
+            // Infer Hot/Cold from create-form variants (or saved main-category config).
             var serveHot = 0;
             var serveCold = 0;
-            if (isBeverageCreate) {
-                var serveFlags = resolveBeverageServeFlags(variantsListEl);
-                setServeFlagsOnForm('prod', serveFlags);
-                serveHot = serveFlags.hot ? 1 : 0;
-                serveCold = serveFlags.cold ? 1 : 0;
+            var variantsForFlags = formVariants.length
+                ? formVariants
+                : ((findMainCategoryById(mainCatId) || {}).variants || []);
+            variantsForFlags.forEach(function (v) {
+                var n = String(v && (v.name || v.size) || '').toLowerCase();
+                if (/\b(hot|warm)\b/.test(n)) serveHot = 1;
+                if (/\b(iced|cold|blended|frappe)\b/.test(n)) serveCold = 1;
+            });
+            setServeFlagsOnForm('prod', { hot: !!serveHot, cold: !!serveCold });
+
+            if (formVariantsEnabled && !formVariants.length) {
+                alert('Add at least one variant, or turn off Enable variants.');
+                return;
             }
 
             createPrimaryBtn.disabled    = true;
@@ -2745,17 +2766,30 @@ function apiCall(method, url, body) {
                 cost_price: costPrice,
                 description: desc,
                 is_available: 1,
-                image_url: createImageUrl || '',
+                image_url: createImageUrl || resolveCategoryIconForCreate(catId) || '',
+                serve_hot: serveHot,
+                serve_cold: serveCold,
             };
             if (subcategoryId) {
                 createPayload.subcategory_id = parseInt(subcategoryId, 10);
             }
-            if (isBeverageCreate) {
-                createPayload.serve_hot = serveHot;
-                createPayload.serve_cold = serveCold;
-            }
 
-            apiCall('POST', 'api/menu.php', createPayload).then(function (res) {
+            var beforeCreate = formVariantsEnabled
+                ? persistCreateMainCategoryVariants({ quiet: true })
+                : Promise.resolve(null);
+
+            beforeCreate
+                .catch(function (err) {
+                    if (err && (err.message === 'variants_required' || err.message === 'main_category_missing')) {
+                        throw err;
+                    }
+                    console.warn('Variant save warning:', err);
+                    return null;
+                })
+                .then(function () {
+                    return apiCall('POST', 'api/menu.php', createPayload);
+                })
+                .then(function (res) {
                 if (res.success) {
                     closeModal(createBackdrop);
                     document.getElementById('prod-name').value        = '';
@@ -2770,16 +2804,20 @@ function apiCall(method, url, body) {
                     collapseCatalogPanels();
                     syncProductSubcategoryOptions();
                     syncBevSubVisibility();
-                    if (variantsListEl) resetVariantRows();
                     if (customizableTagsList) {
                         customizableTagsList.querySelectorAll('.tag-pill[data-ingredient]').forEach(function (p) { p.remove(); });
                     }
                     if (customizableIngredientsInput) customizableIngredientsInput.value = '';
+                    createImageIsCustom = false;
                     clearProductVisual('prod');
+                    loadCreateVariantsForSelectedMain();
                     loadItems();
                 } else {
                     alert('Error: ' + res.error);
                 }
+            }).catch(function (err) {
+                if (err && (err.message === 'variants_required' || err.message === 'main_category_missing')) return;
+                alert('Error: ' + (err && err.message ? err.message : err));
             }).finally(function () {
                 createPrimaryBtn.disabled    = false;
                 createPrimaryBtn.textContent = 'Save product';
@@ -2824,32 +2862,15 @@ function apiCall(method, url, body) {
             addEditIngredientToken(ing);
         });
 
-        if (editVariantsListEl) {
-            editVariantsListEl.innerHTML = '';
-            var parsedVariants = parseVariantsFromDescriptionForAdmin(rawDesc);
-            if (parsedVariants.length) {
-                parsedVariants.forEach(function (v) { addEditVariantRow(v); });
-            } else {
-                var base = parseFloat(item.price);
-                if (Number.isFinite(base) && base > 0) {
-                    addEditVariantRow({ size: '', label: '', price: String(base) });
-                } else {
-                    addEditVariantRow();
-                }
-            }
-        }
-
         if (item.subcategory_id && editProdSubcategorySelect) {
             editProdSubcategorySelect.value = String(item.subcategory_id);
         }
+        setServeFlagsOnForm('edit', {
+            hot: !!item.serve_hot,
+            cold: !!item.serve_cold
+        });
         if (isBevMergedOptionSelected(editCat)) {
-            setServeFlagsOnForm('edit', {
-                hot: !!item.serve_hot,
-                cold: !!item.serve_cold
-            });
             applyServeFlagsFromSubcategory('edit');
-        } else {
-            setServeFlagsOnForm('edit', { hot: false, cold: false });
         }
         syncBevSubVisibility();
 
@@ -2905,29 +2926,14 @@ function apiCall(method, url, body) {
                     descEdit = (descEdit ? (descEdit + '\n') : '') + 'Removable ingredients: ' + customizableIngredients.join(', ');
                 }
 
-                var variants = [];
-                if (isBeverageEdit && editVariantsListEl) {
-                    variants = collectVariantRowsFromContainer(editVariantsListEl);
-                }
-
+                // Variants live on main category — strip product-level Variants line.
                 var lines2 = (descEdit || '').split(/\r?\n/);
                 lines2 = lines2.filter(function (ln) {
                     return !/^Variants\s*:/i.test(String(ln || '').trim());
                 });
                 descEdit = lines2.join('\n').trim();
-                if (isBeverageEdit && variants.length) {
-                    descEdit = (descEdit ? (descEdit + '\n') : '') + 'Variants: ' + formatVariantsDescriptionLine(variants);
-                }
 
                 var price = parseFloat(editBasePriceInput && editBasePriceInput.value || '0');
-                if (!(price > 0) && isBeverageEdit && variants.length) {
-                    var pricedVariants = variants
-                        .map(function (v) { return Number(v.price); })
-                        .filter(function (n) { return Number.isFinite(n) && n > 0; });
-                    if (pricedVariants.length) {
-                        price = Math.min.apply(null, pricedVariants);
-                    }
-                }
 
                 if (!(price > 0)) {
                     alert('Selling price is required.');
@@ -2951,22 +2957,24 @@ function apiCall(method, url, body) {
                     return;
                 }
 
+                var editMainCatId = parseInt(editMainCategorySelect && editMainCategorySelect.value, 10);
                 var serveHot = 0;
                 var serveCold = 0;
-                if (isBeverageEdit) {
-                    var serveFlagsEdit = resolveBeverageServeFlags(editVariantsListEl);
-                    setServeFlagsOnForm('edit', serveFlagsEdit);
-                    serveHot = serveFlagsEdit.hot ? 1 : 0;
-                    serveCold = serveFlagsEdit.cold ? 1 : 0;
+                var editMainMeta = findMainCategoryById(editMainCatId);
+                if (editMainMeta && Number(editMainMeta.variants_enabled) === 1 && Array.isArray(editMainMeta.variants)) {
+                    editMainMeta.variants.forEach(function (v) {
+                        var n = String(v && (v.name || v.size) || '').toLowerCase();
+                        if (/\b(hot|warm)\b/.test(n)) serveHot = 1;
+                        if (/\b(iced|cold|blended|frappe)\b/.test(n)) serveCold = 1;
+                    });
                 }
+                setServeFlagsOnForm('edit', { hot: !!serveHot, cold: !!serveCold });
 
                 var editSubcategoryId = editProdSubcategorySelect ? editProdSubcategorySelect.value : '';
                 if (isBeverageEdit && !editSubcategoryId) {
                     alert('Select a subcategory (e.g. Coffee, Frappe, Refreshers).');
                     return;
                 }
-
-                var editMainCatId = parseInt(editMainCategorySelect && editMainCategorySelect.value, 10);
 
                 var payload = {
                     id:          editingId,
@@ -2978,11 +2986,9 @@ function apiCall(method, url, body) {
                     description: descEdit,
                     subcategory_id: editSubcategoryId ? parseInt(editSubcategoryId, 10) : '',
                     image_url:   editImageUrl || '',
+                    serve_hot: serveHot,
+                    serve_cold: serveCold,
                 };
-                if (isBeverageEdit) {
-                    payload.serve_hot = serveHot;
-                    payload.serve_cold = serveCold;
-                }
 
                 if (!payload.name || !payload.category_id || !editMainCatId || !(payload.price > 0)) {
                     alert('Name, main category, category, and a valid price are required.');

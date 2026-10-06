@@ -281,6 +281,20 @@ function ensure_main_categories_schema(PDO $pdo): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
 
+    // Optional variants config per main category (station).
+    try {
+        $hasVe = (bool)$pdo->query("SHOW COLUMNS FROM main_categories LIKE 'variants_enabled'")->fetch();
+        if (!$hasVe) {
+            $pdo->exec(
+                'ALTER TABLE main_categories
+                    ADD COLUMN variants_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active,
+                    ADD COLUMN variants_json TEXT NULL AFTER variants_enabled'
+            );
+        }
+    } catch (Throwable $e) {
+        // Ignore migration issues on restricted environments.
+    }
+
     $pdo->exec(
         "INSERT IGNORE INTO main_categories (name, display_order, is_active) VALUES
             ('Bar', 1, 1),
@@ -389,15 +403,119 @@ function assert_category_belongs_to_main(PDO $pdo, int $categoryId, int $mainCat
     }
 }
 
+function normalize_main_category_variants($raw): array
+{
+    if (is_string($raw)) {
+        $decoded = json_decode($raw, true);
+        $raw = is_array($decoded) ? $decoded : [];
+    }
+    if (!is_array($raw)) {
+        return [];
+    }
+    $out = [];
+    foreach ($raw as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $name = trim((string)($row['name'] ?? $row['size'] ?? ''));
+        if ($name === '') {
+            continue;
+        }
+        $price = null;
+        if (isset($row['price']) && $row['price'] !== '' && $row['price'] !== null) {
+            $price = (float)$row['price'];
+            if (!is_finite($price) || $price < 0) {
+                $price = null;
+            }
+        }
+        $cost = null;
+        $costRaw = $row['cost'] ?? $row['cost_price'] ?? null;
+        if ($costRaw !== null && $costRaw !== '') {
+            $cost = (float)$costRaw;
+            if (!is_finite($cost) || $cost < 0) {
+                $cost = null;
+            }
+        }
+        $out[] = [
+            'name' => $name,
+            'price' => $price,
+            'cost' => $cost,
+        ];
+    }
+    return $out;
+}
+
+function format_variants_description_line(array $variants, ?float $fallbackPrice = null): string
+{
+    $parts = [];
+    foreach ($variants as $v) {
+        $name = trim((string)($v['name'] ?? ''));
+        if ($name === '') {
+            continue;
+        }
+        $price = $v['price'];
+        if ($price === null || $price === '') {
+            $price = $fallbackPrice;
+        }
+        $priceNum = is_numeric($price) ? (float)$price : 0.0;
+        $seg = $name . ' = ' . number_format($priceNum, 2, '.', '');
+        $cost = $v['cost'] ?? null;
+        if ($cost !== null && $cost !== '' && is_numeric($cost)) {
+            $seg .= ' / cost ' . number_format((float)$cost, 2, '.', '');
+        }
+        $parts[] = $seg;
+    }
+    return implode('; ', $parts);
+}
+
 function fetch_active_main_categories(PDO $pdo): array
 {
     ensure_main_categories_schema($pdo);
-    return $pdo->query(
-        'SELECT id, name, display_order
+    $rows = $pdo->query(
+        'SELECT id, name, display_order, variants_enabled, variants_json
            FROM main_categories
           WHERE is_active = 1
           ORDER BY display_order, name'
     )->fetchAll();
+    foreach ($rows as &$row) {
+        $row['id'] = (int)$row['id'];
+        $row['display_order'] = (int)($row['display_order'] ?? 0);
+        $row['variants_enabled'] = !empty($row['variants_enabled']) ? 1 : 0;
+        $row['variants'] = $row['variants_enabled']
+            ? normalize_main_category_variants($row['variants_json'] ?? '[]')
+            : [];
+        unset($row['variants_json']);
+    }
+    unset($row);
+    return $rows;
+}
+
+/**
+ * Apply main-category variants onto a menu item for POS/kiosk clients.
+ * Rewrites the Variants: description line so existing parsers keep working.
+ */
+function apply_main_category_variants_to_menu_item(array &$item, array $mainCatsById): void
+{
+    $mcid = (int)($item['main_category_id'] ?? 0);
+    $mc = $mcid > 0 ? ($mainCatsById[$mcid] ?? null) : null;
+    $enabled = $mc && !empty($mc['variants_enabled']) && !empty($mc['variants']);
+    $item['variants_enabled'] = $enabled ? 1 : 0;
+    $item['variants'] = $enabled ? $mc['variants'] : [];
+
+    $desc = (string)($item['description'] ?? '');
+    $lines = preg_split("/\r\n|\n|\r/", $desc) ?: [];
+    $lines = array_values(array_filter($lines, static function ($ln) {
+        return !preg_match('/^\s*Variants\s*:/i', (string)$ln);
+    }));
+    $descClean = trim(implode("\n", $lines));
+
+    if ($enabled) {
+        $fallback = isset($item['price']) ? (float)$item['price'] : null;
+        $line = 'Variants: ' . format_variants_description_line($mc['variants'], $fallback);
+        $item['description'] = $descClean !== '' ? ($descClean . "\n" . $line) : $line;
+    } else {
+        $item['description'] = $descClean !== '' ? $descClean : null;
+    }
 }
 
 function resolve_main_category_id(PDO $pdo, int $mainCategoryId): int
@@ -410,6 +528,120 @@ function resolve_main_category_id(PDO $pdo, int $mainCategoryId): int
         fail('Main category not found.');
     }
     return $id;
+}
+
+/**
+ * Fully remove a menu item and detach dependent rows.
+ * Clears order_items first so FK constraints don't leave orphan catalog rows.
+ */
+function purge_menu_item(PDO $pdo, int $menuItemId): bool
+{
+    $menuItemId = (int)$menuItemId;
+    if ($menuItemId <= 0) {
+        return false;
+    }
+
+    try {
+        $pdo->prepare(
+            'UPDATE addons
+                SET is_active = 0, menu_item_id = NULL
+              WHERE menu_item_id = :mid'
+        )->execute([':mid' => $menuItemId]);
+    } catch (Throwable $e) {
+        // Addons table may be missing.
+    }
+
+    try {
+        $recipeIdsStmt = $pdo->prepare('SELECT id FROM recipes WHERE menu_item_id = :mid');
+        $recipeIdsStmt->execute([':mid' => $menuItemId]);
+        foreach ($recipeIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $recipeId) {
+            $rid = (int)$recipeId;
+            if ($rid <= 0) {
+                continue;
+            }
+            try {
+                $pdo->prepare('DELETE FROM recipe_ingredients WHERE recipe_id = :rid')
+                    ->execute([':rid' => $rid]);
+            } catch (Throwable $e) {
+                // ignore
+            }
+        }
+        $pdo->prepare('DELETE FROM recipes WHERE menu_item_id = :mid')
+            ->execute([':mid' => $menuItemId]);
+    } catch (Throwable $e) {
+        // Recipes may be missing.
+    }
+
+    try {
+        // Soft-delete finished-goods inventory that was tied to this menu SKU.
+        // Nulling menu_item_id alone would make orphans show up as "registered" inventory.
+        $pdo->prepare(
+            'UPDATE inventory_items
+                SET is_active = 0, menu_item_id = NULL
+              WHERE menu_item_id = :mid'
+        )->execute([':mid' => $menuItemId]);
+    } catch (Throwable $e) {
+        try {
+            $pdo->prepare('UPDATE inventory_items SET menu_item_id = NULL WHERE menu_item_id = :mid')
+                ->execute([':mid' => $menuItemId]);
+        } catch (Throwable $e2) {
+            // ignore
+        }
+    }
+
+    try {
+        $pdo->prepare('UPDATE order_items SET menu_item_id = NULL WHERE menu_item_id = :mid')
+            ->execute([':mid' => $menuItemId]);
+    } catch (Throwable $e) {
+        try {
+            $pdo->prepare('DELETE FROM order_items WHERE menu_item_id = :mid')
+                ->execute([':mid' => $menuItemId]);
+        } catch (Throwable $e2) {
+            // ignore
+        }
+    }
+
+    try {
+        $pdo->prepare('DELETE FROM order_station_tickets WHERE menu_item_id = :mid')
+            ->execute([':mid' => $menuItemId]);
+    } catch (Throwable $e) {
+        // ignore
+    }
+
+    try {
+        $pdo->prepare('DELETE FROM menu_items WHERE id = :mid')->execute([':mid' => $menuItemId]);
+        return true;
+    } catch (Throwable $e) {
+        try {
+            // Last resort: hide from every catalog query (active category join).
+            $pdo->prepare(
+                'UPDATE menu_items
+                    SET is_available = 0, main_category_id = NULL, subcategory_id = NULL
+                  WHERE id = :mid'
+            )->execute([':mid' => $menuItemId]);
+        } catch (Throwable $e2) {
+            // ignore
+        }
+        return false;
+    }
+}
+
+/**
+ * Collect unique menu item ids for cascade deletes.
+ *
+ * @param list<int> $ids
+ * @return list<int>
+ */
+function unique_positive_ids(array $ids): array
+{
+    $out = [];
+    foreach ($ids as $id) {
+        $n = (int)$id;
+        if ($n > 0) {
+            $out[$n] = true;
+        }
+    }
+    return array_map('intval', array_keys($out));
 }
 
 function main_category_name_is_valid(PDO $pdo, string $name): bool

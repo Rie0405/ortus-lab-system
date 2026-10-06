@@ -309,15 +309,21 @@ if ($m === 'GET') {
                     COALESCE(oi.line_cost, 0) AS line_cost,
                     COALESCE(mi.cost_price, 0) AS menu_cost_price,
                     oi.notes,
-                    COALESCE(c.name, '') AS category_name
+                    COALESCE(c.name, '') AS category_name,
+                    COALESCE(mi.main_category_id, 0) AS main_category_id,
+                    COALESCE(mc.name, '') AS main_category_name
                FROM order_items oi
                JOIN menu_items mi ON mi.id = oi.menu_item_id
                LEFT JOIN categories c ON c.id = mi.category_id
+               LEFT JOIN main_categories mc ON mc.id = mi.main_category_id
               WHERE oi.order_id IN ($ids)"
         )->fetchAll();
 
+        $ticketMap = fetch_order_station_tickets_map(db(), array_map('intval', array_column($orders, 'id')));
+
         $itemMap = [];
         foreach ($items as $item) {
+            $item['main_category_id'] = (int)($item['main_category_id'] ?? 0);
             $itemMap[$item['order_id']][] = $item;
         }
         foreach ($orders as &$order) {
@@ -329,6 +335,7 @@ if ($m === 'GET') {
             $order['bar_ticket_number'] = isset($order['bar_ticket_number']) && $order['bar_ticket_number'] !== null
                 ? (int)$order['bar_ticket_number']
                 : null;
+            $order['station_tickets'] = $ticketMap[$order['id']] ?? [];
             $order['gross_amount'] = (float)$order['gross_amount'];
             $order['vat_exempt_amount'] = (float)$order['vat_exempt_amount'];
             $order['discount_amount'] = (float)$order['discount_amount'];
@@ -494,6 +501,7 @@ if ($m === 'POST') {
         $stationTickets = assign_station_tickets_to_order($pdo, $orderId, $menuIdsForTickets);
         $kitchenTicket = $stationTickets['kitchen'];
         $barTicket = $stationTickets['bar'];
+        $stationTicketsPayload = $stationTickets['by_main_id'];
 
         $insItem = $pdo->prepare(
             'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
@@ -528,6 +536,7 @@ if ($m === 'POST') {
             'order_number' => $orderNumber,
             'kitchen_ticket_number' => $kitchenTicket,
             'bar_ticket_number' => $barTicket,
+            'station_tickets' => $stationTicketsPayload,
             'receipt_token' => $receiptToken,
             'gross_amount' => $pricing['gross_amount'],
             'vat_exempt_amount' => $pricing['vat_exempt_amount'],

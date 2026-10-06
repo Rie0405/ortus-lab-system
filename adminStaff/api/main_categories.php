@@ -44,9 +44,7 @@ if ($m === 'PUT') {
     require_auth();
     $b = body();
     $id = (int)($b['id'] ?? 0);
-    $name = trim((string)($b['name'] ?? ''));
     if (!$id) fail('Main category id is required.');
-    if ($name === '') fail('Main category name is required.');
 
     $pdo = db();
     ensure_main_categories_schema($pdo);
@@ -57,19 +55,60 @@ if ($m === 'PUT') {
         fail('Main category not found.', 404);
     }
 
-    $dup = $pdo->prepare(
-        'SELECT id FROM main_categories
-         WHERE LOWER(TRIM(name)) = LOWER(:name) AND is_active = 1 AND id <> :id
-         LIMIT 1'
-    );
-    $dup->execute([':name' => $name, ':id' => $id]);
-    if ($dup->fetch()) {
-        fail('Another main category already uses that name.');
+    $fields = [];
+    $params = [':id' => $id];
+
+    if (array_key_exists('name', $b)) {
+        $name = trim((string)$b['name']);
+        if ($name === '') fail('Main category name is required.');
+        $dup = $pdo->prepare(
+            'SELECT id FROM main_categories
+             WHERE LOWER(TRIM(name)) = LOWER(:name) AND is_active = 1 AND id <> :id
+             LIMIT 1'
+        );
+        $dup->execute([':name' => $name, ':id' => $id]);
+        if ($dup->fetch()) {
+            fail('Another main category already uses that name.');
+        }
+        $fields[] = 'name = :name';
+        $params[':name'] = $name;
     }
 
-    $upd = $pdo->prepare('UPDATE main_categories SET name = :name WHERE id = :id');
-    $upd->execute([':name' => $name, ':id' => $id]);
-    ok(['id' => $id, 'name' => $name, 'message' => 'Main category updated.']);
+    if (array_key_exists('variants_enabled', $b) || array_key_exists('variants', $b)) {
+        $enabled = !empty($b['variants_enabled']) ? 1 : 0;
+        $variants = normalize_main_category_variants($b['variants'] ?? []);
+        if ($enabled && !$variants) {
+            fail('Add at least one variant, or turn off Enable variants.');
+        }
+        if (!$enabled) {
+            $variants = [];
+        }
+        $fields[] = 'variants_enabled = :ve';
+        $fields[] = 'variants_json = :vj';
+        $params[':ve'] = $enabled;
+        $params[':vj'] = $variants ? json_encode($variants, JSON_UNESCAPED_UNICODE) : null;
+    }
+
+    if (!$fields) {
+        fail('No fields to update.');
+    }
+
+    $sql = 'UPDATE main_categories SET ' . implode(', ', $fields) . ' WHERE id = :id';
+    $pdo->prepare($sql)->execute($params);
+
+    $fresh = fetch_active_main_categories($pdo);
+    $updated = null;
+    foreach ($fresh as $mc) {
+        if ((int)$mc['id'] === $id) {
+            $updated = $mc;
+            break;
+        }
+    }
+    ok([
+        'id' => $id,
+        'main_category' => $updated,
+        'message' => 'Main category updated.',
+    ]);
 }
 
 if ($m === 'DELETE') {
@@ -89,6 +128,7 @@ if ($m === 'DELETE') {
     }
 
     $itemIds = [];
+    $catIds = [];
 
     try {
         $pdo->beginTransaction();
@@ -101,81 +141,65 @@ if ($m === 'DELETE') {
             // Addons table may be unavailable on some installs.
         }
 
-        // Soft-delete categories (and their subcategories) tied to this station.
+        // Categories under this station (include inactive mid-cleanup).
         try {
             $catIdsStmt = $pdo->prepare(
-                'SELECT id FROM categories WHERE main_category_id = :id AND is_active = 1'
+                'SELECT id FROM categories WHERE main_category_id = :id'
             );
             $catIdsStmt->execute([':id' => $id]);
-            $catIds = array_map('intval', $catIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
-            foreach ($catIds as $catId) {
-                if ($catId <= 0) {
-                    continue;
-                }
-                $pdo->prepare('UPDATE subcategories SET is_active = 0 WHERE category_id = :cid')
-                    ->execute([':cid' => $catId]);
-            }
-            $pdo->prepare('UPDATE categories SET is_active = 0 WHERE main_category_id = :id')
-                ->execute([':id' => $id]);
+            $catIds = unique_positive_ids($catIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
         } catch (Throwable $e) {
-            // Column may be missing on older installs mid-migration.
+            $catIds = [];
         }
 
-        $idsStmt = $pdo->prepare('SELECT id FROM menu_items WHERE main_category_id = :id');
-        $idsStmt->execute([':id' => $id]);
-        $itemIds = array_map('intval', $idsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        foreach ($catIds as $catId) {
+            try {
+                $pdo->prepare('UPDATE subcategories SET is_active = 0 WHERE category_id = :cid')
+                    ->execute([':cid' => $catId]);
+            } catch (Throwable $e) {
+                // ignore
+            }
+        }
+        if ($catIds) {
+            try {
+                $pdo->prepare('UPDATE categories SET is_active = 0 WHERE main_category_id = :id')
+                    ->execute([':id' => $id]);
+            } catch (Throwable $e) {
+                // ignore
+            }
+        }
+
+        // Menu items tied by main_category_id OR by category under this station.
+        $itemIdMap = [];
+        try {
+            $byMain = $pdo->prepare('SELECT id FROM menu_items WHERE main_category_id = :id');
+            $byMain->execute([':id' => $id]);
+            foreach ($byMain->fetchAll(PDO::FETCH_COLUMN) ?: [] as $mid) {
+                $itemIdMap[(int)$mid] = true;
+            }
+        } catch (Throwable $e) {
+            // Column may be missing mid-migration.
+        }
+        if ($catIds) {
+            $placeholders = [];
+            $params = [];
+            foreach ($catIds as $i => $cid) {
+                $key = ':cid' . $i;
+                $placeholders[] = $key;
+                $params[$key] = $cid;
+            }
+            $byCat = $pdo->prepare(
+                'SELECT id FROM menu_items WHERE category_id IN (' . implode(',', $placeholders) . ')'
+            );
+            $byCat->execute($params);
+            foreach ($byCat->fetchAll(PDO::FETCH_COLUMN) ?: [] as $mid) {
+                $itemIdMap[(int)$mid] = true;
+            }
+        }
+        $itemIds = unique_positive_ids(array_keys($itemIdMap));
 
         foreach ($itemIds as $menuItemId) {
-            if ($menuItemId <= 0) {
-                continue;
-            }
-
-            // Clear recipe rows first (FK to menu_items).
-            try {
-                $recipeIdsStmt = $pdo->prepare('SELECT id FROM recipes WHERE menu_item_id = :mid');
-                $recipeIdsStmt->execute([':mid' => $menuItemId]);
-                foreach ($recipeIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $recipeId) {
-                    $rid = (int)$recipeId;
-                    if ($rid <= 0) {
-                        continue;
-                    }
-                    try {
-                        $pdo->prepare('DELETE FROM recipe_ingredients WHERE recipe_id = :rid')
-                            ->execute([':rid' => $rid]);
-                    } catch (Throwable $e) {
-                        // ignore
-                    }
-                }
-                $pdo->prepare('DELETE FROM recipes WHERE menu_item_id = :mid')
-                    ->execute([':mid' => $menuItemId]);
-            } catch (Throwable $e) {
-                // Recipes may not exist.
-            }
-
-            try {
-                $pdo->prepare('UPDATE inventory_items SET menu_item_id = NULL WHERE menu_item_id = :mid')
-                    ->execute([':mid' => $menuItemId]);
-            } catch (Throwable $e) {
-                // ignore
-            }
-
-            try {
-                $pdo->prepare('UPDATE addons SET menu_item_id = NULL WHERE menu_item_id = :mid')
-                    ->execute([':mid' => $menuItemId]);
-            } catch (Throwable $e) {
-                // ignore
-            }
-
-            // Remove the menu item. Keep order_items for sales history when possible.
-            try {
-                $pdo->prepare('DELETE FROM menu_items WHERE id = :mid')->execute([':mid' => $menuItemId]);
-            } catch (Throwable $e) {
-                $pdo->prepare(
-                    'UPDATE menu_items
-                        SET is_available = 0, main_category_id = NULL
-                      WHERE id = :mid'
-                )->execute([':mid' => $menuItemId]);
-            }
+            purge_menu_item($pdo, $menuItemId);
         }
 
         $upd = $pdo->prepare('UPDATE main_categories SET is_active = 0 WHERE id = :id');
@@ -191,6 +215,7 @@ if ($m === 'DELETE') {
 
     ok([
         'id' => $id,
+        'deleted_categories' => count($catIds),
         'deleted_menu_items' => count($itemIds),
         'message' => 'Main category deleted.',
     ]);

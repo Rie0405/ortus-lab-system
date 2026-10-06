@@ -101,13 +101,25 @@ function db(): PDO {
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 function ok(array $data = [], int $code = 200): void {
-    http_response_code($code);
+    if (!headers_sent()) {
+        http_response_code($code);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    if (ob_get_length()) {
+        @ob_clean();
+    }
     echo json_encode(array_merge(['success' => true], $data));
     exit;
 }
 
 function fail(string $message, int $code = 400): void {
-    http_response_code($code);
+    if (!headers_sent()) {
+        http_response_code($code);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    if (ob_get_length()) {
+        @ob_clean();
+    }
     echo json_encode(['success' => false, 'error' => $message]);
     exit;
 }

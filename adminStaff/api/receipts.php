@@ -3,6 +3,46 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/menu_helpers.php';
 require_once __DIR__ . '/recipe_helpers.php';
 require_once __DIR__ . '/activity_log_helpers.php';
+
+// Always return JSON on unexpected fatals/exceptions (Hostinger often returns a blank 500 page).
+set_exception_handler(static function (Throwable $e): void {
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    if (ob_get_length()) {
+        @ob_clean();
+    }
+    echo json_encode([
+        'success' => false,
+        'error' => 'Server error: ' . $e->getMessage(),
+        'where' => basename((string)$e->getFile()) . ':' . (int)$e->getLine(),
+    ]);
+    exit;
+});
+register_shutdown_function(static function (): void {
+    $err = error_get_last();
+    if (!$err) {
+        return;
+    }
+    $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
+    if (!in_array((int)$err['type'], $fatalTypes, true)) {
+        return;
+    }
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    if (ob_get_length()) {
+        @ob_clean();
+    }
+    echo json_encode([
+        'success' => false,
+        'error' => 'Fatal: ' . (string)$err['message'],
+        'where' => basename((string)$err['file']) . ':' . (int)$err['line'],
+    ]);
+});
+
 require_auth();
 
 function normalize_receipt_entry_source(string $source): string
@@ -260,10 +300,14 @@ function apply_receipt_stock_counts(
 }
 
 $pdo = db();
-ensure_receipt_schema($pdo);
-ensure_inventory_items_base_schema($pdo);
-ensure_main_categories_schema($pdo);
-ensure_inventory_category_types_schema($pdo);
+try {
+    ensure_receipt_schema($pdo);
+    ensure_inventory_items_base_schema($pdo);
+    ensure_main_categories_schema($pdo);
+    ensure_inventory_category_types_schema($pdo);
+} catch (Throwable $e) {
+    fail('Inventory schema setup failed: ' . $e->getMessage(), 500);
+}
 
 if (method() === 'GET') {
     $requestedReceiptId = isset($_GET['receipt_id']) ? (int)$_GET['receipt_id'] : 0;
@@ -430,7 +474,9 @@ if ($supplier === '') {
 }
 if (!is_array($linesRaw) || count($linesRaw) === 0) fail('At least one line item is required.');
 
-assert_inventory_register_columns($pdo);
+if (function_exists('assert_inventory_register_columns')) {
+    assert_inventory_register_columns($pdo);
+}
 
 $lines = [];
 foreach ($linesRaw as $line) {
@@ -486,7 +532,16 @@ if (count($lines) === 0) fail('No valid line items found.');
         $hasEntrySource = false;
     }
 
-    if ($hasEntrySource) {
+    $hasOrderedDate = false;
+    $hasExpectedDate = false;
+    try {
+        $hasOrderedDate = (bool)$pdo->query("SHOW COLUMNS FROM Receipts LIKE 'OrderedDate'")->fetch();
+        $hasExpectedDate = (bool)$pdo->query("SHOW COLUMNS FROM Receipts LIKE 'ExpectedReceiveDate'")->fetch();
+    } catch (Throwable $e) {
+        // ignore
+    }
+
+    if ($hasEntrySource && $hasOrderedDate && $hasExpectedDate) {
         $receiptStmt = $pdo->prepare(
             'INSERT INTO Receipts (`Date`, OrderedDate, ExpectedReceiveDate, Supplier, EntrySource, TotalAmount)
              VALUES (:date, :ordered_date, :expected_receive_date, :supplier, :entry_source, :total_amount)'
@@ -499,7 +554,7 @@ if (count($lines) === 0) fail('No valid line items found.');
             ':entry_source' => $entrySource,
             ':total_amount' => $totalAmount,
         ]);
-    } else {
+    } elseif ($hasOrderedDate && $hasExpectedDate) {
         $receiptStmt = $pdo->prepare(
             'INSERT INTO Receipts (`Date`, OrderedDate, ExpectedReceiveDate, Supplier, TotalAmount)
              VALUES (:date, :ordered_date, :expected_receive_date, :supplier, :total_amount)'
@@ -511,16 +566,62 @@ if (count($lines) === 0) fail('No valid line items found.');
             ':supplier' => $supplier,
             ':total_amount' => $totalAmount,
         ]);
+    } else {
+        $receiptStmt = $pdo->prepare(
+            'INSERT INTO Receipts (`Date`, Supplier, TotalAmount)
+             VALUES (:date, :supplier, :total_amount)'
+        );
+        $receiptStmt->execute([
+            ':date' => $date,
+            ':supplier' => $supplier,
+            ':total_amount' => $totalAmount,
+        ]);
     }
     $receiptId = (int)$pdo->lastInsertId();
-    $lineStmt = $pdo->prepare(
-        'INSERT INTO ReceiptLines
-            (ReceiptID, LineType, ItemName, Quantity, InUse, PerStockAmount, UnitName, UnitCost, TotalCost)
-         VALUES
-            (:receipt_id, :line_type, :item_name, :stocks, :in_use, :per_stock_amount, :unit_name, :unit_cost, :total_cost)'
-    );
+
+    $receiptLineCols = [];
+    try {
+        foreach ($pdo->query('SHOW COLUMNS FROM ReceiptLines') as $col) {
+            $receiptLineCols[strtolower((string)$col['Field'])] = true;
+        }
+    } catch (Throwable $e) {
+        $receiptLineCols = [];
+    }
+    $hasReceiptInUse = isset($receiptLineCols['inuse']);
+    $hasReceiptPerStock = isset($receiptLineCols['perstockamount']);
+    $hasReceiptUnit = isset($receiptLineCols['unitname']);
+    if ($hasReceiptInUse && $hasReceiptPerStock && $hasReceiptUnit) {
+        $lineStmt = $pdo->prepare(
+            'INSERT INTO ReceiptLines
+                (ReceiptID, LineType, ItemName, Quantity, InUse, PerStockAmount, UnitName, UnitCost, TotalCost)
+             VALUES
+                (:receipt_id, :line_type, :item_name, :stocks, :in_use, :per_stock_amount, :unit_name, :unit_cost, :total_cost)'
+        );
+    } else {
+        $lineStmt = $pdo->prepare(
+            'INSERT INTO ReceiptLines
+                (ReceiptID, LineType, ItemName, Quantity, UnitCost, TotalCost)
+             VALUES
+                (:receipt_id, :line_type, :item_name, :stocks, :unit_cost, :total_cost)'
+        );
+    }
+
+    $invCols = [];
+    try {
+        foreach ($pdo->query('SHOW COLUMNS FROM inventory_items') as $col) {
+            $invCols[strtolower((string)$col['Field'])] = true;
+        }
+    } catch (Throwable $e) {
+        $invCols = [];
+    }
+    $findSelect = ['id', 'stock_units', 'category_name'];
+    foreach (['units_in_use', 'open_items_count', 'orders_per_box', 'per_stock_amount', 'per_stock_unit', 'stock_type'] as $optionalCol) {
+        if (isset($invCols[$optionalCol])) {
+            $findSelect[] = $optionalCol;
+        }
+    }
     $findInventoryStmt = $pdo->prepare(
-        'SELECT id, stock_units, units_in_use, open_items_count, orders_per_box, per_stock_amount, per_stock_unit, stock_type, category_name
+        'SELECT ' . implode(', ', $findSelect) . '
          FROM inventory_items
          WHERE menu_item_id IS NULL
            AND is_active = 1
@@ -528,30 +629,52 @@ if (count($lines) === 0) fail('No valid line items found.');
            AND category_name = :category_name
          LIMIT 1'
     );
+
+    $updateInventorySet = ['stock_units = :stock_units', 'supplier = :supplier', 'unit_cost = :unit_cost'];
+    if (isset($invCols['units_in_use'])) $updateInventorySet[] = 'units_in_use = :units_in_use';
+    if (isset($invCols['open_items_count'])) $updateInventorySet[] = 'open_items_count = :open_items_count';
     $updateInventoryStmt = $pdo->prepare(
-        'UPDATE inventory_items
-         SET stock_units = :stock_units,
-             units_in_use = :units_in_use,
-             open_items_count = :open_items_count,
-             supplier = :supplier,
-             unit_cost = :unit_cost
-         WHERE id = :id'
+        'UPDATE inventory_items SET ' . implode(', ', $updateInventorySet) . ' WHERE id = :id'
     );
+
+    $updateRegisterSet = ['supplier = :supplier'];
+    if (isset($invCols['stock_type'])) $updateRegisterSet[] = 'stock_type = :stock_type';
+    if (isset($invCols['entry_mode'])) $updateRegisterSet[] = 'entry_mode = :entry_mode';
+    if (isset($invCols['stock_status'])) $updateRegisterSet[] = 'stock_status = :stock_status';
+    if (isset($invCols['category_type'])) $updateRegisterSet[] = 'category_type = :category_type';
     $updateRegisterInventoryStmt = $pdo->prepare(
-        'UPDATE inventory_items
-         SET stock_type = :stock_type,
-             entry_mode = :entry_mode,
-             stock_status = :stock_status,
-             category_type = :category_type,
-             supplier = :supplier
-         WHERE id = :id'
+        'UPDATE inventory_items SET ' . implode(', ', $updateRegisterSet) . ' WHERE id = :id'
     );
+
+    $createCols = ['menu_item_id', 'item_name', 'category_name', 'supplier', 'stock_units', 'reorder_level', 'unit_cost', 'is_active'];
+    $createVals = ['NULL', ':item_name', ':category_name', ':supplier', ':stock_units', '10', ':unit_cost', '1'];
+    $createParamsBase = true;
+    foreach ([
+        'category_type' => ':category_type',
+        'units_in_use' => ':units_in_use',
+        'open_items_count' => ':open_items_count',
+        'per_stock_amount' => ':per_stock_amount',
+        'per_stock_unit' => ':per_stock_unit',
+        'stock_type' => ':stock_type',
+        'entry_mode' => ':entry_mode',
+        'stock_status' => ':stock_status',
+    ] as $colName => $placeholder) {
+        if (!isset($invCols[$colName])) {
+            continue;
+        }
+        // Insert category_type after category_name when present.
+        if ($colName === 'category_type') {
+            array_splice($createCols, 3, 0, [$colName]);
+            array_splice($createVals, 3, 0, [$placeholder]);
+        } else {
+            $createCols[] = $colName;
+            $createVals[] = $placeholder;
+        }
+    }
     $createInventoryStmt = $pdo->prepare(
-        'INSERT INTO inventory_items
-            (menu_item_id, item_name, category_name, category_type, supplier, stock_units, units_in_use, open_items_count, per_stock_amount, per_stock_unit, reorder_level, unit_cost, stock_type, entry_mode, stock_status, is_active)
-         VALUES
-            (NULL, :item_name, :category_name, :category_type, :supplier, :stock_units, :units_in_use, :open_items_count, :per_stock_amount, :per_stock_unit, 10, :unit_cost, :stock_type, :entry_mode, :stock_status, 1)'
+        'INSERT INTO inventory_items (' . implode(', ', $createCols) . ') VALUES (' . implode(', ', $createVals) . ')'
     );
+    unset($createParamsBase);
 
     foreach ($lines as $line) {
         $incomingUnits = (int)round((float)$line['stocks']);
@@ -574,28 +697,32 @@ if (count($lines) === 0) fail('No valid line items found.');
         }
         $line['unit'] = ($lineUnit !== '' ? substr($lineUnit, 0, 20) : 'pcs');
 
-        $lineStmt->execute([
+        $lineParams = [
             ':receipt_id' => $receiptId,
             ':line_type' => $line['line_type'],
             ':item_name' => $line['item_name'],
             ':stocks' => $line['stocks'],
-            ':in_use' => $line['in_use'],
-            ':per_stock_amount' => $line['per_stock_amount'],
-            ':unit_name' => $line['unit'],
             ':unit_cost' => $line['unit_cost'],
             ':total_cost' => $line['total_cost'],
-        ]);
+        ];
+        if ($hasReceiptInUse && $hasReceiptPerStock && $hasReceiptUnit) {
+            $lineParams[':in_use'] = $line['in_use'];
+            $lineParams[':per_stock_amount'] = $line['per_stock_amount'];
+            $lineParams[':unit_name'] = $line['unit'];
+        }
+        $lineStmt->execute($lineParams);
 
         if ($existingInventory) {
             if ($registerMode) {
-                $updateRegisterInventoryStmt->execute([
-                    ':stock_type' => $line['stock_type'],
-                    ':entry_mode' => $line['entry_mode'],
-                    ':stock_status' => $line['stock_status'],
-                    ':category_type' => $line['category_type'],
+                $regParams = [
                     ':supplier' => $supplier,
                     ':id' => (int)$existingInventory['id'],
-                ]);
+                ];
+                if (isset($invCols['stock_type'])) $regParams[':stock_type'] = $line['stock_type'];
+                if (isset($invCols['entry_mode'])) $regParams[':entry_mode'] = $line['entry_mode'];
+                if (isset($invCols['stock_status'])) $regParams[':stock_status'] = $line['stock_status'];
+                if (isset($invCols['category_type'])) $regParams[':category_type'] = $line['category_type'];
+                $updateRegisterInventoryStmt->execute($regParams);
                 continue;
             }
 
@@ -606,7 +733,7 @@ if (count($lines) === 0) fail('No valid line items found.');
                     $incomingUnits,
                     (int)round($receiptOpenBoxes),
                     (int)$existingInventory['stock_units'],
-                    (float)$existingInventory['units_in_use'],
+                    (float)($existingInventory['units_in_use'] ?? 0),
                     $batchSize
                 );
             } else {
@@ -615,19 +742,20 @@ if (count($lines) === 0) fail('No valid line items found.');
                     $incomingUnits,
                     $receiptOpenBoxes,
                     (int)$existingInventory['stock_units'],
-                    (float)$existingInventory['units_in_use'],
+                    (float)($existingInventory['units_in_use'] ?? 0),
                     (int)($existingInventory['open_items_count'] ?? 0),
                     $ordersPerBox
                 );
             }
-            $updateInventoryStmt->execute([
+            $updParams = [
                 ':stock_units' => $counts['stock_units'],
-                ':units_in_use' => $counts['units_in_use'],
-                ':open_items_count' => $counts['open_items_count'],
                 ':supplier' => $supplier,
                 ':unit_cost' => $line['unit_cost'],
                 ':id' => (int)$existingInventory['id'],
-            ]);
+            ];
+            if (isset($invCols['units_in_use'])) $updParams[':units_in_use'] = $counts['units_in_use'];
+            if (isset($invCols['open_items_count'])) $updParams[':open_items_count'] = $counts['open_items_count'];
+            $updateInventoryStmt->execute($updParams);
             continue;
         }
 
@@ -660,21 +788,22 @@ if (count($lines) === 0) fail('No valid line items found.');
             );
         }
 
-        $createInventoryStmt->execute([
+        $createParams = [
             ':item_name' => $line['item_name'],
             ':category_name' => $line['line_type'],
-            ':category_type' => $line['category_type'],
             ':supplier' => $supplier,
             ':stock_units' => $counts['stock_units'],
-            ':units_in_use' => $counts['units_in_use'],
-            ':open_items_count' => $counts['open_items_count'],
-            ':per_stock_amount' => $line['per_stock_amount'],
-            ':per_stock_unit' => $line['unit'],
             ':unit_cost' => $line['unit_cost'],
-            ':stock_type' => $line['stock_type'],
-            ':entry_mode' => $line['entry_mode'],
-            ':stock_status' => $line['stock_status'],
-        ]);
+        ];
+        if (isset($invCols['category_type'])) $createParams[':category_type'] = $line['category_type'];
+        if (isset($invCols['units_in_use'])) $createParams[':units_in_use'] = $counts['units_in_use'];
+        if (isset($invCols['open_items_count'])) $createParams[':open_items_count'] = $counts['open_items_count'];
+        if (isset($invCols['per_stock_amount'])) $createParams[':per_stock_amount'] = $line['per_stock_amount'];
+        if (isset($invCols['per_stock_unit'])) $createParams[':per_stock_unit'] = $line['unit'];
+        if (isset($invCols['stock_type'])) $createParams[':stock_type'] = $line['stock_type'];
+        if (isset($invCols['entry_mode'])) $createParams[':entry_mode'] = $line['entry_mode'];
+        if (isset($invCols['stock_status'])) $createParams[':stock_status'] = $line['stock_status'];
+        $createInventoryStmt->execute($createParams);
         $newInvId = (int)$pdo->lastInsertId();
     }
 

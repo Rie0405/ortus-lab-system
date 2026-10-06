@@ -301,7 +301,12 @@ function ensure_main_categories_schema(PDO $pdo): void
             ('Kitchen', 2, 1)"
     );
 
-    $hasCol = (bool)$pdo->query("SHOW COLUMNS FROM menu_items LIKE 'main_category_id'")->fetch();
+    try {
+        $hasCol = (bool)$pdo->query("SHOW COLUMNS FROM menu_items LIKE 'main_category_id'")->fetch();
+    } catch (Throwable $e) {
+        // menu_items may be unavailable on partial schemas; main_categories alone is enough for receipts.
+        return;
+    }
     if (!$hasCol) {
         try {
             $pdo->exec(
@@ -320,12 +325,16 @@ function ensure_main_categories_schema(PDO $pdo): void
         return;
     }
 
-    $rows = $pdo->query(
-        'SELECT m.id, c.name AS category_name
-           FROM menu_items m
-           JOIN categories c ON c.id = m.category_id
-          WHERE m.main_category_id IS NULL OR m.main_category_id = 0'
-    )->fetchAll();
+    try {
+        $rows = $pdo->query(
+            'SELECT m.id, c.name AS category_name
+               FROM menu_items m
+               JOIN categories c ON c.id = m.category_id
+              WHERE m.main_category_id IS NULL OR m.main_category_id = 0'
+        )->fetchAll();
+    } catch (Throwable $e) {
+        return;
+    }
     if ($rows) {
         $upd = $pdo->prepare('UPDATE menu_items SET main_category_id = :mcid WHERE id = :id');
         foreach ($rows as $row) {

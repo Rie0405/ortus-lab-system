@@ -37,10 +37,6 @@ if ($m === 'POST') {
     );
     $ins->execute([':name' => $name, ':ord' => $nextOrder]);
     $id = (int)$pdo->lastInsertId();
-    publish_realtime_event('catalog_updated', [
-        'action' => 'main_category_created',
-        'main_category_id' => $id,
-    ]);
     ok(['id' => $id, 'name' => $name, 'message' => 'Main category created.'], 201);
 }
 
@@ -108,10 +104,6 @@ if ($m === 'PUT') {
             break;
         }
     }
-    publish_realtime_event('catalog_updated', [
-        'action' => 'main_category_updated',
-        'main_category_id' => $id,
-    ]);
     ok([
         'id' => $id,
         'main_category' => $updated,
@@ -221,10 +213,6 @@ if ($m === 'DELETE') {
         fail('Failed to delete main category: ' . $e->getMessage());
     }
 
-    publish_realtime_event('catalog_updated', [
-        'action' => 'main_category_deleted',
-        'main_category_id' => $id,
-    ]);
     ok([
         'id' => $id,
         'deleted_categories' => count($catIds),

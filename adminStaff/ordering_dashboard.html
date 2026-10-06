@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261006-filter-ghost">
     <link rel="stylesheet" href="brand_role_label.css">
+    <link rel="stylesheet" href="number_input.css?v=20261006">
+    <link rel="stylesheet" href="image_crop.css?v=20261006">
 </head>
 <body>
     <div class="order-page">
@@ -745,7 +747,8 @@
         </div>
 
         <script src="auth_session.js"></script>
-        <script src="dashboard_script.js?v=20261006-variants-race"></script>
+        <script src="image_crop.js?v=20261006"></script>
+        <script src="dashboard_script.js?v=20261006-image-crop"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');
@@ -1127,18 +1130,40 @@
                     setErr('QR image is too large (max ~800KB).');
                     return;
                 }
-                pendingQrFile = file;
-                clearSavedQr = false;
-                var reader = new FileReader();
-                reader.onload = function (ev) {
-                    setQrPreview(String(ev.target.result || ''));
-                };
-                reader.readAsDataURL(file);
+
+                var cropPromise = (window.OrtusImageCrop && window.OrtusImageCrop.cropFile)
+                    ? window.OrtusImageCrop.cropFile(file, {
+                        title: 'Adjust GCash QR',
+                        aspect: 1,
+                        shape: 'rect',
+                        outputType: 'image/jpeg',
+                        outputQuality: 0.9,
+                        maxOutputSize: 900
+                    })
+                    : Promise.resolve(file);
+
+                cropPromise.then(function (cropped) {
+                    if (cropped.size > 800 * 1024) {
+                        setErr('Cropped QR is still too large (max ~800KB). Try a smaller image.');
+                        return;
+                    }
+                    pendingQrFile = cropped;
+                    clearSavedQr = false;
+                    var reader = new FileReader();
+                    reader.onload = function (ev) {
+                        setQrPreview(String(ev.target.result || ''));
+                    };
+                    reader.readAsDataURL(cropped);
+                }).catch(function (err) {
+                    if (err && String(err.message || err) === 'cancelled') return;
+                    setErr((err && err.message) ? err.message : 'Could not prepare QR image.');
+                });
             }
 
             qrFileInput.addEventListener('change', function () {
                 var file = qrFileInput.files && qrFileInput.files[0] ? qrFileInput.files[0] : null;
                 handleQrFile(file);
+                qrFileInput.value = '';
             });
 
             saveBtn.addEventListener('click', function () {

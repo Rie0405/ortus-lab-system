@@ -105,10 +105,6 @@ if ($m === 'POST') {
             'entity_type' => 'addon',
             'entity_id' => $inactiveId,
         ]);
-        publish_realtime_event('catalog_updated', [
-            'action' => 'addon_restored',
-            'addon_id' => $inactiveId,
-        ]);
         ok([
             'id' => $inactiveId,
             'message' => 'Addon restored.',
@@ -147,10 +143,6 @@ if ($m === 'POST') {
         'action' => 'add-on registered: ' . $name,
         'entity_type' => 'addon',
         'entity_id' => $id,
-    ]);
-    publish_realtime_event('catalog_updated', [
-        'action' => 'addon_created',
-        'addon_id' => $id,
     ]);
     ok([
         'id' => $id,
@@ -237,10 +229,6 @@ if ($m === 'PUT') {
         'entity_type' => 'addon',
         'entity_id' => $id,
     ]);
-    publish_realtime_event('catalog_updated', [
-        'action' => 'addon_updated',
-        'addon_id' => $id,
-    ]);
     ok(['id' => $id, 'message' => 'Addon updated.', 'addons' => fetch_addons_rows($pdo)]);
 }
 
@@ -270,10 +258,6 @@ if ($m === 'DELETE') {
         'action' => 'add-on deleted: ' . $addonName,
         'entity_type' => 'addon',
         'entity_id' => $id,
-    ]);
-    publish_realtime_event('catalog_updated', [
-        'action' => 'addon_deleted',
-        'addon_id' => $id,
     ]);
     ok(['id' => $id, 'message' => 'Addon removed.', 'addons' => fetch_addons_rows($pdo)]);
 }

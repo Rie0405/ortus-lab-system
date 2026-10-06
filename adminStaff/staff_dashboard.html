@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261004-ses-cleanup">
     <link rel="stylesheet" href="brand_role_label.css">
+    <link rel="stylesheet" href="number_input.css?v=20261006">
+    <link rel="stylesheet" href="password_toggle.css?v=20261006">
 </head>
 <body>
     <div class="pos-page">
@@ -1378,6 +1380,7 @@
         </footer>
     </div>
     <script src="auth_session.js"></script>
+    <script src="password_toggle.js?v=20261006"></script>
     <script src="../shared/gcash_ref_digits.js"></script>
     <script>
         /* ─── POS: Dynamic menu, cart, totals, confirm payment ─── */
@@ -3399,7 +3402,6 @@
             posActiveFulfillment = "dine_in";
             renderOrderList();
             loadMenu();
-            window.reloadPosMenu = loadMenu;
             setInterval(refreshFastMovingBadges, 90000);
         })();
 
@@ -5490,7 +5492,6 @@
         var staffRealtimeSource = null;
         var staffRealtimeRetryTimer = null;
         var staffRealtimeReloadTimer = null;
-        var staffCatalogReloadTimer = null;
         var staffLastRealtimeEventId = 0;
 
         function peso(v) {
@@ -6026,27 +6027,10 @@
                 loadStaffData();
             }, 350);
         }
-        function scheduleStaffCatalogRefresh() {
-            if (staffCatalogReloadTimer) return;
-            staffCatalogReloadTimer = setTimeout(function () {
-                staffCatalogReloadTimer = null;
-                if (typeof window.reloadPosMenu === 'function') {
-                    window.reloadPosMenu();
-                }
-            }, 400);
-        }
         function handleStaffRealtimeEvent(evt) {
             var evtId = parseInt((evt && evt.id) || 0, 10);
             if (evtId && evtId <= staffLastRealtimeEventId) return;
             if (evtId) staffLastRealtimeEventId = evtId;
-
-            var type = String((evt && evt.type) || '').toLowerCase();
-            if (type === 'catalog_updated' || type === 'inventory_updated') {
-                // Soft-refresh POS menu/availability; do not flash queue/kitchen badges.
-                scheduleStaffCatalogRefresh();
-                return;
-            }
-
             var payload = (evt && evt.payload) || {};
             var source = String(payload.order_source || '').toLowerCase();
             var status = String(payload.status || '').toLowerCase();
@@ -10179,10 +10163,6 @@
             if (staffRealtimeReloadTimer) {
                 clearTimeout(staffRealtimeReloadTimer);
                 staffRealtimeReloadTimer = null;
-            }
-            if (staffCatalogReloadTimer) {
-                clearTimeout(staffCatalogReloadTimer);
-                staffCatalogReloadTimer = null;
             }
             if (staffRealtimeSource) {
                 try { staffRealtimeSource.close(); } catch (e) {}

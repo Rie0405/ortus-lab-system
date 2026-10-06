@@ -57,7 +57,11 @@ function ensure_receipt_schema(PDO $pdo): void {
         try {
             $pdo->exec("ALTER TABLE Receipts ADD COLUMN EntrySource VARCHAR(20) NOT NULL DEFAULT 'admin' AFTER Supplier");
         } catch (Throwable $e) {
-            // Ignore migration issues on environments with restricted ALTER privileges.
+            try {
+                $pdo->exec("ALTER TABLE Receipts ADD COLUMN EntrySource VARCHAR(20) NOT NULL DEFAULT 'admin'");
+            } catch (Throwable $e2) {
+                // Ignore migration issues on environments with restricted ALTER privileges.
+            }
         }
     }
 
@@ -258,6 +262,8 @@ function apply_receipt_stock_counts(
 $pdo = db();
 ensure_receipt_schema($pdo);
 ensure_inventory_items_base_schema($pdo);
+ensure_main_categories_schema($pdo);
+ensure_inventory_category_types_schema($pdo);
 
 if (method() === 'GET') {
     $requestedReceiptId = isset($_GET['receipt_id']) ? (int)$_GET['receipt_id'] : 0;
@@ -400,6 +406,7 @@ if (method() !== 'POST') {
     fail('Method not allowed.', 405);
 }
 
+try {
 $b = body();
 $registerMode = strtolower(trim((string)($b['mode'] ?? ''))) === 'register';
 $date = trim((string)($b['date'] ?? ''));
@@ -422,6 +429,8 @@ if ($supplier === '') {
     $supplier = 'Unassigned';
 }
 if (!is_array($linesRaw) || count($linesRaw) === 0) fail('At least one line item is required.');
+
+assert_inventory_register_columns($pdo);
 
 $lines = [];
 foreach ($linesRaw as $line) {
@@ -466,23 +475,43 @@ foreach ($linesRaw as $line) {
 
 if (count($lines) === 0) fail('No valid line items found.');
 
-try {
     $pdo->beginTransaction();
     $totalAmount = array_sum(array_column($lines, 'total_cost'));
 
-    $receiptStmt = $pdo->prepare(
-        'INSERT INTO Receipts (`Date`, OrderedDate, ExpectedReceiveDate, Supplier, EntrySource, TotalAmount)
-         VALUES (:date, :ordered_date, :expected_receive_date, :supplier, :entry_source, :total_amount)'
-    );
-    $receiptStmt->execute([
-        ':date' => $date,
-        ':ordered_date' => ($orderedDate !== '' ? $orderedDate : null),
-        ':expected_receive_date' => $expectedReceiveDate,
-        ':supplier' => $supplier,
-        ':entry_source' => $entrySource,
-        ':total_amount' => $totalAmount,
-    ]);
+    $hasEntrySource = false;
+    try {
+        $chkEs = $pdo->query("SHOW COLUMNS FROM Receipts LIKE 'EntrySource'");
+        $hasEntrySource = $chkEs && $chkEs->fetch();
+    } catch (Throwable $e) {
+        $hasEntrySource = false;
+    }
 
+    if ($hasEntrySource) {
+        $receiptStmt = $pdo->prepare(
+            'INSERT INTO Receipts (`Date`, OrderedDate, ExpectedReceiveDate, Supplier, EntrySource, TotalAmount)
+             VALUES (:date, :ordered_date, :expected_receive_date, :supplier, :entry_source, :total_amount)'
+        );
+        $receiptStmt->execute([
+            ':date' => $date,
+            ':ordered_date' => ($orderedDate !== '' ? $orderedDate : null),
+            ':expected_receive_date' => $expectedReceiveDate,
+            ':supplier' => $supplier,
+            ':entry_source' => $entrySource,
+            ':total_amount' => $totalAmount,
+        ]);
+    } else {
+        $receiptStmt = $pdo->prepare(
+            'INSERT INTO Receipts (`Date`, OrderedDate, ExpectedReceiveDate, Supplier, TotalAmount)
+             VALUES (:date, :ordered_date, :expected_receive_date, :supplier, :total_amount)'
+        );
+        $receiptStmt->execute([
+            ':date' => $date,
+            ':ordered_date' => ($orderedDate !== '' ? $orderedDate : null),
+            ':expected_receive_date' => $expectedReceiveDate,
+            ':supplier' => $supplier,
+            ':total_amount' => $totalAmount,
+        ]);
+    }
     $receiptId = (int)$pdo->lastInsertId();
     $lineStmt = $pdo->prepare(
         'INSERT INTO ReceiptLines
@@ -651,11 +680,6 @@ try {
 
     $pdo->commit();
 
-    publish_realtime_event('inventory_updated', [
-        'action' => $registerMode ? 'inventory_registered' : 'stock_receipt_saved',
-        'receipt_id' => $receiptId,
-    ]);
-
     $isStaffRestock = $entrySource === 'staff' || stripos($supplier, 'Restocked by ') === 0;
     $restockActor = $isStaffRestock
         ? activity_actor_from_restock_supplier($supplier)
@@ -701,11 +725,14 @@ try {
     ok([
         'receipt_id' => $receiptId,
         'total_amount' => (float)$totalAmount,
-        'message' => 'Receipt saved.'
+        'message' => $registerMode ? 'Inventory item registered.' : 'Receipt saved.'
     ], 201);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    fail('Failed to save receipt: ' . $e->getMessage(), 500);
+    $prefix = (!empty($registerMode))
+        ? 'Failed to register inventory item: '
+        : 'Failed to save receipt: ';
+    fail($prefix . $e->getMessage(), 500);
 }

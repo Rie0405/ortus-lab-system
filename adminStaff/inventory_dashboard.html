@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261004-inv-check-admin">
     <link rel="stylesheet" href="brand_role_label.css">
+    <link rel="stylesheet" href="number_input.css?v=20261006">
 </head>
 <body>
     <div class="inv-page">
@@ -1662,21 +1663,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: selected.id })
             })
-                .then(function (r) {
-                    return r.text().then(function (text) {
-                        var d = null;
-                        try { d = text ? JSON.parse(text) : null; } catch (e) { d = null; }
-                        return { ok: r.ok, status: r.status, d: d };
-                    });
-                })
-                .then(function (res) {
-                    var d = res.d;
-                    if (!d || typeof d !== 'object') {
-                        setReceiptError('Failed to delete category type. Server returned an invalid response (HTTP ' + res.status + ').');
-                        return false;
-                    }
-                    if (!d.success) {
-                        setReceiptError(d.error || 'Failed to delete category type.');
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setReceiptError((d && d.error) || 'Failed to delete category type.');
                         return false;
                     }
                     selectedCategoryTypeId = null;
@@ -2202,11 +2192,15 @@
                     });
                 })
                 .then(function (res) {
-                    var d = res.d;
+                    var d = res && res.d;
                     if (!d || typeof d !== 'object') {
+                        var rawHint = res && res.raw
+                            ? String(res.raw).replace(/\s+/g, ' ').trim().slice(0, 160)
+                            : '';
                         setReceiptError(
                             (isRegisterMode ? 'Failed to register inventory item.' : 'Failed to save stock entry.') +
-                            ' Server returned an invalid response (HTTP ' + res.status + ').'
+                            ' Server returned an invalid response (HTTP ' + (res && res.status ? res.status : '?') + ').' +
+                            (rawHint ? ' ' + rawHint : '')
                         );
                         return;
                     }

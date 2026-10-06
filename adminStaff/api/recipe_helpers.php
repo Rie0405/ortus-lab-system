@@ -103,24 +103,30 @@ function ensure_inventory_items_base_schema(PDO $pdo): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
 
+    // Prefer ordered AFTER clauses; fall back to unordered ADD if Hostinger rejects them.
     $checks = [
-        ['units_in_use', 'ALTER TABLE inventory_items ADD COLUMN units_in_use DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER stock_units'],
-        ['per_stock_amount', 'ALTER TABLE inventory_items ADD COLUMN per_stock_amount DECIMAL(12,2) NOT NULL DEFAULT 1 AFTER units_in_use'],
-        ['per_stock_unit', "ALTER TABLE inventory_items ADD COLUMN per_stock_unit VARCHAR(20) NOT NULL DEFAULT 'pcs' AFTER per_stock_amount"],
-        ['orders_per_box', 'ALTER TABLE inventory_items ADD COLUMN orders_per_box INT NOT NULL DEFAULT 0 AFTER per_stock_unit'],
-        ['open_items_count', 'ALTER TABLE inventory_items ADD COLUMN open_items_count INT NOT NULL DEFAULT 0 AFTER orders_per_box'],
-        ['stock_type', "ALTER TABLE inventory_items ADD COLUMN stock_type VARCHAR(20) NOT NULL DEFAULT 'consumable' AFTER open_items_count"],
-        ['entry_mode', "ALTER TABLE inventory_items ADD COLUMN entry_mode VARCHAR(20) NOT NULL DEFAULT 'automatic' AFTER stock_type"],
-        ['stock_status', "ALTER TABLE inventory_items ADD COLUMN stock_status VARCHAR(20) NOT NULL DEFAULT 'good' AFTER entry_mode"],
-        ['notes', 'ALTER TABLE inventory_items ADD COLUMN notes TEXT NULL AFTER stock_status'],
-        ['category_type', "ALTER TABLE inventory_items ADD COLUMN category_type VARCHAR(40) NOT NULL DEFAULT 'main' AFTER category_name"],
+        ['units_in_use', 'ALTER TABLE inventory_items ADD COLUMN units_in_use DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER stock_units', 'ALTER TABLE inventory_items ADD COLUMN units_in_use DECIMAL(12,2) NOT NULL DEFAULT 0'],
+        ['per_stock_amount', 'ALTER TABLE inventory_items ADD COLUMN per_stock_amount DECIMAL(12,2) NOT NULL DEFAULT 1 AFTER units_in_use', 'ALTER TABLE inventory_items ADD COLUMN per_stock_amount DECIMAL(12,2) NOT NULL DEFAULT 1'],
+        ['per_stock_unit', "ALTER TABLE inventory_items ADD COLUMN per_stock_unit VARCHAR(20) NOT NULL DEFAULT 'pcs' AFTER per_stock_amount", "ALTER TABLE inventory_items ADD COLUMN per_stock_unit VARCHAR(20) NOT NULL DEFAULT 'pcs'"],
+        ['orders_per_box', 'ALTER TABLE inventory_items ADD COLUMN orders_per_box INT NOT NULL DEFAULT 0 AFTER per_stock_unit', 'ALTER TABLE inventory_items ADD COLUMN orders_per_box INT NOT NULL DEFAULT 0'],
+        ['open_items_count', 'ALTER TABLE inventory_items ADD COLUMN open_items_count INT NOT NULL DEFAULT 0 AFTER orders_per_box', 'ALTER TABLE inventory_items ADD COLUMN open_items_count INT NOT NULL DEFAULT 0'],
+        ['stock_type', "ALTER TABLE inventory_items ADD COLUMN stock_type VARCHAR(20) NOT NULL DEFAULT 'consumable' AFTER open_items_count", "ALTER TABLE inventory_items ADD COLUMN stock_type VARCHAR(20) NOT NULL DEFAULT 'consumable'"],
+        ['entry_mode', "ALTER TABLE inventory_items ADD COLUMN entry_mode VARCHAR(20) NOT NULL DEFAULT 'automatic' AFTER stock_type", "ALTER TABLE inventory_items ADD COLUMN entry_mode VARCHAR(20) NOT NULL DEFAULT 'automatic'"],
+        ['stock_status', "ALTER TABLE inventory_items ADD COLUMN stock_status VARCHAR(20) NOT NULL DEFAULT 'good' AFTER entry_mode", "ALTER TABLE inventory_items ADD COLUMN stock_status VARCHAR(20) NOT NULL DEFAULT 'good'"],
+        ['notes', 'ALTER TABLE inventory_items ADD COLUMN notes TEXT NULL AFTER stock_status', 'ALTER TABLE inventory_items ADD COLUMN notes TEXT NULL'],
+        ['category_type', "ALTER TABLE inventory_items ADD COLUMN category_type VARCHAR(40) NOT NULL DEFAULT 'main' AFTER category_name", "ALTER TABLE inventory_items ADD COLUMN category_type VARCHAR(40) NOT NULL DEFAULT 'main'"],
     ];
     foreach ($checks as $pair) {
         $chk = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE '" . $pair[0] . "'");
-        if (!$chk || !$chk->fetch()) {
+        if ($chk && $chk->fetch()) {
+            continue;
+        }
+        try {
+            $pdo->exec($pair[1]);
+        } catch (Throwable $e) {
             try {
-                $pdo->exec($pair[1]);
-            } catch (Throwable $e) {
+                $pdo->exec($pair[2]);
+            } catch (Throwable $e2) {
                 // Ignore migration issues on environments with restricted ALTER privileges.
             }
         }
@@ -159,6 +165,35 @@ function ensure_inventory_items_base_schema(PDO $pdo): void {
         );
     } catch (Throwable $e) {
         // Best-effort: cups/packaging → non-consumable.
+    }
+}
+
+/** Fail early with a clear JSON error if register-critical columns are still missing. */
+function assert_inventory_register_columns(PDO $pdo): void
+{
+    $required = [
+        'category_type',
+        'stock_type',
+        'entry_mode',
+        'stock_status',
+        'units_in_use',
+        'open_items_count',
+        'per_stock_amount',
+        'per_stock_unit',
+    ];
+    $missing = [];
+    foreach ($required as $col) {
+        $chk = $pdo->query("SHOW COLUMNS FROM inventory_items LIKE " . $pdo->quote($col));
+        if (!$chk || !$chk->fetch()) {
+            $missing[] = $col;
+        }
+    }
+    if ($missing) {
+        fail(
+            'Inventory database is missing columns: ' . implode(', ', $missing) .
+            '. Ask hosting to allow ALTER TABLE on inventory_items, then retry.',
+            500
+        );
     }
 }
 

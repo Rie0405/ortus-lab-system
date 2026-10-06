@@ -219,6 +219,19 @@ function apiCall(method, url, body) {
         }).then(function (r) { return r.json(); });
     }
 
+    function cropBeforeUpload(file, cropOpts) {
+        if (!file) return Promise.reject(new Error('No file'));
+        if (typeof window.OrtusImageCrop === 'undefined' || !window.OrtusImageCrop.cropFile) {
+            return Promise.resolve(file);
+        }
+        return window.OrtusImageCrop.cropFile(file, cropOpts || {}).catch(function (err) {
+            if (err && String(err.message || err) === 'cancelled') {
+                return Promise.reject({ cancelled: true });
+            }
+            return Promise.reject(err);
+        });
+    }
+
     function handleProductImageFile(prefix, file) {
         if (!file) return;
         if (!PRODUCT_IMAGE_TYPES[file.type]) {
@@ -230,35 +243,45 @@ function apiCall(method, url, body) {
             return;
         }
 
-        var localUrl = URL.createObjectURL(file);
-        var previousUrl = getProductImageUrl(prefix);
-        var previousWasCustom = prefix !== 'prod' || createImageIsCustom;
-        setDropzonePreview(prefix, localUrl);
-
         var dropzone = document.getElementById(prefix + '-visual-dropzone');
         var titleEl = document.getElementById(prefix + '-visual-title');
         var prevTitle = titleEl ? titleEl.textContent : '';
-        if (titleEl) titleEl.textContent = 'UPLOADING…';
-        if (dropzone) dropzone.style.pointerEvents = 'none';
+        var previousUrl = getProductImageUrl(prefix);
+        var previousWasCustom = prefix !== 'prod' || createImageIsCustom;
+        var localUrl = '';
 
-        uploadProductImage(file).then(function (res) {
-            if (res && res.success && res.url) {
-                setProductImageUrl(prefix, res.url);
-                if (prefix === 'prod') createImageIsCustom = true;
-                setDropzonePreview(prefix, res.url);
-                if (previousUrl && previousUrl !== res.url && previousWasCustom) {
-                    deleteProductImageFile(previousUrl);
+        cropBeforeUpload(file, {
+            title: 'Adjust product image',
+            aspect: (window.OrtusImageCrop && window.OrtusImageCrop.ASPECT_PRODUCT) || (231 / 172),
+            shape: 'rect',
+            outputType: 'image/jpeg',
+            outputQuality: 0.92,
+            maxOutputSize: 1400
+        }).then(function (cropped) {
+            localUrl = URL.createObjectURL(cropped);
+            setDropzonePreview(prefix, localUrl);
+            if (titleEl) titleEl.textContent = 'UPLOADING…';
+            if (dropzone) dropzone.style.pointerEvents = 'none';
+            return uploadProductImage(cropped).then(function (res) {
+                if (res && res.success && res.url) {
+                    setProductImageUrl(prefix, res.url);
+                    if (prefix === 'prod') createImageIsCustom = true;
+                    setDropzonePreview(prefix, res.url);
+                    if (previousUrl && previousUrl !== res.url && previousWasCustom) {
+                        deleteProductImageFile(previousUrl);
+                    }
+                } else {
+                    alert('Upload failed: ' + ((res && res.error) || 'Unknown error'));
+                    setDropzonePreview(prefix, previousUrl || '');
                 }
-            } else {
-                alert('Upload failed: ' + ((res && res.error) || 'Unknown error'));
-                setDropzonePreview(prefix, previousUrl || '');
-            }
+            });
         }).catch(function (err) {
+            if (err && err.cancelled) return;
             console.error('Image upload failed:', err);
-            alert('Image upload failed. Please try again.');
+            alert((err && err.message) ? err.message : 'Image upload failed. Please try again.');
             setDropzonePreview(prefix, previousUrl || '');
         }).finally(function () {
-            URL.revokeObjectURL(localUrl);
+            if (localUrl) URL.revokeObjectURL(localUrl);
             if (titleEl) titleEl.textContent = prevTitle || 'DRAG BLUEPRINT OR CLICK TO UPLOAD';
             if (dropzone) dropzone.style.pointerEvents = '';
         });
@@ -289,6 +312,7 @@ function apiCall(method, url, body) {
         fileInput.addEventListener('change', function () {
             var file = fileInput.files && fileInput.files[0];
             handleProductImageFile(prefix, file);
+            fileInput.value = '';
         });
 
         if (updateBtn) {
@@ -530,33 +554,44 @@ function apiCall(method, url, body) {
 
         var entity = kind === 'cat' ? findCategoryById(targetId) : findSubcategoryById(targetId);
         var previousUrl = entity && entity.icon_url ? entity.icon_url : '';
-        var localUrl = URL.createObjectURL(file);
-        setCatalogIconPreview(prefix, localUrl);
-
         var dropzone = document.getElementById(prefix + '-dropzone');
         var titleEl = document.getElementById(prefix + '-title');
         var prevTitle = titleEl ? titleEl.textContent : '';
-        if (titleEl) titleEl.textContent = 'UPLOADING…';
-        if (dropzone) dropzone.style.pointerEvents = 'none';
+        var localUrl = '';
+        var cropTitle = kind === 'cat' ? 'Adjust category icon' : 'Adjust subcategory icon';
 
-        uploadProductImage(file).then(function (res) {
-            if (!(res && res.success && res.url)) {
-                throw new Error((res && res.error) || 'Upload failed');
-            }
-            return saveCatalogIconUrl(kind, targetId, res.url, {
-                applyToItems: kind === 'cat'
-            }).then(function (savedUrl) {
-                setCatalogIconPreview(prefix, savedUrl || '');
-                if (previousUrl && previousUrl !== savedUrl) {
-                    deleteProductImageFile(previousUrl);
+        cropBeforeUpload(file, {
+            title: cropTitle,
+            aspect: 1,
+            shape: 'circle',
+            outputType: 'image/jpeg',
+            outputQuality: 0.92,
+            maxOutputSize: 800
+        }).then(function (cropped) {
+            localUrl = URL.createObjectURL(cropped);
+            setCatalogIconPreview(prefix, localUrl);
+            if (titleEl) titleEl.textContent = 'UPLOADING…';
+            if (dropzone) dropzone.style.pointerEvents = 'none';
+            return uploadProductImage(cropped).then(function (res) {
+                if (!(res && res.success && res.url)) {
+                    throw new Error((res && res.error) || 'Upload failed');
                 }
+                return saveCatalogIconUrl(kind, targetId, res.url, {
+                    applyToItems: kind === 'cat'
+                }).then(function (savedUrl) {
+                    setCatalogIconPreview(prefix, savedUrl || '');
+                    if (previousUrl && previousUrl !== savedUrl) {
+                        deleteProductImageFile(previousUrl);
+                    }
+                });
             });
         }).catch(function (err) {
+            if (err && err.cancelled) return;
             console.error('Catalog icon upload failed:', err);
             alert(err && err.message ? err.message : 'Icon upload failed. Please try again.');
             setCatalogIconPreview(prefix, previousUrl || '');
         }).finally(function () {
-            URL.revokeObjectURL(localUrl);
+            if (localUrl) URL.revokeObjectURL(localUrl);
             if (titleEl) titleEl.textContent = prevTitle || 'UPLOAD ICON';
             if (dropzone) dropzone.style.pointerEvents = '';
         });

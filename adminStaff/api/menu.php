@@ -207,10 +207,6 @@ if ($m === 'POST') {
         'entity_type' => 'menu_item',
         'entity_id' => $id,
     ]);
-    publish_realtime_event('catalog_updated', [
-        'action' => 'menu_item_created',
-        'menu_item_id' => $id,
-    ]);
     ok(['id' => $id, 'message' => 'Item created.'], 201);
 }
 
@@ -312,10 +308,6 @@ if ($m === 'PUT') {
         'entity_id' => $id,
     ]);
 
-    publish_realtime_event('catalog_updated', [
-        'action' => 'menu_item_updated',
-        'menu_item_id' => $id,
-    ]);
     ok(['message' => 'Item updated.']);
 }
 
@@ -399,10 +391,6 @@ if ($m === 'DELETE') {
         'entity_id' => $id,
     ]);
 
-    publish_realtime_event('catalog_updated', [
-        'action' => 'menu_item_deleted',
-        'menu_item_id' => $id,
-    ]);
     ok(['message' => 'Item deleted.']);
 }
 

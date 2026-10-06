@@ -315,7 +315,7 @@ body {
 
 .grid-main {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1.5fr 1.2fr;
     gap: 20px;
     margin-bottom: 20px;
 }
@@ -704,10 +704,11 @@ body {
 
 .diag-column .diag-title {
     margin: 0;
-    font-size: 22px;
+    font-size: 18px;
     line-height: 1.2;
     letter-spacing: -0.02em;
-    text-transform: none;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .diag-subtitle {

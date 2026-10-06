@@ -1892,6 +1892,14 @@ body {
 .menu-product-icon--meal-chicken { width: 72%; height: 72%; }
 .menu-product-icon--meal-pasta { width: 78%; height: 78%; }
 
+/* Admin-uploaded subcategory icons (photos / custom art) */
+.menu-product-icon--custom {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
 /* Product cards grid for meals â€” sits to the right of circles */
 .prod-grid--meals {
     display: none;

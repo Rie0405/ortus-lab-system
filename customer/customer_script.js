@@ -1586,6 +1586,16 @@ function getDbSubcategoriesForCategoryIds(categoryIds) {
     });
 }
 
+function resolveKioskMediaUrl(raw) {
+    var src = String(raw || '').trim();
+    if (!src) return '';
+    if (/^https?:\/\//i.test(src) || src.indexOf('../') === 0 || src.indexOf('/') === 0) return src;
+    if (src.indexOf('uploads/') === 0 || src.indexOf('icons_admin/') === 0) {
+        return '../adminStaff/' + src;
+    }
+    return src;
+}
+
 function getSideCircleIconForSubName(name) {
     var n = String(name || '').trim().toLowerCase();
     if (!n) return { icon: '', iconClass: '' };
@@ -1619,6 +1629,22 @@ function getSideCircleIconForSubName(name) {
     return { icon: '', iconClass: '' };
 }
 
+/** Prefer admin-uploaded subcategory icon; fall back to name presets. */
+function getSideCircleIconForSub(subOrLabel) {
+    var custom = '';
+    var label = '';
+    if (subOrLabel && typeof subOrLabel === 'object') {
+        custom = resolveKioskMediaUrl(subOrLabel.icon_url || subOrLabel.iconUrl || '');
+        label = subOrLabel.label || subOrLabel.name || '';
+    } else {
+        label = String(subOrLabel || '');
+    }
+    if (custom) {
+        return { icon: custom, iconClass: 'menu-product-icon--custom' };
+    }
+    return getSideCircleIconForSubName(label);
+}
+
 function itemMatchesSideSubKey(item, sideKey) {
     var key = String(sideKey || '');
     if (!key || key === 'all') return true;
@@ -1639,7 +1665,8 @@ function buildSideSubSections(items, categoryIds) {
         sections.push({
             key: key,
             label: sub.name || 'Subcategory',
-            subId: parseInt(sub.id, 10)
+            subId: parseInt(sub.id, 10),
+            icon_url: sub.icon_url || null
         });
     });
     buckets._other = [];
@@ -1712,7 +1739,7 @@ function rebuildBevCategoryCircles(selectedKey) {
     var i;
     for (i = 0; i < built.sections.length; i++) {
         var sec = built.sections[i];
-        var ic = getSideCircleIconForSubName(sec.label);
+        var ic = getSideCircleIconForSub(sec);
         html += buildBevCircleHtml(sec.key, sec.label, ic.icon, ic.iconClass, selectedKey === sec.key);
     }
     wrap.innerHTML = html;
@@ -1730,7 +1757,7 @@ function rebuildMealCategoryCircles(selectedKey) {
     var i;
     for (i = 0; i < built.sections.length; i++) {
         var sec = built.sections[i];
-        var ic = getSideCircleIconForSubName(sec.label);
+        var ic = getSideCircleIconForSub(sec);
         html += buildMealCircleHtml(sec.key, sec.label, ic.icon, ic.iconClass, selectedKey === sec.key);
     }
     wrap.innerHTML = html;

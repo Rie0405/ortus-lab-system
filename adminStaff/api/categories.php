@@ -82,10 +82,6 @@ if ($m === 'POST') {
             fail('Failed to restore category: ' . $e->getMessage());
         }
 
-        publish_realtime_event('catalog_updated', [
-            'action' => 'category_restored',
-            'category_id' => $existingId,
-        ]);
         ok([
             'id' => $existingId,
             'main_category_id' => $mainCategoryId,
@@ -116,10 +112,6 @@ if ($m === 'POST') {
     }
 
     $id = (int)$pdo->lastInsertId();
-    publish_realtime_event('catalog_updated', [
-        'action' => 'category_created',
-        'category_id' => $id,
-    ]);
     ok(['id' => $id, 'main_category_id' => $mainCategoryId, 'message' => 'Category created.'], 201);
 }
 
@@ -210,10 +202,6 @@ if ($m === 'PUT') {
         }
     }
 
-    publish_realtime_event('catalog_updated', [
-        'action' => 'category_updated',
-        'category_id' => $id,
-    ]);
     ok([
         'id' => $id,
         'icon_url' => $iconUrl,
@@ -269,10 +257,6 @@ if ($m === 'DELETE') {
         fail('Failed to delete category: ' . $e->getMessage());
     }
 
-    publish_realtime_event('catalog_updated', [
-        'action' => 'category_deleted',
-        'category_id' => $id,
-    ]);
     ok([
         'id' => $id,
         'deleted_subcategories' => count($subIds),

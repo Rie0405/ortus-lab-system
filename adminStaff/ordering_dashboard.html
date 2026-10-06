@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261006-variants-race">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261006-addon-input">
     <link rel="stylesheet" href="brand_role_label.css">
 </head>
 <body>
@@ -912,6 +912,12 @@
             backdrop.addEventListener('click', function (e) {
                 if (e.target === backdrop) closeModal();
             });
+            var addonModalEl = backdrop.querySelector('.addon-register-modal');
+            if (addonModalEl) {
+                addonModalEl.addEventListener('mousedown', function (e) {
+                    e.stopPropagation();
+                });
+            }
 
             saveBtn.addEventListener('click', function () {
                 setErr('');

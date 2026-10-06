@@ -354,13 +354,19 @@ body.modal-open {
     padding: 72px 16px 24px;
     z-index: 28;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 140ms ease-out;
+    transition: opacity 140ms ease-out, visibility 140ms ease-out;
     overflow-y: auto;
 }
 .menu-filter-backdrop.is-visible {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+}
+.menu-filter-backdrop:not(.is-visible),
+.menu-filter-backdrop:not(.is-visible) * {
+    pointer-events: none !important;
 }
 .menu-filter-popover {
     width: min(460px, 100%);
@@ -778,14 +784,21 @@ body.modal-open {
     justify-content: center;
     padding: 24px;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 160ms ease-out;
-    z-index: 25;
+    transition: opacity 160ms ease-out, visibility 160ms ease-out;
+    z-index: 50;
 }
 
 .gcash-config-backdrop.is-visible {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+}
+
+.gcash-config-backdrop:not(.is-visible),
+.gcash-config-backdrop:not(.is-visible) * {
+    pointer-events: none !important;
 }
 
 .gcash-config-modal {
@@ -795,6 +808,9 @@ body.modal-open {
     border: 1px solid rgba(61, 48, 37, 0.9);
     box-shadow: 0 40px 80px rgba(0, 0, 0, 0.85);
     overflow: hidden;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
 }
 
 .gcash-config-modal--kiosk {
@@ -1157,14 +1173,21 @@ body.modal-open {
     justify-content: center;
     padding: 24px;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 160ms ease-out;
+    transition: opacity 160ms ease-out, visibility 160ms ease-out;
     z-index: 40;
 }
 
 .product-modal-backdrop.is-visible {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+}
+
+.product-modal-backdrop:not(.is-visible),
+.product-modal-backdrop:not(.is-visible) * {
+    pointer-events: none !important;
 }
 
 .product-modal {

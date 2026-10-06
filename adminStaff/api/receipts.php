@@ -149,8 +149,8 @@ function ensure_receipt_schema(PDO $pdo): void {
 
     if (!$receiptLinesExists) {
         throw new RuntimeException(
-            'Could not create ReceiptLines table'
-            . ($createError !== '' ? ': ' . $createError : '')
+            'ReceiptLines table is missing. In Hostinger phpMyAdmin, open database u462030735_ortus and run the SQL from the admin instructions (create ReceiptLines).'
+            . ($createError !== '' ? ' Auto-create error: ' . $createError : '')
         );
     }
 

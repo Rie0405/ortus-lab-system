@@ -981,6 +981,9 @@ if (isset($_GET['edit_history']) && trim((string)$_GET['edit_history']) === '1')
 // Clean up orphan "menu SKU" inventory rows. Orders used to auto-create these with
 // menu_item_id set; deleting the menu item nulls that FK and they then appear as if
 // they were manually registered. Hide them unless they're used as ingredients.
+//
+// IMPORTANT: do NOT treat freshly registered items as orphans. Register used to
+// default supplier to "Unassigned", and this cleanup immediately hid them.
 try {
     $pdo->exec(
         'UPDATE inventory_items i
@@ -988,6 +991,11 @@ try {
          WHERE i.is_active = 1
            AND i.menu_item_id IS NULL
            AND LOWER(TRIM(COALESCE(i.supplier, ""))) = "unassigned"
+           AND COALESCE(i.stock_units, 0) = 0
+           AND COALESCE(i.units_in_use, 0) = 0
+           AND COALESCE(i.open_items_count, 0) = 0
+           AND COALESCE(i.category_type, "main") = "main"
+           AND COALESCE(i.entry_mode, "automatic") = "automatic"
            AND NOT EXISTS (
                 SELECT 1 FROM recipe_ingredients ri
                  WHERE ri.inventory_item_id = i.id
@@ -995,10 +1003,37 @@ try {
            AND NOT EXISTS (
                 SELECT 1 FROM inventory_applicable_menu am
                  WHERE am.inventory_item_id = i.id
+           )
+           AND NOT EXISTS (
+                SELECT 1 FROM ReceiptLines rl
+                 WHERE LOWER(TRIM(rl.ItemName)) = LOWER(TRIM(i.item_name))
            )'
     );
 } catch (Throwable $e) {
-    // Non-fatal cleanup.
+    // Non-fatal cleanup (ReceiptLines may be missing on older DBs).
+    try {
+        $pdo->exec(
+            'UPDATE inventory_items i
+             SET i.is_active = 0
+             WHERE i.is_active = 1
+               AND i.menu_item_id IS NULL
+               AND LOWER(TRIM(COALESCE(i.supplier, ""))) = "unassigned"
+               AND COALESCE(i.stock_units, 0) = 0
+               AND COALESCE(i.units_in_use, 0) = 0
+               AND COALESCE(i.open_items_count, 0) = 0
+               AND COALESCE(i.category_type, "main") = "main"
+               AND NOT EXISTS (
+                    SELECT 1 FROM recipe_ingredients ri
+                     WHERE ri.inventory_item_id = i.id
+               )
+               AND NOT EXISTS (
+                    SELECT 1 FROM inventory_applicable_menu am
+                     WHERE am.inventory_item_id = i.id
+               )'
+        );
+    } catch (Throwable $e2) {
+        // Non-fatal cleanup.
+    }
 }
 
 $stmt = $pdo->query(

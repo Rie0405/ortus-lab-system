@@ -548,8 +548,18 @@ if ($date === '') {
 if ($expectedReceiveDate === '') {
     $expectedReceiveDate = $date;
 }
-if ($supplier === '') {
-    $supplier = 'Unassigned';
+
+// Receipts.Supplier is NOT NULL — keep a placeholder there.
+// inventory_items must NOT use "Unassigned" on register: inventory GET used to
+// soft-delete those rows and they vanished from the list right after register.
+$receiptSupplier = ($supplier !== '') ? $supplier : 'Unassigned';
+$inventorySupplier = null;
+if ($registerMode) {
+    if ($supplier !== '' && strcasecmp($supplier, 'Unassigned') !== 0) {
+        $inventorySupplier = $supplier;
+    }
+} else {
+    $inventorySupplier = ($supplier !== '') ? $supplier : 'Unassigned';
 }
 if (!is_array($linesRaw) || count($linesRaw) === 0) fail('At least one line item is required.');
 
@@ -629,7 +639,7 @@ if (count($lines) === 0) fail('No valid line items found.');
             ':date' => $date,
             ':ordered_date' => ($orderedDate !== '' ? $orderedDate : null),
             ':expected_receive_date' => $expectedReceiveDate,
-            ':supplier' => $supplier,
+            ':supplier' => $receiptSupplier,
             ':entry_source' => $entrySource,
             ':total_amount' => $totalAmount,
         ]);
@@ -642,7 +652,7 @@ if (count($lines) === 0) fail('No valid line items found.');
             ':date' => $date,
             ':ordered_date' => ($orderedDate !== '' ? $orderedDate : null),
             ':expected_receive_date' => $expectedReceiveDate,
-            ':supplier' => $supplier,
+            ':supplier' => $receiptSupplier,
             ':total_amount' => $totalAmount,
         ]);
     } else {
@@ -652,7 +662,7 @@ if (count($lines) === 0) fail('No valid line items found.');
         );
         $receiptStmt->execute([
             ':date' => $date,
-            ':supplier' => $supplier,
+            ':supplier' => $receiptSupplier,
             ':total_amount' => $totalAmount,
         ]);
     }
@@ -794,7 +804,7 @@ if (count($lines) === 0) fail('No valid line items found.');
         if ($existingInventory) {
             if ($registerMode) {
                 $regParams = [
-                    ':supplier' => $supplier,
+                    ':supplier' => $inventorySupplier,
                     ':id' => (int)$existingInventory['id'],
                 ];
                 if (isset($invCols['stock_type'])) $regParams[':stock_type'] = $line['stock_type'];
@@ -828,7 +838,7 @@ if (count($lines) === 0) fail('No valid line items found.');
             }
             $updParams = [
                 ':stock_units' => $counts['stock_units'],
-                ':supplier' => $supplier,
+                ':supplier' => $inventorySupplier,
                 ':unit_cost' => $line['unit_cost'],
                 ':id' => (int)$existingInventory['id'],
             ];
@@ -870,7 +880,7 @@ if (count($lines) === 0) fail('No valid line items found.');
         $createParams = [
             ':item_name' => $line['item_name'],
             ':category_name' => $line['line_type'],
-            ':supplier' => $supplier,
+            ':supplier' => $inventorySupplier,
             ':stock_units' => $counts['stock_units'],
             ':unit_cost' => $line['unit_cost'],
         ];

@@ -105,57 +105,65 @@ function ensure_receipt_schema(PDO $pdo): void {
         }
     }
 
-    // Hostinger/InnoDB: named FKs must be unique DB-wide. A leftover constraint name
-    // (errno 121) can make CREATE TABLE IF NOT EXISTS fail even when the table is gone.
-    $receiptLinesExists = false;
-    try {
-        foreach ($pdo->query('SHOW TABLES') as $row) {
-            $name = (string)(array_values($row)[0] ?? '');
-            if (strcasecmp($name, 'ReceiptLines') === 0) {
-                $receiptLinesExists = true;
-                break;
+    // Hostinger/InnoDB: constraint/index names are unique DB-wide. Leftover names
+    // (errno 121) break CREATE even when ReceiptLines itself is missing.
+    $receiptLinesExists = receipt_table_exists($pdo, 'ReceiptLines');
+    $createError = '';
+
+    if (!$receiptLinesExists) {
+        $createAttempts = [
+            // Minimal table — no named FK/index (avoids errno 121 collisions).
+            'CREATE TABLE ReceiptLines (
+                ReceiptLineID INT AUTO_INCREMENT PRIMARY KEY,
+                ReceiptID INT NOT NULL,
+                LineType VARCHAR(100) NOT NULL,
+                ItemName VARCHAR(160) NOT NULL,
+                Quantity DECIMAL(12,2) NOT NULL,
+                UnitCost DECIMAL(12,2) NOT NULL,
+                TotalCost DECIMAL(12,2) NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            // Last resort: MyISAM has no InnoDB FK/index-name namespace issues.
+            'CREATE TABLE ReceiptLines (
+                ReceiptLineID INT AUTO_INCREMENT PRIMARY KEY,
+                ReceiptID INT NOT NULL,
+                LineType VARCHAR(100) NOT NULL,
+                ItemName VARCHAR(160) NOT NULL,
+                Quantity DECIMAL(12,2) NOT NULL,
+                UnitCost DECIMAL(12,2) NOT NULL,
+                TotalCost DECIMAL(12,2) NOT NULL
+            ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4',
+        ];
+        foreach ($createAttempts as $sql) {
+            try {
+                $pdo->exec($sql);
+                $receiptLinesExists = receipt_table_exists($pdo, 'ReceiptLines');
+                if ($receiptLinesExists) {
+                    $createError = '';
+                    break;
+                }
+            } catch (Throwable $e) {
+                $createError = $e->getMessage();
             }
         }
-    } catch (Throwable $e) {
-        $receiptLinesExists = false;
     }
 
     if (!$receiptLinesExists) {
-        try {
-            // No explicit CONSTRAINT name — avoids duplicate-key errno 121 on shared hosts.
-            $pdo->exec(
-                'CREATE TABLE ReceiptLines (
-                    ReceiptLineID INT AUTO_INCREMENT PRIMARY KEY,
-                    ReceiptID INT NOT NULL,
-                    LineType VARCHAR(100) NOT NULL,
-                    ItemName VARCHAR(160) NOT NULL,
-                    Quantity DECIMAL(12,2) NOT NULL,
-                    UnitCost DECIMAL(12,2) NOT NULL,
-                    TotalCost DECIMAL(12,2) NOT NULL,
-                    INDEX idx_receipt_lines_receipt (ReceiptID),
-                    FOREIGN KEY (ReceiptID) REFERENCES Receipts(ReceiptID)
-                        ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-            );
-        } catch (Throwable $e) {
-            // Fallback: create without FK so register/stock-log can still run.
-            try {
-                $pdo->exec(
-                    'CREATE TABLE IF NOT EXISTS ReceiptLines (
-                        ReceiptLineID INT AUTO_INCREMENT PRIMARY KEY,
-                        ReceiptID INT NOT NULL,
-                        LineType VARCHAR(100) NOT NULL,
-                        ItemName VARCHAR(160) NOT NULL,
-                        Quantity DECIMAL(12,2) NOT NULL,
-                        UnitCost DECIMAL(12,2) NOT NULL,
-                        TotalCost DECIMAL(12,2) NOT NULL,
-                        INDEX idx_receipt_lines_receipt (ReceiptID)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-                );
-            } catch (Throwable $e2) {
-                // If another request created it concurrently, continue.
-            }
-        }
+        throw new RuntimeException(
+            'Could not create ReceiptLines table'
+            . ($createError !== '' ? ': ' . $createError : '')
+        );
+    }
+
+    // Optional FK (best-effort). Skip if constraint name already taken elsewhere.
+    try {
+        $pdo->exec(
+            'ALTER TABLE ReceiptLines
+                ADD CONSTRAINT fk_ortus_receipt_lines_receiptid
+                FOREIGN KEY (ReceiptID) REFERENCES Receipts(ReceiptID)
+                ON DELETE CASCADE'
+        );
+    } catch (Throwable $e) {
+        // Non-fatal: register/stock-log work without the FK.
     }
 
     // Allow any inventory category name (not limited to Bar/Kitchen).
@@ -170,7 +178,11 @@ function ensure_receipt_schema(PDO $pdo): void {
         try {
             $pdo->exec('ALTER TABLE ReceiptLines ADD COLUMN InUse DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER Quantity');
         } catch (Throwable $e) {
-            // Ignore migration issues on environments with restricted ALTER privileges.
+            try {
+                $pdo->exec('ALTER TABLE ReceiptLines ADD COLUMN InUse DECIMAL(12,2) NOT NULL DEFAULT 0');
+            } catch (Throwable $e2) {
+                // Ignore.
+            }
         }
     }
 
@@ -179,7 +191,11 @@ function ensure_receipt_schema(PDO $pdo): void {
         try {
             $pdo->exec('ALTER TABLE ReceiptLines ADD COLUMN PerStockAmount DECIMAL(12,2) NOT NULL DEFAULT 1 AFTER InUse');
         } catch (Throwable $e) {
-            // Ignore migration issues on environments with restricted ALTER privileges.
+            try {
+                $pdo->exec('ALTER TABLE ReceiptLines ADD COLUMN PerStockAmount DECIMAL(12,2) NOT NULL DEFAULT 1');
+            } catch (Throwable $e2) {
+                // Ignore.
+            }
         }
     }
 
@@ -188,9 +204,28 @@ function ensure_receipt_schema(PDO $pdo): void {
         try {
             $pdo->exec("ALTER TABLE ReceiptLines ADD COLUMN UnitName VARCHAR(20) NOT NULL DEFAULT 'pcs' AFTER PerStockAmount");
         } catch (Throwable $e) {
-            // Ignore migration issues on environments with restricted ALTER privileges.
+            try {
+                $pdo->exec("ALTER TABLE ReceiptLines ADD COLUMN UnitName VARCHAR(20) NOT NULL DEFAULT 'pcs'");
+            } catch (Throwable $e2) {
+                // Ignore.
+            }
         }
     }
+}
+
+function receipt_table_exists(PDO $pdo, string $table): bool
+{
+    try {
+        foreach ($pdo->query('SHOW TABLES') as $row) {
+            $name = (string)(array_values($row)[0] ?? '');
+            if (strcasecmp($name, $table) === 0) {
+                return true;
+            }
+        }
+    } catch (Throwable $e) {
+        return false;
+    }
+    return false;
 }
 
 function ensure_inventory_schema(PDO $pdo): void {
@@ -345,15 +380,9 @@ try {
     ensure_inventory_category_types_schema($pdo);
 } catch (Throwable $e) {
     // Schema bootstrap should not hard-block register if core tables already exist.
-    try {
-        $hasInv = (bool)$pdo->query("SHOW TABLES LIKE 'inventory_items'")->fetch();
-        $hasReceipts = (bool)$pdo->query("SHOW TABLES LIKE 'Receipts'")->fetch();
-        $hasLines = (bool)$pdo->query("SHOW TABLES LIKE 'ReceiptLines'")->fetch();
-    } catch (Throwable $e2) {
-        $hasInv = false;
-        $hasReceipts = false;
-        $hasLines = false;
-    }
+    $hasInv = receipt_table_exists($pdo, 'inventory_items');
+    $hasReceipts = receipt_table_exists($pdo, 'Receipts');
+    $hasLines = receipt_table_exists($pdo, 'ReceiptLines');
     if (!$hasInv || !$hasReceipts || !$hasLines) {
         fail('Inventory schema setup failed: ' . $e->getMessage(), 500);
     }

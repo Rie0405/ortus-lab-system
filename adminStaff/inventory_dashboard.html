@@ -2140,14 +2140,13 @@
             if (!supplierName && receiptModalMode === 'add_receipt') {
                 supplierName = resolveSupplierFromSelectedItems();
             }
-            if (!supplierName && receiptModalMode !== 'add_receipt') {
-                supplierName = 'Unassigned';
-            }
+            // Register mode: leave supplier blank (backend stores NULL).
+            // Do NOT force "Unassigned" — that used to hide new items from the list.
             return {
                 date: (receiptDate && receiptDate.value) || getTodayIsoDate(),
                 ordered_date: (receiptDate && receiptDate.value) || getTodayIsoDate(),
                 expected_receive_date: (receiptExpectedDate && receiptExpectedDate.value) || getTodayIsoDate(),
-                supplier: supplierName,
+                supplier: supplierName || '',
                 entry_source: 'admin',
                 mode: receiptModalMode,
                 lines: lines
@@ -3019,21 +3018,38 @@
             updateFilterButtonLabel();
         }
 
+        function categoryPassesInventoryFilter(categoryName) {
+            var barOn = !!inventoryFilters.categories.Bar;
+            var kitchenOn = !!inventoryFilters.categories.Kitchen;
+            // Both on (default) or both off => show every station/category.
+            if (barOn === kitchenOn) return true;
+            var lower = String(categoryName || '').trim().toLowerCase();
+            if (barOn) return lower === 'bar';
+            if (kitchenOn) return lower === 'kitchen';
+            return true;
+        }
+
+        function stockTypePassesInventoryFilter(stockType) {
+            var consOn = !!inventoryFilters.types.consumable;
+            var nonOn = !!inventoryFilters.types.non_consumable;
+            if (consOn === nonOn) return true;
+            var key = String(stockType || 'consumable').trim().toLowerCase();
+            if (consOn) return key === 'consumable';
+            if (nonOn) return key === 'non_consumable';
+            return true;
+        }
+
         function getFilteredItems(entryMode) {
             var q = (searchIn && searchIn.value || '').trim().toLowerCase();
-            var anyType = inventoryFilters.types.consumable || inventoryFilters.types.non_consumable;
-            var anyCategory = inventoryFilters.categories.Bar || inventoryFilters.categories.Kitchen;
             var modeFilter = entryMode ? String(entryMode).trim().toLowerCase() : '';
             return allItems.filter(function (item) {
                 if (modeFilter && getEntryMode(item) !== modeFilter) return false;
-                var stockType = getStockType(item);
-                var categoryName = String(item.category_name || '').trim();
-                var typeOk = !anyType || !!inventoryFilters.types[stockType];
-                var categoryOk = !anyCategory || !!inventoryFilters.categories[categoryName];
-                if (!categoryOk || !typeOk) return false;
+                if (!stockTypePassesInventoryFilter(getStockType(item))) return false;
+                if (!categoryPassesInventoryFilter(item.category_name)) return false;
                 if (!q) return true;
                 return String(item.name || '').toLowerCase().indexOf(q) !== -1
-                    || String(item.category_name || '').toLowerCase().indexOf(q) !== -1;
+                    || String(item.category_name || '').toLowerCase().indexOf(q) !== -1
+                    || String(item.category_type || '').toLowerCase().indexOf(q) !== -1;
             });
         }
 
@@ -3744,9 +3760,16 @@
             }
 
             if (tableFoot) {
-                tableFoot.textContent = filtered.length
-                    ? ('Showing ' + filtered.length + ' item' + (filtered.length === 1 ? '' : 's'))
-                    : 'No items to show';
+                if (filtered.length) {
+                    tableFoot.textContent = 'Showing ' + filtered.length + ' item' + (filtered.length === 1 ? '' : 's');
+                } else if (allItems.length) {
+                    var otherModeCount = getFilteredItems('manual').length;
+                    tableFoot.textContent = otherModeCount
+                        ? ('No automatic items here. ' + otherModeCount + ' item' + (otherModeCount === 1 ? ' is' : 's are') + ' under Manual Inventory.')
+                        : 'No items match the current filters.';
+                } else {
+                    tableFoot.textContent = 'No items to show';
+                }
             }
 
             renderManualRows();

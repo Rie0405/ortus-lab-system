@@ -683,6 +683,10 @@ body.modal-open {
     background: #2d241b;
     border: 1px solid #2d241b;
     object-fit: cover;
+    display: block;
+}
+.prod-img-placeholder {
+    flex-shrink: 0;
 }
 .name strong { display: block; font-size: 16px; }
 .name small { color: #64748b; }

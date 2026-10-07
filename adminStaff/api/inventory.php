@@ -393,6 +393,23 @@ if ($method === 'POST') {
     if ($category === '') fail('Category is required.');
     if ($stockUnits < 0) fail('Stock units cannot be negative.');
 
+    $dupStmt = $pdo->prepare(
+        'SELECT id
+         FROM inventory_items
+         WHERE menu_item_id IS NULL
+           AND is_active = 1
+           AND LOWER(TRIM(item_name)) = LOWER(TRIM(:item_name))
+           AND category_name = :category_name
+         LIMIT 1'
+    );
+    $dupStmt->execute([
+        ':item_name' => $name,
+        ':category_name' => $category,
+    ]);
+    if ($dupStmt->fetch()) {
+        fail('Item already registered.');
+    }
+
     $stmt = $pdo->prepare(
         'INSERT INTO inventory_items
             (menu_item_id, item_name, category_name, supplier, stock_units, average_daily_usage, lead_time_days, safety_stock, reorder_point_ready, reorder_level, unit_cost, stock_type, is_active)
@@ -867,16 +884,16 @@ if ($method === 'PUT') {
         } elseif (array_key_exists('orders_per_box', $b)) {
             log_system_activity($pdo, [
                 'source_key' => 'orders_per_stock',
-                'source_label' => 'Orders Per Stock',
-                'action' => 'orders per stock set for ' . $itemName . ' (' . (int)$b['orders_per_box'] . ')',
+                'source_label' => 'Batch Capacity',
+                'action' => 'batch capacity set for ' . $itemName . ' (' . (int)$b['orders_per_box'] . ')',
                 'entity_type' => 'inventory_item',
                 'entity_id' => $id,
             ]);
         } elseif (array_key_exists('per_stock_amount', $b)) {
             log_system_activity($pdo, [
                 'source_key' => 'batch_size',
-                'source_label' => 'Batch Size',
-                'action' => 'batch size set for ' . $itemName . ' (' . (float)$b['per_stock_amount'] . ')',
+                'source_label' => 'Per Piece',
+                'action' => 'per piece set for ' . $itemName . ' (' . (float)$b['per_stock_amount'] . ')',
                 'entity_type' => 'inventory_item',
                 'entity_id' => $id,
             ]);

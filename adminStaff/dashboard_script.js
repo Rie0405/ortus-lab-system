@@ -2094,6 +2094,26 @@ function apiCall(method, url, body) {
         }
     });
 
+    function menuItemThumbHtml(item) {
+        var url = item && item.image_url ? String(item.image_url).trim() : '';
+        if (!url) {
+            return '<div class="prod-img prod-img-placeholder" aria-hidden="true"></div>';
+        }
+        return '<img class="prod-img" src="' + escHtml(url) + '" alt="' + escHtml(item.name || '') + '" loading="lazy">';
+    }
+
+    function bindMenuThumbFallbacks(root) {
+        if (!root) return;
+        root.querySelectorAll('img.prod-img').forEach(function (img) {
+            img.addEventListener('error', function () {
+                var ph = document.createElement('div');
+                ph.className = 'prod-img prod-img-placeholder';
+                ph.setAttribute('aria-hidden', 'true');
+                if (img.parentNode) img.parentNode.replaceChild(ph, img);
+            });
+        });
+    }
+
     // ── Render table rows from items array ───────────────────────────────────
     function renderTable(items) {
         // Keep the header row, replace only data rows
@@ -2117,7 +2137,7 @@ function apiCall(method, url, body) {
             var statusLabel = item.is_available ? 'AVAILABLE' : 'SOLD OUT';
 
             row.innerHTML =
-                '<div><div class="prod-img-placeholder"></div></div>' +
+                '<div>' + menuItemThumbHtml(item) + '</div>' +
                 '<div class="name"><strong>' + escHtml(item.name) + '</strong>' +
                     '<small>' + escHtml(stripIngredientsFromDescription(item.description || '') || '--') + '</small></div>' +
                 '<div><span class="cat">' + escHtml(displayCategoryLabelForTable(item.category_name)) + '</span></div>' +
@@ -2139,6 +2159,8 @@ function apiCall(method, url, body) {
 
             tableBody.appendChild(row);
         });
+
+        bindMenuThumbFallbacks(tableBody);
 
         // Re-bind edit / delete handlers
         tableBody.querySelectorAll('.acts button[data-edit-id]').forEach(function (btn) {

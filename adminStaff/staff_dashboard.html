@@ -3928,10 +3928,35 @@
                     });
             }
 
+            function getRestockMainCategoryNames() {
+                var stations = window.staffStations || [];
+                var names = stations.map(function (st) {
+                    return String(st && st.name || "").trim();
+                }).filter(Boolean);
+                if (names.length) return names;
+                // Fallback only if stations have not loaded yet.
+                return ["Bar", "Kitchen"];
+            }
+
+            function buildRestockMainCategoryOptionsHtml(selected) {
+                var names = getRestockMainCategoryNames();
+                var current = String(selected || "").trim();
+                var html = names.map(function (name) {
+                    return '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + "</option>";
+                }).join("");
+                if (current && !names.some(function (name) {
+                    return name.toLowerCase() === current.toLowerCase();
+                })) {
+                    html += '<option value="' + escapeHtml(current) + '">' + escapeHtml(current) + "</option>";
+                }
+                return html;
+            }
+
             function createShortageRestockLineRow(line) {
                 var row = document.createElement("div");
                 row.className = "shortage-restock-lines__row";
-                var category = String(line && line.line_type || "Bar");
+                var names = getRestockMainCategoryNames();
+                var category = String(line && line.line_type || names[0] || "Bar").trim();
                 var itemName = String(line && line.item_name || "");
                 var stocks = Math.max(1, parseInt((line && line.stocks) || 1, 10) || 1);
                 var unitRaw = String(line && line.unit || "pcs").trim().toLowerCase();
@@ -3939,15 +3964,40 @@
                 var unitDisplay = normalizeUnitLabel(unitRaw);
                 var unitValue = unitDisplay === "L" ? "l" : (unitDisplay === "mL" ? "ml" : unitRaw);
                 row.innerHTML =
-                    '<select class="shortage-restock-category"><option value="Bar">Bar</option><option value="Kitchen">Kitchen</option></select>' +
+                    '<select class="shortage-restock-category">' + buildRestockMainCategoryOptionsHtml(category) + "</select>" +
                     '<input type="text" class="shortage-restock-item" placeholder="Item" value="' + escapeHtml(itemName) + '">' +
                     '<input type="number" class="shortage-restock-stocks" min="1" step="1" value="' + String(stocks) + '">' +
                     '<span class="shortage-restock-unit" data-unit="' + escapeHtml(unitValue) + '" title="Fixed from inventory settings">' +
                         escapeHtml(unitDisplay) +
-                    '</span>';
+                    "</span>";
                 var catEl = row.querySelector(".shortage-restock-category");
-                if (catEl) catEl.value = category === "Kitchen" ? "Kitchen" : "Bar";
+                if (catEl) {
+                    var match = names.find(function (name) {
+                        return name.toLowerCase() === category.toLowerCase();
+                    });
+                    catEl.value = match || category || names[0] || "";
+                }
                 return row;
+            }
+
+            function ensureRestockMainCategoriesLoaded() {
+                if (window.staffStations && window.staffStations.length) {
+                    return Promise.resolve(window.staffStations);
+                }
+                return fetch("api/main_categories.php?_=" + Date.now(), { cache: "no-store" })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (!d || !d.success) return [];
+                        var list = (d.main_categories || []).map(function (c) {
+                            return {
+                                id: parseInt(c.id, 10) || 0,
+                                name: String(c.name || "").trim()
+                            };
+                        }).filter(function (c) { return c.id > 0 && c.name; });
+                        window.staffStations = list;
+                        return list;
+                    })
+                    .catch(function () { return []; });
             }
 
             function openShortageRestockModal(shortages) {
@@ -3962,10 +4012,13 @@
                         resolve(false);
                         return;
                     }
+
+                    ensureRestockMainCategoriesLoaded().then(function () {
+                    var defaultCat = getRestockMainCategoryNames()[0] || "Bar";
                     var baseLines = (shortages || []).map(function (s) {
                         var shortage = Number(s && s.shortage);
                         return {
-                            line_type: String((s && s.category_name) || "Bar"),
+                            line_type: String((s && s.category_name) || defaultCat),
                             item_name: String((s && s.item_name) || "").trim(),
                             stocks: Math.max(1, Math.ceil(Number.isFinite(shortage) ? shortage : 0)),
                             unit: String((s && s.per_stock_unit) || "pcs")
@@ -3974,7 +4027,7 @@
                         return !!line.item_name;
                     });
                     if (!baseLines.length) {
-                        baseLines = [{ line_type: "Bar", item_name: "", stocks: 1, unit: "pcs" }];
+                        baseLines = [{ line_type: defaultCat, item_name: "", stocks: 1, unit: "pcs" }];
                     }
                     linesBody.innerHTML = "";
                     baseLines.forEach(function (line) {
@@ -4007,7 +4060,7 @@
                                 ? String(unitEl.getAttribute("data-unit") || unitEl.textContent || "pcs").trim()
                                 : "pcs";
                             return {
-                                line_type: String(lineTypeEl && lineTypeEl.value || "Bar"),
+                                line_type: String(lineTypeEl && lineTypeEl.value || getRestockMainCategoryNames()[0] || "Bar"),
                                 item_name: itemName,
                                 stocks: Math.max(1, parseInt((stocksEl && stocksEl.value) || "0", 10) || 1),
                                 in_use: 0,
@@ -4093,6 +4146,7 @@
                     modal.setAttribute("aria-hidden", "false");
                     buildRestockStaffOptions(staffSelect).finally(function () {
                         if (staffSelect) staffSelect.focus();
+                    });
                     });
                 });
             }

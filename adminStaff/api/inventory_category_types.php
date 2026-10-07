@@ -23,6 +23,7 @@ if ($m === 'POST') {
     if ($slug === '') {
         fail('Category type name is invalid.');
     }
+    $entryMode = normalize_inventory_entry_mode($b['entry_mode'] ?? 'automatic');
 
     $find = $pdo->prepare(
         'SELECT id, name, is_active FROM inventory_category_types
@@ -36,10 +37,11 @@ if ($m === 'POST') {
             $ord = (int)$pdo->query('SELECT COALESCE(MAX(display_order), 0) + 1 FROM inventory_category_types')->fetchColumn();
             $pdo->prepare(
                 'UPDATE inventory_category_types
-                    SET is_active = 1, name = :name, display_order = :ord
+                    SET is_active = 1, name = :name, entry_mode = :entry_mode, display_order = :ord
                   WHERE id = :id'
             )->execute([
                 ':name' => $name,
+                ':entry_mode' => $entryMode,
                 ':ord' => $ord,
                 ':id' => (int)$existing['id'],
             ]);
@@ -58,12 +60,13 @@ if ($m === 'POST') {
 
     $ord = (int)$pdo->query('SELECT COALESCE(MAX(display_order), 0) + 1 FROM inventory_category_types')->fetchColumn();
     $ins = $pdo->prepare(
-        'INSERT INTO inventory_category_types (slug, name, display_order, is_active)
-         VALUES (:slug, :name, :ord, 1)'
+        'INSERT INTO inventory_category_types (slug, name, entry_mode, display_order, is_active)
+         VALUES (:slug, :name, :entry_mode, :ord, 1)'
     );
     $ins->execute([
         ':slug' => $slug,
         ':name' => $name,
+        ':entry_mode' => $entryMode,
         ':ord' => $ord,
     ]);
 
@@ -78,35 +81,77 @@ if ($m === 'PUT') {
     require_auth();
     $b = body();
     $id = (int)($b['id'] ?? 0);
-    $name = trim((string)($b['name'] ?? ''));
     if (!$id) {
         fail('Category type id is required.');
     }
-    if ($name === '') {
-        fail('Category type name is required.');
-    }
-    $name = substr($name, 0, 80);
 
-    $cur = $pdo->prepare('SELECT id, slug, name FROM inventory_category_types WHERE id = :id AND is_active = 1');
+    $cur = $pdo->prepare(
+        'SELECT id, slug, name, entry_mode
+           FROM inventory_category_types
+          WHERE id = :id AND is_active = 1'
+    );
     $cur->execute([':id' => $id]);
     $row = $cur->fetch();
     if (!$row) {
         fail('Category type not found.', 404);
     }
 
-    $dup = $pdo->prepare(
-        'SELECT id FROM inventory_category_types
-          WHERE LOWER(name) = LOWER(:name) AND is_active = 1 AND id <> :id
-          LIMIT 1'
-    );
-    $dup->execute([':name' => $name, ':id' => $id]);
-    if ($dup->fetch()) {
-        fail('Another category type already uses that name.');
+    $hasName = array_key_exists('name', $b);
+    $hasMode = array_key_exists('entry_mode', $b);
+    if (!$hasName && !$hasMode) {
+        fail('Nothing to update.');
     }
 
+    $name = $hasName ? trim((string)$b['name']) : (string)$row['name'];
+    if ($hasName) {
+        if ($name === '') {
+            fail('Category type name is required.');
+        }
+        $name = substr($name, 0, 80);
+        $dup = $pdo->prepare(
+            'SELECT id FROM inventory_category_types
+              WHERE LOWER(name) = LOWER(:name) AND is_active = 1 AND id <> :id
+              LIMIT 1'
+        );
+        $dup->execute([':name' => $name, ':id' => $id]);
+        if ($dup->fetch()) {
+            fail('Another category type already uses that name.');
+        }
+    }
+
+    $entryMode = $hasMode
+        ? normalize_inventory_entry_mode($b['entry_mode'])
+        : normalize_inventory_entry_mode($row['entry_mode'] ?? 'automatic');
+    $prevMode = normalize_inventory_entry_mode($row['entry_mode'] ?? 'automatic');
+    $slug = (string)$row['slug'];
+
     // Keep slug stable so existing inventory_items.category_type values stay valid.
-    $pdo->prepare('UPDATE inventory_category_types SET name = :name WHERE id = :id')
-        ->execute([':name' => $name, ':id' => $id]);
+    $pdo->prepare(
+        'UPDATE inventory_category_types
+            SET name = :name, entry_mode = :entry_mode
+          WHERE id = :id'
+    )->execute([
+        ':name' => $name,
+        ':entry_mode' => $entryMode,
+        ':id' => $id,
+    ]);
+
+    if ($hasMode && $entryMode !== $prevMode) {
+        try {
+            $cascade = $pdo->prepare(
+                'UPDATE inventory_items
+                    SET entry_mode = :entry_mode
+                  WHERE is_active = 1
+                    AND category_type = :slug'
+            );
+            $cascade->execute([
+                ':entry_mode' => $entryMode,
+                ':slug' => $slug,
+            ]);
+        } catch (Throwable $e) {
+            // Non-fatal if inventory_items.entry_mode / category_type missing during bootstrap.
+        }
+    }
 
     ok([
         'id' => $id,

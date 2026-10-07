@@ -49,7 +49,7 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate, ?arr
 
     $salesStmt = $pdo->prepare(
         'SELECT
-            COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN total_amount ELSE 0 END), 0) AS net_sales,
+            COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN total_amount ELSE 0 END), 0) AS collected_sales,
             COALESCE(SUM(CASE WHEN ' . $saleCond . ' THEN discount_amount ELSE 0 END), 0) AS discounts_total,
             COALESCE(SUM(CASE WHEN status = "voided" THEN total_amount ELSE 0 END), 0) AS refunds_total,
             COUNT(CASE WHEN ' . $saleCond . ' THEN 1 END) AS total_orders,
@@ -78,10 +78,12 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate, ?arr
     $cogsStmt->execute($cogsParams);
     $totalCogs = (float)$cogsStmt->fetchColumn();
 
-    $netSales = round((float)($sales['net_sales'] ?? 0), 2);
+    $collectedSales = round((float)($sales['collected_sales'] ?? 0), 2);
     $discountsTotal = round((float)($sales['discounts_total'] ?? 0), 2);
     $refundsTotal = round((float)($sales['refunds_total'] ?? 0), 2);
     $grossRevenue = round((float)($sales['gross_revenue'] ?? 0), 2);
+    // Net Sales = Gross Sales − Discounts − Refunds (matches dashboard KPI copy).
+    $netSales = round($grossRevenue - $discountsTotal - $refundsTotal, 2);
     $totalOrders = (int)($sales['total_orders'] ?? 0);
     $totalCogs = round($totalCogs, 2);
     $grossProfit = round($netSales - $totalCogs, 2);
@@ -94,6 +96,7 @@ function fetch_cashflow_summary(PDO $pdo, string $fromDate, string $toDate, ?arr
 
     return [
         'net_sales' => $netSales,
+        'collected_sales' => $collectedSales,
         'discounts_total' => $discountsTotal,
         'refunds_total' => $refundsTotal,
         'total_cogs' => $totalCogs,

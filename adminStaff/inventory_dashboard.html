@@ -127,12 +127,12 @@
                         <span class="table-head-sub">Open — amount of items in use or open packs</span>
                     </div>
                     <div class="table-head--stacked">
-                        <span>Set orders per stock</span>
+                        <span>Batch Capacity</span>
                         <span class="table-head-sub">Estimated servings quantity</span>
                     </div>
                     <div class="table-head--stacked">
-                        <span>Batch Size</span>
-                        <span class="table-head-sub">Pieces opened per batch (Kitchen / non-consumable)</span>
+                        <span>Per Piece</span>
+                        <span class="table-head-sub">Pieces opened per batch</span>
                     </div>
                     <span>STATUS</span>
                     <span>ACTIONS</span>
@@ -271,7 +271,7 @@
                             </select>
                         </label>
                         <label class="inv-field" id="inv-orders-per-box-wrap" hidden>
-                        <span>Orders per Stock Item</span>
+                            <span>Batch Capacity</span>
                         <span class="inv-field-sub">How many orders one sealed item can serve.</span>
                             <input type="number" id="inv-orders-per-box" min="1" step="1" placeholder="e.g. 80">
                         </label>
@@ -420,13 +420,13 @@
         <div class="app-modal-backdrop" id="orders-per-box-modal" aria-hidden="true">
             <div class="app-modal" role="dialog" aria-modal="true" aria-labelledby="orders-per-box-title">
                 <header class="app-modal__header">
-                    <h2 id="orders-per-box-title">Set Orders per Stock Item</h2>
+                    <h2 id="orders-per-box-title">Set Batch Capacity</h2>
                     <button type="button" class="app-modal__close" id="orders-per-box-close" aria-label="Close">×</button>
                 </header>
                 <div class="app-modal__body">
                     <p class="app-modal__hint" id="orders-per-box-item-name">Item</p>
                     <label class="inv-field">
-                        <span id="orders-per-box-label">Orders per Stock Item</span>
+                        <span id="orders-per-box-label">Batch Capacity</span>
                         <input type="number" id="orders-per-box-input" min="1" step="1" placeholder="e.g. 80">
                     </label>
                 </div>
@@ -504,7 +504,6 @@
                                 <span>Item</span>
                                 <span>Unit Label</span>
                                 <span>Stock Type</span>
-                                <span>Mode</span>
                             </div>
                             <div id="receipt-lines-body"></div>
                         </div>
@@ -515,11 +514,25 @@
                             <span class="receipt-cat-type-manage-caret" aria-hidden="true">▾</span>
                         </button>
                         <div id="receipt-category-type-manage-panel" class="receipt-cat-type-manage-panel" hidden>
-                            <p class="receipt-cat-type-hint">Category types save right away. You do not need to register an inventory item just to add a category.</p>
-                            <label class="receipt-cat-type-select-label" for="receipt-category-type-select">Category type</label>
-                            <div class="receipt-cat-type-select-wrap">
-                                <select id="receipt-category-type-select" aria-label="Category type"></select>
-                                <span class="receipt-cat-type-caret" aria-hidden="true">▾</span>
+                            <p class="receipt-cat-type-hint">Category types save right away. You do not need to register an inventory item just to add a category. Mode applies to all items under the selected category type.</p>
+                            <div class="receipt-cat-type-fields">
+                                <div class="receipt-cat-type-field">
+                                    <label class="receipt-cat-type-select-label" for="receipt-category-type-select">Category type</label>
+                                    <div class="receipt-cat-type-select-wrap">
+                                        <select id="receipt-category-type-select" aria-label="Category type"></select>
+                                        <span class="receipt-cat-type-caret" aria-hidden="true">▾</span>
+                                    </div>
+                                </div>
+                                <div class="receipt-cat-type-field">
+                                    <label class="receipt-cat-type-select-label" for="receipt-category-type-mode">Mode</label>
+                                    <div class="receipt-cat-type-select-wrap">
+                                        <select id="receipt-category-type-mode" aria-label="Mode">
+                                            <option value="automatic">Automatic</option>
+                                            <option value="manual">Manual</option>
+                                        </select>
+                                        <span class="receipt-cat-type-caret" aria-hidden="true">▾</span>
+                                    </div>
+                                </div>
                             </div>
                             <button type="button" class="receipt-cat-type-link" id="receipt-category-type-toggle-new" aria-expanded="false">+ New category type</button>
                             <div id="receipt-category-type-new-panel" class="receipt-cat-type-panel" hidden>
@@ -830,7 +843,7 @@
             { id: 0, value: 'packaging', label: 'Packaging' },
             { id: 0, value: 'cashier_area', label: 'Cashier Area' }
         ];
-        var REGISTER_LINE_GRID_REGISTER = 'minmax(90px, 0.95fr) minmax(110px, 1fr) minmax(130px, 1.35fr) minmax(80px, 0.85fr) minmax(110px, 1fr) minmax(100px, 0.95fr)';
+        var REGISTER_LINE_GRID_REGISTER = 'minmax(90px, 0.95fr) minmax(110px, 1fr) minmax(130px, 1.35fr) minmax(80px, 0.85fr) minmax(110px, 1fr)';
         var ADD_RECEIPT_LINE_GRID = 'minmax(90px, 1fr) minmax(140px, 1.6fr) 72px 80px 34px';
         var REGISTER_UNIT_OPTIONS = [
             { value: 'pcs', label: 'pcs' },
@@ -861,6 +874,7 @@
         var restockNotificationLastShownKey = 'restock_notification_last_shown_date';
         var receiptCategoryTypesWrap = document.getElementById('receipt-category-types-wrap');
         var receiptCategoryTypeSelect = document.getElementById('receipt-category-type-select');
+        var receiptCategoryTypeModeSelect = document.getElementById('receipt-category-type-mode');
         var receiptCategoryTypeNameInput = document.getElementById('receipt-category-type-name');
         var receiptCategoryTypeAddBtn = document.getElementById('receipt-category-type-add');
         var receiptCategoryTypeRenameBtn = document.getElementById('receipt-category-type-rename');
@@ -869,6 +883,7 @@
         var receiptCategoryTypeNewPanel = document.getElementById('receipt-category-type-new-panel');
         var receiptCategoryTypeManageToggle = document.getElementById('receipt-category-type-manage-toggle');
         var receiptCategoryTypeManagePanel = document.getElementById('receipt-category-type-manage-panel');
+        var syncingCategoryTypeMode = false;
         var selectedCategoryTypeId = null;
 
         function esc(s) {
@@ -1015,7 +1030,7 @@
                 return (parseInt(item.stock_units, 10) || 0) > 0 ? 'No open item yet' : 'Out of stock';
             }
             if (!configured) {
-                return 'Open item — set orders per stock item';
+                return 'Open item — set batch capacity';
             }
             var left = Math.min(Math.round(ordersLeft), capacity);
             // When multiple stock items are open, treat the extra open items as full capacity
@@ -1069,9 +1084,9 @@
         function boxCapacityButtonTitle(item) {
             if (isKitchenCategory(item && item.category_name)) {
                 if (isItemCapacityConfigured(item)) {
-                    return getConfiguredItemCapacity(item) + ' estimated servings per stock unit — also used as Kitchen batch size. Click to edit.';
+                    return getConfiguredItemCapacity(item) + ' estimated servings per stock unit — also used as Kitchen per-piece size. Click to edit.';
                 }
-                return 'Kitchen: estimated servings quantity per stock unit (also becomes the batch size).';
+                return 'Kitchen: estimated servings quantity per stock unit (also becomes the per-piece size).';
             }
             if (isItemCapacityConfigured(item)) {
                 return getConfiguredItemCapacity(item) + ' estimated servings quantity per bottle/pack. Click to edit.';
@@ -1283,6 +1298,17 @@
             return '<select class="receipt-line-type">' + buildMainCategoryOptionsHtml(mainCategories[0] || 'Kitchen') + '</select>';
         }
 
+        function normalizeEntryModeValue(mode) {
+            var m = String(mode || 'automatic').trim().toLowerCase();
+            return m === 'manual' ? 'manual' : 'automatic';
+        }
+
+        function entryModeForCategoryTypeSlug(slug) {
+            var key = String(slug || 'main').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            var match = REGISTER_CATEGORY_TYPES.find(function (opt) { return opt.value === key; });
+            return normalizeEntryModeValue(match && match.entry_mode);
+        }
+
         function setRegisterCategoryTypes(list) {
             var mapped = (Array.isArray(list) ? list : []).map(function (opt) {
                 var value = String(opt && (opt.value || opt.slug) || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -1292,13 +1318,14 @@
                 return {
                     id: parseInt(opt && opt.id, 10) || 0,
                     value: value,
-                    label: label
+                    label: label,
+                    entry_mode: normalizeEntryModeValue(opt && opt.entry_mode)
                 };
             }).filter(Boolean);
             // Prefer API types only — no baked-in sample category-type list.
             REGISTER_CATEGORY_TYPES = mapped.length
                 ? mapped
-                : [{ id: 0, value: 'main', label: 'Main' }];
+                : [{ id: 0, value: 'main', label: 'Main', entry_mode: 'automatic' }];
             renderManagedCategoryTypes();
             refreshAllReceiptCategoryTypeSelects();
         }
@@ -1347,17 +1374,21 @@
             return key;
         }
 
-        function groupItemsByCategoryType(items) {
+        function groupItemsByCategoryType(items, modeFilter) {
+            var mode = normalizeEntryModeValue(modeFilter || 'automatic');
             var groups = [];
             var seen = {};
+            // Only show category types that belong to this Mode section.
             REGISTER_CATEGORY_TYPES.forEach(function (opt) {
+                if (normalizeEntryModeValue(opt.entry_mode) !== mode) return;
                 var matches = (items || []).filter(function (item) {
                     return normalizeCategoryType(item) === opt.value;
                 });
                 seen[opt.value] = true;
-                // Always show saved category types, even with zero items under them.
+                // Always show matching category types, even with zero items under them.
                 groups.push({ type: opt.value, label: opt.label, items: matches });
             });
+            // Orphan item category types (legacy / unknown) still appear if they have items here.
             (items || []).forEach(function (item) {
                 var key = normalizeCategoryType(item);
                 if (seen[key]) return;
@@ -1449,6 +1480,53 @@
             var selected = getSelectedManagedCategoryType();
             if (receiptCategoryTypeRenameBtn) receiptCategoryTypeRenameBtn.disabled = !selected;
             if (receiptCategoryTypeDeleteBtn) receiptCategoryTypeDeleteBtn.disabled = !selected;
+            if (receiptCategoryTypeModeSelect) receiptCategoryTypeModeSelect.disabled = !selected;
+        }
+
+        function syncManagedCategoryTypeModeUi() {
+            if (!receiptCategoryTypeModeSelect) return;
+            var selected = getSelectedManagedCategoryType();
+            syncingCategoryTypeMode = true;
+            receiptCategoryTypeModeSelect.value = normalizeEntryModeValue(selected && selected.entry_mode);
+            syncingCategoryTypeMode = false;
+            syncCategoryTypeCrudButtons();
+        }
+
+        function saveManagedCategoryTypeMode() {
+            var selected = getSelectedManagedCategoryType();
+            if (!selected || !receiptCategoryTypeModeSelect) return Promise.resolve(false);
+            var nextMode = normalizeEntryModeValue(receiptCategoryTypeModeSelect.value);
+            if (nextMode === normalizeEntryModeValue(selected.entry_mode)) {
+                return Promise.resolve(false);
+            }
+            receiptCategoryTypeModeSelect.disabled = true;
+            return fetch('api/inventory_category_types.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: selected.id, entry_mode: nextMode })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setReceiptError((d && d.error) || 'Failed to update Mode.');
+                        syncManagedCategoryTypeModeUi();
+                        return false;
+                    }
+                    selectedCategoryTypeId = selected.id;
+                    setRegisterCategoryTypes(d.category_types || []);
+                    setReceiptError('');
+                    setReceiptNotice('Mode saved for ' + selected.label + '. Existing items under this category type were updated.');
+                    loadInventory();
+                    return true;
+                })
+                .catch(function () {
+                    setReceiptError('Network error while updating Mode.');
+                    syncManagedCategoryTypeModeUi();
+                    return false;
+                })
+                .finally(function () {
+                    syncCategoryTypeCrudButtons();
+                });
         }
 
         function renderManagedCategoryTypes() {
@@ -1458,7 +1536,7 @@
             if (!REGISTER_CATEGORY_TYPES.length) {
                 receiptCategoryTypeSelect.innerHTML = '<option value="">No category types</option>';
                 selectedCategoryTypeId = null;
-                syncCategoryTypeCrudButtons();
+                syncManagedCategoryTypeModeUi();
                 return;
             }
             receiptCategoryTypeSelect.innerHTML = REGISTER_CATEGORY_TYPES.map(function (opt) {
@@ -1471,7 +1549,7 @@
             } else {
                 selectedCategoryTypeId = parseInt(receiptCategoryTypeSelect.value, 10) || null;
             }
-            syncCategoryTypeCrudButtons();
+            syncManagedCategoryTypeModeUi();
         }
 
         function addManagedCategoryType() {
@@ -1480,11 +1558,14 @@
                 setReceiptError('Enter a name for the new category type.');
                 return Promise.resolve(false);
             }
+            var entryMode = normalizeEntryModeValue(
+                receiptCategoryTypeModeSelect && receiptCategoryTypeModeSelect.value
+            );
             if (receiptCategoryTypeAddBtn) receiptCategoryTypeAddBtn.disabled = true;
             return fetch('api/inventory_category_types.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name })
+                body: JSON.stringify({ name: name, entry_mode: entryMode })
             })
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
@@ -1506,6 +1587,7 @@
                     } else {
                         setReceiptNotice('Category type added and saved. Use Save only when registering inventory items.');
                     }
+                    renderRows();
                     return true;
                 })
                 .catch(function () {
@@ -1633,10 +1715,6 @@
                 '<select class="receipt-stock-type">' +
                     '<option value="consumable">Consumable</option>' +
                     '<option value="non_consumable">Non-consumable</option>' +
-                '</select>' +
-                '<select class="receipt-entry-mode">' +
-                    '<option value="automatic">Automatic</option>' +
-                    '<option value="manual">Manual</option>' +
                 '</select>';
             return row;
         }
@@ -1722,7 +1800,8 @@
             lockedSupplierName = supplierName;
             persistLockedSupplier(supplierName);
             if (receiptSupplier) {
-                receiptSupplier.value = supplierName;
+                // Keep set supplier only in the "Using" badge — clear the input for the next name.
+                receiptSupplier.value = '';
                 receiptSupplier.dataset.autofilled = '0';
             }
             updateSupplierActiveUi();
@@ -1811,9 +1890,7 @@
                         return false;
                     }
                     setSavedSuppliers(d.suppliers || []);
-                    if (receiptSupplier && !normalizeSupplierName(receiptSupplier.value)) {
-                        receiptSupplier.value = supplierName;
-                    }
+                    // Don't put the name back in the input when a supplier is already set for the entry.
                     if (!opts.silent) setReceiptError('');
                     return true;
                 })
@@ -1939,7 +2016,7 @@
             if (receiptLinesRowHead) {
                 receiptLinesRowHead.innerHTML = isAddReceiptMode
                     ? '<span>Main Category</span><span>Item</span><span>Stocks</span><span>Unit</span><span></span>'
-                    : '<span>Main Category</span><span>Category Type</span><span>Item</span><span>Unit Label</span><span>Stock Type</span><span>Mode</span>';
+                    : '<span>Main Category</span><span>Category Type</span><span>Item</span><span>Unit Label</span><span>Stock Type</span>';
                 receiptLinesRowHead.style.gridTemplateColumns = isAddReceiptMode
                     ? ADD_RECEIPT_LINE_GRID
                     : REGISTER_LINE_GRID_REGISTER;
@@ -1961,11 +2038,8 @@
             if (receiptModalMode === 'add_receipt') {
                 var persisted = readPersistedLockedSupplier();
                 if (persisted) {
+                    // Restore into "Using" badge only — keep the input empty for typing another name.
                     lockedSupplierName = persisted;
-                    if (receiptSupplier) {
-                        receiptSupplier.value = persisted;
-                        receiptSupplier.dataset.autofilled = '0';
-                    }
                 }
             }
             updateSupplierActiveUi();
@@ -2015,7 +2089,6 @@
                 var itemNameEl = row.querySelector('.receipt-item-name');
                 var stocksEl = row.querySelector('.receipt-stocks');
                 var stockTypeEl = row.querySelector('.receipt-stock-type');
-                var entryModeEl = row.querySelector('.receipt-entry-mode');
                 var categoryTypeEl = row.querySelector('.receipt-category-type');
                 var unitLabelEl = row.querySelector('.receipt-unit-label');
                 var stocksVal = parseFloat((stocksEl && stocksEl.value) || '0');
@@ -2030,6 +2103,7 @@
                         resolvedUnit = normalizeDisplayUnit(matchItem.per_stock_unit || 'pcs');
                     }
                 }
+                var categoryType = (categoryTypeEl && categoryTypeEl.value) || 'main';
                 var totalCostVal = 0;
                 var line = {
                     line_type: lineType,
@@ -2037,8 +2111,8 @@
                     stocks: stocksVal,
                     in_use: 0,
                     stock_type: (stockTypeEl && stockTypeEl.value) || 'consumable',
-                    entry_mode: (entryModeEl && entryModeEl.value) || 'automatic',
-                    category_type: (categoryTypeEl && categoryTypeEl.value) || 'main',
+                    entry_mode: entryModeForCategoryTypeSlug(categoryType),
+                    category_type: categoryType,
                     stock_status: 'good',
                     per_stock_amount: 1,
                     unit: resolvedUnit,
@@ -2338,18 +2412,8 @@
         function renderReceiptSummaryList(items) {
             if (!receiptSummaryList) return;
             var list = Array.isArray(items) ? items : [];
-            var totalCost = list.reduce(function (sum, it) {
-                return sum + (parseFloat(it && it.total_amount) || 0);
-            }, 0);
             if (receiptSummaryTotals) {
-                receiptSummaryTotals.hidden = false;
-            }
-            if (receiptSummaryTotalsLabel) {
-                var countLabel = list.length === 1 ? '1 entry' : (list.length + ' entries');
-                receiptSummaryTotalsLabel.textContent = 'Total listed costs · ' + countLabel;
-            }
-            if (receiptSummaryTotalsAmount) {
-                receiptSummaryTotalsAmount.textContent = formatMoney(totalCost);
+                receiptSummaryTotals.hidden = true;
             }
 
             if (!list.length) {
@@ -2376,7 +2440,6 @@
                         '</div>' +
                         '<div class="receipt-summary-item__meta">' +
                             '<span>' + it.line_count + ' item(s)</span>' +
-                            '<strong>' + formatMoney(it.total_amount) + '</strong>' +
                         '</div>' +
                     '</article>';
             }).join('');
@@ -2396,8 +2459,6 @@
                         '<td>' + esc(line.item_name) + '</td>' +
                         '<td>' + Number(line.stocks != null ? line.stocks : line.quantity || 0).toFixed(0) + '</td>' +
                         '<td>' + esc(normalizeDisplayUnit(line.unit || 'pcs')) + '</td>' +
-                        '<td>' + formatMoney(line.unit_cost) + '</td>' +
-                        '<td>' + formatMoney(line.total_cost) + '</td>' +
                     '</tr>';
             }).join('');
 
@@ -2415,12 +2476,11 @@
                     '<span><strong>Date Ordered:</strong> ' + esc(receipt.ordered_date || receipt.date || '-') + '</span>' +
                     '<span><strong>Date Received:</strong> ' + esc(receipt.expected_receive_date || '-') + '</span>' +
                     '<span><strong>Items:</strong> ' + lines.length + ' line(s)</span>' +
-                    '<span><strong>Total Amount:</strong> ' + formatMoney(receipt.total_amount) + '</span>' +
                 '</div>' +
                 '<div class="receipt-summary-detail__table-wrap">' +
                     '<table class="receipt-summary-detail__table">' +
                         '<thead>' +
-                            '<tr><th>Main Category</th><th>Item</th><th>Stocks</th><th>Unit</th><th>Unit Cost</th><th>Total</th></tr>' +
+                            '<tr><th>Main Category</th><th>Item</th><th>Stocks</th><th>Unit</th></tr>' +
                         '</thead>' +
                         '<tbody>' + rowsHtml + '</tbody>' +
                     '</table>' +
@@ -2586,7 +2646,7 @@
                     ? 'Remaining quantity in the current batch. This goes down by 1 per served use.'
                     : 'Orders remaining on the active open item (used first).';
             }
-            if (perStockLabel) perStockLabel.textContent = non ? 'Batch Size' : 'Per Stock';
+            if (perStockLabel) perStockLabel.textContent = non ? 'Per Piece' : 'Per Stock';
         }
 
         function updateOpenItemsHint() {
@@ -3208,13 +3268,13 @@
             ordersPerBoxEditingMode = mode;
             if (ordersPerBoxTitle) {
                 ordersPerBoxTitle.textContent = mode === 'batch_size'
-                    ? 'Set Batch Size'
-                    : 'Set orders per stock';
+                    ? 'Set Per Piece'
+                    : 'Set Batch Capacity';
             }
             if (ordersPerBoxLabel) {
                 ordersPerBoxLabel.textContent = mode === 'batch_size'
-                    ? 'Batch Size'
-                    : 'Servings per bottle/pack (Bar · consumable)';
+                    ? 'Per Piece'
+                    : 'Batch Capacity';
             }
             if (ordersPerBoxItemName) {
                 ordersPerBoxItemName.textContent = mode === 'batch_size'
@@ -3246,8 +3306,8 @@
             var val = parseInt((ordersPerBoxInput && ordersPerBoxInput.value) || '0', 10);
             if (!Number.isFinite(val) || val < 1) {
                 alert(ordersPerBoxEditingMode === 'batch_size'
-                    ? 'Batch size must be at least 1.'
-                    : 'Orders per stock item must be at least 1.');
+                    ? 'Per Piece must be at least 1.'
+                    : 'Batch Capacity must be at least 1.');
                 return;
             }
             var payload = ordersPerBoxEditingMode === 'batch_size'
@@ -3262,8 +3322,8 @@
                 .then(function (d) {
                     if (!d.success) {
                         alert(d.error || (ordersPerBoxEditingMode === 'batch_size'
-                            ? 'Could not save batch size.'
-                            : 'Could not save orders per stock item.'));
+                            ? 'Could not save Per Piece.'
+                            : 'Could not save Batch Capacity.'));
                         return;
                     }
                     var it = allItems.find(function (x) { return x.id === ordersPerBoxEditingId; });
@@ -3289,7 +3349,7 @@
                 if (blockReason === 'batch') {
                     alert('Open is for Bar consumables only.\n\nKitchen / non-consumable items auto-track an active batch instead.');
                 } else {
-                    alert('Please set the Set orders per stock value first before opening this item.');
+                    alert('Please set the Batch Capacity value first before opening this item.');
                 }
                 return;
             }
@@ -3305,7 +3365,7 @@
                     return;
                 }
                 if (!isItemCapacityConfigured(targetItem)) {
-                    alert('Please set the Set orders per stock value first before opening this item.');
+                    alert('Please set the Batch Capacity value first before opening this item.');
                     return;
                 }
                 // Open popup to ask how many sealed stock items to open.
@@ -3400,11 +3460,11 @@
             manualTableWrap.querySelectorAll('.table-row').forEach(function (row) { row.remove(); });
 
             var filtered = getFilteredItems('manual');
-            var groups = groupItemsByCategoryType(filtered);
-            if (!REGISTER_CATEGORY_TYPES.length && !filtered.length) {
+            var groups = groupItemsByCategoryType(filtered, 'manual');
+            if (!groups.length && !filtered.length) {
                 var empty = document.createElement('div');
                 empty.className = 'table-row';
-                empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No manual inventory items found.</div>';
+                empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No manual inventory categories or items found.</div>';
                 manualTableWrap.appendChild(empty);
                 return;
             }
@@ -3452,7 +3512,7 @@
                 : (capacityConfigured ? getStockLevelColor(item) : 'rgba(148, 163, 184, 0.35)');
             var capacityLabel = nonConsumable ? '—' : boxCapacityButtonLabel(item);
             var capacityTitle = nonConsumable
-                ? 'Not used for non-consumable items (use Batch Size)'
+                ? 'Not used for non-consumable items (use Per Piece)'
                 : boxCapacityButtonTitle(item);
             var batchLabel = nonConsumable
                 ? String(batchSize)
@@ -3460,18 +3520,18 @@
                     ? String(batchSize)
                     : '—');
             var batchTitle = nonConsumable
-                ? ('Batch size — pieces opened per batch. Current: ' + batchSize)
+                ? ('Per Piece — pieces opened per batch. Current: ' + batchSize)
                 : (isKitchenCategory(item && item.category_name)
                     ? (capacityConfigured
-                        ? ('Kitchen batch size = Set orders per stock (' + batchSize + ')')
-                        : 'Kitchen: set Estimated servings quantity first — that value becomes the batch size')
-                    : 'Not used for Bar consumable items — use Set orders per stock + Open instead');
+                        ? ('Kitchen Per Piece = Batch Capacity (' + batchSize + ')')
+                        : 'Kitchen: set Batch Capacity first — that value becomes the Per Piece size')
+                    : 'Not used for Bar consumable items — use Batch Capacity + Open instead');
             var stockType = getStockType(item);
             var canOpen = !batchDisplay && capacityConfigured;
             var openBlockedReason = batchDisplay ? 'batch' : 'capacity';
             var openBlockedMsg = batchDisplay
                 ? 'Open is for Bar consumables. Kitchen / non-consumable items auto-track an active batch instead.'
-                : 'Please set the Set orders per stock value first before opening this item.';
+                : 'Please set the Batch Capacity value first before opening this item.';
             var openBtn = canOpen
                 ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open — amount of items in use or open packs">Open</button>'
                 : '<button type="button" class="btn-open-stock-used btn-open-stock-used--disabled" data-open-stock-blocked="1" data-open-block-reason="' + openBlockedReason + '" title="' + escAttr(openBlockedMsg) + '" aria-disabled="true">Open</button>';
@@ -3648,9 +3708,9 @@
             tableWrap.querySelectorAll('.table-row').forEach(function (row) { row.remove(); });
 
             var filtered = getFilteredItems('automatic');
-            var groups = groupItemsByCategoryType(filtered);
+            var groups = groupItemsByCategoryType(filtered, 'automatic');
 
-            if (!REGISTER_CATEGORY_TYPES.length && !filtered.length) {
+            if (!groups.length && !filtered.length) {
                 var empty = document.createElement('div');
                 empty.className = 'table-row';
                 empty.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">No inventory items found.</div>';
@@ -4300,7 +4360,7 @@
                         return setModalError('Active batch remaining cannot be negative.');
                     }
                     if (!Number.isFinite(payload.per_stock_amount) || payload.per_stock_amount < 1) {
-                        return setModalError('Batch size must be at least 1.');
+                        return setModalError('Per Piece must be at least 1.');
                     }
                 }
             } else {
@@ -4610,8 +4670,14 @@
         if (receiptCategoryTypeSelect) {
             receiptCategoryTypeSelect.addEventListener('change', function () {
                 selectedCategoryTypeId = parseInt(receiptCategoryTypeSelect.value, 10) || null;
-                syncCategoryTypeCrudButtons();
+                syncManagedCategoryTypeModeUi();
                 setReceiptError('');
+            });
+        }
+        if (receiptCategoryTypeModeSelect) {
+            receiptCategoryTypeModeSelect.addEventListener('change', function () {
+                if (syncingCategoryTypeMode) return;
+                saveManagedCategoryTypeMode();
             });
         }
         if (receiptCategoryTypeNameInput) {

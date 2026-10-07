@@ -277,6 +277,7 @@ function ensure_inventory_category_types_schema(PDO $pdo): void
             id INT AUTO_INCREMENT PRIMARY KEY,
             slug VARCHAR(40) NOT NULL,
             name VARCHAR(80) NOT NULL,
+            entry_mode VARCHAR(20) NOT NULL DEFAULT \'automatic\',
             display_order INT NOT NULL DEFAULT 0,
             is_active TINYINT(1) NOT NULL DEFAULT 1,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -284,6 +285,18 @@ function ensure_inventory_category_types_schema(PDO $pdo): void
             UNIQUE KEY uq_inv_cat_type_slug (slug)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
+
+    try {
+        $chkEntryMode = $pdo->query("SHOW COLUMNS FROM inventory_category_types LIKE 'entry_mode'");
+        if ($chkEntryMode && !$chkEntryMode->fetch()) {
+            $pdo->exec(
+                "ALTER TABLE inventory_category_types
+                 ADD COLUMN entry_mode VARCHAR(20) NOT NULL DEFAULT 'automatic' AFTER name"
+            );
+        }
+    } catch (Throwable $e) {
+        // ignore if already migrated or engine quirk
+    }
 
     $seeds = [
         ['main', 'Main', 1],
@@ -326,7 +339,7 @@ function fetch_active_inventory_category_types(PDO $pdo): array
 {
     ensure_inventory_category_types_schema($pdo);
     $rows = $pdo->query(
-        'SELECT id, slug, name, display_order
+        'SELECT id, slug, name, display_order, entry_mode
            FROM inventory_category_types
           WHERE is_active = 1
           ORDER BY display_order, name'
@@ -340,9 +353,29 @@ function fetch_active_inventory_category_types(PDO $pdo): array
             'label' => (string)$row['name'],
             'name' => (string)$row['name'],
             'display_order' => (int)$row['display_order'],
+            'entry_mode' => normalize_inventory_entry_mode($row['entry_mode'] ?? 'automatic'),
         ];
     }
     return $out;
+}
+
+function entry_mode_for_inventory_category_type(PDO $pdo, string $categoryType): string
+{
+    ensure_inventory_category_types_schema($pdo);
+    $slug = normalize_inventory_category_type($categoryType);
+    $stmt = $pdo->prepare(
+        'SELECT entry_mode
+           FROM inventory_category_types
+          WHERE is_active = 1
+            AND LOWER(slug) = LOWER(:slug)
+          LIMIT 1'
+    );
+    $stmt->execute([':slug' => $slug]);
+    $mode = $stmt->fetchColumn();
+    if ($mode === false || $mode === null) {
+        return 'automatic';
+    }
+    return normalize_inventory_entry_mode($mode);
 }
 
 function inventory_category_types(): array

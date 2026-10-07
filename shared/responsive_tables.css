@@ -1,15 +1,128 @@
-/* Shared phone/tablet adaptation for Ortus adminStaff dashboards */
+/* =============================================================================
+   Ortus adminStaff — Global Responsive Web Design foundation
+   Checklist: (1) global box model (2) fluid layout (3) content scale (4) breakpoints
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   1) GLOBAL FIX — box model
+   Note: we intentionally do NOT zero padding on every element (`* { padding:0 }`)
+   because Ortus controls already rely on their own padding. We only reset
+   document margins and force border-box everywhere.
+   ----------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
 
 html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 body {
+    margin: 0;
+    padding: 0;
     overflow-x: clip;
     max-width: 100vw;
+    width: 100%;
 }
 
+/* -----------------------------------------------------------------------------
+   2) LAYOUT STRUCTURE — fluid containers + wrapping rows
+   ----------------------------------------------------------------------------- */
+.inv-page,
+.order-page,
+.sales-page,
+.dash-page,
+.admin-page,
+.staff-page,
+.recipe-page,
+.menu-page {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.inv-main,
+.order-main,
+.sales-main,
+.dash-main,
+.admin-main,
+.menu-main,
+.content-wrap,
+.forecast-lab,
+.pos-main,
+.opq-main,
+main {
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 16px;
+    padding-right: 16px;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* POS is full-bleed by design — don't center/cap it like admin tables */
+.pos-main {
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Keep sticky nav full-bleed, but wrap children */
+.top-nav {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.top-links,
+.top-actions,
+.title-row,
+.heading-row,
+.chips-toolbar,
+.chips-row,
+.chip-row,
+.inv-filter-bar,
+.menu-filter-bar,
+.filter-bar,
+.stock-movement-toolbar,
+.stock-movement-filter-toolbar,
+.staff-brief-activity__controls,
+.metrics-grid,
+.alert-grid,
+.stat-grid,
+.stats-grid {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.top-links,
+.top-actions,
+.title-row,
+.heading-row,
+.chips-toolbar,
+.chips-row,
+.chip-row,
+.inv-filter-bar,
+.menu-filter-bar,
+.stock-movement-toolbar,
+.stock-movement-filter-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+/* -----------------------------------------------------------------------------
+   3) CONTENT — images, typography, buttons
+   ----------------------------------------------------------------------------- */
 img,
 svg,
 video,
@@ -18,24 +131,124 @@ canvas {
     height: auto;
 }
 
-/* Keep page shells inside the viewport */
-.inv-page,
-.menu-page,
-.sales-page,
-.admin-page,
-.staff-page,
-.recipe-page,
-main,
-.inv-main,
-.sales-main,
-.menu-main,
-.content-wrap {
-    max-width: 100%;
-    box-sizing: border-box;
+/* Default readable body size on small screens; desktop pages can override larger */
+body {
+    font-size: 16px;
+    line-height: 1.45;
 }
 
-/* Stacked card rows on phones + tablets (incl. many landscape tablets) */
+button,
+.btn,
+.chip,
+.acts-btn,
+.icon-btn,
+.top-link,
+.inv-view-tab,
+.stock-movement-source-tab {
+    touch-action: manipulation;
+}
+
+/* -----------------------------------------------------------------------------
+   4) BREAKPOINTS
+   Mobile / tablet first adjustments, then desktop polish
+   ----------------------------------------------------------------------------- */
+
+/* Phones + tablets: stacked tables, larger tap targets, tighter shells */
 @media (max-width: 1100px) {
+    .inv-main,
+    .order-main,
+    .sales-main,
+    .dash-main,
+    .admin-main,
+    .menu-main,
+    .content-wrap,
+    .forecast-lab,
+    .opq-main,
+    main {
+        max-width: 100%;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .pos-main {
+        max-width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .top-nav {
+        padding-left: 14px;
+        padding-right: 14px;
+        row-gap: 10px;
+    }
+
+    .search-wrap {
+        width: 100% !important;
+        max-width: 100%;
+        flex: 1 1 180px;
+    }
+
+    .top-actions {
+        width: 100%;
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    /* Larger tap targets on touch devices */
+    .btn,
+    button.chip,
+    .chip,
+    .inv-view-tab,
+    .stock-movement-source-tab,
+    .acts-btn,
+    .menu-filter-btn,
+    .inv-filter-btn {
+        min-height: 44px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+
+    .top-link {
+        padding: 8px 2px;
+        font-size: 12px;
+    }
+
+    .title-row h1,
+    .heading-row h1 {
+        font-size: clamp(28px, 7vw, 40px);
+        line-height: 1.15;
+        word-break: break-word;
+    }
+
+    .stock-movement-search,
+    .menu-search {
+        width: 100%;
+        flex: 1 1 100%;
+        max-width: 100%;
+        margin-left: 0;
+    }
+
+    .stock-movement-search input,
+    .menu-search input,
+    .search-wrap input {
+        width: 100%;
+        font-size: 16px; /* prevents iOS input zoom */
+    }
+
+    input,
+    select,
+    textarea {
+        max-width: 100%;
+        font-size: 16px;
+    }
+
+    /* ---- Tables → stacked cards ---- */
     .table-wrap,
     .sales-report-table-wrap,
     .inv-edit-history__table-wrap,
@@ -118,6 +331,7 @@ main,
         flex-wrap: wrap;
         justify-content: flex-end;
         align-items: center;
+        gap: 10px;
     }
 
     .table-row--category-label,
@@ -132,7 +346,6 @@ main,
         justify-content: flex-start;
     }
 
-    /* Native HTML tables (sales report, discount, etc.) */
     table.sales-report-table,
     table.inv-edit-history__table,
     .sales-report-table-wrap table,
@@ -208,47 +421,68 @@ main,
     .chip-row {
         flex-wrap: wrap !important;
         overflow-x: visible !important;
+        gap: 8px;
     }
 
-    .inv-filter-bar,
-    .menu-filter-bar,
-    .chips-toolbar,
-    .stock-movement-filter-toolbar,
-    .stock-movement-toolbar,
-    .title-row,
-    .heading-row,
-    .filter-bar {
-        flex-wrap: wrap;
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .stock-movement-search,
-    .menu-search {
-        width: 100%;
-        flex: 1 1 100%;
-        max-width: 100%;
-        margin-left: 0;
-    }
-
-    .stock-movement-search input,
-    .menu-search input {
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .top-nav {
-        flex-wrap: wrap;
-        row-gap: 10px;
+    .alert-grid,
+    .stats-grid,
+    .stat-grid,
+    .kpi-grid,
+    .metric-grid,
+    .metrics-grid {
+        grid-template-columns: 1fr 1fr !important;
     }
 }
 
+/* Narrow phones */
 @media (max-width: 640px) {
     .alert-grid,
     .stats-grid,
+    .stat-grid,
     .kpi-grid,
     .metric-grid,
     .metrics-grid {
         grid-template-columns: 1fr !important;
+    }
+
+    .brand-name {
+        font-size: 22px !important;
+    }
+
+    .top-links {
+        gap: 12px;
+    }
+}
+
+/* Desktop polish — roomier padding / wider content shell */
+@media (min-width: 768px) {
+    .inv-main,
+    .order-main,
+    .sales-main,
+    .dash-main,
+    .admin-main,
+    .menu-main,
+    .content-wrap,
+    .forecast-lab,
+    .opq-main,
+    main {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+}
+
+@media (min-width: 1101px) {
+    .inv-main,
+    .order-main,
+    .sales-main,
+    .dash-main,
+    .admin-main,
+    .menu-main,
+    .content-wrap,
+    .forecast-lab,
+    .opq-main,
+    main {
+        padding-left: 32px;
+        padding-right: 32px;
     }
 }

@@ -4742,6 +4742,18 @@ button {
     display: none;
 }
 
+.sales-accuracy__input-wrap .sales-starting-money__input {
+    cursor: text;
+    pointer-events: auto;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.sales-accuracy__input-wrap .sales-starting-money__input:focus {
+    outline: none;
+    border-color: rgba(244, 140, 37, 0.55);
+}
+
 .sales-accuracy__note {
     margin: 0;
     font-size: 12px;

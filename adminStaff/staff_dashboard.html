@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-pickup-contact">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-counted-cash-edit">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -6679,6 +6679,9 @@
             if (salesReportOverUnderField) salesReportOverUnderField.classList.remove('is-hidden');
             if (salesReportOverUnderInput) {
                 salesReportOverUnderInput.readOnly = false;
+                salesReportOverUnderInput.disabled = false;
+                salesReportOverUnderInput.removeAttribute('readonly');
+                salesReportOverUnderInput.removeAttribute('disabled');
                 var draft = loadAccuracyDraft();
                 var counted = draft && draft.counted != null ? toMoney(draft.counted) : 0;
                 salesReportOverUnderInput.value = counted > 0 ? counted.toFixed(2) : '';
@@ -8029,15 +8032,20 @@
             setStartingMoneyLocked(false);
         }
         function applyAccuracyState(state) {
-            accuracyLocked = !!(state && state.locked);
+            // Never freeze the counted-cash field — staff must always be able to type
+            // before FINALIZE. Status chips still reflect the latest counted vs expected.
+            accuracyLocked = false;
             var mode = normalizeAccuracyMode(state && state.mode);
             var counted = toMoney(state && state.counted);
             var variance = toMoney(state && state.over_under);
 
             if (salesReportOverUnderField) salesReportOverUnderField.classList.remove('is-hidden');
             if (salesReportOverUnderInput) {
+                salesReportOverUnderInput.readOnly = false;
+                salesReportOverUnderInput.disabled = false;
+                salesReportOverUnderInput.removeAttribute('readonly');
+                salesReportOverUnderInput.removeAttribute('disabled');
                 salesReportOverUnderInput.value = counted > 0 ? counted.toFixed(2) : '';
-                salesReportOverUnderInput.readOnly = accuracyLocked;
             }
             setAccuracyIndicator(mode);
             updateAccuracyNote(mode, variance);
@@ -9528,17 +9536,21 @@
                     if (sesCalcVal) sesCalcVal.textContent = peso(lastBaseExpectedCash);
                     staffSalesBrief.expected_revenue = lastBaseExpectedCash;
                     updateCashMgmtDrawerDisplay();
+                    // Always keep "Counted cash in drawer" editable during an open shift.
+                    // Same-day revenue_verifications (from a prior close) used to set readOnly
+                    // and blocked staff from typing a new count.
                     if (verifyRes.verification) {
                         var verifiedMs = new Date(verifyRes.verification.verified_at || 0).getTime();
                         var clearAfterMs = getShiftHistoryClearAfterMs();
-                        if (clearAfterMs && verifiedMs < clearAfterMs) {
+                        var fromPreviousShift = clearAfterMs > 0 && verifiedMs <= clearAfterMs;
+                        if (fromPreviousShift) {
                             initEditableAccuracyState();
                         } else {
                             applyAccuracyState({
                                 mode: verifyRes.verification.status || 'accurate',
                                 counted: verifyRes.verification.cash_declared,
                                 over_under: Math.abs(toSignedMoney(verifyRes.verification.difference)),
-                                locked: true
+                                locked: false
                             });
                         }
                     } else {
@@ -10321,7 +10333,7 @@
                           mode: d.status || 'accurate',
                           counted: cashDeclared,
                           over_under: Math.abs(toSignedMoney(d.difference)),
-                          locked: true
+                          locked: false
                       });
 
                       var archivePayload = buildShiftArchivePayload(cashDeclared, d);

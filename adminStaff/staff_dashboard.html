@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-pos-card-price">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-queue-shift-clear">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -7292,10 +7292,26 @@
                 }
             });
         }
+        function localYmdFromMs(ms) {
+            var d = new Date(ms);
+            if (isNaN(d.getTime())) return '';
+            var y = d.getFullYear();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
         function getShiftHistoryClearAfterMs() {
             var raw = localStorage.getItem(getShiftHistoryClearKey());
             var n = parseInt(raw || '0', 10);
-            return Number.isFinite(n) && n > 0 ? n : 0;
+            if (!Number.isFinite(n) || n <= 0) return 0;
+            // Stale clear markers from a previous calendar day must not hide today's live orders.
+            var clearDay = localYmdFromMs(n);
+            var todayLocal = localYmdFromMs(Date.now());
+            if (clearDay && todayLocal && clearDay !== todayLocal) {
+                try { localStorage.removeItem(getShiftHistoryClearKey()); } catch (e) {}
+                return 0;
+            }
+            return n;
         }
         function formatShiftDateLabel(dateObj) {
             var d = dateObj instanceof Date ? dateObj : new Date();
@@ -7879,8 +7895,9 @@
             opqGrid.innerHTML = '';
             opqGrid.classList.remove('opq-queue-partitions');
 
-            // FCFS queue: oldest created_at first.
-            var orderedPending = filterOrdersForCurrentShift(pendingOrders).slice().sort(function (a, b) {
+            // Live queue: never hide by shift-clear localStorage (that marker is device-local and
+            // was making POS/kiosk orders disappear on browsers that previously closed a shift).
+            var orderedPending = (pendingOrders || []).slice().sort(function (a, b) {
                 var ta = new Date(a && a.created_at ? a.created_at : 0).getTime();
                 var tb = new Date(b && b.created_at ? b.created_at : 0).getTime();
                 if (ta !== tb) return ta - tb;
@@ -7929,7 +7946,7 @@
         function renderQueueDrawerReturned(orders) {
             var listEl = document.getElementById('queue-drawer-returned-list');
             if (!listEl) return;
-            var ordered = filterOrdersForCurrentShift(orders || []).slice().sort(function (a, b) {
+            var ordered = (orders || []).slice().sort(function (a, b) {
                 var ta = new Date(a && a.created_at ? a.created_at : 0).getTime();
                 var tb = new Date(b && b.created_at ? b.created_at : 0).getTime();
                 if (ta !== tb) return ta - tb;
@@ -8564,7 +8581,8 @@
         function renderKitchenOrders() {
             if (!kitchenGrid) return;
 
-            var filtered = filterOrdersForCurrentShift(getFilteredKitchenOrders(kitchenOrders));
+            // Live kitchen queue must ignore shift-clear localStorage (device-specific).
+            var filtered = getFilteredKitchenOrders(kitchenOrders);
             pruneKitchenPriorityMap(filtered);
             var orderedKitchen = sortKitchenOrdersForDisplay(filtered);
 
@@ -8593,11 +8611,11 @@
         function renderServingOrders() {
             if (!kitchenServingList) return;
             kitchenServingList.innerHTML = '';
-            var ordered = filterOrdersForCurrentShift(
-                getFilteredKitchenOrders(servingOrdersQueue, { ignoreStationDone: true })
-            ).slice().sort(function (a, b) {
-                return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
-            });
+            var ordered = getFilteredKitchenOrders(servingOrdersQueue, { ignoreStationDone: true })
+                .slice()
+                .sort(function (a, b) {
+                    return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
+                });
             ordered.forEach(function (order) {
                 var row = document.createElement('article');
                 row.className = 'kitchen-serving-item';

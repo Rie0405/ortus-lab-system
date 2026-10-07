@@ -1,10 +1,10 @@
 /**
  * Ortus — viewport-flexible dialogs / popups
- * Keeps modals inside the screen: max-height, scrollable body, pinned header/footer.
- * Include AFTER page stylesheets so these rules win on domain short viewports.
+ * Keeps each modal's standard width from page CSS.
+ * Only caps height to the screen and scrolls the body so footers stay reachable.
  */
 
-/* Backdrops / overlays: allow scroll + safe-area padding on short/tall devices */
+/* Backdrops: safe-area padding + allow page scroll if dialog is tall */
 .product-modal-backdrop,
 .gcash-config-backdrop,
 .pos-modal-backdrop,
@@ -26,11 +26,10 @@
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    align-items: center;
-    justify-content: center;
 }
 
-/* Dialog shells */
+/* Shell: do NOT force width — page styles keep the standard size.
+   Cap height so dialogs don't stretch full-screen on tall monitors. */
 .product-modal,
 .gcash-config-modal,
 .pos-modal,
@@ -50,16 +49,33 @@
 .sh-modal,
 .ingredient-modal {
     box-sizing: border-box;
-    width: min(100%, var(--ortus-modal-width, 100%));
     max-width: min(100%, calc(100vw - 24px));
-    max-height: min(92vh, calc(100dvh - 24px), calc(100vh - 24px));
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
+    max-height: min(var(--ortus-modal-max-h, 720px), 92vh, calc(100dvh - 24px), calc(100vh - 24px));
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
 }
 
-/* Scrollable content regions */
+/* Create / Update product — standard card size */
+.product-modal {
+    width: min(1040px, calc(100vw - 24px));
+    --ortus-modal-max-h: 680px;
+}
+
+.gcash-config-modal--kiosk {
+    --ortus-modal-max-h: 720px;
+}
+
+.pos-modal {
+    --ortus-modal-max-h: 640px;
+}
+
+.pay-modal {
+    --ortus-modal-max-h: 720px;
+}
+
+/* Scrollable content */
 .product-modal__body,
 .gcash-config-modal__body,
 .pos-modal__body,
@@ -74,25 +90,24 @@
 .starting-money-modal__body,
 .img-crop-modal__stage,
 .sh-modal__body {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
     -webkit-overflow-scrolling: touch;
 }
 
-/* Flat dialogs without a dedicated body wrapper — scroll the shell */
 .ingredient-modal,
 .starting-money-modal {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .ingredient-checklist {
-    max-height: min(320px, 40vh) !important;
+    max-height: min(280px, 36vh);
 }
 
-/* Pin chrome so actions stay reachable */
+/* Keep header / footer pinned */
 .product-modal__header,
 .product-modal__footer,
 .gcash-config-modal__header,
@@ -123,37 +138,35 @@
 .ingredient-modal-sub,
 .ingredient-modal-note,
 .ingredient-modal-actions {
-    flex-shrink: 0 !important;
+    flex-shrink: 0;
 }
 
-/* Tall media inside dialogs should not force the footer off-screen */
 .gcash-config-modal--kiosk .product-upload-dropzone--gcash-qr,
 .product-upload-dropzone--gcash-qr {
-    max-height: min(320px, 42vh) !important;
+    max-height: min(280px, 38vh);
 }
 
 .img-crop-viewport {
-    max-height: min(360px, 50vh) !important;
+    max-height: min(320px, 46vh);
 }
 
-/* Kiosk success / simple cash cards: drop fixed min-height on short screens */
 .cash-modal:not(.cash-modal--checkout) {
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    justify-content: flex-start !important;
+    min-height: 0;
+    --ortus-modal-max-h: 640px;
 }
 
 @media (max-height: 720px) {
     .cash-modal:not(.cash-modal--checkout) {
-        padding: 40px 40px 32px !important;
-        border-radius: 28px !important;
+        padding: 40px 40px 32px;
+        border-radius: 28px;
     }
 
     .cash-modal-message {
-        font-size: clamp(22px, 5vh, 40px) !important;
+        font-size: clamp(22px, 5vh, 40px);
     }
 }
 
+/* Only go near-full-width on small phones — not on desktop/domain monitors */
 @media (max-width: 640px) {
     .product-modal,
     .gcash-config-modal,
@@ -165,11 +178,11 @@
     .receipt-modal,
     .sh-modal,
     .forecast-modal {
-        width: 100% !important;
-        max-width: calc(100vw - 16px) !important;
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
     }
 
     .product-modal__grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: 1fr;
     }
 }

@@ -1214,8 +1214,8 @@ body.modal-open {
 }
 
 .product-modal {
-    width: min(1040px, 100%);
-    max-height: min(92vh, 720px);
+    width: min(1040px, calc(100vw - 48px));
+    max-height: min(680px, 92vh);
     background: #15110d;
     border-radius: 16px;
     border: 1px solid rgba(61, 48, 37, 0.9);

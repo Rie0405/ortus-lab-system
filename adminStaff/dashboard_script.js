@@ -2233,6 +2233,46 @@ function apiCall(method, url, body) {
         return false;
     }
 
+    function isAddonsCategoryName(name) {
+        var n = String(name || '').trim().toLowerCase();
+        return n === 'add-ons' || n === 'addons' || n === 'add ons';
+    }
+
+    function isAddonCardItem(item) {
+        if (!item) return false;
+        if (item.is_addon_card) return true;
+        return isAddonsCategoryName(item.category_name);
+    }
+
+    /** Label for the virtual per-station Add-ons filter (from catalog / items — not a station name). */
+    function getAddonsFilterLabel() {
+        var i;
+        for (i = 0; i < (allItems || []).length; i++) {
+            if (isAddonCardItem(allItems[i]) && allItems[i].category_name) {
+                return String(allItems[i].category_name);
+            }
+        }
+        for (i = 0; i < (categories || []).length; i++) {
+            if (isAddonsCategoryName(categories[i].name)) {
+                return String(categories[i].name || '').trim() || 'Add-ons';
+            }
+        }
+        return 'Add-ons';
+    }
+
+    function stationHasAddonCards(mainId) {
+        var want = parseInt(mainId, 10) || 0;
+        return (allItems || []).some(function (item) {
+            if (!isAddonCardItem(item)) return false;
+            var mid = parseInt(item.main_category_id, 10) || 0;
+            if (!mid) {
+                var cat = findCategoryById(item.category_id);
+                mid = cat ? (parseInt(cat.main_category_id, 10) || 0) : 0;
+            }
+            return mid === want;
+        });
+    }
+
     /** Table + UI: show merged beverage umbrella as "Beverages" (matches create/edit selects and POS). */
     function displayCategoryLabelForTable(categoryName) {
         if (categoryNameMergesIntoBeveragesAdmin(categoryName)) return 'Beverages';
@@ -2325,6 +2365,14 @@ function apiCall(method, url, body) {
     }
 
     function getItemCategoryChipKey(item) {
+        // Addon cards share one global catalog category but belong to a station via
+        // menu_items.main_category_id — use a per-station filter key so they appear
+        // under the correct station in Menu Management filters.
+        if (isAddonCardItem(item)) {
+            var addonMainKey = getItemMainCategoryKey(item);
+            var addonMainId = addonMainKey ? String(addonMainKey).replace('main-', '') : '0';
+            return 'addon-main-' + (addonMainId || '0');
+        }
         var catId = parseInt(item && item.category_id, 10);
         if (beverageMergedCategoryIds.indexOf(catId) !== -1) {
             var mainKey = getItemMainCategoryKey(item);
@@ -2337,6 +2385,7 @@ function apiCall(method, url, body) {
     function getMenuFilterGroups() {
         var groups = [];
         var claimedCatIds = {};
+        var addonsLabel = getAddonsFilterLabel();
 
         function buildCategoryOpts(pool, mainId) {
             var catsOpts = [];
@@ -2345,6 +2394,9 @@ function apiCall(method, url, body) {
                 var catId = parseInt(cat.id, 10);
                 if (!catId) return;
                 claimedCatIds[catId] = true;
+                // Global Add-ons category is station-scoped via items; skip the lone
+                // catalog row so it does not land under the wrong station / Other.
+                if (isAddonsCategoryName(cat.name)) return;
                 if (categoryNameMergesIntoBeveragesAdmin(cat.name)) {
                     if (!insertedBev) {
                         catsOpts.push({
@@ -2357,6 +2409,12 @@ function apiCall(method, url, body) {
                 }
                 catsOpts.push({ key: 'cat-' + catId, label: cat.name || 'Category' });
             });
+            if (stationHasAddonCards(mainId)) {
+                catsOpts.push({
+                    key: 'addon-main-' + (mainId || 0),
+                    label: addonsLabel
+                });
+            }
             return catsOpts;
         }
 
@@ -2373,14 +2431,23 @@ function apiCall(method, url, body) {
 
         var orphans = (categories || []).filter(function (cat) {
             var catId = parseInt(cat.id, 10);
-            return catId && !claimedCatIds[catId];
+            if (!catId || claimedCatIds[catId]) return false;
+            // Claimed as skipped so it is not re-listed under Other.
+            if (isAddonsCategoryName(cat.name)) {
+                claimedCatIds[catId] = true;
+                return false;
+            }
+            return true;
         });
-        if (orphans.length) {
+        // Empty orphan category pool still gets a virtual Add-ons checkbox when
+        // stationHasAddonCards(0) is true (handled inside buildCategoryOpts).
+        var orphanCats = buildCategoryOpts(orphans, 0);
+        if (orphanCats.length) {
             groups.push({
                 mainKey: 'main-0',
                 mainId: 0,
                 label: 'Other',
-                categories: buildCategoryOpts(orphans, 0)
+                categories: orphanCats
             });
         }
         return groups;
@@ -2445,6 +2512,7 @@ function apiCall(method, url, body) {
 
     function getSubcategoriesForCategoryKey(selectedKey) {
         var key = String(selectedKey || '');
+        if (key.indexOf('addon-main-') === 0) return [];
         if (key === 'bev' || key.indexOf('bev-main-') === 0) {
             var mainId = key.indexOf('bev-main-') === 0
                 ? parseInt(key.replace('bev-main-', ''), 10)

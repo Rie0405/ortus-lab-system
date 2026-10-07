@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-server-first">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-pickup-contact">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -8211,6 +8211,17 @@
             var orderMetaBlock = orderMetaLines
                 ? '<div class="opq-card-order-meta">' + orderMetaLines + '</div>'
                 : '';
+            var contactDetails = String(order.contact_details || '').trim();
+            var contactDetailsHtml = '';
+            if (contactDetails) {
+                contactDetailsHtml =
+                    '<div class="opq-contact-details">' +
+                        '<span class="opq-contact-text">' + esc(contactDetails) + '</span>' +
+                        '<button type="button" class="opq-contact-copy-btn" data-copy-contact title="Copy contact details" aria-label="Copy contact details">' +
+                            '<img src="icons_admin/copy-svgrepo-com.svg" alt="" width="16" height="16">' +
+                        '</button>' +
+                    '</div>';
+            }
             card.innerHTML =
                 '<header class="opq-card-head">' +
                     '<div class="opq-card-head-top">' +
@@ -8226,6 +8237,7 @@
                     orderMetaBlock +
                 '</header>' +
                 '<div class="opq-card-items">' + itemsHtml +
+                    contactDetailsHtml +
                     '<div class="opq-card-total"><span>TOTAL AMOUNT</span><strong class="opq-total-val">' + peso(order.total_amount) + '</strong></div>' +
                 '</div>' +
                 buildOpqActionsFooter(order);
@@ -9625,6 +9637,27 @@
 
         if (opqGrid) {
             opqGrid.addEventListener('click', function (e) {
+                var copyContactBtn = e.target.closest('[data-copy-contact]');
+                if (copyContactBtn) {
+                    var contactWrap = copyContactBtn.closest('.opq-contact-details');
+                    var contactTextEl = contactWrap ? contactWrap.querySelector('.opq-contact-text') : null;
+                    var contactText = contactTextEl ? String(contactTextEl.textContent || '').trim() : '';
+                    if (!contactText) return;
+                    var markCopied = function () {
+                        copyContactBtn.classList.add('opq-contact-copy-btn--copied');
+                        window.setTimeout(function () {
+                            copyContactBtn.classList.remove('opq-contact-copy-btn--copied');
+                        }, 1200);
+                    };
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                        navigator.clipboard.writeText(contactText).then(markCopied).catch(function () {
+                            window.prompt('Copy contact details:', contactText);
+                        });
+                    } else {
+                        window.prompt('Copy contact details:', contactText);
+                    }
+                    return;
+                }
                 var confirmBtn = e.target.closest('[data-confirm-order]');
                 var voidBtn = e.target.closest('[data-void-order]');
                 var discountBtn = e.target.closest('[data-discount-order]');

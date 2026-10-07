@@ -41,6 +41,18 @@ function ensure_order_type_schema(PDO $pdo): void {
     );
 }
 
+function ensure_order_contact_details_schema(PDO $pdo): void {
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM orders LIKE 'contact_details'");
+    $stmt->execute();
+    if ($stmt->fetch()) {
+        return;
+    }
+    $pdo->exec(
+        "ALTER TABLE orders
+         ADD COLUMN contact_details VARCHAR(200) NULL DEFAULT NULL AFTER customer_name"
+    );
+}
+
 $b = body();
 $items = $b['items'] ?? [];
 if (empty($items) || !is_array($items)) fail('Order must have at least one item.');
@@ -52,6 +64,10 @@ $gcashRef = trim($b['gcash_ref'] ?? '');
 $gcashRef = preg_replace('/\D+/', '', $gcashRef);
 $pickupLaterTime = trim((string)($b['pickup_later_time'] ?? ''));
 $customerName = trim((string)($b['customer_name'] ?? ''));
+$contactDetails = trim((string)($b['contact_details'] ?? ''));
+if ($contactDetails !== '') {
+    $contactDetails = mb_substr($contactDetails, 0, 200);
+}
 
 if (!in_array($serviceType, ['remote', 'onsite'], true)) fail('Invalid service_type.');
 if (!$orderType) fail('Order type is required.');
@@ -68,6 +84,7 @@ if ($paymentMethod === 'gcash' && $gcashRef === '') {
 $pdo = db();
 ensure_order_source_schema($pdo);
 ensure_order_type_schema($pdo);
+ensure_order_contact_details_schema($pdo);
 ensure_order_discount_schema($pdo);
 ensure_order_inventory_deduction_schema($pdo);
 ensure_order_items_cost_schema($pdo);
@@ -214,10 +231,10 @@ try {
 
     $ins = $pdo->prepare(
         'INSERT INTO orders
-            (order_number, receipt_token, order_source, staff_id, status, payment_method, order_type, customer_name, discount_type, discount_customer_name,
+            (order_number, receipt_token, order_source, staff_id, status, payment_method, order_type, customer_name, contact_details, discount_type, discount_customer_name,
              discount_id_number, gross_amount, vat_exempt_amount, discount_amount, total_amount, amount_received, change_due, gcash_ref,
              discount_requested, discount_request_type)
-         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :cname, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref,
+         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :cname, :contact, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref,
              :dreq, :dreqtype)'
     );
     $ins->execute([
@@ -227,6 +244,7 @@ try {
         ':pm' => $paymentMethod,
         ':otype' => substr($orderType, 0, 60),
         ':cname' => $customerName !== '' ? substr($customerName, 0, 100) : null,
+        ':contact' => $contactDetails !== '' ? $contactDetails : null,
         ':dtype' => $pricing['discount_type'],
         ':dname' => $discount['type'] === 'none' ? null : $discount['customer_name'],
         ':did' => $discount['type'] === 'none' ? null : $discount['id_number'],

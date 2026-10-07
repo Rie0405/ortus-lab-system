@@ -74,6 +74,7 @@ function getAllCartItems() {
 function clearAllCarts() {
     cartByFulfillment.dine_in.length = 0;
     cartByFulfillment.take_out.length = 0;
+    clearPickupContactDetails();
 }
 
 function setActiveFulfillmentFromOrderType() {
@@ -788,35 +789,65 @@ function updateOrderTypeLabels() {
 function applyPaymentRules() {
     menuPages.forEach(function (page) {
         var paymentSection = page.querySelector('.payment-method-section');
+        var paymentTitle = page.querySelector('.payment-method-title');
+        var paymentBtns = page.querySelector('.payment-btns');
+        var paymentNote = page.querySelector('.payment-method-note');
         var cashBtn = Array.prototype.slice.call(page.querySelectorAll('.payment-btn')).find(function (b) {
             return b.textContent.trim().toUpperCase() === 'CASH';
         });
         var gcashBtn = Array.prototype.slice.call(page.querySelectorAll('.payment-btn')).find(function (b) {
             return b.textContent.trim().toUpperCase() === 'GCASH';
         });
-        if (!cashBtn || !gcashBtn) return;
 
         var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
         var isPickupOrder = orderTypeNorm === 'pickup' || orderTypeNorm === 'pick_up';
-        // Keep the same payment-card layout as onsite (segmented CASH/GCASH); lock to GCASH for pickup.
-        if (paymentSection) paymentSection.style.display = '';
-        if (selectedServiceType === 'remote' || isPickupOrder) {
-            cashBtn.setAttribute('disabled', 'disabled');
-            cashBtn.classList.add('is-disabled');
-            gcashBtn.removeAttribute('disabled');
-            gcashBtn.classList.remove('is-disabled');
-            cashBtn.classList.remove('payment-btn--active');
-            gcashBtn.classList.add('payment-btn--active');
+        var lockToGcash = selectedServiceType === 'remote' || isPickupOrder;
+
+        if (paymentSection) {
+            paymentSection.style.display = '';
+            paymentSection.classList.toggle('payment-method-section--note-only', lockToGcash);
+        }
+        if (lockToGcash) {
+            // Pickup / remote: hide title + Cash/GCash toggle; keep GCash/online note only.
+            if (paymentTitle) paymentTitle.hidden = true;
+            if (paymentBtns) {
+                paymentBtns.hidden = true;
+                paymentBtns.setAttribute('aria-hidden', 'true');
+            }
+            if (paymentNote) paymentNote.hidden = false;
+            if (cashBtn) {
+                cashBtn.classList.remove('payment-btn--active');
+                cashBtn.setAttribute('disabled', 'disabled');
+                cashBtn.classList.add('is-disabled');
+            }
+            if (gcashBtn) {
+                gcashBtn.classList.add('payment-btn--active');
+                gcashBtn.removeAttribute('disabled');
+                gcashBtn.classList.remove('is-disabled');
+            }
         } else {
-            cashBtn.removeAttribute('disabled');
-            cashBtn.classList.remove('is-disabled');
-            gcashBtn.removeAttribute('disabled');
-            gcashBtn.classList.remove('is-disabled');
-            if (!page.querySelector('.payment-btn.payment-btn--active')) {
+            if (paymentTitle) paymentTitle.hidden = false;
+            if (paymentBtns) {
+                paymentBtns.hidden = false;
+                paymentBtns.removeAttribute('aria-hidden');
+            }
+            if (paymentNote) paymentNote.hidden = true;
+            if (cashBtn) {
+                cashBtn.removeAttribute('disabled');
+                cashBtn.classList.remove('is-disabled');
+            }
+            if (gcashBtn) {
+                gcashBtn.removeAttribute('disabled');
+                gcashBtn.classList.remove('is-disabled');
+            }
+            if (cashBtn && gcashBtn && !page.querySelector('.payment-btn.payment-btn--active')) {
                 cashBtn.classList.add('payment-btn--active');
             }
         }
     });
+    if (typeof syncDiscountRequestButtons === 'function') {
+        syncDiscountRequestButtons();
+    }
 }
 
 function getTotals() {
@@ -2271,7 +2302,21 @@ var gcashRefInput = document.getElementById('gcash-ref-input');
 var pickupLaterTimeInput = document.getElementById('pickup-later-time-input');
 var pickupOnlyModalMessages = document.querySelectorAll('.cash-modal-message--pickup-only');
 var pickupAlarmPickerEl = document.getElementById('pickup-alarm-picker');
+var cashContactDetailsInput = document.getElementById('cash-contact-details-input');
+var gcashContactDetailsInput = document.getElementById('gcash-contact-details-input');
 var pickupAlarmState = { hour: 6, minute: 30, ampm: 'PM', wheelsBuilt: false, snapTimer: null };
+
+function getPickupContactDetails() {
+    var fromGcash = gcashContactDetailsInput ? String(gcashContactDetailsInput.value || '').trim() : '';
+    if (fromGcash) return fromGcash.slice(0, 200);
+    var fromCash = cashContactDetailsInput ? String(cashContactDetailsInput.value || '').trim() : '';
+    return fromCash ? fromCash.slice(0, 200) : '';
+}
+
+function clearPickupContactDetails() {
+    if (cashContactDetailsInput) cashContactDetailsInput.value = '';
+    if (gcashContactDetailsInput) gcashContactDetailsInput.value = '';
+}
 var PICKUP_MIN_LEAD_MINUTES = 15;
 
 function padPickupMinute(n) {
@@ -2878,6 +2923,15 @@ function buildCheckoutGroupedItemsHtml() {
     return html;
 }
 
+function refreshOpenCheckoutSummaries() {
+    if (cashCheckoutModal && cashCheckoutModal.classList.contains('cash-modal-overlay--open')) {
+        renderCheckoutSummary(cashModalSummary, 'CASH');
+    }
+    if (gcashCheckoutModal && gcashCheckoutModal.classList.contains('cash-modal-overlay--open')) {
+        renderCheckoutSummary(gcashModalSummary, 'GCASH');
+    }
+}
+
 function renderCheckoutSummary(targetEl, paymentLabel) {
     if (!targetEl) return;
     if (!getAllCartItems().length) {
@@ -2888,23 +2942,30 @@ function renderCheckoutSummary(targetEl, paymentLabel) {
 
     var totals = getTotals();
     var discount = getOrderDiscountPayload();
-    var discountMetaHtml = discount.type === 'none'
-        ? ''
-        : '<div class="cash-modal-summary-row">' +
-            '<span class="cash-modal-meta-label">Discount</span>' +
-            '<span class="cash-modal-meta-value">' + escapeHtml(getDiscountLabel(discount.type) + ' - ' + discount.customer_name + ' (' + discount.id_number + ')') + '</span>' +
-          '</div>';
+    // Kiosk: show undiscounted total while discount is only requested / pending staff verify.
+    var showUndiscountedTotal = !!(discountRequest && discountRequest.active)
+        || totals.discountType !== 'none'
+        || (totals.discountAmount > 0);
+    var totalDisplay = showUndiscountedTotal ? totals.gross : totals.total;
 
-    var discountTotalsHtml = totals.discountType === 'none' ? '' : (
-        '<div class="cash-modal-summary-row">' +
-            '<span class="cash-modal-meta-label">VAT Exempt</span>' +
-            '<span class="cash-modal-meta-value">' + formatCurrency(totals.vatExempt) + '</span>' +
-        '</div>' +
-        '<div class="cash-modal-summary-row">' +
-            '<span class="cash-modal-meta-label">Senior/PWD Discount (20%)</span>' +
-            '<span class="cash-modal-meta-value">' + formatCurrency(totals.discountAmount) + '</span>' +
-        '</div>'
-    );
+    var discountMetaHtml = '';
+    var discountTotalsHtml = '';
+    if (!showUndiscountedTotal && discount.type !== 'none') {
+        discountMetaHtml =
+            '<div class="cash-modal-summary-row">' +
+                '<span class="cash-modal-meta-label">Discount</span>' +
+                '<span class="cash-modal-meta-value">' + escapeHtml(getDiscountLabel(discount.type) + ' - ' + discount.customer_name + ' (' + discount.id_number + ')') + '</span>' +
+            '</div>';
+        discountTotalsHtml =
+            '<div class="cash-modal-summary-row">' +
+                '<span class="cash-modal-meta-label">VAT Exempt</span>' +
+                '<span class="cash-modal-meta-value">' + formatCurrency(totals.vatExempt) + '</span>' +
+            '</div>' +
+            '<div class="cash-modal-summary-row">' +
+                '<span class="cash-modal-meta-label">Senior/PWD Discount (20%)</span>' +
+                '<span class="cash-modal-meta-value">' + formatCurrency(totals.discountAmount) + '</span>' +
+            '</div>';
+    }
 
     targetEl.innerHTML =
         '<div class="cash-modal-summary-card">' +
@@ -2917,7 +2978,7 @@ function renderCheckoutSummary(targetEl, paymentLabel) {
             discountTotalsHtml +
             '<div class="cash-modal-summary-row cash-modal-summary-row--total">' +
                 '<span class="cash-modal-meta-label">Total</span>' +
-                '<span class="cash-modal-meta-value cash-modal-meta-value--total">' + formatCurrency(totals.total) + '</span>' +
+                '<span class="cash-modal-meta-value cash-modal-meta-value--total">' + formatCurrency(totalDisplay) + '</span>' +
             '</div>' +
         '</div>';
 }
@@ -2926,13 +2987,15 @@ function openCashModal() {
     if (!cashCheckoutModal) return;
     var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
     var isPickupOrder = orderTypeNorm === 'pickup' || orderTypeNorm === 'pick_up';
+    var showPickupExtras = isPickupOrder || selectedServiceType === 'remote';
     Array.prototype.forEach.call(pickupOnlyModalMessages, function (el) {
-        el.style.display = isPickupOrder ? '' : 'none';
+        el.style.display = showPickupExtras ? '' : 'none';
     });
     renderCheckoutSummary(cashModalSummary, 'CASH');
     syncDiscountRequestButtons();
     var cashNameInput = document.getElementById('cash-order-name-input');
     if (cashNameInput) cashNameInput.value = getSidebarOrderName();
+    if (cashContactDetailsInput && !showPickupExtras) cashContactDetailsInput.value = '';
     cashCheckoutModal.classList.add('cash-modal-overlay--open');
     cashCheckoutModal.setAttribute('aria-hidden', 'false');
 }
@@ -2948,18 +3011,20 @@ function openGcashModal() {
     loadGcashKioskConfig(true);
     var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
     var isPickupOrder = orderTypeNorm === 'pickup' || orderTypeNorm === 'pick_up';
+    var showPickupExtras = isPickupOrder || selectedServiceType === 'remote';
     Array.prototype.forEach.call(pickupOnlyModalMessages, function (el) {
-        el.style.display = isPickupOrder ? '' : 'none';
+        el.style.display = showPickupExtras ? '' : 'none';
     });
     renderCheckoutSummary(gcashModalSummary, 'GCASH');
     syncDiscountRequestButtons();
     gcashCheckoutModal.classList.add('cash-modal-overlay--open');
     gcashCheckoutModal.setAttribute('aria-hidden', 'false');
-    if (isPickupOrder) resetPickupAlarmPicker();
+    if (showPickupExtras) resetPickupAlarmPicker();
     else if (pickupLaterTimeInput) pickupLaterTimeInput.value = '';
     var gcashNameInput = document.getElementById('gcash-order-name-input');
     var sidebarName = getSidebarOrderName();
     if (gcashNameInput) gcashNameInput.value = sidebarName;
+    if (gcashContactDetailsInput && !showPickupExtras) gcashContactDetailsInput.value = '';
     if (gcashRefInput) {
         gcashRefInput.value = '';
         setTimeout(function () { gcashRefInput.focus(); }, 50);
@@ -2972,13 +3037,27 @@ function closeGcashModal() {
     gcashCheckoutModal.setAttribute('aria-hidden', 'true');
 }
 
+function isPickupLikeOrder() {
+    var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return selectedServiceType === 'remote'
+        || orderTypeNorm === 'pickup'
+        || orderTypeNorm === 'pick_up';
+}
+
 function syncDiscountRequestButtons() {
+    var hideForPickup = isPickupLikeOrder();
+    // Pickup: hide PWD/SC request for now (default GCash/online only).
+    if (hideForPickup && discountRequest.active) {
+        discountRequest.active = false;
+        discountRequest.type = 'senior';
+    }
     var pct = Math.round(SENIOR_PWD_RATE * 100);
     var label = discountRequest.active
         ? ('Requested: ' + (discountRequest.type === 'pwd' ? 'PWD' : 'Senior') + ' (' + pct + '%) — staff will verify ID')
         : 'Request PWD/SC Discount (' + pct + '%)';
     [document.getElementById('cash-request-pwd-sc-btn'), document.getElementById('gcash-request-pwd-sc-btn')].forEach(function (btn) {
         if (!btn) return;
+        btn.hidden = hideForPickup;
         btn.textContent = label;
         btn.classList.toggle('is-active', !!discountRequest.active);
         btn.title = discountRequest.active
@@ -2986,12 +3065,14 @@ function syncDiscountRequestButtons() {
             : 'Request PWD/SC discount — staff will verify your ID at the counter';
     });
     renderDiscountRequestPreviews();
+    refreshOpenCheckoutSummaries();
 }
 
 function renderDiscountRequestPreviews() {
     var cashPreview = document.getElementById('cash-discount-preview');
     var gcashPreview = document.getElementById('gcash-discount-preview');
-    var html = buildDiscountRequestPreviewHtml();
+    // Temporarily hide estimated PWD/SC breakdown (onsite + pickup).
+    var html = '';
     [cashPreview, gcashPreview].forEach(function (el) {
         if (!el) return;
         if (!html) {
@@ -3119,10 +3200,15 @@ document.querySelectorAll('.checkout-btn').forEach(function (btn) {
             return;
         }
 
+        var orderTypeNormCheckout = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+        var isPickupCheckout = orderTypeNormCheckout === 'pickup' || orderTypeNormCheckout === 'pick_up';
+        var lockGcashCheckout = selectedServiceType === 'remote' || isPickupCheckout;
         var activePaymentBtn = page.querySelector('.payment-btn.payment-btn--active');
-        if (!activePaymentBtn) return;
+        var paymentText = lockGcashCheckout
+            ? 'GCASH'
+            : (activePaymentBtn ? activePaymentBtn.textContent.trim().toUpperCase() : '');
+        if (!paymentText) return;
 
-        var paymentText = activePaymentBtn.textContent.trim().toUpperCase();
         e.preventDefault();
         if (!getSidebarOrderName()) {
             window.alert('Please enter a customer name for the order.');
@@ -3131,8 +3217,8 @@ document.querySelectorAll('.checkout-btn').forEach(function (btn) {
             return;
         }
         if (paymentText === 'CASH') {
-            var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            var isPickupOrder = orderTypeNorm === 'pickup' || orderTypeNorm === 'pick_up';
+            var orderTypeNorm = orderTypeNormCheckout;
+            var isPickupOrder = isPickupCheckout;
             if (selectedServiceType === 'remote' || isPickupOrder) {
                 window.alert('Pick up orders require GCash payment.');
                 return;
@@ -3204,6 +3290,10 @@ function submitOnePublicOrder(paymentMethod, gcashRef, orderTypeLabel, items, ap
     };
     if (pickupLaterTime) payload.pickup_later_time = pickupLaterTime;
     if (orderName) payload.customer_name = orderName;
+    var contactDetails = getPickupContactDetails();
+    if (contactDetails && isPickupLikeOrder()) {
+        payload.contact_details = contactDetails;
+    }
     var hasMissingIds = payload.items.some(function (it) { return !it.menu_item_id; });
     if (hasMissingIds) {
         return Promise.reject(new Error('Some items are missing menu IDs. Please reload the menu.'));

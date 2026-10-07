@@ -243,6 +243,19 @@ function ensure_order_refund_reason_schema(PDO $pdo): void {
     );
 }
 
+function ensure_order_contact_details_schema(PDO $pdo): void {
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM orders LIKE 'contact_details'");
+    $stmt->execute();
+    if ($stmt->fetch()) {
+        return;
+    }
+
+    $pdo->exec(
+        "ALTER TABLE orders
+         ADD COLUMN contact_details VARCHAR(200) NULL DEFAULT NULL AFTER customer_name"
+    );
+}
+
 function ensure_kitchen_returned_schema(PDO $pdo): void {
     $stmt = $pdo->prepare("SHOW COLUMNS FROM orders LIKE 'kitchen_returned'");
     $stmt->execute();
@@ -276,6 +289,7 @@ if ($m === 'GET') {
     ensure_order_customer_name_schema(db());
     ensure_order_item_fulfillment_schema(db());
     ensure_order_refund_reason_schema(db());
+    ensure_order_contact_details_schema(db());
     ensure_order_discount_schema(db());
     ensure_kitchen_returned_schema(db());
     ensure_kitchen_return_reason_schema(db());
@@ -337,7 +351,7 @@ if ($m === 'GET') {
 
     $sql    = 'SELECT o.id, o.order_number, o.kitchen_ticket_number, o.bar_ticket_number, o.order_source, o.status, o.kitchen_returned, o.kitchen_return_reason, o.payment_method, o.order_type,
                       o.staff_id,
-                      o.customer_name, o.refund_reason, o.gcash_ref,
+                      o.customer_name, o.contact_details, o.refund_reason, o.gcash_ref,
                       o.discount_type, o.discount_customer_name, o.discount_id_number,
                       o.discount_requested, o.discount_request_type, o.discount_rate,
                       o.gross_amount, o.vat_exempt_amount, o.discount_amount, o.total_amount, o.created_at,

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="customer_styles.css?v=20261007-pos-card-unify">
+    <link rel="stylesheet" href="customer_styles.css?v=20261007-pickup-contact">
 </head>
 <body>
 
@@ -443,13 +443,16 @@
                         </div>
                     </div>
 
-                    <!-- Payment Method -->
+                    <!-- Payment Method (selector for onsite; note-only for pickup) -->
                     <div class="sidebar-section payment-method-section">
-                        <h4 class="sidebar-section-title">PAYMENT METHOD</h4>
+                        <h4 class="sidebar-section-title payment-method-title">PAYMENT METHOD</h4>
                         <div class="payment-btns">
                             <button class="payment-btn payment-btn--active">CASH</button>
                             <button class="payment-btn">GCASH</button>
                         </div>
+                        <p class="payment-method-note" hidden>
+                            Default payment for pickup is <strong>GCash / online</strong>.
+                        </p>
                     </div>
 
                     <div class="order-type-toggle-section" hidden>
@@ -680,13 +683,16 @@
                         </div>
                     </div>
 
-                    <!-- Payment Method -->
+                    <!-- Payment Method (selector for onsite; note-only for pickup) -->
                     <div class="sidebar-section payment-method-section">
-                        <h4 class="sidebar-section-title">PAYMENT METHOD</h4>
+                        <h4 class="sidebar-section-title payment-method-title">PAYMENT METHOD</h4>
                         <div class="payment-btns">
                             <button class="payment-btn payment-btn--active">CASH</button>
                             <button class="payment-btn">GCASH</button>
                         </div>
+                        <p class="payment-method-note" hidden>
+                            Default payment for pickup is <strong>GCash / online</strong>.
+                        </p>
                     </div>
 
                     <div class="order-type-toggle-section" hidden>
@@ -736,6 +742,11 @@
                     Request PWD/SC Discount
                 </button>
                 <div class="cash-modal-discount-preview" id="cash-discount-preview" hidden></div>
+                <label class="cash-modal-field cash-modal-message--pickup-only" for="cash-contact-details-input">
+                    <span class="cash-modal-field-label">Send your contact details</span>
+                    <input id="cash-contact-details-input" class="gcash-ref-input cash-modal-input" type="text" maxlength="200" placeholder="e.g. phone / messenger" autocomplete="tel">
+                    <span class="cash-modal-field-hint">Optional notes for staff (pickup).</span>
+                </label>
             </div>
             <div class="cash-modal-actions">
                 <button id="cash-modal-cancel" class="cash-modal-cancel-btn" type="button">Cancel</button>
@@ -827,6 +838,11 @@
                     <span class="cash-modal-field-label">GCash reference no. <span class="cash-modal-field-required" aria-hidden="true">*</span></span>
                     <input id="gcash-ref-input" class="gcash-ref-input cash-modal-input js-gcash-ref-digits" type="text" placeholder="Enter reference number" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required aria-required="true">
                 </label>
+                <label class="cash-modal-field cash-modal-message--pickup-only" for="gcash-contact-details-input">
+                    <span class="cash-modal-field-label">Send your contact details</span>
+                    <input id="gcash-contact-details-input" class="gcash-ref-input cash-modal-input" type="text" maxlength="200" placeholder="e.g. phone / messenger" autocomplete="tel">
+                    <span class="cash-modal-field-hint">Optional notes for staff (pickup).</span>
+                </label>
             </div>
             <div class="cash-modal-actions">
                 <button id="gcash-modal-cancel" class="cash-modal-cancel-btn" type="button">Cancel</button>
@@ -913,7 +929,7 @@
     }
     </script>
     <script src="../shared/gcash_ref_digits.js"></script>
-    <script src="customer_script.js?v=20261007-bev-dedupe"></script>
+    <script src="customer_script.js?v=20261007-pickup-contact"></script>
 
 </body>
 </html>

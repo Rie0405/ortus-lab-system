@@ -2603,6 +2603,60 @@ button {
     white-space: nowrap;
 }
 
+.opq-contact-details {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 2px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(244, 140, 37, 0.08);
+    border: 1px solid rgba(244, 140, 37, 0.18);
+}
+
+.opq-contact-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #fdba74;
+    word-break: break-word;
+}
+
+.opq-contact-copy-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.45);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.opq-contact-copy-btn img {
+    width: 14px;
+    height: 14px;
+    display: block;
+    filter: invert(1) opacity(0.85);
+    pointer-events: none;
+}
+
+.opq-contact-copy-btn:hover {
+    border-color: rgba(244, 140, 37, 0.55);
+    background: rgba(244, 140, 37, 0.12);
+}
+
+.opq-contact-copy-btn--copied {
+    border-color: rgba(34, 197, 94, 0.55);
+    background: rgba(34, 197, 94, 0.15);
+}
+
 .opq-card-total {
     display: flex;
     justify-content: space-between;

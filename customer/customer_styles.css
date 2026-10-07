@@ -1211,6 +1211,37 @@ body {
     color: #120e0a;
 }
 
+.payment-method-title[hidden],
+.payment-btns[hidden] {
+    display: none !important;
+}
+
+.payment-method-section--note-only .payment-method-title,
+.payment-method-section--note-only .payment-btns {
+    display: none !important;
+}
+
+.payment-method-note {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(244, 140, 37, 0.35);
+    background: rgba(244, 140, 37, 0.08);
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.payment-method-note strong {
+    color: #f48c25;
+    font-weight: 700;
+}
+
+.payment-method-note[hidden] {
+    display: none !important;
+}
+
 .order-type-toggle-section {
     margin: 14px 24px 0;
     display: flex;
@@ -2280,6 +2311,10 @@ body {
 .cash-modal-summary {
     width: 100%;
     margin: 0;
+}
+
+.cash-modal-discount-btn[hidden] {
+    display: none !important;
 }
 
 .cash-modal-discount-btn {

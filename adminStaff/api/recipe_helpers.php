@@ -1954,75 +1954,32 @@ function fetch_inventory_movement_for_date(PDO $pdo, string $date): array
     }
 
     try {
-        // Attribute stock-in to Date Received (ExpectedReceiveDate), then OrderedDate, then Date.
-        $receiveDateExpr = 'r.`Date`';
-        try {
-            $hasExpected = (bool)$pdo->query("SHOW COLUMNS FROM Receipts LIKE 'ExpectedReceiveDate'")->fetch();
-            $hasOrdered = (bool)$pdo->query("SHOW COLUMNS FROM Receipts LIKE 'OrderedDate'")->fetch();
-            if ($hasExpected && $hasOrdered) {
-                $receiveDateExpr = 'COALESCE(r.ExpectedReceiveDate, r.OrderedDate, r.`Date`)';
-            } elseif ($hasExpected) {
-                $receiveDateExpr = 'COALESCE(r.ExpectedReceiveDate, r.`Date`)';
-            } elseif ($hasOrdered) {
-                $receiveDateExpr = 'COALESCE(r.OrderedDate, r.`Date`)';
-            }
-        } catch (Throwable $eCols) {
-            $receiveDateExpr = 'r.`Date`';
-        }
-
         $receiptStmt = $pdo->prepare(
             'SELECT rl.ItemName, rl.LineType, SUM(rl.Quantity) AS qty_in
              FROM ReceiptLines rl
              INNER JOIN Receipts r ON r.ReceiptID = rl.ReceiptID
-             WHERE DATE(' . $receiveDateExpr . ') = :d
+             WHERE DATE(r.`Date`) = :d
              GROUP BY rl.ItemName, rl.LineType'
         );
         $receiptStmt->execute([':d' => $date]);
-
-        $findByCatStmt = $pdo->prepare(
+        $findInvStmt = $pdo->prepare(
             'SELECT id
              FROM inventory_items
              WHERE is_active = 1
-               AND menu_item_id IS NULL
                AND LOWER(TRIM(item_name)) = LOWER(TRIM(:item_name))
-               AND LOWER(TRIM(category_name)) = LOWER(TRIM(:category_name))
-             ORDER BY id ASC
+               AND category_name = :category_name
              LIMIT 1'
         );
-        $findByNameStmt = $pdo->prepare(
-            'SELECT id
-             FROM inventory_items
-             WHERE is_active = 1
-               AND menu_item_id IS NULL
-               AND LOWER(TRIM(item_name)) = LOWER(TRIM(:item_name))
-             ORDER BY id ASC
-             LIMIT 1'
-        );
-
         foreach ($receiptStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $itemName = (string)($row['ItemName'] ?? '');
-            $lineType = (string)($row['LineType'] ?? '');
-            $qtyIn = (float)($row['qty_in'] ?? 0);
-            if ($itemName === '' || $qtyIn <= 0) {
-                continue;
-            }
-
-            $invId = 0;
-            if ($lineType !== '') {
-                $findByCatStmt->execute([
-                    ':item_name' => $itemName,
-                    ':category_name' => $lineType,
-                ]);
-                $invId = (int)$findByCatStmt->fetchColumn();
-            }
-            if ($invId <= 0) {
-                $findByNameStmt->execute([':item_name' => $itemName]);
-                $invId = (int)$findByNameStmt->fetchColumn();
-            }
+            $findInvStmt->execute([
+                ':item_name' => (string)$row['ItemName'],
+                ':category_name' => (string)$row['LineType'],
+            ]);
+            $invId = (int)$findInvStmt->fetchColumn();
             if ($invId <= 0 || !isset($catalog[$invId])) {
                 continue;
             }
-            $catalog[$invId]['qty_received'] += $qtyIn;
+            $catalog[$invId]['qty_received'] += (float)($row['qty_in'] ?? 0);
         }
     } catch (Throwable $e) {
         // Receipt tables may not exist on older installs.
@@ -2053,7 +2010,8 @@ function fetch_inventory_movement_for_date(PDO $pdo, string $date): array
         $qtyUsed = round((float)$item['qty_used'], 2);
         $qtyReceived = round((float)$item['qty_received'], 2);
         $qtyWasted = round((float)$item['qty_wasted'], 2);
-        $qtyMovement = $qtyUsed + $qtyReceived + $qtyWasted;
+        // Stock Movement lists deductions only (used + wasted). Received/stock-in is excluded.
+        $qtyMovement = $qtyUsed + $qtyWasted;
         if ($qtyMovement <= 0) {
             continue;
         }

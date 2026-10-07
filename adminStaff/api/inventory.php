@@ -963,8 +963,9 @@ if (isset($_GET['movement']) && strtolower(trim((string)$_GET['movement'])) === 
             $merged[$id]['qty_used'] = round((float)$merged[$id]['qty_used'] + (float)($row['qty_used'] ?? 0), 2);
             $merged[$id]['qty_received'] = round((float)$merged[$id]['qty_received'] + (float)($row['qty_received'] ?? 0), 2);
             $merged[$id]['qty_wasted'] = round((float)$merged[$id]['qty_wasted'] + (float)($row['qty_wasted'] ?? 0), 2);
+            // Deductions only — exclude received/stock-in from movement total.
             $merged[$id]['qty_movement'] = round(
-                (float)$merged[$id]['qty_used'] + (float)$merged[$id]['qty_received'] + (float)$merged[$id]['qty_wasted'],
+                (float)$merged[$id]['qty_used'] + (float)$merged[$id]['qty_wasted'],
                 2
             );
         }

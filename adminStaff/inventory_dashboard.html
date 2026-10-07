@@ -4015,10 +4015,8 @@
 
         function buildInventoryMovementQtyLabel(item) {
             var used = parseFloat(item.qty_used || 0);
-            var received = parseFloat(item.qty_received || 0);
             var wasted = parseFloat(item.qty_wasted || 0);
             var parts = [];
-            if (received > 0) parts.push(formatMovementQty(received) + ' received');
             if (used > 0) parts.push(formatMovementQty(used) + ' used');
             if (wasted > 0) parts.push(formatMovementQty(wasted) + ' wasted');
             return parts.length ? parts.join(' · ') : '0 moved';
@@ -4220,7 +4218,7 @@
                     var invLabel = selectedMovementCategory === 'All'
                         ? periodWord + ' non-consumable inventory movement'
                         : periodWord + ' ' + selectedMovementCategory + ' non-consumable inventory movement';
-                    stockMovementPeriod.textContent = invLabel + ' (used, received, wasted)';
+                    stockMovementPeriod.textContent = invLabel + ' (used, wasted)';
                 } else {
                     var label = selectedMovementCategory === 'All'
                         ? periodWord + ' sales'
@@ -4244,6 +4242,8 @@
                         return;
                     }
                     allInventoryMovementItems = (d.items || []).map(function (it) {
+                        var qtyUsed = parseFloat(it.qty_used || 0) || 0;
+                        var qtyWasted = parseFloat(it.qty_wasted || 0) || 0;
                         return {
                             id: parseInt(it.id, 10) || 0,
                             name: String(it.name || '').trim(),
@@ -4251,10 +4251,11 @@
                             category_type: String(it.category_type || 'main').trim(),
                             category_type_label: String(it.category_type_label || '').trim(),
                             stock_type: String(it.stock_type || 'consumable').trim(),
-                            qty_used: parseFloat(it.qty_used || 0) || 0,
-                            qty_received: parseFloat(it.qty_received || 0) || 0,
-                            qty_wasted: parseFloat(it.qty_wasted || 0) || 0,
-                            qty_movement: parseFloat(it.qty_movement || 0) || 0
+                            qty_used: qtyUsed,
+                            qty_received: 0,
+                            qty_wasted: qtyWasted,
+                            // Deductions only (used + wasted); received is excluded.
+                            qty_movement: qtyUsed + qtyWasted
                         };
                     }).filter(function (it) {
                         return it.name && it.stock_type === 'non_consumable' && it.qty_movement > 0;

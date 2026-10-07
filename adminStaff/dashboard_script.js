@@ -260,20 +260,20 @@ function apiCall(method, url, body) {
         }).then(function (cropped) {
             localUrl = URL.createObjectURL(cropped);
             setDropzonePreview(prefix, localUrl);
-            if (titleEl) titleEl.textContent = 'UPLOADING…';
-            if (dropzone) dropzone.style.pointerEvents = 'none';
+        if (titleEl) titleEl.textContent = 'UPLOADING…';
+        if (dropzone) dropzone.style.pointerEvents = 'none';
             return uploadProductImage(cropped).then(function (res) {
-                if (res && res.success && res.url) {
-                    setProductImageUrl(prefix, res.url);
+            if (res && res.success && res.url) {
+                setProductImageUrl(prefix, res.url);
                     if (prefix === 'prod') createImageIsCustom = true;
-                    setDropzonePreview(prefix, res.url);
+                setDropzonePreview(prefix, res.url);
                     if (previousUrl && previousUrl !== res.url && previousWasCustom) {
-                        deleteProductImageFile(previousUrl);
-                    }
-                } else {
-                    alert('Upload failed: ' + ((res && res.error) || 'Unknown error'));
-                    setDropzonePreview(prefix, previousUrl || '');
+                    deleteProductImageFile(previousUrl);
                 }
+            } else {
+                alert('Upload failed: ' + ((res && res.error) || 'Unknown error'));
+                setDropzonePreview(prefix, previousUrl || '');
+            }
             });
         }).catch(function (err) {
             if (err && err.cancelled) return;
@@ -950,9 +950,9 @@ function apiCall(method, url, body) {
         }
         if (createVariantsListEl) {
             createVariantsListEl.addEventListener('click', function (e) {
-                var btn = e.target.closest('.variant-remove');
-                if (!btn) return;
-                var row = btn.closest('.variant-input-row');
+            var btn = e.target.closest('.variant-remove');
+            if (!btn) return;
+            var row = btn.closest('.variant-input-row');
                 if (row) row.remove();
                 createVariantsDirty = true;
                 if (createEnableVariantsEl && createEnableVariantsEl.checked
@@ -985,7 +985,7 @@ function apiCall(method, url, body) {
         if (!editVariantTemplateEl || !editVariantsListEl) return;
         var frag = editVariantTemplateEl.content.cloneNode(true);
         var row = frag.firstElementChild;
-        if (!row) return;
+            if (!row) return;
         var sizeInp = row.querySelector('.variant-input--size');
         var priceInp = row.querySelector('.variant-input--price');
         var costInp = row.querySelector('.variant-input--cost');
@@ -1960,29 +1960,29 @@ function apiCall(method, url, body) {
 
     // ── Populate category <select> elements (scoped to selected main category) ─
     function populateCategorySelect(sel, mainCatId, keepId) {
-        if (!sel) return;
-        sel.innerHTML = '<option value="">Select Category</option>';
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Select Category</option>';
         if (!mainCatId) return;
 
         var pool = categoriesForMain(mainCatId);
-        var inserted = false;
+            var inserted = false;
         pool.forEach(function (c) {
-            if (categoryNameMergesIntoBeveragesAdmin(c.name)) {
-                if (!inserted) {
-                    var opt = document.createElement('option');
-                    opt.value = String(c.id);
-                    opt.textContent = 'Beverages';
-                    opt.setAttribute('data-bev-merged', '1');
-                    sel.appendChild(opt);
-                    inserted = true;
+                if (categoryNameMergesIntoBeveragesAdmin(c.name)) {
+                    if (!inserted) {
+                        var opt = document.createElement('option');
+                        opt.value = String(c.id);
+                        opt.textContent = 'Beverages';
+                        opt.setAttribute('data-bev-merged', '1');
+                        sel.appendChild(opt);
+                        inserted = true;
+                    }
+                } else {
+                    var o = document.createElement('option');
+                    o.value = String(c.id);
+                    o.textContent = c.name;
+                    sel.appendChild(o);
                 }
-            } else {
-                var o = document.createElement('option');
-                o.value = String(c.id);
-                o.textContent = c.name;
-                sel.appendChild(o);
-            }
-        });
+            });
 
         if (keepId) {
             setCategorySelectForBeverageItem(sel, parseInt(keepId, 10));
@@ -2632,8 +2632,8 @@ function apiCall(method, url, body) {
         var allCatsOn = opts.length > 0 && enabled.length === opts.length;
         if ((allMainsOn || !totalMains) && (allCatsOn || !opts.length)) {
             menuFilterSummary.textContent = 'All Items';
-            return;
-        }
+                return;
+            }
         if (!enabledMains.length || !enabled.length) {
             menuFilterSummary.textContent = 'None selected';
             return;
@@ -3009,7 +3009,7 @@ function apiCall(method, url, body) {
                 if (!costPriceRaw) {
                     alert('Cost price is required.');
                     if (costPriceInput) costPriceInput.focus();
-                    return;
+                return;
                 }
                 var costPriceCheck = parseFloat(costPriceRaw);
                 if (!Number.isFinite(costPriceCheck) || costPriceCheck < 0) {
@@ -3082,7 +3082,7 @@ function apiCall(method, url, body) {
 
             if (formVariantsEnabled && !formVariants.length) {
                 alert('Add at least one variant, or turn off Enable variants.');
-                return;
+                    return;
             }
 
             createPrimaryBtn.disabled    = true;
@@ -3195,10 +3195,10 @@ function apiCall(method, url, body) {
         if (item.subcategory_id && editProdSubcategorySelect) {
             editProdSubcategorySelect.value = String(item.subcategory_id);
         }
-        setServeFlagsOnForm('edit', {
-            hot: !!item.serve_hot,
-            cold: !!item.serve_cold
-        });
+            setServeFlagsOnForm('edit', {
+                hot: !!item.serve_hot,
+                cold: !!item.serve_cold
+            });
         if (isBevMergedOptionSelected(editCat)) {
             applyServeFlagsFromSubcategory('edit');
         }
@@ -3306,11 +3306,11 @@ function apiCall(method, url, body) {
                     }).join('; ');
                     descEdit = descEdit ? (descEdit + '\n' + variantLine) : variantLine;
                 } else {
-                    if (!(price > 0)) {
+                if (!(price > 0)) {
                         alert('Selling price is required.');
                         if (editBasePriceInput) editBasePriceInput.focus();
-                        return;
-                    }
+                    return;
+                }
 
                     var costPriceRaw = editCostPriceInput ? String(editCostPriceInput.value || '').trim() : '';
                     if (!costPriceRaw) {
@@ -3404,7 +3404,7 @@ function apiCall(method, url, body) {
                 apiCall('PUT', 'api/menu.php', payload)
                     .then(function (res) {
                         if (!res.success) {
-                            alert('Error: ' + res.error);
+                        alert('Error: ' + res.error);
                             return null;
                         }
                         return syncStationVariantNamesFromEdit().then(function () {
@@ -3417,9 +3417,9 @@ function apiCall(method, url, body) {
                         loadItems();
                     })
                     .finally(function () {
-                        editPrimaryBtn.disabled    = false;
+                    editPrimaryBtn.disabled    = false;
                         editPrimaryBtn.textContent = 'Done';
-                    });
+                });
             });
         }
     }

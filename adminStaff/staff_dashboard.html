@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-type-fluid">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-nav-flex">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -15,31 +15,33 @@
 <body>
     <div class="pos-page">
         <header class="pos-header">
-            <div class="pos-header__bar">
-                <div class="brand-block">
-                    <div>
-                        <div class="brand-title-row">
-                            <h1>ORTUS LAB</h1>
-                            <span class="brand-role brand-role--staff">Staff</span>
+            <div class="pos-header__primary">
+                <div class="pos-header__bar">
+                    <div class="brand-block">
+                        <div>
+                            <div class="brand-title-row">
+                                <h1>ORTUS LAB</h1>
+                                <span class="brand-role brand-role--staff">Staff</span>
+                            </div>
+                            <p>STAFF ORDER PROCESSING HUB</p>
                         </div>
-                        <p>STAFF ORDER PROCESSING HUB</p>
                     </div>
+                    <button type="button" class="pos-nav-toggle" id="pos-nav-toggle" aria-expanded="false" aria-controls="header-main-tabs" aria-label="Open navigation menu">
+                        <span class="pos-nav-toggle__bar" aria-hidden="true"></span>
+                        <span class="pos-nav-toggle__bar" aria-hidden="true"></span>
+                        <span class="pos-nav-toggle__bar" aria-hidden="true"></span>
+                    </button>
                 </div>
-                <button type="button" class="pos-nav-toggle" id="pos-nav-toggle" aria-expanded="false" aria-controls="header-main-tabs" aria-label="Open navigation menu">
-                    <span class="pos-nav-toggle__bar" aria-hidden="true"></span>
-                    <span class="pos-nav-toggle__bar" aria-hidden="true"></span>
-                    <span class="pos-nav-toggle__bar" aria-hidden="true"></span>
-                </button>
-            </div>
 
-            <nav class="header-main-tabs" id="header-main-tabs">
-                <button class="header-main-tab header-main-tab--active" data-main-tab="pos">POS</button>
-                <button class="header-main-tab" data-main-tab="queue-kiosk" data-queue-source="kiosk">KIOSK Processing Queue</button>
-                <div class="header-station-filter" id="header-station-filter" role="group" aria-label="Station filter">
-                    <!-- populated from api/main_categories.php -->
-                </div>
-                <button class="header-main-tab" data-main-tab="waste">SALES REPORT</button>
-            </nav>
+                <nav class="header-main-tabs" id="header-main-tabs">
+                    <button class="header-main-tab header-main-tab--active" data-main-tab="pos">POS</button>
+                    <button class="header-main-tab" data-main-tab="queue-kiosk" data-queue-source="kiosk">KIOSK Processing Queue</button>
+                    <div class="header-station-filter" id="header-station-filter" role="group" aria-label="Station filter">
+                        <!-- populated from api/main_categories.php -->
+                    </div>
+                    <button class="header-main-tab" data-main-tab="waste">SALES REPORT</button>
+                </nav>
+            </div>
 
             <div class="header-meta">
                 <div class="meta-cell">

@@ -7,7 +7,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-pos-tablet">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-pos-scale">
+    <script>
+    /* Scale desktop POS layout to fit smaller tablets/phones (avoids broken reflow). */
+    (function () {
+        var DESIGN_W = 1366;
+        var DESIGN_H = 900;
+
+        function applyPosFitScale() {
+            var page = document.querySelector('.pos-page');
+            if (!page) return;
+
+            var vw = window.innerWidth || document.documentElement.clientWidth || DESIGN_W;
+            var vh = window.innerHeight || document.documentElement.clientHeight || DESIGN_H;
+            var needsScale = vw < DESIGN_W - 8 || vh < DESIGN_H - 8;
+
+            if (!needsScale) {
+                document.documentElement.classList.remove('pos-fit-scale');
+                page.style.width = '';
+                page.style.height = '';
+                page.style.transform = '';
+                page.style.transformOrigin = '';
+                page.style.marginLeft = '';
+                page.style.marginTop = '';
+                return;
+            }
+
+            document.documentElement.classList.add('pos-fit-scale');
+            var scale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
+            scale = Math.max(0.42, Math.min(1, scale));
+
+            page.style.width = DESIGN_W + 'px';
+            page.style.height = DESIGN_H + 'px';
+            page.style.transformOrigin = 'top left';
+            page.style.transform = 'scale(' + scale + ')';
+            page.style.marginLeft = Math.max(0, (vw - DESIGN_W * scale) / 2) + 'px';
+            page.style.marginTop = Math.max(0, (vh - DESIGN_H * scale) / 2) + 'px';
+        }
+
+        var resizeTimer = null;
+        function scheduleFit() {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(applyPosFitScale, 50);
+        }
+
+        window.addEventListener('resize', scheduleFit);
+        window.addEventListener('orientationchange', function () {
+            setTimeout(applyPosFitScale, 120);
+        });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applyPosFitScale);
+        } else {
+            applyPosFitScale();
+        }
+    })();
+    </script>
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">

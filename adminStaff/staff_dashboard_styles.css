@@ -40,6 +40,121 @@ button {
     background: #120e0a;
     overflow: hidden;
 }
+
+/*
+ * Small-device fit: keep the desktop POS layout and shrink it with scale()
+ * instead of reflowing into broken columns. JS toggles html.pos-fit-scale
+ * and sets width/height/transform on .pos-page.
+ */
+html.pos-fit-scale,
+html.pos-fit-scale body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #120e0a;
+    touch-action: manipulation;
+}
+
+html.pos-fit-scale .pos-page {
+    position: relative;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    /* width/height/transform/margins applied inline by fit script */
+}
+
+/* Lock desktop POS geometry while scaled (media queries still see real viewport). */
+html.pos-fit-scale .pos-main {
+    flex-direction: row !important;
+    overflow: hidden !important;
+}
+
+html.pos-fit-scale .pos-left {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    padding: 24px !important;
+}
+
+html.pos-fit-scale .pos-right {
+    flex: 0 0 384px !important;
+    width: 384px !important;
+    min-width: 384px !important;
+    max-width: 384px !important;
+    border-left: 1px solid rgba(244, 140, 37, 0.2) !important;
+    border-top: 0 !important;
+    padding: 24px 24px 24px 25px !important;
+}
+
+html.pos-fit-scale .pos-header {
+    height: 78px !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    padding: 16px 24px 17px !important;
+}
+
+html.pos-fit-scale .header-main-tabs {
+    flex-wrap: nowrap !important;
+    height: 100% !important;
+    gap: 28px !important;
+}
+
+html.pos-fit-scale .header-main-tab {
+    font-size: 22px !important;
+    white-space: nowrap !important;
+}
+
+html.pos-fit-scale .menu-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+html.pos-fit-scale .waste-tab-layout {
+    grid-template-columns: 1.5fr 1fr !important;
+}
+
+html.pos-fit-scale .kitchen-layout {
+    grid-template-columns: minmax(0, 1fr) 230px !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+}
+
+html.pos-fit-scale .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
+html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* CSS fallback before JS: scale + lock desktop layout on small viewports */
+@media (max-width: 1365px), (max-height: 899px) {
+    html:not(.pos-fit-scale) body {
+        overflow: hidden;
+        background: #120e0a;
+    }
+
+    html:not(.pos-fit-scale) .pos-page {
+        width: 1366px;
+        height: 900px;
+        transform-origin: top left;
+        transform: scale(min(100vw / 1366, 100dvh / 900));
+    }
+
+    html:not(.pos-fit-scale) .pos-main {
+        flex-direction: row !important;
+    }
+
+    html:not(.pos-fit-scale) .pos-right {
+        flex: 0 0 384px !important;
+        width: 384px !important;
+        min-width: 384px !important;
+        max-width: 384px !important;
+        border-left: 1px solid rgba(244, 140, 37, 0.2) !important;
+        border-top: 0 !important;
+    }
+
+    html:not(.pos-fit-scale) .menu-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+}
 .pos-page > .staff-main-panel {
     flex: 1;
     min-height: 0;

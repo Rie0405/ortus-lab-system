@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261004-ses-cleanup">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-pos-card-price">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -2251,8 +2251,55 @@
             function stripPosBevSectionForDisplay(description) {
                 var lines = String(description || '').split(/\r?\n/);
                 return lines.filter(function (ln) {
-                    return !/^__pos_bev_section__:/i.test(String(ln || '').trim());
+                    var t = String(ln || '').trim();
+                    if (!t) return false;
+                    if (/^__pos_bev_section__:/i.test(t)) return false;
+                    if (/^Variants\s*:/i.test(t)) return false;
+                    if (/(Customizable|Removable)\s+ingredients\s*:/i.test(t)) return false;
+                    return true;
                 }).join('\n').trim();
+            }
+
+            /** Variant name + price rows for the orange card badge (2+ variants). */
+            function getPosCardVariantPrices(item) {
+                var out = [];
+                var apiVariants = item && Array.isArray(item.variants) ? item.variants : [];
+                if (apiVariants.length) {
+                    apiVariants.forEach(function (v) {
+                        var name = String(v && (v.name || v.size) || '').trim();
+                        if (!name) return;
+                        var p = v.price;
+                        if (p == null || p === '') p = item.price;
+                        out.push({ name: name, price: parseMoneyAttr(p) });
+                    });
+                    return out;
+                }
+                parseVariantsFromDescription(item && item.description).forEach(function (v) {
+                    var size = String(v.size || '').trim();
+                    var label = String(v.label || '').trim();
+                    var name = size;
+                    if (size && label && label !== size) name = size + ' (' + label + ')';
+                    else if (!name) name = label;
+                    if (!name) return;
+                    out.push({ name: name, price: parseMoneyAttr(v.price) });
+                });
+                return out;
+            }
+
+            function formatPosCardPriceTagHtml(item) {
+                var variants = getPosCardVariantPrices(item);
+                if (variants.length >= 2) {
+                    return '<span class="price-tag price-tag--multi">' +
+                        variants.map(function (v) {
+                            return '<span class="price-tag__row">' +
+                                '<span class="price-tag__variant">' + escHtml(v.name) + '</span>' +
+                                '<span class="price-tag__amt">' + formatPHP(v.price) + '</span>' +
+                                '</span>';
+                        }).join('') +
+                        '</span>';
+                }
+                var single = variants.length === 1 ? variants[0].price : (item && item.price);
+                return '<span class="price-tag">' + formatPHP(single) + '</span>';
             }
 
             function subcategoryNameToBevSectionKey(name) {
@@ -2311,8 +2358,10 @@
 
             function posMenuCardHtml(item) {
                 var img = (item.image_url && item.image_url.trim()) ? item.image_url : placeholderImg;
-                var price = formatPHP(item.price);
                 var isAddonCard = isAddonCardItem(item);
+                var priceTagHtml = isAddonCard
+                    ? '<span class="price-tag">' + formatPHP(item.price) + '</span>'
+                    : formatPosCardPriceTagHtml(item);
                 var descShow = isAddonCard
                     ? 'Add on its own'
                     : stripPosBevSectionForDisplay(item.description || '');
@@ -2331,9 +2380,9 @@
                     (isBestSeller ? " menu-card--bestseller" : "") +
                     (isAddonCard ? " menu-card--addon" : "");
                 return "<article class=\"" + cardClass + "\" data-menu-id=\"" + item.id + "\" data-menu-name=\"" + (item.name || "").replace(/"/g, "&quot;") + "\" data-menu-price=\"" + item.price + "\" data-menu-available=\"" + (isAvailable ? "1" : "0") + "\" data-addon-card=\"" + (isAddonCard ? "1" : "0") + "\">" +
-                    "<div class=\"image-wrap\">" + addonChip + "<img src=\"" + img + "\" alt=\"" + (item.name || "").replace(/"/g, "&quot;") + "\">" + bestSellerChip + "<span class=\"price-tag\">" + price + "</span>" + (isAvailable ? "" : "<span class=\"soldout-chip\">SOLD OUT</span>") + "</div>" +
-                    "<h3>" + (item.name || "Item") + "</h3>" +
-                    "<p>" + descShow + "</p></article>";
+                    "<div class=\"image-wrap\">" + addonChip + "<img src=\"" + img + "\" alt=\"" + (item.name || "").replace(/"/g, "&quot;") + "\">" + bestSellerChip + priceTagHtml + (isAvailable ? "" : "<span class=\"soldout-chip\">SOLD OUT</span>") + "</div>" +
+                    "<h3>" + escHtml(item.name || "Item") + "</h3>" +
+                    "<p>" + escHtml(descShow) + "</p></article>";
             }
 
             function itemHasPosAddons(item) {
@@ -2441,6 +2490,9 @@
 
                     var left = s.substring(0, lastEq).trim();
                     var priceStr = s.substring(lastEq + 1).trim();
+                    // "110.00 / cost 50.00" → selling price only
+                    var costSplit = priceStr.match(/^([\d.,]+)\s*(?:\/\s*cost\s*[\d.,]+)?$/i);
+                    if (costSplit) priceStr = costSplit[1];
 
                     var firstParen = left.indexOf('(');
                     if (firstParen === -1) {

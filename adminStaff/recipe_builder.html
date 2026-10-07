@@ -680,14 +680,35 @@
                     if (!menuItem) return;
                     if (productNameEl) productNameEl.textContent = menuItem.name || ('Menu #' + menuId);
                     applyStationInventoryFilter();
-                    variantDefs = parseVariantsFromDescription(menuItem.description || '').map(function (v) {
-                        var sig = variantSignatureFromParsed(v);
-                        return {
-                            signature: sig,
-                            label: sig,
-                            price: parseMoney(v.price)
-                        };
-                    });
+                    // Prefer API variants[] (station + per-item). Fallback: Variants: line in description.
+                    if (Array.isArray(menuItem.variants) && menuItem.variants.length) {
+                        variantDefs = menuItem.variants.map(function (v) {
+                            var name = String(v && (v.name || v.size) || '').trim();
+                            var firstParen = name.indexOf('(');
+                            var parsed = firstParen === -1
+                                ? { size: name, label: name, price: v.price }
+                                : {
+                                    size: name.substring(0, firstParen).trim(),
+                                    label: name.substring(firstParen + 1).replace(/\)\s*$/, '').trim(),
+                                    price: v.price
+                                };
+                            var sig = variantSignatureFromParsed(parsed) || name;
+                            return {
+                                signature: sig,
+                                label: sig,
+                                price: parseMoney(v.price != null ? v.price : parsed.price)
+                            };
+                        }).filter(function (v) { return !!v.signature; });
+                    } else {
+                        variantDefs = parseVariantsFromDescription(menuItem.description || '').map(function (v) {
+                            var sig = variantSignatureFromParsed(v);
+                            return {
+                                signature: sig,
+                                label: sig,
+                                price: parseMoney(v.price)
+                            };
+                        });
+                    }
                     var hintEl = document.getElementById('recipe-builder-hint');
                     if (hintEl) {
                         hintEl.textContent = 'Link ingredients to this menu item to automatically deduct inventory stock with every order.';

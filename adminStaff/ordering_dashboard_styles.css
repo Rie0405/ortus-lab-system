@@ -617,9 +617,9 @@ body.modal-open {
 .table-row {
     display: grid;
     grid-template-columns: 100px minmax(150px, 1.6fr) minmax(90px, 0.9fr) minmax(95px, 0.85fr) minmax(95px, 0.85fr) minmax(180px, 1.2fr) minmax(240px, 1.3fr);
-    gap: 14px;
-    align-items: center;
-    padding: 12px 14px;
+    gap: 0;
+    align-items: stretch;
+    padding: 0;
     min-width: 1140px;
 }
 .table-head {
@@ -632,6 +632,48 @@ body.modal-open {
 }
 .table-row {
     border-top: 1px solid #2d241b;
+}
+
+.table-head > *,
+.table-row > * {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border-right: 1px solid #3d3025;
+    min-width: 0;
+}
+
+.table-head > *:last-child,
+.table-row > *:last-child {
+    border-right: 0;
+}
+
+/* Product name stays left — long titles/descriptions read better. */
+.table-head > *:nth-child(2),
+.table-row > .name {
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.table-row > .name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+}
+
+.table-row > *:nth-child(6) {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+
+.table-row > .acts {
+    justify-content: center;
 }
 
 .prod-img {
@@ -673,7 +715,7 @@ body.modal-open {
 .pill.out { background: rgba(239, 68, 68, 0.16); color: #ef4444; }
 
 .status-toggle-btn {
-    margin-left: 8px;
+    margin-left: 0;
     border: 1px solid rgba(148, 163, 184, 0.35);
     background: transparent;
     color: #cbd5e1;
@@ -700,7 +742,7 @@ body.modal-open {
     flex-wrap: wrap;
     gap: 4px 6px;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
 }
 .acts-btn {
     border: 0;
@@ -1160,7 +1202,7 @@ body.modal-open {
 
 .product-modal {
     width: min(1040px, 100%);
-    max-height: min(640px, 100%);
+    max-height: min(92vh, 720px);
     background: #15110d;
     border-radius: 16px;
     border: 1px solid rgba(61, 48, 37, 0.9);
@@ -1222,6 +1264,8 @@ body.modal-open {
 .product-modal__body {
     padding: 18px 24px 16px;
     overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .product-modal__grid {
@@ -1777,9 +1821,14 @@ body.modal-open {
 
 .product-modal__lower {
     display: grid;
-    grid-template-columns: 1.1fr 1.1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
     margin-top: 18px;
+}
+
+#edit-variants-fields,
+#prod-variants-fields {
+    grid-column: 1 / -1;
 }
 
 .product-section {
@@ -1977,8 +2026,15 @@ body.modal-open {
     padding: 12px 24px 18px;
     border-top: 1px solid rgba(61, 48, 37, 0.9);
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
+    align-items: center;
     gap: 12px;
+    flex-shrink: 0;
+    background: #15110d;
+}
+
+.product-modal__footer .product-btn--ghost {
+    margin-right: auto;
 }
 
 .product-btn {

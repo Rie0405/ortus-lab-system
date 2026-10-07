@@ -343,6 +343,9 @@ function parseVariantsFromDescription(description) {
 
         var left = s.substring(0, lastEq).trim();
         var priceStr = s.substring(lastEq + 1).trim();
+        // "110.00 / cost 50.00" → selling price only
+        var costSplit = priceStr.match(/^([\d.,]+)\s*(?:\/\s*cost\s*[\d.,]+)?$/i);
+        if (costSplit) priceStr = costSplit[1];
 
         var firstParen = left.indexOf('(');
         if (firstParen === -1) {
@@ -371,6 +374,25 @@ function categoryNameMergesIntoCustomerBeverages(name) {
 }
 
 function getKioskTemperatureVariants(menuItem, temperatureFallback) {
+    var apiVariants = menuItem && Array.isArray(menuItem.variants) ? menuItem.variants : [];
+    if (apiVariants.length) {
+        return apiVariants
+            .map(function (v) {
+                var name = String(v && (v.name || v.size) || '').trim();
+                if (!name) return null;
+                var firstParen = name.indexOf('(');
+                var size = name;
+                var label = '';
+                if (firstParen !== -1) {
+                    size = name.substring(0, firstParen).trim();
+                    label = name.substring(firstParen + 1).trim();
+                    if (label.endsWith(')')) label = label.substring(0, label.length - 1).trim();
+                }
+                var price = v.price != null && v.price !== '' ? v.price : menuItem.price;
+                return { size: size || name, label: label, price: String(price != null ? price : '0') };
+            })
+            .filter(Boolean);
+    }
     var v = parseVariantsFromDescription(menuItem.description || '');
     if (v.length) return v;
     if (!temperatureFallback) return [];
@@ -928,7 +950,10 @@ function renderAllSidebars() {
 
 function parseCardItem(card) {
     var nameEl = card.querySelector('.prod-card-name');
-    var priceEl = card.querySelector('.prod-card-price');
+    var priceEl =
+        card.querySelector('.price-tag__amt') ||
+        card.querySelector('.price-tag') ||
+        card.querySelector('.prod-card-price');
     var name = nameEl ? nameEl.textContent.trim() : 'Menu Item';
     var rawPrice = priceEl ? priceEl.textContent : '0';
     var parsedPrice = parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
@@ -986,10 +1011,70 @@ function stripPosBevSectionForDisplay(description) {
     var lines = String(description || '').split(/\r?\n/);
     return lines
         .filter(function (ln) {
-            return !/^__pos_bev_section__:/i.test(String(ln || '').trim());
+            var t = String(ln || '').trim();
+            if (!t) return false;
+            if (/^__pos_bev_section__:/i.test(t)) return false;
+            if (/^Variants\s*:/i.test(t)) return false;
+            if (/(Customizable|Removable)\s+ingredients\s*:/i.test(t)) return false;
+            return true;
         })
         .join('\n')
         .trim();
+}
+
+/** Same orange badge rows as staff POS (2+ variants → name + price each). */
+function getKioskCardVariantPrices(item) {
+    var out = [];
+    var apiVariants = item && Array.isArray(item.variants) ? item.variants : [];
+    if (apiVariants.length) {
+        apiVariants.forEach(function (v) {
+            var name = String(v && (v.name || v.size) || '').trim();
+            if (!name) return;
+            var p = v.price;
+            if (p == null || p === '') p = item.price;
+            out.push({ name: name, price: parseMoneyAttr(p) });
+        });
+        return out;
+    }
+    parseVariantsFromDescription(item && item.description).forEach(function (v) {
+        var size = String(v.size || '').trim();
+        var label = String(v.label || '').trim();
+        var name = size;
+        if (size && label && label !== size) name = size + ' (' + label + ')';
+        else if (!name) name = label;
+        if (!name) return;
+        out.push({ name: name, price: parseMoneyAttr(v.price) });
+    });
+    return out;
+}
+
+function formatKioskCardPriceTagHtml(item, isAddonCard) {
+    if (isAddonCard) {
+        return '<span class="price-tag">' + formatPeso(item.price) + '</span>';
+    }
+    var variants = getKioskCardVariantPrices(item);
+    if (variants.length >= 2) {
+        return (
+            '<span class="price-tag price-tag--multi">' +
+            variants
+                .map(function (v) {
+                    return (
+                        '<span class="price-tag__row">' +
+                        '<span class="price-tag__variant">' +
+                        escapeHtml(v.name) +
+                        '</span>' +
+                        '<span class="price-tag__amt">' +
+                        formatPeso(v.price) +
+                        '</span>' +
+                        '</span>'
+                    );
+                })
+                .join('') +
+            '</span>'
+        );
+    }
+    var single = variants.length === 1 ? variants[0].price : item && item.price;
+    return '<span class="price-tag">' + formatPeso(single) + '</span>';
 }
 
 function subcategoryNameToBevSectionKey(name) {
@@ -1312,22 +1397,41 @@ function renderMenuItemsInto(gridEl, items) {
         var addonBadge = isAddonCard
             ? '<span class="prod-card-addon-badge">ADD-ON</span>'
             : '';
+        var priceTagHtml = formatKioskCardPriceTagHtml(it, isAddonCard);
+        var descShow = isAddonCard
+            ? 'Add on its own'
+            : stripPosBevSectionForDisplay(it.description || '');
+        var soldoutChip = isAvailable
+            ? ''
+            : '<span class="prod-card-soldout-chip">SOLD OUT</span>';
         var cardMods =
             (isAvailable ? '' : ' prod-card--soldout') +
             (isBestSeller ? ' prod-card--bestseller' : '') +
             (isAddonCard ? ' prod-card--addon' : '');
         return (
             '<div class="prod-card' + cardMods + '" data-menu-id="' + it.id + '">' +
-            '  <div class="prod-card-img-wrap">' + addonBadge + bestSellerBadge + imgHtml + '</div>' +
-            '  <div class="prod-card-body">' +
-            '    <div class="prod-card-name-row">' +
-            '      <span class="prod-card-name">' + escapeHtml(it.name) + '</span>' +
-            '      <span class="prod-card-price">' + formatPeso(it.price) + '</span>' +
-            '    </div>' +
-            (isAvailable ? '' : '    <span class="prod-card-soldout-badge">SOLD OUT</span>') +
-            '    <p class="prod-card-desc">' + escapeHtml(isAddonCard ? 'Add on its own' : (stripPosBevSectionForDisplay(it.description) || '—')) + '</p>' +
-            '  </div>' +
-            '  <button class="prod-add-btn' + (isAddonCard ? ' prod-add-btn--addon' : '') + '" data-add-menu-id="' + it.id + '" ' + (isAvailable ? '' : 'disabled') + '>' + (isAvailable ? (isAddonCard ? 'ADD ADD-ON' : 'ADD ORDER') : 'SOLD OUT') + '</button>' +
+            '  <div class="prod-card-img-wrap">' +
+            addonBadge +
+            imgHtml +
+            bestSellerBadge +
+            priceTagHtml +
+            soldoutChip +
+            '</div>' +
+            '  <h3 class="prod-card-name">' +
+            escapeHtml(it.name) +
+            '</h3>' +
+            '  <p class="prod-card-desc">' +
+            escapeHtml(descShow) +
+            '</p>' +
+            '  <button class="prod-add-btn' +
+            (isAddonCard ? ' prod-add-btn--addon' : '') +
+            '" data-add-menu-id="' +
+            it.id +
+            '" ' +
+            (isAvailable ? '' : 'disabled') +
+            '>' +
+            (isAvailable ? (isAddonCard ? 'ADD ADD-ON' : 'ADD ORDER') : 'SOLD OUT') +
+            '</button>' +
             '</div>'
         );
     }).join('');

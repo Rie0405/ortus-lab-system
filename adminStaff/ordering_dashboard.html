@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261006-filter-ghost">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261007-edit-variants">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="image_crop.css?v=20261006">
@@ -598,14 +598,44 @@
                         </div>
                     </div>
 
-                    </div>
+                    <div class="product-modal__lower">
+                        <div id="edit-variants-fields" class="product-section" hidden>
+                            <div class="product-section__head">
+                                <span class="product-section__title">Variants</span>
+                            </div>
+                            <div class="product-section__body">
+                                <p class="product-field-label__note" style="margin: 0 0 10px;">
+                                    Edit this product’s variant names, selling prices, and costs. Lowest price/cost become the product defaults.
+                                </p>
+                                <div id="edit-variants-list" class="prod-variants-list"></div>
 
-                    <!-- Variants are configured on the selected main category (Create form), not per product. -->
+                                <template id="edit-variant-template">
+                                    <div class="variant-input-row">
+                                        <div class="variant-input-block">
+                                            <label class="product-field-label">Variant name</label>
+                                            <input type="text" class="product-input variant-input--size" placeholder="e.g. Hot (8oz), Iced (12oz)" aria-label="Variant name" autocomplete="off" />
+                                        </div>
+                                        <div class="variant-input-block">
+                                            <label class="product-field-label">PRICE (₱)</label>
+                                            <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" />
+                                        </div>
+                                        <div class="variant-input-block">
+                                            <label class="product-field-label">COST PRICE (₱)</label>
+                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" />
+                                        </div>
+                                        <button type="button" class="variant-remove" aria-label="Remove variant">Delete</button>
+                                    </div>
+                                </template>
+
+                                <button type="button" class="variant-add" id="edit-variant-add">+ ADD VARIANT</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <footer class="product-modal__footer">
-                    <button type="button" class="product-btn product-btn--ghost">DISCARD CHANGES</button>
-                    <button type="button" class="product-btn product-btn--primary">DONE</button>
+                    <button type="button" class="product-btn product-btn--ghost">Cancel</button>
+                    <button type="button" class="product-btn product-btn--primary">Done</button>
                 </footer>
             </div>
         </div>
@@ -748,7 +778,7 @@
 
         <script src="auth_session.js"></script>
         <script src="image_crop.js?v=20261006"></script>
-        <script src="dashboard_script.js?v=20261006-image-crop"></script>
+        <script src="dashboard_script.js?v=20261007-edit-variants"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');

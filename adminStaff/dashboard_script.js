@@ -867,7 +867,14 @@ function apiCall(method, url, body) {
         resetCreateVariantRows();
         if (enabled) {
             if (variants.length) {
-                variants.forEach(function (v) { addCreateVariantRow(v); });
+                // Station stores variant *names* only — prices/costs are per product.
+                variants.forEach(function (v) {
+                    addCreateVariantRow({
+                        name: formatVariantDisplayName(v) || String(v.name || v.size || '').trim(),
+                        price: null,
+                        cost: null
+                    });
+                });
             } else {
                 ensureDefaultCreateVariantRows();
             }
@@ -898,11 +905,16 @@ function apiCall(method, url, body) {
             if (!quiet) alert('Main category not found.');
             return Promise.reject(new Error('main_category_missing'));
         }
+        // Persist structure (names) on the station — never shared selling/cost prices.
+        // Per-product prices are stored on the menu item Variants: description line.
+        var variantsForStation = variants.map(function (v) {
+            return { name: String(v.name || '').trim(), price: null, cost: null };
+        }).filter(function (v) { return !!v.name; });
         return apiCall('PUT', 'api/main_categories.php', {
             id: selectedId,
             name: cat.name,
             variants_enabled: enabled ? 1 : 0,
-            variants: variants
+            variants: variantsForStation
         }).then(function (res) {
             if (!res.success) throw new Error(res.error || 'Failed to save variants');
             createVariantsDirty = false;
@@ -956,6 +968,130 @@ function apiCall(method, url, body) {
     }
 
     initCreateVariantInputs();
+
+    // ── Edit modal: per-product variants ──────────────────────────────────────
+    var editVariantsFieldsEl = editBackdrop ? editBackdrop.querySelector('#edit-variants-fields') : null;
+    var editVariantsListEl = editBackdrop ? editBackdrop.querySelector('#edit-variants-list') : null;
+    var editVariantTemplateEl = editBackdrop ? editBackdrop.querySelector('#edit-variant-template') : null;
+    var editVariantAddBtn = editBackdrop ? editBackdrop.querySelector('#edit-variant-add') : null;
+    var editCostPriceWrap = document.getElementById('edit-cost-price-wrap');
+    var editBasePriceWrap = document.getElementById('edit-base-price-wrap');
+
+    function resetEditVariantRows() {
+        if (editVariantsListEl) editVariantsListEl.innerHTML = '';
+    }
+
+    function addEditVariantRow(data) {
+        if (!editVariantTemplateEl || !editVariantsListEl) return;
+        var frag = editVariantTemplateEl.content.cloneNode(true);
+        var row = frag.firstElementChild;
+        if (!row) return;
+        var sizeInp = row.querySelector('.variant-input--size');
+        var priceInp = row.querySelector('.variant-input--price');
+        var costInp = row.querySelector('.variant-input--cost');
+        if (data) {
+            if (sizeInp) sizeInp.value = formatVariantDisplayName(data) || String(data.name || data.size || '').trim();
+            if (priceInp && data.price != null && data.price !== '') priceInp.value = data.price;
+            if (costInp && data.cost != null && data.cost !== '') costInp.value = data.cost;
+        }
+        editVariantsListEl.appendChild(frag);
+    }
+
+    function collectEditVariants() {
+        var variants = [];
+        if (!editVariantsListEl) return variants;
+        editVariantsListEl.querySelectorAll('.variant-input-row').forEach(function (row) {
+            var size = (row.querySelector('.variant-input--size') && row.querySelector('.variant-input--size').value || '').trim();
+            var priceRaw = (row.querySelector('.variant-input--price') && row.querySelector('.variant-input--price').value || '').trim();
+            var costRaw = (row.querySelector('.variant-input--cost') && row.querySelector('.variant-input--cost').value || '').trim();
+            if (!size) return;
+            var entry = { name: size, price: null, cost: null };
+            if (priceRaw !== '') {
+                var p = parseFloat(priceRaw);
+                if (Number.isFinite(p) && p >= 0) entry.price = p;
+            }
+            if (costRaw !== '') {
+                var c = parseFloat(costRaw);
+                if (Number.isFinite(c) && c >= 0) entry.cost = c;
+            }
+            variants.push(entry);
+        });
+        return variants;
+    }
+
+    function syncEditVariantsUI(show) {
+        if (editVariantsFieldsEl) editVariantsFieldsEl.hidden = !show;
+        if (editCostPriceWrap) editCostPriceWrap.hidden = !!show;
+        if (editBasePriceWrap) editBasePriceWrap.hidden = !!show;
+        var costInp = document.getElementById('edit-cost-price');
+        if (costInp) {
+            if (show) costInp.removeAttribute('required');
+            else costInp.setAttribute('required', 'required');
+        }
+    }
+
+    function loadEditVariantsForItem(item) {
+        resetEditVariantRows();
+        if (!item) {
+            syncEditVariantsUI(false);
+            return;
+        }
+        var mainMeta = findMainCategoryById(item.main_category_id);
+        var stationOn = !!(mainMeta && Number(mainMeta.variants_enabled) === 1 && Array.isArray(mainMeta.variants) && mainMeta.variants.length);
+        var itemVariants = Array.isArray(item.variants) ? item.variants : [];
+        var show = stationOn || itemVariants.length > 0;
+        if (!show) {
+            syncEditVariantsUI(false);
+            return;
+        }
+
+        var rows = itemVariants.length
+            ? itemVariants
+            : (mainMeta.variants || []).map(function (v) {
+                return {
+                    name: formatVariantDisplayName(v) || String(v.name || v.size || '').trim(),
+                    price: item.price,
+                    cost: item.cost_price
+                };
+            });
+        if (!rows.length) {
+            rows = [
+                { name: DEFAULT_COLD_VARIANT_NAME, price: item.price, cost: item.cost_price },
+                { name: DEFAULT_HOT_VARIANT_NAME, price: item.price, cost: item.cost_price }
+            ];
+        }
+        rows.forEach(function (v) {
+            addEditVariantRow({
+                name: formatVariantDisplayName(v) || String(v.name || v.size || '').trim(),
+                price: v.price != null && v.price !== '' ? v.price : item.price,
+                cost: v.cost != null && v.cost !== '' ? v.cost : item.cost_price
+            });
+        });
+        syncEditVariantsUI(true);
+    }
+
+    function initEditVariantInputs() {
+        if (!editVariantsFieldsEl) return;
+        if (editVariantAddBtn) {
+            editVariantAddBtn.addEventListener('click', function () {
+                addEditVariantRow();
+            });
+        }
+        if (editVariantsListEl) {
+            editVariantsListEl.addEventListener('click', function (e) {
+                var btn = e.target.closest('.variant-remove');
+                if (!btn) return;
+                var row = btn.closest('.variant-input-row');
+                if (row) row.remove();
+                if (editVariantsListEl && !editVariantsListEl.querySelector('.variant-input-row')) {
+                    addEditVariantRow({ name: DEFAULT_COLD_VARIANT_NAME });
+                    addEditVariantRow({ name: DEFAULT_HOT_VARIANT_NAME });
+                }
+            });
+        }
+    }
+
+    initEditVariantInputs();
 
     // ── Edit modal: removable ingredients ────────────────────────────────────
     var editCustomizableTagsList = null;
@@ -1906,6 +2042,14 @@ function apiCall(method, url, body) {
     if (editMainCategorySelect) {
         editMainCategorySelect.addEventListener('change', function () {
             syncEditCategoryOptions('');
+            if (editingId) {
+                var cur = allItems.find(function (i) { return i.id === editingId; });
+                if (cur) {
+                    loadEditVariantsForItem(Object.assign({}, cur, {
+                        main_category_id: parseInt(editMainCategorySelect.value, 10) || 0
+                    }));
+                }
+            }
         });
     }
     if (manageMainCategorySelect) {
@@ -2737,19 +2881,19 @@ function apiCall(method, url, body) {
                 var derivedPrice = null;
                 var derivedCost = null;
                 formVariants.forEach(function (v) {
-                    if (derivedPrice == null && v.price != null && Number.isFinite(v.price) && v.price > 0) {
-                        derivedPrice = v.price;
+                    if (v.price != null && Number.isFinite(v.price) && v.price > 0) {
+                        if (derivedPrice == null || v.price < derivedPrice) derivedPrice = v.price;
                     }
-                    if (derivedCost == null && v.cost != null && Number.isFinite(v.cost) && v.cost >= 0) {
-                        derivedCost = v.cost;
+                    if (v.cost != null && Number.isFinite(v.cost) && v.cost >= 0) {
+                        if (derivedCost == null || v.cost < derivedCost) derivedCost = v.cost;
                     }
                 });
                 if (!(derivedPrice > 0)) {
-                    alert('Add a default price on at least one variant (this becomes the product selling price).');
+                    alert('Add a price on every variant (lowest becomes the product selling price).');
                     return;
                 }
                 if (derivedCost == null) {
-                    alert('Add a default cost on at least one variant (this becomes the product cost price).');
+                    alert('Add a cost on every variant (lowest becomes the product cost price).');
                     return;
                 }
                 price = derivedPrice;
@@ -2800,10 +2944,32 @@ function apiCall(method, url, body) {
             }
 
             desc = stripPosBevSectionLine(desc);
-            // Variants live on main category — never store a product-level Variants line.
+            // Clear any old Variants line, then store this product's prices on the item.
             desc = String(desc || '').split(/\r?\n/).filter(function (ln) {
                 return !/^Variants\s*:/i.test(String(ln || '').trim());
             }).join('\n').trim();
+            if (formVariantsEnabled && formVariants.length) {
+                var missingPrice = formVariants.some(function (v) {
+                    return !(v.price != null && Number.isFinite(v.price) && v.price > 0);
+                });
+                var missingCost = formVariants.some(function (v) {
+                    return !(v.cost != null && Number.isFinite(v.cost) && v.cost >= 0);
+                });
+                if (missingPrice) {
+                    alert('Enter a selling price for every variant.');
+                    return;
+                }
+                if (missingCost) {
+                    alert('Enter a cost for every variant.');
+                    return;
+                }
+                var variantLine = 'Variants: ' + formVariants.map(function (v) {
+                    var seg = String(v.name).trim() + ' = ' + Number(v.price).toFixed(2);
+                    seg += ' / cost ' + Number(v.cost).toFixed(2);
+                    return seg;
+                }).join('; ');
+                desc = desc ? (desc + '\n' + variantLine) : variantLine;
+            }
 
             // Infer Hot/Cold from create-form variants (or saved main-category config).
             var serveHot = 0;
@@ -2945,6 +3111,7 @@ function apiCall(method, url, body) {
         editImageUrl = (item.image_url && String(item.image_url).trim()) || '';
         setDropzonePreview('edit', editImageUrl);
         syncAllCatalogIconDropzones();
+        loadEditVariantsForItem(item);
 
         openModal(editBackdrop);
     }
@@ -2994,48 +3161,90 @@ function apiCall(method, url, body) {
                     descEdit = (descEdit ? (descEdit + '\n') : '') + 'Removable ingredients: ' + customizableIngredients.join(', ');
                 }
 
-                // Variants live on main category — strip product-level Variants line.
                 var lines2 = (descEdit || '').split(/\r?\n/);
                 lines2 = lines2.filter(function (ln) {
                     return !/^Variants\s*:/i.test(String(ln || '').trim());
                 });
                 descEdit = lines2.join('\n').trim();
 
+                var editVariantsOn = !!(editVariantsFieldsEl && !editVariantsFieldsEl.hidden);
+                var formEditVariants = editVariantsOn ? collectEditVariants() : [];
                 var price = parseFloat(editBasePriceInput && editBasePriceInput.value || '0');
+                var costPrice = NaN;
 
-                if (!(price > 0)) {
-                    alert('Selling price is required.');
-                    if (editBasePriceInput) editBasePriceInput.focus();
-                    return;
-                }
+                if (editVariantsOn) {
+                    if (!formEditVariants.length) {
+                        alert('Add at least one variant, or clear variants in Manage.');
+                        return;
+                    }
+                    var missingPrice = formEditVariants.some(function (v) {
+                        return !(v.price != null && Number.isFinite(v.price) && v.price > 0);
+                    });
+                    var missingCost = formEditVariants.some(function (v) {
+                        return !(v.cost != null && Number.isFinite(v.cost) && v.cost >= 0);
+                    });
+                    if (missingPrice) {
+                        alert('Enter a selling price for every variant.');
+                        return;
+                    }
+                    if (missingCost) {
+                        alert('Enter a cost for every variant.');
+                        return;
+                    }
+                    var derivedPrice = null;
+                    var derivedCost = null;
+                    formEditVariants.forEach(function (v) {
+                        if (derivedPrice == null || v.price < derivedPrice) derivedPrice = v.price;
+                        if (derivedCost == null || v.cost < derivedCost) derivedCost = v.cost;
+                    });
+                    price = derivedPrice;
+                    costPrice = derivedCost;
+                    if (editBasePriceInput) editBasePriceInput.value = String(derivedPrice);
+                    if (editCostPriceInput) editCostPriceInput.value = String(derivedCost);
+                    if (!assertCostNotAboveSelling(derivedCost, derivedPrice, null)) {
+                        return;
+                    }
+                    var variantLine = 'Variants: ' + formEditVariants.map(function (v) {
+                        return String(v.name).trim() + ' = ' + Number(v.price).toFixed(2)
+                            + ' / cost ' + Number(v.cost).toFixed(2);
+                    }).join('; ');
+                    descEdit = descEdit ? (descEdit + '\n' + variantLine) : variantLine;
+                } else {
+                    if (!(price > 0)) {
+                        alert('Selling price is required.');
+                        if (editBasePriceInput) editBasePriceInput.focus();
+                        return;
+                    }
 
-                var costPriceRaw = editCostPriceInput ? String(editCostPriceInput.value || '').trim() : '';
-                if (!costPriceRaw) {
-                    alert('Cost price is required.');
-                    if (editCostPriceInput) editCostPriceInput.focus();
-                    return;
-                }
-                var costPrice = parseFloat(costPriceRaw);
-                if (!Number.isFinite(costPrice) || costPrice < 0) {
-                    alert('Cost price must be 0 or greater.');
-                    if (editCostPriceInput) editCostPriceInput.focus();
-                    return;
-                }
-                if (!assertCostNotAboveSelling(costPrice, price, editCostPriceInput)) {
-                    return;
+                    var costPriceRaw = editCostPriceInput ? String(editCostPriceInput.value || '').trim() : '';
+                    if (!costPriceRaw) {
+                        alert('Cost price is required.');
+                        if (editCostPriceInput) editCostPriceInput.focus();
+                        return;
+                    }
+                    costPrice = parseFloat(costPriceRaw);
+                    if (!Number.isFinite(costPrice) || costPrice < 0) {
+                        alert('Cost price must be 0 or greater.');
+                        if (editCostPriceInput) editCostPriceInput.focus();
+                        return;
+                    }
+                    if (!assertCostNotAboveSelling(costPrice, price, editCostPriceInput)) {
+                        return;
+                    }
                 }
 
                 var editMainCatId = parseInt(editMainCategorySelect && editMainCategorySelect.value, 10);
                 var serveHot = 0;
                 var serveCold = 0;
                 var editMainMeta = findMainCategoryById(editMainCatId);
-                if (editMainMeta && Number(editMainMeta.variants_enabled) === 1 && Array.isArray(editMainMeta.variants)) {
-                    editMainMeta.variants.forEach(function (v) {
-                        var n = String(v && (v.name || v.size) || '').toLowerCase();
-                        if (/\b(hot|warm)\b/.test(n)) serveHot = 1;
-                        if (/\b(iced|cold|blended|frappe)\b/.test(n)) serveCold = 1;
-                    });
-                }
+                var variantsForFlags = formEditVariants.length
+                    ? formEditVariants
+                    : ((editMainMeta && editMainMeta.variants) || []);
+                variantsForFlags.forEach(function (v) {
+                    var n = String(v && (v.name || v.size) || '').toLowerCase();
+                    if (/\b(hot|warm)\b/.test(n)) serveHot = 1;
+                    if (/\b(iced|cold|blended|frappe)\b/.test(n)) serveCold = 1;
+                });
                 setServeFlagsOnForm('edit', { hot: !!serveHot, cold: !!serveCold });
 
                 var editSubcategoryId = editProdSubcategorySelect ? editProdSubcategorySelect.value : '';
@@ -3075,7 +3284,7 @@ function apiCall(method, url, body) {
                     }
                 }).finally(function () {
                     editPrimaryBtn.disabled    = false;
-                    editPrimaryBtn.textContent = 'DONE';
+                    editPrimaryBtn.textContent = 'Done';
                 });
             });
         }

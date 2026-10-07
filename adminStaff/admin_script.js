@@ -22,6 +22,34 @@
         }
     }
 
+    /** Allow ?next= only when it matches the signed-in role. */
+    function sanitizeNextForRole(next, role) {
+        var path = String(next || '').trim();
+        if (!path || path.indexOf('://') !== -1 || path.charAt(0) === '/') return '';
+        var lower = path.toLowerCase();
+        var isStaffPage = lower.indexOf('staff_dashboard') !== -1;
+        if (role === 'admin') {
+            // Admin must never be sent to POS via leftover ?next= from staff logout/switch.
+            return isStaffPage ? '' : path;
+        }
+        if (role === 'staff') {
+            // Staff stays on POS; ignore admin dashboard deep-links.
+            if (isStaffPage) return path;
+            if (
+                lower.indexOf('admin_dashboard') !== -1 ||
+                lower.indexOf('ordering_dashboard') !== -1 ||
+                lower.indexOf('inventory_dashboard') !== -1 ||
+                lower.indexOf('sales_history') !== -1 ||
+                lower.indexOf('staff_admin') !== -1 ||
+                lower.indexOf('recipe') !== -1
+            ) {
+                return '';
+            }
+            return path;
+        }
+        return '';
+    }
+
     loginNext = getLoginNext();
 
     function showError(msg) {
@@ -191,12 +219,13 @@
                 if (typeof window.ortusBeginAuthSession === 'function') {
                     window.ortusBeginAuthSession();
                 }
-                var redirect = data.redirect || '';
-                var role     = data.user && data.user.role ? String(data.user.role).toLowerCase() : '';
-                var isStaff  = role === 'staff' || redirect.indexOf('staff_dashboard') !== -1;
+                var role = data.user && data.user.role ? String(data.user.role).toLowerCase() : '';
+                var redirect = data.redirect || (role === 'admin' ? 'admin_dashboard.html' : 'staff_dashboard.html');
+                var safeNext = sanitizeNextForRole(loginNext, role);
 
-                if (isStaff) {
-                    pendingStaffRedirect = loginNext || redirect || 'staff_dashboard.html';
+                // Role decides destination — never treat admin as staff because of ?next=.
+                if (role === 'staff') {
+                    pendingStaffRedirect = safeNext || redirect || 'staff_dashboard.html';
                     // Shared float for the day — only prompt on the first staff login / shift open.
                     if (hasStartingMoneyForToday()) {
                         // Still show inventory checking on POS if not completed yet today.
@@ -210,7 +239,7 @@
                     return;
                 }
 
-                window.location.href = loginNext || redirect;
+                window.location.href = safeNext || redirect || 'admin_dashboard.html';
             } else {
                 showError(data.error || 'Login failed.');
                 btn.disabled    = false;

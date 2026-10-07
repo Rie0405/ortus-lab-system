@@ -287,12 +287,22 @@ function ensure_main_categories_schema(PDO $pdo): void
         if (!$hasVe) {
             $pdo->exec(
                 'ALTER TABLE main_categories
-                    ADD COLUMN variants_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active,
+                    ADD COLUMN variants_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active'
+            );
+        }
+    } catch (Throwable $e) {
+        // Hostinger may block ALTER — run SQL manually (see ops notes).
+    }
+    try {
+        $hasVj = (bool)$pdo->query("SHOW COLUMNS FROM main_categories LIKE 'variants_json'")->fetch();
+        if (!$hasVj) {
+            $pdo->exec(
+                'ALTER TABLE main_categories
                     ADD COLUMN variants_json TEXT NULL AFTER variants_enabled'
             );
         }
     } catch (Throwable $e) {
-        // Ignore migration issues on restricted environments.
+        // Hostinger may block ALTER — run SQL manually (see ops notes).
     }
 
     $pdo->exec(
@@ -500,16 +510,39 @@ function fetch_active_main_categories(PDO $pdo): array
 }
 
 /**
- * Apply main-category variants onto a menu item for POS/kiosk clients.
- * Rewrites the Variants: description line so existing parsers keep working.
+ * Display name for a parsed Variants: segment (size + optional label).
+ */
+function variant_display_name_from_parsed(array $v): string
+{
+    $size = trim((string)($v['size'] ?? ''));
+    $label = trim((string)($v['label'] ?? ''));
+    if ($size !== '' && $label !== '' && strcasecmp($size, $label) !== 0) {
+        return $size . ' (' . $label . ')';
+    }
+    return $size !== '' ? $size : $label;
+}
+
+/**
+ * Apply main-category variant *names* onto a menu item for POS/kiosk clients.
+ *
+ * Selling/cost prices come from the product (per-item Variants: line and/or
+ * menu_items.price / cost_price) — never from shared main_categories.variants_json
+ * prices, which would stamp one product's prices onto every item in the station.
  */
 function apply_main_category_variants_to_menu_item(array &$item, array $mainCatsById): void
 {
     $mcid = (int)($item['main_category_id'] ?? 0);
     $mc = $mcid > 0 ? ($mainCatsById[$mcid] ?? null) : null;
     $enabled = $mc && !empty($mc['variants_enabled']) && !empty($mc['variants']);
-    $item['variants_enabled'] = $enabled ? 1 : 0;
-    $item['variants'] = $enabled ? $mc['variants'] : [];
+
+    $perItem = parse_variants_from_description($item['description'] ?? '');
+    $perItemByName = [];
+    foreach ($perItem as $pv) {
+        $n = variant_display_name_from_parsed($pv);
+        if ($n !== '') {
+            $perItemByName[strtolower($n)] = $pv;
+        }
+    }
 
     $desc = (string)($item['description'] ?? '');
     $lines = preg_split("/\r\n|\n|\r/", $desc) ?: [];
@@ -518,9 +551,56 @@ function apply_main_category_variants_to_menu_item(array &$item, array $mainCats
     }));
     $descClean = trim(implode("\n", $lines));
 
+    $itemPrice = isset($item['price']) && is_numeric($item['price']) ? (float)$item['price'] : null;
+    $itemCost = isset($item['cost_price']) && is_numeric($item['cost_price'])
+        ? (float)$item['cost_price']
+        : null;
+
+    $merged = [];
     if ($enabled) {
-        $fallback = isset($item['price']) ? (float)$item['price'] : null;
-        $line = 'Variants: ' . format_variants_description_line($mc['variants'], $fallback);
+        foreach ($mc['variants'] as $mv) {
+            $name = trim((string)($mv['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $price = $itemPrice;
+            $cost = $itemCost;
+            $hit = $perItemByName[strtolower($name)] ?? null;
+            if ($hit !== null) {
+                if (isset($hit['price']) && is_numeric($hit['price'])) {
+                    $price = (float)$hit['price'];
+                }
+                if (array_key_exists('cost', $hit) && $hit['cost'] !== null && is_numeric($hit['cost'])) {
+                    $cost = (float)$hit['cost'];
+                }
+            }
+            $merged[] = [
+                'name' => $name,
+                'price' => $price,
+                'cost' => $cost,
+            ];
+        }
+    } elseif ($perItem) {
+        foreach ($perItem as $pv) {
+            $name = variant_display_name_from_parsed($pv);
+            if ($name === '') {
+                continue;
+            }
+            $merged[] = [
+                'name' => $name,
+                'price' => isset($pv['price']) ? (float)$pv['price'] : $itemPrice,
+                'cost' => array_key_exists('cost', $pv) && $pv['cost'] !== null
+                    ? (float)$pv['cost']
+                    : $itemCost,
+            ];
+        }
+    }
+
+    $item['variants_enabled'] = $merged ? 1 : 0;
+    $item['variants'] = $merged;
+
+    if ($merged) {
+        $line = 'Variants: ' . format_variants_description_line($merged, $itemPrice);
         $item['description'] = $descClean !== '' ? ($descClean . "\n" . $line) : $line;
     } else {
         $item['description'] = $descClean !== '' ? $descClean : null;

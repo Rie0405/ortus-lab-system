@@ -197,12 +197,26 @@ if ($method === 'GET') {
         fail('menu_id is required.');
     }
 
-    $menuStmt = $pdo->prepare('SELECT id, name, description, price FROM menu_items WHERE id = :id LIMIT 1');
+    $menuStmt = $pdo->prepare(
+        'SELECT m.id, m.name, m.description, m.price, m.cost_price,
+                COALESCE(m.main_category_id, c.main_category_id) AS main_category_id
+           FROM menu_items m
+           JOIN categories c ON c.id = m.category_id
+          WHERE m.id = :id
+          LIMIT 1'
+    );
     $menuStmt->execute([':id' => $menuId]);
     $menuItem = $menuStmt->fetch();
     if (!$menuItem) {
         fail('Menu item not found.', 404);
     }
+
+    // Same as menu.php — station variant names + per-item prices (not raw DB description only).
+    $mainCatsById = [];
+    foreach (fetch_active_main_categories($pdo) as $mc) {
+        $mainCatsById[(int)$mc['id']] = $mc;
+    }
+    apply_main_category_variants_to_menu_item($menuItem, $mainCatsById);
 
     $parsedVariants = parse_variants_from_description((string)($menuItem['description'] ?? ''));
     $variantDefs = [];
@@ -278,12 +292,25 @@ if (!in_array($recipeType, ['made_to_order', 'batch'], true)) {
     fail('Invalid recipe type.');
 }
 
-$menuStmt = $pdo->prepare('SELECT id, description FROM menu_items WHERE id = :id LIMIT 1');
+$menuStmt = $pdo->prepare(
+    'SELECT m.id, m.description, m.price, m.cost_price,
+            COALESCE(m.main_category_id, c.main_category_id) AS main_category_id
+       FROM menu_items m
+       JOIN categories c ON c.id = m.category_id
+      WHERE m.id = :id
+      LIMIT 1'
+);
 $menuStmt->execute([':id' => $menuId]);
 $menuRow = $menuStmt->fetch();
 if (!$menuRow) {
     fail('Menu item not found.', 404);
 }
+
+$mainCatsById = [];
+foreach (fetch_active_main_categories($pdo) as $mc) {
+    $mainCatsById[(int)$mc['id']] = $mc;
+}
+apply_main_category_variants_to_menu_item($menuRow, $mainCatsById);
 
 $parsedVariants = parse_variants_from_description((string)($menuRow['description'] ?? ''));
 $expectedSignatures = [];

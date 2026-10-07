@@ -4018,8 +4018,8 @@
             var received = parseFloat(item.qty_received || 0);
             var wasted = parseFloat(item.qty_wasted || 0);
             var parts = [];
+            if (received > 0) parts.push(formatMovementQty(received) + ' received');
             if (used > 0) parts.push(formatMovementQty(used) + ' used');
-            if (received > 0) parts.push(formatMovementQty(received) + ' in');
             if (wasted > 0) parts.push(formatMovementQty(wasted) + ' wasted');
             return parts.length ? parts.join(' · ') : '0 moved';
         }

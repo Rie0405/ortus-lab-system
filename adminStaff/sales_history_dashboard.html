@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Ortus Lab Sales History</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261007-adapt">
+    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261007-rwd1">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
     <link rel="stylesheet" href="../shared/modal_viewport.css?v=20261007b">
-    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-adapt">
+    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-rwd1">
 </head>
 <body>
     <div class="sales-page">
@@ -1179,14 +1179,14 @@
                 var dt = formatDate(r.created_at);
                 return '' +
                     '<tr>' +
-                        '<td data-label="Date">' + esc(dt.day + ' ' + dt.time) + '</td>' +
-                        '<td class="sales-report-order-code" data-label="Order">' + esc(r.order_code ? ('#' + r.order_code) : '—') + '</td>' +
-                        '<td data-label="Item">' + esc(r.item_name) + '</td>' +
-                        '<td class="sales-report-amt" data-label="Price">' + esc(peso(r.price)) + '</td>' +
-                        '<td class="sales-report-amt" data-label="Cost">' + esc(peso(r.cost)) + '</td>' +
-                        '<td data-label="Qty">' + esc(String(r.qty)) + '</td>' +
-                        '<td class="sales-report-amt" data-label="Total">' + esc(peso(r.total)) + '</td>' +
-                        '<td class="sales-report-amt" data-label="Total cost">' + esc(peso(r.total_cost)) + '</td>' +
+                        '<td>' + esc(dt.day + ' ' + dt.time) + '</td>' +
+                        '<td class="sales-report-order-code">' + esc(r.order_code ? ('#' + r.order_code) : '—') + '</td>' +
+                        '<td>' + esc(r.item_name) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.price)) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.cost)) + '</td>' +
+                        '<td>' + esc(String(r.qty)) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.total)) + '</td>' +
+                        '<td class="sales-report-amt">' + esc(peso(r.total_cost)) + '</td>' +
                     '</tr>';
             }).join('');
 
@@ -1215,14 +1215,14 @@
                 var row = document.createElement('div');
                 row.className = 'table-row';
                 row.innerHTML =
-                    '<div data-label="Date"><strong>' + esc(dt.day) + '</strong><small>' + esc(dt.time) + '</small></div>' +
-                    '<div class="tx" data-label="Order">#' + esc(o.order_number) + '</div>' +
-                    '<div data-label="Staff">' + esc(o.staff_name) + '</div>' +
-                    '<div data-label="Items">' + esc(shortItems(o.items_sold)) + '</div>' +
-                    '<div class="amount" data-label="Amount">' + peso(o.total_amount) + '</div>' +
-                    '<div data-label="Payment">' + esc(formatPaymentCell(o)) + '</div>' +
-                    '<div data-label="Status"><span class="status ' + status.cls + '">' + status.label + '</span></div>' +
-                    '<div class="actions" data-label="Actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>';
+                    '<div><strong>' + esc(dt.day) + '</strong><small>' + esc(dt.time) + '</small></div>' +
+                    '<div class="tx">#' + esc(o.order_number) + '</div>' +
+                    '<div>' + esc(o.staff_name) + '</div>' +
+                    '<div>' + esc(shortItems(o.items_sold)) + '</div>' +
+                    '<div class="amount">' + peso(o.total_amount) + '</div>' +
+                    '<div>' + esc(formatPaymentCell(o)) + '</div>' +
+                    '<div><span class="status ' + status.cls + '">' + status.label + '</span></div>' +
+                    '<div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>';
                 tableWrap.appendChild(row);
             });
 
@@ -1329,14 +1329,14 @@
                 var typeLabel = rec.discount_label || (type === 'pwd' ? 'PWD' : 'Senior Citizen');
                 return (
                     '<tr>' +
-                        '<td data-label="Date">' + esc(formatDiscountDateTime(rec.created_at)) + '</td>' +
-                        '<td data-label="Order"><span class="sales-report-order-code">' + esc(rec.order_number || '—') + '</span></td>' +
-                        '<td data-label="Type"><span class="discount-records-type discount-records-type--' + typeClass + '">' + esc(typeLabel) + '</span></td>' +
-                        '<td data-label="Customer">' + esc(rec.customer_name || '—') + '</td>' +
-                        '<td data-label="ID"><span class="discount-records-id">' + esc(rec.id_number || '—') + '</span></td>' +
-                        '<td data-label="Gross">' + peso(rec.gross_amount || 0) + '</td>' +
-                        '<td data-label="Discount">' + peso(rec.discount_amount || 0) + '</td>' +
-                        '<td data-label="Net">' + peso(rec.net_amount || 0) + '</td>' +
+                        '<td>' + esc(formatDiscountDateTime(rec.created_at)) + '</td>' +
+                        '<td><span class="sales-report-order-code">' + esc(rec.order_number || '—') + '</span></td>' +
+                        '<td><span class="discount-records-type discount-records-type--' + typeClass + '">' + esc(typeLabel) + '</span></td>' +
+                        '<td>' + esc(rec.customer_name || '—') + '</td>' +
+                        '<td><span class="discount-records-id">' + esc(rec.id_number || '—') + '</span></td>' +
+                        '<td>' + peso(rec.gross_amount || 0) + '</td>' +
+                        '<td>' + peso(rec.discount_amount || 0) + '</td>' +
+                        '<td>' + peso(rec.net_amount || 0) + '</td>' +
                     '</tr>'
                 );
             }).join('');
@@ -2793,5 +2793,6 @@
     })();
     </script>
     <script src="password_toggle.js?v=20261006"></script>
+    <script src="../shared/responsive_tables.js?v=20261007-rwd1"></script>
 </body>
 </html>

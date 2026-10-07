@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Ortus Lab Inventory Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261007-adapt">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261007-rwd1">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="../shared/modal_viewport.css?v=20261007b">
-    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-adapt">
+    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-rwd1">
 </head>
 <body>
     <div class="inv-page">
@@ -3580,15 +3580,15 @@
                     var row = document.createElement('div');
                     row.className = 'table-row';
                     row.innerHTML =
-                        '<div class="item-col" data-label="Item"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
-                        '<div data-label="Category"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
-                        '<div data-label="Stock check">' + buildStockStatusChecklistHtml(item.id, stockStatus) + '</div>' +
-                        '<div class="inv-manual-cell-center" data-label="Status"><span class="pill ' + status.pill + '">' + status.label + '</span></div>' +
-                        '<div class="inv-manual-notes-cell" data-label="Notes">' +
+                        '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
+                        '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                        '<div>' + buildStockStatusChecklistHtml(item.id, stockStatus) + '</div>' +
+                        '<div class="inv-manual-cell-center"><span class="pill ' + status.pill + '">' + status.label + '</span></div>' +
+                        '<div class="inv-manual-notes-cell">' +
                             '<input type="text" class="inv-manual-notes-input" data-notes-id="' + item.id + '" value="' + escAttr(getManualNotes(item)) + '" placeholder="Add notes..." maxlength="500" aria-label="Notes for ' + escAttr(item.name) + '">' +
                             '<button type="button" class="inv-manual-notes-save" data-save-notes-id="' + item.id + '">Save</button>' +
                         '</div>' +
-                        '<div class="actions inv-manual-actions" data-label="Actions">' + buildInventoryActionsHtml(item) + '</div>';
+                        '<div class="actions inv-manual-actions">' + buildInventoryActionsHtml(item) + '</div>';
                     manualTableWrap.appendChild(row);
                 });
             });
@@ -3633,22 +3633,22 @@
             var openBtn = canOpen
                 ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open — amount of items in use or open packs">Open</button>'
                 : '<button type="button" class="btn-open-stock-used btn-open-stock-used--disabled" data-open-stock-blocked="1" data-open-block-reason="' + openBlockedReason + '" title="' + escAttr(openBlockedMsg) + '" aria-disabled="true">Open</button>';
-            return '<div class="item-col" data-label="Item"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
-                '<div data-label="Category"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
-                '<div data-label="Stock used">' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
-                '<div class="inv-stock-level-cell" data-label="Stock level"><strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' + openBtn + '</div>' +
-                '<div class="inv-box-capacity-cell" data-label="Orders / stock">' +
+            return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
+                '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
+                '<div class="inv-stock-level-cell"><strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' + openBtn + '</div>' +
+                '<div class="inv-box-capacity-cell">' +
                     (nonConsumable
                         ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'
                         : '<button type="button" class="btn-box-capacity"' + (capacityConfigured ? ' data-configured="1"' : '') + ' data-orders-box-id="' + item.id + '" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</button>') +
                 '</div>' +
-                '<div class="inv-box-capacity-cell" data-label="Batch size">' +
+                '<div class="inv-box-capacity-cell">' +
                     (nonConsumable
                         ? '<button type="button" class="btn-box-capacity btn-batch-size" data-configured="1" data-batch-size-id="' + item.id + '" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</button>'
                         : '<span class="inv-box-capacity-na" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</span>') +
                 '</div>' +
-                '<div data-label="Status"><span class="pill ' + meta.pill + '">' + meta.label + '</span></div>' +
-                '<div class="actions" data-label="Actions">' + buildInventoryActionsHtml(item) + '</div>';
+                '<div><span class="pill ' + meta.pill + '">' + meta.label + '</span></div>' +
+                '<div class="actions">' + buildInventoryActionsHtml(item) + '</div>';
         }
 
         function getLinkedRecipeMenus(item) {
@@ -5361,5 +5361,6 @@
         })();
     })();
     </script>
+    <script src="../shared/responsive_tables.js?v=20261007-rwd1"></script>
 </body>
 </html>

@@ -1125,7 +1125,6 @@ body {
 
     .search-wrap input {
         width: 140px;
-        max-width: 100%;
     }
 
     .panel-head h2,
@@ -1143,26 +1142,5 @@ body {
     .foot-left {
         gap: 12px;
         flex-wrap: wrap;
-    }
-
-    body,
-    .dash-page {
-        overflow-x: clip;
-        max-width: 100vw;
-    }
-}
-
-@media (max-width: 640px) {
-    .kpi-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .search-wrap {
-        width: 100%;
-    }
-
-    .search-wrap input {
-        width: 100%;
-        box-sizing: border-box;
     }
 }

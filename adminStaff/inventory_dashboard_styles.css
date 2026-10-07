@@ -2478,12 +2478,15 @@ body {
     gap: 10px;
 }
 
-@media (max-width: 1280px) and (min-width: 901px) {
+@media (max-width: 1280px) and (min-width: 1101px) {
     .alert-grid { grid-template-columns: repeat(2, 1fr); }
     .table-wrap { overflow-x: auto; }
-    .table-head, .table-row { min-width: 1320px; }
+    .table-head, .table-row { min-width: 1100px; }
     #inventory-secondary-table-wrap .table-head,
-    #inventory-secondary-table-wrap .table-row { min-width: 1040px; }
+    #inventory-secondary-table-wrap .table-row { min-width: 960px; }
+}
+@media (max-width: 1280px) {
+    .alert-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 900px) {
@@ -2501,39 +2504,6 @@ body {
     }
     .receipt-lines__row--head {
         display: none;
-    }
-    .alert-grid { grid-template-columns: 1fr; }
-    .table-wrap { overflow-x: visible; }
-    .table-head, .table-row,
-    #inventory-secondary-table-wrap .table-head,
-    #inventory-secondary-table-wrap .table-row {
-        min-width: 0;
-    }
-    .inv-page {
-        overflow-x: clip;
-        max-width: 100vw;
-    }
-    .search-wrap {
-        width: 100%;
-        max-width: 100%;
-    }
-    .search-wrap input {
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .inv-manual-notes-cell[data-label] {
-        flex-wrap: wrap;
-        align-items: stretch;
-    }
-    .inv-manual-notes-cell[data-label] .inv-manual-notes-input {
-        flex: 1 1 100%;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .inv-stock-level-cell[data-label],
-    .inv-box-capacity-cell[data-label] {
-        flex-wrap: wrap;
-        justify-content: space-between;
     }
 }
 

@@ -950,16 +950,17 @@
                     var action = '';
                     if (row.buy > 0.0001) {
                         if (packs != null) {
-                            action = ' · restock ~<span>' + packs + '</span> pack' + (packs === 1 ? '' : 's');
+                            // "packs" = sealed stock to buy; show how many orders that covers.
+                            action = ' · buy ~<span>' + packs + '</span> more';
                             if (orderSlots != null) {
-                                action += ' <small>(~' + esc(orderSlots) + ' orders)</small>';
+                                action += ' <small>(enough for ~' + esc(orderSlots) + ' orders)</small>';
                             }
                         } else if (orderSlots != null) {
-                            action = ' · restock ~<span>' + esc(orderSlots) + '</span> units';
+                            action = ' · buy ~<span>' + esc(orderSlots) + '</span> more';
                         }
                     }
 
-                    var pace = adu != null ? ' <small>· ~' + esc(adu) + '/day</small>' : '';
+                    var pace = adu != null ? ' <small>· ~' + esc(adu) + ' sold/day</small>' : '';
                     return '<li><span>' + name + '</span> — ' + status + action + pace + '</li>';
                 }
 

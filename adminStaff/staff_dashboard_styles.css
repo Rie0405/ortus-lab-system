@@ -14,16 +14,10 @@ body {
     min-height: 100%;
 }
 
-html {
-    overflow-x: clip;
-}
-
 body {
     background: #120e0a;
     color: #f1f5f9;
     font-family: "Space Grotesk", sans-serif;
-    overflow-x: clip;
-    max-width: 100vw;
 }
 
 body.pos-modal-open {
@@ -559,17 +553,23 @@ button {
 .pos-main {
     flex: 1;
     display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-width: 0;
     min-height: 0;
     overflow: hidden;
 }
 
 .pos-left {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
+    width: auto;
+    max-width: 100%;
     padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 24px;
+    overflow-x: hidden;
     overflow-y: auto;
 }
 
@@ -1281,13 +1281,31 @@ button {
 }
 
 .pos-right {
+    /* Never let the cart column shrink into a thin vertical strip on tablets. */
+    flex: 0 0 384px;
     width: 384px;
+    max-width: 100%;
+    min-width: 300px;
+    box-sizing: border-box;
     border-left: 1px solid rgba(244, 140, 37, 0.2);
     background: rgba(0, 0, 0, 0.2);
     padding: 24px 24px 24px 25px;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
     overflow-y: auto;
+}
+
+.pos-right .right-view,
+.pos-right .pos-customer-name,
+.pos-right .pos-fulfillment-panel,
+.pos-right .pos-cart-slider,
+.pos-right .totals,
+.pos-right .actions {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .tabs {
@@ -1419,6 +1437,8 @@ button {
     font-weight: 600;
     line-height: 1.2;
     cursor: pointer;
+    min-width: 0;
+    white-space: nowrap;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -6807,16 +6827,16 @@ button {
     font-weight: 700;
 }
 
-@media (max-width: 1200px) {
+/* Wide tablet / small laptop: keep side-by-side POS, but allow cart to flex. */
+@media (max-width: 1200px) and (min-width: 901px) {
     .pos-main {
-        flex-direction: column;
+        flex-direction: row;
     }
 
     .pos-right {
-        width: 100%;
-        max-width: 100%;
-        border-left: 0;
-        border-top: 1px solid rgba(244, 140, 37, 0.2);
+        flex: 0 0 min(360px, 38vw);
+        width: min(360px, 38vw);
+        min-width: 280px;
     }
 
     .dual-fields {
@@ -6845,6 +6865,112 @@ button {
     .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
     .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Phone / portrait tablet: stack menu above cart at full width. */
+@media (max-width: 900px) {
+    .pos-page {
+        height: 100dvh;
+        max-width: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .pos-page > .staff-main-panel--pos {
+        overflow: visible;
+        min-height: 0;
+    }
+
+    .pos-main {
+        flex-direction: column;
+        overflow: visible;
+        min-height: 0;
+    }
+
+    .pos-left {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 16px;
+    }
+
+    .pos-right {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        border-left: 0;
+        border-top: 1px solid rgba(244, 140, 37, 0.2);
+        padding: 16px;
+    }
+
+    .pos-header {
+        height: auto;
+        min-height: 64px;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 16px;
+    }
+
+    .header-main-tabs {
+        flex-wrap: wrap;
+        gap: 12px 18px;
+        height: auto;
+    }
+
+    .header-main-tab {
+        font-size: 16px;
+        white-space: normal;
+    }
+
+    .dual-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .menu-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .waste-tab-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .kitchen-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .kitchen-layout > .kitchen-serving-panel,
+    .staff-main-panel--kitchen .kitchen-serving-panel {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
+    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Portrait tablets specifically (tall + not phone-narrow). */
+@media (max-width: 1024px) and (orientation: portrait) {
+    .pos-main {
+        flex-direction: column;
+    }
+
+    .pos-left,
+    .pos-right {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .pos-right {
+        border-left: 0;
+        border-top: 1px solid rgba(244, 140, 37, 0.2);
     }
 }
 

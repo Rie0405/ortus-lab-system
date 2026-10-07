@@ -4234,8 +4234,10 @@
                             return;
                         }
                         var staffName = "";
+                        var staffId = 0;
                         if (staffSelect && staffSelect.selectedIndex >= 0) {
                             staffName = String(staffSelect.options[staffSelect.selectedIndex].textContent || "").trim();
+                            staffId = parseInt(staffSelect.value, 10) || 0;
                         }
                         if (!staffName) staffName = "Staff";
                         var today = getTodayIsoDate();
@@ -4244,6 +4246,7 @@
                             ordered_date: today,
                             expected_receive_date: today,
                             supplier: "Restocked by " + staffName,
+                            staff_id: staffId || undefined,
                             entry_source: "staff",
                             mode: "add_receipt",
                             lines: lines

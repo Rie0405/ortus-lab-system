@@ -143,9 +143,10 @@ function require_auth(string $role = ''): array {
         fail('Forbidden', 403);
     }
     return [
-        'id'   => $_SESSION['user_id'],
-        'role' => $_SESSION['user_role'] ?? '',
-        'name' => $_SESSION['user_name'] ?? '',
+        'id'       => $_SESSION['user_id'],
+        'role'     => $_SESSION['user_role'] ?? '',
+        'name'     => $_SESSION['user_name'] ?? '',
+        'username' => $_SESSION['username'] ?? '',
     ];
 }
 

@@ -33,25 +33,108 @@ function ensure_activity_log_schema(PDO $pdo): void
     );
 }
 
-function activity_actor_from_session(?array $user = null): array
+/**
+ * Look up login username by user id.
+ */
+function activity_lookup_username_by_id(PDO $pdo, int $userId): string
+{
+    if ($userId <= 0) {
+        return '';
+    }
+    try {
+        $stmt = $pdo->prepare('SELECT username FROM users WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $userId]);
+        return trim((string)$stmt->fetchColumn());
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
+/**
+ * Resolve a display label (username or full_name) to the account username.
+ *
+ * @return array{id:?int,username:string}|null
+ */
+function activity_lookup_user_by_label(PDO $pdo, string $label): ?array
+{
+    $label = trim($label);
+    if ($label === '') {
+        return null;
+    }
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT id, username FROM users
+              WHERE username = :u OR full_name = :n
+              ORDER BY (username = :u2) DESC
+              LIMIT 1'
+        );
+        $stmt->execute([':u' => $label, ':n' => $label, ':u2' => $label]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
+        }
+        $username = trim((string)($row['username'] ?? ''));
+        if ($username === '') {
+            return null;
+        }
+        return [
+            'id' => (int)$row['id'],
+            'username' => $username,
+        ];
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/**
+ * Actor for activity feed — always prefer login username (not full name / role).
+ *
+ * @param array{id?:mixed,username?:string,name?:string,role?:string}|null $user
+ */
+function activity_actor_from_session(?array $user = null, ?PDO $pdo = null): array
 {
     if ($user === null) {
         $user = [
             'id' => $_SESSION['user_id'] ?? null,
+            'username' => $_SESSION['username'] ?? '',
             'name' => $_SESSION['user_name'] ?? '',
             'role' => $_SESSION['user_role'] ?? '',
         ];
     }
 
     $role = strtolower(trim((string)($user['role'] ?? '')));
+    $userId = isset($user['id']) && (int)$user['id'] > 0 ? (int)$user['id'] : null;
+    $username = trim((string)($user['username'] ?? ''));
     $name = trim((string)($user['name'] ?? ''));
-    if ($name === '') {
-        $name = $role !== '' ? ucfirst($role) : 'Unknown';
+
+    if ($username === '' && $pdo instanceof PDO && $userId) {
+        $username = activity_lookup_username_by_id($pdo, $userId);
+    }
+    if ($username === '' && $pdo instanceof PDO && $name !== '') {
+        $matched = activity_lookup_user_by_label($pdo, $name);
+        if ($matched) {
+            $username = $matched['username'];
+            if (!$userId) {
+                $userId = $matched['id'];
+            }
+        }
+    }
+    // Session may still lack username until next login — last-resort DB by session id.
+    if ($username === '' && $pdo instanceof PDO && !$userId) {
+        $sessionId = (int)($_SESSION['user_id'] ?? 0);
+        if ($sessionId > 0) {
+            $username = activity_lookup_username_by_id($pdo, $sessionId);
+            if ($username !== '') {
+                $userId = $sessionId;
+            }
+        }
     }
 
+    $display = $username !== '' ? $username : ($name !== '' ? $name : ($role !== '' ? $role : 'Unknown'));
+
     return [
-        'id' => isset($user['id']) && (int)$user['id'] > 0 ? (int)$user['id'] : null,
-        'name' => $name,
+        'id' => $userId,
+        'name' => $display,
         'role' => $role,
     ];
 }
@@ -81,7 +164,10 @@ function log_system_activity(PDO $pdo, array $payload): void
             return;
         }
 
-        $actor = activity_actor_from_session(isset($payload['user']) && is_array($payload['user']) ? $payload['user'] : null);
+        $actor = activity_actor_from_session(
+            isset($payload['user']) && is_array($payload['user']) ? $payload['user'] : null,
+            $pdo
+        );
         $meta = $payload['meta'] ?? null;
         $metaJson = null;
         if (is_array($meta) && $meta) {
@@ -114,12 +200,17 @@ function log_system_activity(PDO $pdo, array $payload): void
 
 function activity_display_actor(array $row): string
 {
+    // Prefer live username from users join (fixes older rows that stored full_name / role).
+    $username = trim((string)($row['actor_username'] ?? ''));
+    if ($username !== '') {
+        return $username;
+    }
     $name = trim((string)($row['actor_name'] ?? ''));
     if ($name !== '') {
         return $name;
     }
     $role = trim((string)($row['actor_role'] ?? ''));
-    return $role !== '' ? ucfirst($role) : 'Unknown';
+    return $role !== '' ? $role : 'Unknown';
 }
 
 /** Format qty+unit like "8pcs" or "1.5kg". */
@@ -141,20 +232,29 @@ function activity_format_qty_unit($qty, string $unit = 'pcs'): string
     return $qtyText . $unitText;
 }
 
-function activity_actor_from_restock_supplier(string $supplier, ?array $fallbackUser = null): array
+function activity_actor_from_restock_supplier(string $supplier, ?array $fallbackUser = null, ?PDO $pdo = null): array
 {
     $supplier = trim($supplier);
     if (stripos($supplier, 'Restocked by ') === 0) {
         $name = trim(substr($supplier, strlen('Restocked by ')));
         if ($name !== '') {
-            return [
+            $actor = [
                 'id' => null,
+                'username' => '',
                 'name' => $name,
                 'role' => 'staff',
             ];
+            if ($pdo instanceof PDO) {
+                $matched = activity_lookup_user_by_label($pdo, $name);
+                if ($matched) {
+                    $actor['id'] = $matched['id'];
+                    $actor['username'] = $matched['username'];
+                }
+            }
+            return activity_actor_from_session($actor, $pdo);
         }
     }
-    return activity_actor_from_session($fallbackUser);
+    return activity_actor_from_session($fallbackUser, $pdo);
 }
 
 function activity_format_line(array $row): string
@@ -203,14 +303,16 @@ function fetch_activity_feed(PDO $pdo, int $userId, int $limit = 15, int $before
     $lastSeen = activity_last_seen_id($pdo, $userId);
 
     $params = [];
-    $sql = 'SELECT id, source_key, source_label, action_text, actor_user_id, actor_name, actor_role,
-                   entity_type, entity_id, created_at
-            FROM system_activity_log';
+    $sql = 'SELECT a.id, a.source_key, a.source_label, a.action_text, a.actor_user_id, a.actor_name, a.actor_role,
+                   a.entity_type, a.entity_id, a.created_at,
+                   u.username AS actor_username
+            FROM system_activity_log a
+            LEFT JOIN users u ON u.id = a.actor_user_id';
     if ($beforeId > 0) {
-        $sql .= ' WHERE id < :before_id';
+        $sql .= ' WHERE a.id < :before_id';
         $params[':before_id'] = $beforeId;
     }
-    $sql .= ' ORDER BY id DESC LIMIT ' . ((int)$limit + 1);
+    $sql .= ' ORDER BY a.id DESC LIMIT ' . ((int)$limit + 1);
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -222,6 +324,21 @@ function fetch_activity_feed(PDO $pdo, int $userId, int $limit = 15, int $before
 
     $entries = [];
     foreach ($rows as $row) {
+        // Older rows may store full_name / role in actor_name without a resolvable join.
+        if (trim((string)($row['actor_username'] ?? '')) === '') {
+            $label = trim((string)($row['actor_name'] ?? ''));
+            if ($label !== '' && strcasecmp($label, 'Unknown') !== 0
+                && strcasecmp($label, 'admin') !== 0
+                && strcasecmp($label, 'staff') !== 0
+                && strcasecmp($label, 'Owner') !== 0) {
+                $matched = activity_lookup_user_by_label($pdo, $label);
+                if ($matched) {
+                    $row['actor_username'] = $matched['username'];
+                }
+            } elseif (!empty($row['actor_user_id'])) {
+                $row['actor_username'] = activity_lookup_username_by_id($pdo, (int)$row['actor_user_id']);
+            }
+        }
         $id = (int)$row['id'];
         $entries[] = [
             'id' => $id,

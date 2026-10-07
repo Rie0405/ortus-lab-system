@@ -501,14 +501,17 @@ if ($method === 'PUT') {
         if (!$restocked) {
             fail('No matching inventory items were restocked.');
         }
-        $restockActor = activity_actor_from_session();
+        $restockStaffId = isset($b['staff_id']) && (int)$b['staff_id'] > 0 ? (int)$b['staff_id'] : 0;
         $staffName = trim((string)($b['staff_name'] ?? ''));
-        if ($staffName !== '') {
-            $restockActor = [
-                'id' => isset($b['staff_id']) && (int)$b['staff_id'] > 0 ? (int)$b['staff_id'] : null,
+        if ($restockStaffId > 0 || $staffName !== '') {
+            $restockActor = activity_actor_from_session([
+                'id' => $restockStaffId > 0 ? $restockStaffId : null,
+                'username' => '',
                 'name' => $staffName,
                 'role' => 'staff',
-            ];
+            ], $pdo);
+        } else {
+            $restockActor = activity_actor_from_session(null, $pdo);
         }
         foreach ($restocked as $row) {
             $itemName = trim((string)($row['item_name'] ?? 'Item')) ?: 'Item';

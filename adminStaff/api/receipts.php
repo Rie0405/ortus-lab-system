@@ -935,9 +935,19 @@ if ($registerMode) {
     $pdo->commit();
 
     $isStaffRestock = $entrySource === 'staff' || stripos($supplier, 'Restocked by ') === 0;
-    $restockActor = $isStaffRestock
-        ? activity_actor_from_restock_supplier($supplier)
-        : activity_actor_from_session();
+    $staffIdForActor = (int)($b['staff_id'] ?? 0);
+    if ($isStaffRestock && $staffIdForActor > 0) {
+        $restockActor = activity_actor_from_session([
+            'id' => $staffIdForActor,
+            'username' => '',
+            'name' => '',
+            'role' => 'staff',
+        ], $pdo);
+    } elseif ($isStaffRestock) {
+        $restockActor = activity_actor_from_restock_supplier($supplier, null, $pdo);
+    } else {
+        $restockActor = activity_actor_from_session(null, $pdo);
+    }
 
     foreach ($lines as $line) {
         $itemName = trim((string)($line['item_name'] ?? 'Item')) ?: 'Item';
@@ -951,7 +961,7 @@ if ($registerMode) {
                 'source_label' => 'Register Inventory Item',
                 'action' => 'inventory item registered: ' . $itemName,
                 'entity_type' => 'inventory_item',
-                'user' => activity_actor_from_session(),
+                'user' => activity_actor_from_session(null, $pdo),
             ]);
             continue;
         }
@@ -972,7 +982,7 @@ if ($registerMode) {
             'source_label' => 'Stock Log',
             'action' => strtolower($itemName) . ' restock to ' . $qtyText,
             'entity_type' => 'inventory_item',
-            'user' => activity_actor_from_session(),
+            'user' => activity_actor_from_session(null, $pdo),
         ]);
     }
 

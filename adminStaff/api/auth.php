@@ -108,6 +108,7 @@ if ($m === 'POST') {
     $_SESSION['user_id']   = $user['id'];
     $_SESSION['user_role'] = $roleNorm;
     $_SESSION['user_name'] = $user['full_name'];
+    $_SESSION['username']  = (string)($user['username'] ?? '');
 
     $shift = null;
     if ($roleNorm === 'staff') {
@@ -151,11 +152,35 @@ if ($m === 'GET') {
     if (empty($_SESSION['user_id'])) {
         fail('Not authenticated.', 401);
     }
+    $uid = (int)$_SESSION['user_id'];
+    $username = trim((string)($_SESSION['username'] ?? ''));
+    $fullName = (string)($_SESSION['user_name'] ?? '');
+    if ($username === '' && $uid > 0) {
+        try {
+            $stmt = db()->prepare('SELECT username, full_name FROM users WHERE id = :id LIMIT 1');
+            $stmt->execute([':id' => $uid]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $username = trim((string)($row['username'] ?? ''));
+                if ($username !== '') {
+                    $_SESSION['username'] = $username;
+                }
+                if ($fullName === '' && !empty($row['full_name'])) {
+                    $fullName = (string)$row['full_name'];
+                    $_SESSION['user_name'] = $fullName;
+                }
+            }
+        } catch (Throwable $e) {
+            // Session check should still succeed.
+        }
+    }
     ok([
         'user' => [
-            'id'   => $_SESSION['user_id'],
-            'role' => $_SESSION['user_role'],
-            'name' => $_SESSION['user_name'],
+            'id'        => $uid,
+            'role'      => $_SESSION['user_role'],
+            'name'      => $fullName,
+            'full_name' => $fullName,
+            'username'  => $username,
         ],
     ]);
 }

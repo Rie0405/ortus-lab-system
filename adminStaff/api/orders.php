@@ -211,6 +211,12 @@ if ($m === 'GET') {
     if ($type === 'daily_summary') {
         // Aggregate revenue for confirmed/served sales, plus kitchen-returned (still a sale until refunded).
         $saleCond = sql_order_counts_as_sale();
+        $filterStaffId = (int)($_GET['staff_id'] ?? 0);
+        $staffSql = $filterStaffId > 0 ? ' AND staff_id = :sid' : '';
+        $params = [':d' => $date];
+        if ($filterStaffId > 0) {
+            $params[':sid'] = $filterStaffId;
+        }
         $stmt = db()->prepare(
             'SELECT
                 COUNT(CASE WHEN (status IN ("confirmed","served","voided") OR (status = "pending" AND COALESCE(kitchen_returned, 0) = 1)) THEN 1 END) AS total_orders,
@@ -222,26 +228,28 @@ if ($m === 'GET') {
                 COUNT(CASE WHEN ' . $saleCond . ' THEN 1 END) AS confirmed_count,
                 COUNT(CASE WHEN status = "voided" THEN 1 END) AS voided_count
              FROM orders
-            WHERE DATE(created_at) = :d'
+            WHERE DATE(created_at) = :d' . $staffSql
         );
-        $stmt->execute([':d' => $date]);
+        $stmt->execute($params);
         $summary = $stmt->fetch();
-        $receiptExpense = receipt_expense_for_day(db(), $date);
+        // Receipt expenses are store-wide; omit when viewing a single cashier.
+        $receiptExpense = $filterStaffId > 0 ? 0.0 : receipt_expense_for_day(db(), $date);
         $rawRevenue = (float)($summary['total_revenue'] ?? 0);
         $summary['receipt_expense_total'] = $receiptExpense;
         $summary['raw_total_revenue'] = $rawRevenue;
         $summary['total_revenue'] = $rawRevenue - $receiptExpense;
+        $summary['staff_id'] = $filterStaffId > 0 ? $filterStaffId : null;
 
         // Also get hourly breakdown
         $hourly = db()->prepare(
             'SELECT HOUR(created_at) AS hour, COALESCE(SUM(total_amount),0) AS revenue
                FROM orders
               WHERE DATE(created_at) = :d
-               AND ' . $saleCond . '
+               AND ' . $saleCond . $staffSql . '
               GROUP BY HOUR(created_at)
               ORDER BY hour'
         );
-        $hourly->execute([':d' => $date]);
+        $hourly->execute($params);
 
         ok(['summary' => $summary, 'hourly' => $hourly->fetchAll()]);
     }

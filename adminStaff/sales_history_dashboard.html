@@ -520,74 +520,119 @@
             return Number.isFinite(n) && n >= 0 ? n : 0;
         }
 
-        function getAccuracyStorageKey() {
-            return 'staff_sales_report_accuracy_' + localYmd(new Date());
+        var staffBriefLoadToken = 0;
+
+        function getBriefStaffSelection() {
+            var sel = window.__ortusAdminStaffBriefSelection || {};
+            return {
+                staffId: String(sel.staffId || ''),
+                date: String(sel.date || '')
+            };
         }
 
-        function getCashMgmtStorageKeyToday() {
-            return 'staff_cash_management_' + localYmd(new Date());
+        function staffScopedDayKey(prefix, staffId, dateKey) {
+            var sid = parseInt(staffId, 10) || 0;
+            var day = String(dateKey || '').trim();
+            if (!sid || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return '';
+            return prefix + '_' + sid + '_' + day;
         }
 
-        function getCashRefundsStorageKeyToday() {
-            return 'staff_cash_refunds_' + localYmd(new Date());
-        }
-
-        function getStartingMoneyStorageKeyToday() {
-            return 'staff_sales_report_starting_money_' + localYmd(new Date());
-        }
-
-        function getSavedStartingMoneyTotalToday() {
+        function parseStartingMoneyTotal(raw) {
+            if (raw == null || raw === '') return 0;
             try {
-                var raw = localStorage.getItem(getStartingMoneyStorageKeyToday());
-                if (!raw) return 0;
-                var obj = JSON.parse(raw);
-                if (typeof obj.total !== 'undefined') return toMoney(obj.total);
-                var base = toMoney(obj && obj.base);
-                var additional = Array.isArray(obj && obj.additional_inputs)
-                    ? obj.additional_inputs.reduce(function (sum, x) { return sum + toMoney(x); }, 0)
-                    : toMoney(obj && obj.additional);
-                return base + additional;
+                var obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (obj && typeof obj === 'object') {
+                    if (typeof obj.total !== 'undefined') return toMoney(obj.total);
+                    var base = toMoney(obj.base);
+                    var additional = Array.isArray(obj.additional_inputs)
+                        ? obj.additional_inputs.reduce(function (sum, x) { return sum + toMoney(x); }, 0)
+                        : toMoney(obj.additional);
+                    return base + additional;
+                }
             } catch (e) {
-                return toMoney(raw);
+                // fall through
+            }
+            return toMoney(raw);
+        }
+
+        function cashMgmtTotalsFromEntries(entries) {
+            if (!Array.isArray(entries)) return { paidIn: 0, paidOut: 0 };
+            return entries.reduce(function (acc, entry) {
+                var amount = toMoney(entry && entry.amount);
+                if (!amount) return acc;
+                if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
+                else acc.paidIn += amount;
+                return acc;
+            }, { paidIn: 0, paidOut: 0 });
+        }
+
+        function cashRefundsTotalFromEntries(entries) {
+            if (!Array.isArray(entries)) return 0;
+            return entries.reduce(function (sum, entry) {
+                return sum + toMoney(entry && entry.amount);
+            }, 0);
+        }
+
+        function readScopedJson(key) {
+            if (!key) return null;
+            try {
+                var raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
             }
         }
 
-        function getCashMgmtTotalsToday() {
-            try {
-                var raw = localStorage.getItem(getCashMgmtStorageKeyToday());
-                var parsed = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(parsed)) return { paidIn: 0, paidOut: 0 };
-                return parsed.reduce(function (acc, entry) {
-                    var amount = toMoney(entry && entry.amount);
-                    if (!amount) return acc;
-                    if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
-                    else acc.paidIn += amount;
-                    return acc;
-                }, { paidIn: 0, paidOut: 0 });
-            } catch (e) {
-                return { paidIn: 0, paidOut: 0 };
+        function getSavedStartingMoneyTotalForSelection() {
+            var sel = getBriefStaffSelection();
+            var report = window.__ortusStaffBriefReport;
+            if (report && String(report.staff_id) === String(sel.staffId) && String(report.report_date) === String(sel.date)) {
+                return parseStartingMoneyTotal(report.starting_money);
             }
+            return parseStartingMoneyTotal(readScopedJson(staffScopedDayKey('staff_sales_report_starting_money', sel.staffId, sel.date)));
         }
 
-        function getCashRefundsTotalToday() {
-            try {
-                var raw = localStorage.getItem(getCashRefundsStorageKeyToday());
-                var parsed = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(parsed)) return 0;
-                return parsed.reduce(function (sum, entry) {
-                    return sum + toMoney(entry && entry.amount);
-                }, 0);
-            } catch (e) {
-                return 0;
+        function getCashMgmtTotalsForSelection() {
+            var sel = getBriefStaffSelection();
+            var report = window.__ortusStaffBriefReport;
+            if (report && String(report.staff_id) === String(sel.staffId) && String(report.report_date) === String(sel.date)
+                && Array.isArray(report.cash_mgmt)) {
+                return cashMgmtTotalsFromEntries(report.cash_mgmt);
             }
+            return cashMgmtTotalsFromEntries(readScopedJson(staffScopedDayKey('staff_cash_management', sel.staffId, sel.date)) || []);
+        }
+
+        function getCashRefundsTotalForSelection() {
+            var sel = getBriefStaffSelection();
+            var report = window.__ortusStaffBriefReport;
+            if (report && String(report.staff_id) === String(sel.staffId) && String(report.report_date) === String(sel.date)
+                && Array.isArray(report.cash_refunds)) {
+                return cashRefundsTotalFromEntries(report.cash_refunds);
+            }
+            return cashRefundsTotalFromEntries(readScopedJson(staffScopedDayKey('staff_cash_refunds', sel.staffId, sel.date)) || []);
+        }
+
+        function getAccuracyForSelection() {
+            var sel = getBriefStaffSelection();
+            var report = window.__ortusStaffBriefReport;
+            if (report && String(report.staff_id) === String(sel.staffId) && String(report.report_date) === String(sel.date)
+                && report.accuracy && typeof report.accuracy === 'object') {
+                return report.accuracy;
+            }
+            var acc = readScopedJson(staffScopedDayKey('staff_sales_report_accuracy', sel.staffId, sel.date));
+            return acc && typeof acc === 'object' ? acc : null;
         }
 
         function updateStaffBriefMorePanel() {
-            var cashMgmt = getCashMgmtTotalsToday();
-            var expected = getSavedStartingMoneyTotalToday() + staffBriefMoreCashRevenue + cashMgmt.paidIn - cashMgmt.paidOut;
+            var cashMgmt = getCashMgmtTotalsForSelection();
+            var refunds = getCashRefundsTotalForSelection();
+            var expected = Math.max(
+                0,
+                getSavedStartingMoneyTotalForSelection() + staffBriefMoreCashRevenue - refunds + cashMgmt.paidIn - cashMgmt.paidOut
+            );
             if (staffBriefMoreExpected) staffBriefMoreExpected.textContent = peso(expected);
             if (staffBriefMoreDiscount) staffBriefMoreDiscount.textContent = peso(staffBriefMoreDiscountTotal);
-            if (staffBriefMoreRefund) staffBriefMoreRefund.textContent = peso(getCashRefundsTotalToday());
+            if (staffBriefMoreRefund) staffBriefMoreRefund.textContent = peso(refunds);
         }
 
         function setStaffBriefMoreOpen(open) {
@@ -691,93 +736,121 @@
             staffBriefText.textContent = hasAny ? 'Updated just now from staff report.' : 'No staff sales report available yet.';
         }
 
+        function clearStaffBriefForNoSelection() {
+            window.__ortusStaffBriefReport = null;
+            todayCashOrders = [];
+            todayGcashOrders = [];
+            staffBriefMoreCashRevenue = 0;
+            staffBriefMoreDiscountTotal = 0;
+            renderStaffBrief({
+                total_revenue: null,
+                expenses_total: null,
+                expenses_base: null,
+                short_amount: null,
+                over_amount: null,
+                cash_revenue: null,
+                gcash_revenue: null,
+                waste_total_est: null
+            });
+            updateStaffBriefMorePanel();
+            if (staffBriefText) {
+                staffBriefText.textContent = 'Select a cashier and shift date to view that staff\'s sales report.';
+            }
+            if (typeof window.__ortusRefreshStaffReportReadout === 'function') {
+                window.__ortusRefreshStaffReportReadout();
+            }
+        }
+
         function loadStaffSalesReportSummary() {
+            var sel = getBriefStaffSelection();
+            var staffId = sel.staffId;
+            var dateKey = sel.date;
+            if (!staffId || !dateKey) {
+                clearStaffBriefForNoSelection();
+                return Promise.resolve();
+            }
+
+            var token = ++staffBriefLoadToken;
             if (staffBriefText) staffBriefText.textContent = 'Loading staff sales report...';
             var cacheBust = Date.now();
-            var todayObj = new Date();
-            var toDate = todayObj.toISOString().slice(0, 10);
-            var fromObj = new Date(todayObj.getTime());
-            fromObj.setDate(fromObj.getDate() - 6);
-            var fromDate = fromObj.toISOString().slice(0, 10);
             return Promise.all([
-                fetch('api/orders.php?type=daily_summary&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/sales.php?from=' + encodeURIComponent(fromDate) + '&to=' + encodeURIComponent(toDate) + '&limit=1&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/waste.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
+                fetch(
+                    'api/orders.php?type=daily_summary&date=' + encodeURIComponent(dateKey) +
+                    '&staff_id=' + encodeURIComponent(staffId) + '&_=' + cacheBust,
+                    { cache: 'no-store' }
+                ).then(function (r) { return r.json(); }),
+                fetch(
+                    'api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) +
+                    '&date=' + encodeURIComponent(dateKey) + '&_=' + cacheBust,
+                    { cache: 'no-store' }
+                ).then(function (r) { return r.json(); }),
+                fetch(
+                    'api/waste.php?type=daily_summary&date=' + encodeURIComponent(dateKey) +
+                    '&staff_id=' + encodeURIComponent(staffId) + '&_=' + cacheBust,
+                    { cache: 'no-store' }
+                ).then(function (r) { return r.json(); }),
+                fetch(
+                    'api/orders.php?limit=200&staff_id=' + encodeURIComponent(staffId) +
+                    '&date=' + encodeURIComponent(dateKey) + '&_=' + cacheBust,
+                    { cache: 'no-store' }
+                ).then(function (r) { return r.json(); })
             ]).then(function (results) {
+                if (token !== staffBriefLoadToken) return;
+                var liveSel = getBriefStaffSelection();
+                if (String(liveSel.staffId) !== String(staffId) || String(liveSel.date) !== String(dateKey)) return;
+
                 var summaryRes = results[0];
+                var reportRes = results[1];
                 var wasteRes = results[2];
-                var allOrdersRes = results[4];
+                var allOrdersRes = results[3];
+                var report = reportRes && reportRes.success ? reportRes.report : null;
+                window.__ortusStaffBriefReport = report;
 
                 var out = {
-                    total_revenue: null,
-                    expenses_total: null,
-                    expenses_base: null,
+                    total_revenue: 0,
+                    expenses_total: 0,
+                    expenses_base: 0,
                     short_amount: 0,
                     over_amount: 0,
                     cash_revenue: 0,
                     gcash_revenue: 0,
                     discount_total: 0,
-                    waste_total_est: null
+                    waste_total_est: 0
                 };
 
                 if (summaryRes && summaryRes.success && summaryRes.summary) {
-                    out.total_revenue = summaryRes.summary.total_revenue || 0;
+                    out.total_revenue = parseFloat(summaryRes.summary.raw_total_revenue != null
+                        ? summaryRes.summary.raw_total_revenue
+                        : summaryRes.summary.total_revenue) || 0;
                     out.cash_revenue = parseFloat(summaryRes.summary.cash_revenue || 0) || 0;
                     out.gcash_revenue = parseFloat(summaryRes.summary.digital_revenue || 0) || 0;
                     out.discount_total = parseFloat(summaryRes.summary.discount_total || 0) || 0;
-                    out.expenses_total = parseFloat(summaryRes.summary.receipt_expense_total || 0) || 0;
-                }
-                if (wasteRes && wasteRes.success) {
-                    var today = new Date().toISOString().slice(0, 10);
-                    var wasteTotal = (wasteRes.entries || []).reduce(function (sum, entry) {
-                        var loggedDate = String(entry.logged_at || entry.created_at || '').slice(0, 10);
-                        if (loggedDate !== today) return sum;
-                        return sum + parseFloat(entry.estimated_value || 0);
-                    }, 0);
-                    out.waste_total_est = wasteTotal;
-                    out.expenses_total = (parseFloat(out.expenses_total || 0) || 0) + wasteTotal;
-                }
-                out.expenses_base = parseFloat(out.expenses_total || 0) || 0;
-
-                try {
-                    var cashMgmtRaw = localStorage.getItem('staff_cash_management_' + localYmd(new Date()));
-                    var cashMgmtEntries = cashMgmtRaw ? JSON.parse(cashMgmtRaw) : [];
-                    if (Array.isArray(cashMgmtEntries)) {
-                        var paidOutTotal = cashMgmtEntries.reduce(function (sum, entry) {
-                            if (!entry || String(entry.type || '') !== 'paid_out') return sum;
-                            return sum + toMoney(entry.amount);
-                        }, 0);
-                        if (paidOutTotal > 0) {
-                            out.expenses_total = out.expenses_base + paidOutTotal;
-                        }
-                    }
-                } catch (eCash) {
-                    // Ignore malformed cash management state.
                 }
 
-                try {
-                    var rawAcc = localStorage.getItem(getAccuracyStorageKey());
-                    if (rawAcc) {
-                        var acc = JSON.parse(rawAcc);
-                        var mode = String(acc && acc.mode || '').toLowerCase();
-                        var amount = toMoney(acc && acc.over_under);
-                        if (mode === 'over') {
-                            out.over_amount = amount;
-                        } else if (mode === 'under') {
-                            out.short_amount = amount;
-                        }
-                    }
-                } catch (e) {
-                    // Ignore malformed local accuracy state.
+                if (wasteRes && wasteRes.success && wasteRes.summary) {
+                    out.waste_total_est = toMoney(wasteRes.summary.total_estimated_value);
+                }
+                out.expenses_base = toMoney(out.waste_total_est);
+                out.expenses_total = out.expenses_base;
+
+                var cashMgmt = getCashMgmtTotalsForSelection();
+                if (cashMgmt.paidOut > 0) {
+                    out.expenses_total = out.expenses_base + cashMgmt.paidOut;
+                }
+
+                var acc = getAccuracyForSelection();
+                if (acc) {
+                    var mode = String(acc.mode || '').toLowerCase();
+                    var amount = toMoney(acc.over_under != null ? acc.over_under : acc.variance);
+                    if (mode === 'over') out.over_amount = amount;
+                    else if (mode === 'under' || mode === 'short') out.short_amount = amount;
                 }
 
                 var allOrders = (allOrdersRes && allOrdersRes.success && allOrdersRes.orders) ? allOrdersRes.orders : [];
-                var todayKey = localYmd(new Date());
                 todayGcashOrders = allOrders.filter(function (o) {
                     if (!o || !o.created_at) return false;
-                    if (localYmd(o.created_at) !== todayKey) return false;
+                    if (parseInt(o.staff_id, 10) !== parseInt(staffId, 10)) return false;
+                    if (localYmd(o.created_at) !== dateKey) return false;
                     var pm = String(o.payment_method || '').toLowerCase();
                     if (pm !== 'gcash') return false;
                     var st = String(o.status || '').toLowerCase();
@@ -786,7 +859,8 @@
                 });
                 todayCashOrders = allOrders.filter(function (o) {
                     if (!o || !o.created_at) return false;
-                    if (localYmd(o.created_at) !== todayKey) return false;
+                    if (parseInt(o.staff_id, 10) !== parseInt(staffId, 10)) return false;
+                    if (localYmd(o.created_at) !== dateKey) return false;
                     var pm = String(o.payment_method || '').toLowerCase();
                     if (pm !== 'cash') return false;
                     var st = String(o.status || '').toLowerCase();
@@ -794,7 +868,6 @@
                     return st === 'pending' && (parseInt(o.kitchen_returned, 10) === 1 || o.kitchen_returned === true);
                 });
 
-                // Prefer live order totals for the side split when daily summary is empty.
                 if ((!out.cash_revenue && !out.gcash_revenue) && (todayCashOrders.length || todayGcashOrders.length)) {
                     out.cash_revenue = todayCashOrders.reduce(function (sum, o) {
                         return sum + (parseFloat(o && o.total_amount) || 0);
@@ -802,20 +875,26 @@
                     out.gcash_revenue = todayGcashOrders.reduce(function (sum, o) {
                         return sum + (parseFloat(o && o.total_amount) || 0);
                     }, 0);
+                    out.total_revenue = out.cash_revenue + out.gcash_revenue;
                 }
 
                 renderStaffBrief(out);
                 staffBriefMoreCashRevenue = parseFloat(out.cash_revenue || 0) || 0;
                 staffBriefMoreDiscountTotal = parseFloat(out.discount_total || 0) || 0;
                 updateStaffBriefMorePanel();
+                if (typeof window.__ortusRefreshStaffReportReadout === 'function') {
+                    window.__ortusRefreshStaffReportReadout();
+                }
             }).catch(function (e) {
+                if (token !== staffBriefLoadToken) return;
                 if (staffBriefText) staffBriefText.textContent = 'No staff sales report available yet.';
                 console.warn('Staff sales report summary unavailable:', e && e.message ? e.message : e);
             });
         }
 
-        loadStaffSalesReportSummary();
+        window.__ortusLoadStaffBriefSummary = loadStaffSalesReportSummary;
         window.__ortusUpdateStaffBriefMore = updateStaffBriefMorePanel;
+        clearStaffBriefForNoSelection();
 
         if (staffBriefMoreBtn) {
             staffBriefMoreBtn.addEventListener('click', function (e) {
@@ -1597,9 +1676,6 @@
         var expList = document.getElementById('brief-exp-list');
         if (!smList || !smEmpty) return;
 
-        function dayKey() {
-            return new Date().toISOString().slice(0, 10);
-        }
         function peso(v) {
             return '₱' + (parseFloat(v || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
@@ -1607,14 +1683,24 @@
             var n = parseFloat(v);
             return Number.isFinite(n) && n >= 0 ? n : 0;
         }
-        function getStartingMoneyStorageKey() {
-            return 'staff_sales_report_starting_money_' + dayKey();
+        function getSelection() {
+            var sel = window.__ortusAdminStaffBriefSelection || {};
+            return {
+                staffId: String(sel.staffId || ''),
+                date: String(sel.date || '')
+            };
         }
-        function getStartingMoneyLockedKey() {
-            return 'staff_sales_report_starting_money_locked_' + dayKey();
+        function scopedKey(prefix, staffId, dateKey) {
+            var sid = parseInt(staffId, 10) || 0;
+            if (!sid || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ''))) return '';
+            return prefix + '_' + sid + '_' + dateKey;
         }
-        function getCashMgmtStorageKey() {
-            return 'staff_cash_management_' + dayKey();
+        function matchingReport(sel) {
+            var report = window.__ortusStaffBriefReport;
+            if (!report) return null;
+            if (String(report.staff_id) !== String(sel.staffId)) return null;
+            if (String(report.report_date) !== String(sel.date)) return null;
+            return report;
         }
         function esc(s) {
             return String(s || '')
@@ -1624,8 +1710,13 @@
                 .replace(/"/g, '&quot;');
         }
         function getCashMgmtEntries() {
+            var sel = getSelection();
+            var report = matchingReport(sel);
+            if (report && Array.isArray(report.cash_mgmt)) return report.cash_mgmt.slice();
+            var key = scopedKey('staff_cash_management', sel.staffId, sel.date);
+            if (!key) return [];
             try {
-                var raw = localStorage.getItem(getCashMgmtStorageKey());
+                var raw = localStorage.getItem(key);
                 var parsed = raw ? JSON.parse(raw) : [];
                 return Array.isArray(parsed) ? parsed : [];
             } catch (e) {
@@ -1651,40 +1742,60 @@
             return getCashMgmtEntriesByType('paid_out');
         }
 
-        function parseStartingMoney(raw) {
+        function parseStartingMoney(rawOrObj) {
             var baseVal = 0;
             var additionalInputs = [];
             var total = 0;
-            if (!raw) return { baseVal: baseVal, additionalInputs: additionalInputs, total: total, hasData: false };
+            if (rawOrObj == null || rawOrObj === '') {
+                return { baseVal: baseVal, additionalInputs: additionalInputs, total: total, hasData: false };
+            }
             try {
-                var obj = JSON.parse(raw);
-                baseVal = toMoney(obj && obj.base);
-                if (obj && Array.isArray(obj.additional_inputs)) {
+                var obj = typeof rawOrObj === 'string' ? JSON.parse(rawOrObj) : rawOrObj;
+                if (!obj || typeof obj !== 'object') {
+                    baseVal = toMoney(rawOrObj);
+                    return { baseVal: baseVal, additionalInputs: [], total: baseVal, hasData: true };
+                }
+                baseVal = toMoney(obj.base);
+                if (Array.isArray(obj.additional_inputs)) {
                     additionalInputs = obj.additional_inputs.map(function (x) { return toMoney(x); });
-                } else if (obj && typeof obj.additional !== 'undefined') {
+                } else if (typeof obj.additional !== 'undefined') {
                     additionalInputs = [toMoney(obj.additional)];
                 }
-                total = typeof obj.total !== 'undefined' ? toMoney(obj.total) : baseVal + additionalInputs.reduce(function (s, x) { return s + x; }, 0);
+                total = typeof obj.total !== 'undefined'
+                    ? toMoney(obj.total)
+                    : baseVal + additionalInputs.reduce(function (s, x) { return s + x; }, 0);
                 return { baseVal: baseVal, additionalInputs: additionalInputs, total: total, hasData: true };
             } catch (e) {
-                baseVal = toMoney(raw);
-                return { baseVal: baseVal, additionalInputs: [], total: baseVal, hasData: true };
+                baseVal = toMoney(rawOrObj);
+                return { baseVal: baseVal, additionalInputs: [], total: baseVal, hasData: !!baseVal };
             }
         }
 
         function renderStartingMoneyReadout() {
-            var raw = localStorage.getItem(getStartingMoneyStorageKey());
-            var p = parseStartingMoney(raw);
+            var sel = getSelection();
+            if (!sel.staffId || !sel.date) {
+                smList.classList.add('is-hidden');
+                smList.innerHTML = '';
+                smEmpty.classList.remove('is-hidden');
+                smEmpty.textContent = 'Select a cashier and shift date to view starting money.';
+                return;
+            }
+            var report = matchingReport(sel);
+            var p = report && report.starting_money
+                ? parseStartingMoney(report.starting_money)
+                : parseStartingMoney(localStorage.getItem(scopedKey('staff_sales_report_starting_money', sel.staffId, sel.date)));
             var paidInEntries = getPaidInEntries();
             if (!p.hasData && !paidInEntries.length) {
                 smList.classList.add('is-hidden');
                 smEmpty.classList.remove('is-hidden');
-                smEmpty.textContent = 'No starting money or paid in saved for today on this device yet.';
+                smEmpty.textContent = 'No starting money or paid in for this cashier on the selected shift.';
                 return;
             }
             smEmpty.classList.add('is-hidden');
             smList.classList.remove('is-hidden');
-            var locked = localStorage.getItem(getStartingMoneyLockedKey()) === '1';
+            var locked = report
+                ? !!report.starting_money_locked
+                : localStorage.getItem(scopedKey('staff_sales_report_starting_money_locked', sel.staffId, sel.date)) === '1';
             var html = '';
 
             if (p.hasData) {
@@ -1713,7 +1824,7 @@
                 var startingTotal = toMoney(p.total) + paidInTotal;
                 html += '<div class="brief-readout__row brief-readout__row--total"><span class="brief-readout__k">Total</span><span class="brief-readout__v">' + peso(startingTotal) + '</span></div>';
                 if (locked) {
-                    html += '<p class="brief-readout__meta">Saved / locked for today.</p>';
+                    html += '<p class="brief-readout__meta">Saved / locked for this shift.</p>';
                 }
             } else if (paidInEntries.length) {
                 html +=
@@ -1728,6 +1839,12 @@
 
         function renderExpensesPaidOutReadout() {
             if (!expList) return;
+            var sel = getSelection();
+            if (!sel.staffId || !sel.date) {
+                expList.innerHTML = '';
+                expList.classList.add('is-hidden');
+                return;
+            }
             var paidOutEntries = getPaidOutEntries();
             var expensesValEl = document.querySelector('#staff-brief [data-brief-key="expenses"]');
             var baseAttr = expensesValEl && expensesValEl.getAttribute('data-base-expenses');
@@ -1765,6 +1882,7 @@
             }
         }
 
+        window.__ortusRefreshStaffReportReadout = refreshStaffReportReadout;
         refreshStaffReportReadout();
         window.addEventListener('storage', function (e) {
             if (!e.key) return;
@@ -2297,6 +2415,17 @@
             }
             activityMeta.textContent = cashier.full_name + ' · ' + formatShiftLabel(selectedShiftDate);
         }
+        function publishStaffBriefSelection() {
+            window.__ortusAdminStaffBriefSelection = {
+                staffId: String(selectedStaffId || ''),
+                date: String(selectedShiftDate || '')
+            };
+            if (typeof window.__ortusLoadStaffBriefSummary === 'function') {
+                window.__ortusLoadStaffBriefSummary();
+            } else if (typeof window.__ortusRefreshStaffReportReadout === 'function') {
+                window.__ortusRefreshStaffReportReadout();
+            }
+        }
         function renderStaffOptions() {
             if (!staffOptions) return;
             staffOptions.innerHTML = '';
@@ -2319,6 +2448,7 @@
                     closeAllMenus();
                     updateMeta();
                     setDrawerPlaceholders();
+                    publishStaffBriefSelection();
                     loadStaffShifts(selectedStaffId);
                 });
                 staffOptions.appendChild(btn);
@@ -2351,6 +2481,7 @@
                     if (shiftBtn) shiftBtn.textContent = formatShiftLabel(dateStr);
                     closeAllMenus();
                     updateMeta();
+                    publishStaffBriefSelection();
                     loadDrawerForSelection();
                 });
                 shiftOptions.appendChild(btn);
@@ -2359,6 +2490,7 @@
                 selectedShiftDate = String(staffShifts[0].shift_date);
                 if (shiftBtn) shiftBtn.textContent = formatShiftLabel(selectedShiftDate);
                 updateMeta();
+                publishStaffBriefSelection();
                 loadDrawerForSelection();
             }
         }
@@ -2470,6 +2602,8 @@
                         var cashier = findCashier(selectedStaffId);
                         if (cashier && staffBtn) staffBtn.textContent = cashier.full_name || 'Select Staff';
                         loadStaffShifts(selectedStaffId);
+                    } else {
+                        publishStaffBriefSelection();
                     }
                     updateMeta();
                 })
@@ -2633,6 +2767,7 @@
                         if (shiftBtn) shiftBtn.textContent = 'Shift Date';
                         setDrawerPlaceholders();
                         updateMeta();
+                        publishStaffBriefSelection();
                     }
                     loadCashiers();
                     loadManageCashiers();
@@ -2776,13 +2911,20 @@
             }
         });
         window.addEventListener('focus', function () {
-            if (selectedStaffId && selectedShiftDate) loadDrawerForSelection();
+            if (selectedStaffId && selectedShiftDate) {
+                loadDrawerForSelection();
+                publishStaffBriefSelection();
+            }
         });
         document.addEventListener('visibilitychange', function () {
-            if (!document.hidden && selectedStaffId && selectedShiftDate) loadDrawerForSelection();
+            if (!document.hidden && selectedStaffId && selectedShiftDate) {
+                loadDrawerForSelection();
+                publishStaffBriefSelection();
+            }
         });
 
         setDrawerPlaceholders();
+        publishStaffBriefSelection();
         ensureSession(function () {
             loadCashiers();
         });

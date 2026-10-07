@@ -2,17 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ortus Lab Sales History</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261007-rwd1">
+    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261006-logout-red">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
-    <link rel="stylesheet" href="../shared/modal_viewport.css?v=20261007b">
-    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-rwd2">
 </head>
 <body>
     <div class="sales-page">
@@ -2245,45 +2243,30 @@
                 return toMoney(raw);
             }
         }
-        function cashMgmtTotalsFromEntries(entries) {
-            if (!Array.isArray(entries)) return { paidIn: 0, paidOut: 0 };
-            return entries.reduce(function (acc, entry) {
-                var amount = toMoney(entry && entry.amount);
-                if (!amount) return acc;
-                if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
-                else acc.paidIn += amount;
-                return acc;
-            }, { paidIn: 0, paidOut: 0 });
-        }
-        function cashRefundsTotalFromEntries(entries) {
-            if (!Array.isArray(entries)) return 0;
-            return entries.reduce(function (sum, entry) {
-                return sum + toMoney(entry && entry.amount);
-            }, 0);
-        }
-        /** Prefer DB report (per staff). Fallback: staff-scoped localStorage only. */
-        function getStaffCashMgmtTotals(staffId, dateKey, report) {
-            if (report && Array.isArray(report.cash_mgmt)) {
-                return cashMgmtTotalsFromEntries(report.cash_mgmt);
-            }
+        function getLocalCashMgmtTotals(dateKey) {
             try {
-                var sid = parseInt(staffId, 10) || 0;
-                var raw = localStorage.getItem('staff_cash_management_' + sid + '_' + dateKey);
+                var raw = localStorage.getItem('staff_cash_management_' + dateKey);
                 var parsed = raw ? JSON.parse(raw) : [];
-                return cashMgmtTotalsFromEntries(parsed);
+                if (!Array.isArray(parsed)) return { paidIn: 0, paidOut: 0 };
+                return parsed.reduce(function (acc, entry) {
+                    var amount = toMoney(entry && entry.amount);
+                    if (!amount) return acc;
+                    if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
+                    else acc.paidIn += amount;
+                    return acc;
+                }, { paidIn: 0, paidOut: 0 });
             } catch (e) {
                 return { paidIn: 0, paidOut: 0 };
             }
         }
-        function getStaffCashRefundsTotal(staffId, dateKey, report) {
-            if (report && Array.isArray(report.cash_refunds)) {
-                return cashRefundsTotalFromEntries(report.cash_refunds);
-            }
+        function getLocalCashRefundsTotal(dateKey) {
             try {
-                var sid = parseInt(staffId, 10) || 0;
-                var raw = localStorage.getItem('staff_cash_refunds_' + sid + '_' + dateKey);
+                var raw = localStorage.getItem('staff_cash_refunds_' + dateKey);
                 var parsed = raw ? JSON.parse(raw) : [];
-                return cashRefundsTotalFromEntries(parsed);
+                if (!Array.isArray(parsed)) return 0;
+                return parsed.reduce(function (sum, entry) {
+                    return sum + toMoney(entry && entry.amount);
+                }, 0);
             } catch (e) {
                 return 0;
             }
@@ -2399,7 +2382,7 @@
             Promise.all([
                 fetch('api/orders.php?limit=200&staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(shiftDate) + '&staff_id=' + encodeURIComponent(staffId), { cache: 'no-store' }).then(function (r) { return r.json(); })
+                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); })
             ]).then(function (results) {
                 if (String(staffId) !== String(selectedStaffId) || String(shiftDate) !== String(selectedShiftDate)) return;
                 var ordersRes = results[0];
@@ -2424,8 +2407,8 @@
                 });
                 var report = reportRes && reportRes.success ? reportRes.report : null;
                 var starting = report ? parseStartingMoney(report.starting_money) : 0;
-                var staffMgmt = getStaffCashMgmtTotals(staffId, shiftDate, report);
-                var staffRefunds = getStaffCashRefundsTotal(staffId, shiftDate, report);
+                var localMgmt = getLocalCashMgmtTotals(shiftDate);
+                var localRefunds = getLocalCashRefundsTotal(shiftDate);
                 var waste = 0;
                 if (wasteRes && wasteRes.success && wasteRes.summary) {
                     waste = toMoney(wasteRes.summary.total_estimated_value);
@@ -2439,13 +2422,13 @@
                     gcash: gcash,
                     total: cash + gcash,
                     discounts: discounts,
-                    refunds: staffRefunds,
-                    paidIn: staffMgmt.paidIn,
-                    paidOut: staffMgmt.paidOut,
+                    refunds: localRefunds,
+                    paidIn: localMgmt.paidIn,
+                    paidOut: localMgmt.paidOut,
                     waste: waste,
                     expected: accuracyExpected != null
                         ? accuracyExpected
-                        : Math.max(0, starting + cash - staffRefunds + staffMgmt.paidIn - staffMgmt.paidOut)
+                        : Math.max(0, starting + cash - localRefunds + localMgmt.paidIn - localMgmt.paidOut)
                 });
             }).catch(function () {
                 setDrawerPlaceholders();
@@ -2793,6 +2776,5 @@
     })();
     </script>
     <script src="password_toggle.js?v=20261006"></script>
-    <script src="../shared/responsive_tables.js?v=20261007-rwd2"></script>
 </body>
 </html>

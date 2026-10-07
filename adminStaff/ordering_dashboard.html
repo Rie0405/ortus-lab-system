@@ -2,17 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ortus Lab Menu Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261007-rwd1">
+    <link rel="stylesheet" href="ordering_dashboard_styles.css?v=20261007-edit-variants">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="image_crop.css?v=20261006">
-    <link rel="stylesheet" href="../shared/modal_viewport.css?v=20261007b">
-    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-rwd2">
 </head>
 <body>
     <div class="order-page">
@@ -429,7 +427,7 @@
                             </div>
                             <div class="product-section__body">
                                 <p class="product-field-label__note" id="prod-variants-caption" style="margin: 0 0 10px;">
-                                    Default is Iced (16oz). Use + ADD VARIANT for Hot or other sizes — new rows start with empty price/cost.
+                                    Defaults include Iced and Hot. Edit the names, prices, or remove a row if you only need one temperature.
                                 </p>
                                 <div id="prod-variants-list" class="prod-variants-list"></div>
 
@@ -441,11 +439,11 @@
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>
-                                            <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" autocomplete="off" inputmode="decimal" />
+                                            <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" />
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">COST PRICE (₱)</label>
-                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" autocomplete="off" inputmode="decimal" />
+                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" />
                                         </div>
                                         <button type="button" class="variant-remove" aria-label="Remove variant">Delete</button>
                                     </div>
@@ -619,11 +617,11 @@
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">PRICE (₱)</label>
-                                            <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" autocomplete="off" inputmode="decimal" />
+                                            <input type="number" class="product-input variant-input--price" min="0" step="0.01" placeholder="0.00" />
                                         </div>
                                         <div class="variant-input-block">
                                             <label class="product-field-label">COST PRICE (₱)</label>
-                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" autocomplete="off" inputmode="decimal" />
+                                            <input type="number" class="product-input variant-input--cost" min="0" step="0.01" placeholder="0.00" />
                                         </div>
                                         <button type="button" class="variant-remove" aria-label="Remove variant">Delete</button>
                                     </div>
@@ -780,7 +778,7 @@
 
         <script src="auth_session.js"></script>
         <script src="image_crop.js?v=20261006"></script>
-        <script src="dashboard_script.js?v=20261007-variant-default-iced"></script>
+        <script src="dashboard_script.js?v=20261007-variant-persist"></script>
         <script>
         (function () {
             var btnOpen = document.getElementById('btn-register-addon');
@@ -1366,6 +1364,5 @@
             });
         })();
         </script>
-        <script src="../shared/responsive_tables.js?v=20261007-rwd2"></script>
 </body>
 </html>

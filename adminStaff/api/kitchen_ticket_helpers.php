@@ -373,6 +373,61 @@ function fetch_order_station_tickets_map(PDO $pdo, array $orderIds): array
     return $map;
 }
 
+/**
+ * Main category IDs involved in an order (for station tab notify dots).
+ *
+ * @return list<int>
+ */
+function order_main_category_ids(PDO $pdo, int $orderId): array
+{
+    if ($orderId <= 0) {
+        return [];
+    }
+    ensure_kitchen_ticket_schema($pdo);
+    $ids = [];
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT DISTINCT main_category_id
+               FROM order_station_tickets
+              WHERE order_id = :oid
+                AND main_category_id IS NOT NULL
+                AND main_category_id > 0'
+        );
+        $stmt->execute([':oid' => $orderId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $id) {
+            $id = (int)$id;
+            if ($id > 0) {
+                $ids[$id] = true;
+            }
+        }
+    } catch (Throwable $e) {
+        // Fall through to menu items lookup.
+    }
+    if ($ids) {
+        return array_map('intval', array_keys($ids));
+    }
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT DISTINCT mi.main_category_id
+               FROM order_items oi
+               INNER JOIN menu_items mi ON mi.id = oi.menu_item_id
+              WHERE oi.order_id = :oid
+                AND mi.main_category_id IS NOT NULL
+                AND mi.main_category_id > 0'
+        );
+        $stmt->execute([':oid' => $orderId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $id) {
+            $id = (int)$id;
+            if ($id > 0) {
+                $ids[$id] = true;
+            }
+        }
+    } catch (Throwable $e) {
+        return [];
+    }
+    return array_map('intval', array_keys($ids));
+}
+
 /** Reset all station sequences to 1 (shift finalize / SES confirm). */
 function reset_kitchen_ticket_counter(PDO $pdo): void
 {

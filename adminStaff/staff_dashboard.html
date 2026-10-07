@@ -1902,7 +1902,13 @@
 
             function updateConfirmButtonForEditing() {
                 if (!confirmBtn) return;
-                confirmBtn.textContent = posEditingOrder ? "Save Order" : "Confirm Payment";
+                if (!posEditingOrder) {
+                    confirmBtn.textContent = "Confirm Payment";
+                    return;
+                }
+                confirmBtn.textContent = posEditingOrder.kitchen_returned
+                    ? "Save & Send to Station"
+                    : "Save Order";
             }
 
             function updateEditingBanner() {
@@ -1985,7 +1991,8 @@
                     order_type: order.order_type || "dine_in",
                     order_source: order.order_source || "",
                     customer_name: customerName,
-                    pickup_time: pickupTime
+                    pickup_time: pickupTime,
+                    kitchen_returned: !!(parseInt(order.kitchen_returned, 10) === 1 || order.kitchen_returned === true)
                 };
 
                 syncDiscountInputs();
@@ -2011,11 +2018,14 @@
                     };
                 });
                 var orderSource = String(posEditingOrder.order_source || "kiosk").toLowerCase();
+                // Returned kitchen/bar orders must go back to stations after edit.
+                var wasReturned = !!posEditingOrder.kitchen_returned;
                 var payload = {
                     id: posEditingOrder.id,
                     action: "update_cart",
-                    // Keep pending so it returns to the processing queue with a notify pulse.
-                    confirm: false,
+                    // Normal pending queue edits stay pending.
+                    // Returned orders re-confirm so they reappear on Bar/Kitchen/etc.
+                    confirm: wasReturned,
                     items: items,
                     discount: getPosDiscountPayload(),
                     customer_name: getPosCustomerName() || posEditingOrder.customer_name || "",
@@ -2033,12 +2043,23 @@
                   .then(function (d) {
                       if (!d.success) throw new Error(d.error || "Failed to save order.");
                       clearCart();
-                      var queueTab = orderSource === "pos" ? "queue-pos" : "queue-kiosk";
-                      if (typeof window.staffActivateMainTab === "function") {
-                          window.staffActivateMainTab(queueTab);
-                      }
-                      if (typeof window.markStaffQueueNotify === "function") {
-                          window.markStaffQueueNotify(queueTab);
+                      if (wasReturned || String(d.status || "").toLowerCase() === "confirmed") {
+                          if (typeof window.staffActivateMainTab === "function") {
+                              window.staffActivateMainTab("kitchen");
+                          }
+                          if (typeof window.markStaffQueueNotify === "function") {
+                              window.markStaffQueueNotify("kitchen", {
+                                  mainCategoryIds: d.main_category_ids || []
+                              });
+                          }
+                      } else {
+                          var queueTab = orderSource === "pos" ? "queue-pos" : "queue-kiosk";
+                          if (typeof window.staffActivateMainTab === "function") {
+                              window.staffActivateMainTab(queueTab);
+                          }
+                          if (typeof window.markStaffQueueNotify === "function") {
+                              window.markStaffQueueNotify(queueTab);
+                          }
                       }
                       if (typeof loadStaffData === "function") loadStaffData();
                   })
@@ -3427,6 +3448,7 @@
                         if (target === "kitchen" && kitchenCat) {
                             window.staffKitchenCategory = String(kitchenCat).toLowerCase();
                             setStationHeaderActive(window.staffKitchenCategory);
+                            tab.classList.remove("header-main-tab--notify");
                             window.dispatchEvent(new CustomEvent("staff-kitchen-station-changed", {
                                 detail: { station: window.staffKitchenCategory }
                             }));
@@ -3441,7 +3463,7 @@
                                 detail: { source: queueSource }
                             }));
                         }
-                        if (target === "queue-kiosk") {
+                        if (target === "queue-kiosk" || target === "queue-pos") {
                             tab.classList.remove("header-main-tab--notify");
                         }
                         activatePanel(target);
@@ -6035,12 +6057,50 @@
         function getMainTabBtn(name) {
             return document.querySelector('[data-main-tab="' + name + '"]');
         }
-        function markTabRealtimeNotify(name) {
+        function stationKeysFromMainCategoryIds(ids) {
+            var keys = [];
+            var seen = {};
+            (ids || []).forEach(function (rawId) {
+                var id = parseInt(rawId, 10) || 0;
+                if (id <= 0) return;
+                var key = stationKeyFromId(id);
+                var st = findStationByKey(key);
+                if (!st) return;
+                if (seen[st.key]) return;
+                seen[st.key] = true;
+                keys.push(st.key);
+            });
+            return keys;
+        }
+
+        function markStationTabNotify(stationKeys) {
+            var keys = Array.isArray(stationKeys) ? stationKeys.filter(Boolean) : [];
+            if (!keys.length) {
+                // Legacy fallback: notify every station that is not currently open.
+                keys = (staffMainStations || []).map(function (st) { return st.key; });
+            }
+            if (!keys.length) return;
+
+            var kitchenActive = !!document.querySelector('[data-main-panel="kitchen"].is-active');
+            var activeKey = String(activeKitchenCategory || window.staffKitchenCategory || '').toLowerCase();
+            var stationFilter = document.querySelector('.header-station-filter');
+            if (stationFilter) stationFilter.classList.remove('header-main-tab--notify');
+
+            keys.forEach(function (key) {
+                var want = String(key || '').toLowerCase();
+                var btn = document.querySelector(
+                    '.header-station-btn[data-main-tab="kitchen"][data-kitchen-cat="' + want + '"]'
+                );
+                if (!btn) return;
+                if (kitchenActive && activeKey === want) return;
+                btn.classList.add('header-main-tab--notify');
+            });
+        }
+
+        function markTabRealtimeNotify(name, opts) {
+            opts = opts || {};
             if (name === 'kitchen') {
-                var stationFilter = document.querySelector('.header-station-filter');
-                var kitchenActive = !!document.querySelector('[data-main-panel="kitchen"].is-active');
-                if (!stationFilter || kitchenActive) return;
-                stationFilter.classList.add('header-main-tab--notify');
+                markStationTabNotify(opts.stationKeys || stationKeysFromMainCategoryIds(opts.mainCategoryIds));
                 return;
             }
             var btn = getMainTabBtn(name);
@@ -6062,9 +6122,11 @@
             var payload = (evt && evt.payload) || {};
             var source = String(payload.order_source || '').toLowerCase();
             var status = String(payload.status || '').toLowerCase();
-            // Confirmed/served orders belong in kitchen — pulse kitchen tab.
+            // Confirmed/served orders belong on station tabs (Bar / Kitchen / …).
             if (status === 'confirmed' || status === 'served') {
-                markTabRealtimeNotify('kitchen');
+                markTabRealtimeNotify('kitchen', {
+                    mainCategoryIds: payload.main_category_ids || []
+                });
             } else if (source === 'kiosk') {
                 markTabRealtimeNotify('queue-kiosk');
             } else if (source === 'pos') {

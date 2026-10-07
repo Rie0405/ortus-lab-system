@@ -538,6 +538,7 @@ if ($m === 'POST') {
             'order_number' => $orderNumber,
             'order_source' => $orderSource,
             'status' => 'confirmed',
+            'main_category_ids' => array_values(array_map('intval', array_keys($stationTicketsPayload ?: []))),
         ]);
         ok([
             'order_id' => $orderId,
@@ -610,7 +611,10 @@ if ($m === 'PUT') {
     }
 
     if ($action === 'discount' || $action === 'edit' || $action === 'update_cart') {
-        $prevStmt = $pdo->prepare('SELECT status, gross_amount, order_source FROM orders WHERE id = :id FOR UPDATE');
+        $prevStmt = $pdo->prepare(
+            'SELECT status, gross_amount, order_source, kitchen_returned
+             FROM orders WHERE id = :id FOR UPDATE'
+        );
         $pdo->beginTransaction();
         try {
             $prevStmt->execute([':id' => $id]);
@@ -735,18 +739,26 @@ if ($m === 'PUT') {
                     $sets[] = 'order_type = :otype';
                     $params[':otype'] = substr($orderType, 0, 60);
                 }
-                $confirmOrder = !empty($b['confirm']);
+                // Returned kitchen/bar orders must go back to stations after edit,
+                // not into the pending kiosk/POS processing queue.
+                $wasKitchenReturned = !empty($prev['kitchen_returned']);
+                $confirmOrder = !empty($b['confirm']) || $wasKitchenReturned;
                 if ($confirmOrder) {
                     $sets[] = 'status = :status';
                     $sets[] = 'kitchen_returned = 0';
                     $sets[] = 'kitchen_return_reason = NULL';
                     $params[':status'] = 'confirmed';
-                } else {
-                    // Edited pending/returned orders return to the main processing queue.
-                    $sets[] = 'kitchen_returned = 0';
-                    $sets[] = 'kitchen_return_reason = NULL';
                 }
+                // If still a normal pending queue edit, keep kitchen_returned as-is
+                // (do not clear the returned flag without re-confirming to stations).
                 $pdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);
+
+                if ($confirmOrder) {
+                    $menuIdsForTickets = array_map(static function ($row) {
+                        return (int)$row[0];
+                    }, $itemRows);
+                    assign_station_tickets_to_order($pdo, $id, $menuIdsForTickets);
+                }
             } elseif ($action === 'discount') {
                 $discount = normalize_order_discount_payload($b['discount'] ?? null);
                 validate_order_discount_payload($discount);
@@ -816,12 +828,23 @@ if ($m === 'PUT') {
 
             $pdo->commit();
             $orderSource = strtolower((string)($prev['order_source'] ?? ''));
-            if ($action === 'update_cart' && !empty($b['confirm'])) {
+            $wasKitchenReturned = !empty($prev['kitchen_returned']);
+            $didConfirmCart = $action === 'update_cart' && (!empty($b['confirm']) || $wasKitchenReturned);
+            if ($didConfirmCart) {
+                $mainCategoryIds = order_main_category_ids($pdo, $id);
                 publish_realtime_event('order_status_changed', [
                     'order_id' => $id,
                     'order_source' => $orderSource,
                     'from_status' => 'pending',
                     'status' => 'confirmed',
+                    'main_category_ids' => $mainCategoryIds,
+                ]);
+                ok([
+                    'message' => $wasKitchenReturned
+                        ? 'Returned order updated and sent back to stations.'
+                        : 'Order confirmed.',
+                    'status' => 'confirmed',
+                    'main_category_ids' => $mainCategoryIds,
                 ]);
             } else {
                 publish_realtime_event('order_updated', [
@@ -830,11 +853,11 @@ if ($m === 'PUT') {
                     'order_source' => $orderSource,
                     'status' => 'pending',
                 ]);
+                $msg = 'Order updated.';
+                if ($action === 'discount') $msg = 'Order discount updated.';
+                if ($action === 'update_cart') $msg = 'Order cart updated.';
+                ok(['message' => $msg]);
             }
-            $msg = 'Order updated.';
-            if ($action === 'discount') $msg = 'Order discount updated.';
-            if ($action === 'update_cart') $msg = !empty($b['confirm']) ? 'Order confirmed.' : 'Order cart updated.';
-            ok(['message' => $msg]);
         } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             fail('Failed to update order: ' . $e->getMessage(), 500);
@@ -910,12 +933,16 @@ if ($m === 'PUT') {
         }
 
         $pdo->commit();
-        publish_realtime_event('order_status_changed', [
+        $statusPayload = [
             'order_id' => $id,
             'order_source' => $orderSource,
             'from_status' => $prevStatus,
             'status' => $status,
-        ]);
+        ];
+        if ($status === 'confirmed' || $status === 'served') {
+            $statusPayload['main_category_ids'] = order_main_category_ids($pdo, $id);
+        }
+        publish_realtime_event('order_status_changed', $statusPayload);
         ok(['message' => 'Order status updated.']);
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();

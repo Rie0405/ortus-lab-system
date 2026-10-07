@@ -10,10 +10,16 @@ body {
     min-height: 100%;
 }
 
+html {
+    overflow-x: clip;
+}
+
 body {
     background: #120e0a;
     color: #fff;
     font-family: "Space Grotesk", sans-serif;
+    overflow-x: clip;
+    max-width: 100vw;
 }
 
 .inv-page {
@@ -2485,15 +2491,22 @@ body {
 
 @media (max-width: 1280px) {
     .alert-grid { grid-template-columns: repeat(2, 1fr); }
-    .table-wrap { overflow-x: auto; }
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+    }
     .table-head, .table-row { min-width: 1320px; }
     #inventory-secondary-table-wrap .table-head,
     #inventory-secondary-table-wrap .table-row { min-width: 1040px; }
 }
 
 @media (max-width: 900px) {
-    .top-nav { flex-wrap: wrap; padding: 14px 16px; }
-    .inv-main { padding: 16px; }
+    .top-nav { flex-wrap: wrap; padding: 14px 16px; gap: 12px; }
+    .top-actions { margin-left: 0; flex-wrap: wrap; min-width: 0; }
+    .search-wrap { flex: 1 1 140px; min-width: 0; }
+    .search-wrap input { width: 100%; max-width: 100%; }
+    .inv-main { padding: 16px; min-width: 0; }
     .title-row { flex-direction: column; align-items: flex-start; }
     .title-row h1 { font-size: 34px; }
     .low-stock-title { font-size: 24px; }
@@ -2507,6 +2520,27 @@ body {
     .receipt-lines__row--head {
         display: none;
     }
+    .inv-modal,
+    .receipt-modal,
+    .app-modal {
+        width: min(100%, calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
+        max-height: min(92vh, 100%);
+    }
+    .inv-modal-backdrop,
+    .app-modal-backdrop {
+        padding: 12px;
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .alert-grid { grid-template-columns: 1fr; }
+    .title-row h1 { font-size: 28px; }
+    .inv-main { padding: 12px; }
+    .top-nav { padding: 12px; }
+    img { max-width: 100%; height: auto; }
 }
 
 /* Inventory Check list (admin → staff shift-open popup) */

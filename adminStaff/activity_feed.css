@@ -65,7 +65,9 @@
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
+    left: auto;
     width: min(380px, calc(100vw - 28px));
+    max-width: calc(100vw - 28px);
     max-height: min(70vh, 520px);
     display: none;
     flex-direction: column;
@@ -194,4 +196,17 @@
 
 .activity-feed-more.is-hidden {
     display: none !important;
+}
+
+@media (max-width: 640px) {
+    .activity-feed-panel {
+        position: fixed;
+        top: auto;
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: none;
+        max-height: min(70vh, 480px);
+    }
 }

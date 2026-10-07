@@ -623,7 +623,20 @@ if ($m === 'PUT') {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 fail('Order not found.', 404);
             }
-            if ((string)$prev['status'] !== 'pending') {
+            $prevStatus = strtolower(trim((string)($prev['status'] ?? '')));
+            $wasKitchenReturned = (int)($prev['kitchen_returned'] ?? 0) === 1;
+            $fromKitchenReturn = !empty($b['from_kitchen_return']);
+            // Normal queue / discount edits: pending only.
+            // Returned station orders: allow update_cart so "Save & Send to Station" works
+            // even if status/kitchen_returned got out of sync after return.
+            if ($action === 'update_cart') {
+                $canUpdate = ($prevStatus === 'pending')
+                    || $wasKitchenReturned
+                    || ($fromKitchenReturn && in_array($prevStatus, ['pending', 'confirmed'], true));
+            } else {
+                $canUpdate = ($prevStatus === 'pending');
+            }
+            if (!$canUpdate) {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 fail('Only pending orders can be updated.');
             }
@@ -741,8 +754,7 @@ if ($m === 'PUT') {
                 }
                 // Returned kitchen/bar orders must go back to stations after edit,
                 // not into the pending kiosk/POS processing queue.
-                $wasKitchenReturned = !empty($prev['kitchen_returned']);
-                $confirmOrder = !empty($b['confirm']) || $wasKitchenReturned;
+                $confirmOrder = !empty($b['confirm']) || $wasKitchenReturned || $fromKitchenReturn;
                 if ($confirmOrder) {
                     $sets[] = 'status = :status';
                     $sets[] = 'kitchen_returned = 0';
@@ -828,8 +840,10 @@ if ($m === 'PUT') {
 
             $pdo->commit();
             $orderSource = strtolower((string)($prev['order_source'] ?? ''));
-            $wasKitchenReturned = !empty($prev['kitchen_returned']);
-            $didConfirmCart = $action === 'update_cart' && (!empty($b['confirm']) || $wasKitchenReturned);
+            $wasKitchenReturned = (int)($prev['kitchen_returned'] ?? 0) === 1;
+            $fromKitchenReturn = !empty($b['from_kitchen_return']);
+            $didConfirmCart = $action === 'update_cart'
+                && (!empty($b['confirm']) || $wasKitchenReturned || $fromKitchenReturn);
             if ($didConfirmCart) {
                 $mainCategoryIds = order_main_category_ids($pdo, $id);
                 publish_realtime_event('order_status_changed', [

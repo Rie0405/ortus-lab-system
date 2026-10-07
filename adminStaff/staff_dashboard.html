@@ -2026,6 +2026,7 @@
                     // Normal pending queue edits stay pending.
                     // Returned orders re-confirm so they reappear on Bar/Kitchen/etc.
                     confirm: wasReturned,
+                    from_kitchen_return: wasReturned,
                     items: items,
                     discount: getPosDiscountPayload(),
                     customer_name: getPosCustomerName() || posEditingOrder.customer_name || "",

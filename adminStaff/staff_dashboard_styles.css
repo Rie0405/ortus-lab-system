@@ -12,12 +12,14 @@ html,
 body {
     margin: 0;
     min-height: 100%;
+    max-width: 100%;
 }
 
 body {
     background: #120e0a;
     color: #f1f5f9;
     font-family: "Space Grotesk", sans-serif;
+    overflow-x: hidden;
 }
 
 body.pos-modal-open {
@@ -33,157 +35,67 @@ button {
     color: inherit;
 }
 
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ── Mobile-first shell (enhanced at min-width breakpoints below) ── */
 .pos-page {
-    height: 100vh;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100dvh;
+    height: auto;
     display: flex;
     flex-direction: column;
     background: #120e0a;
-    overflow: hidden;
-}
-
-/*
- * Small-device fit: keep the desktop POS layout and shrink it with scale()
- * instead of reflowing into broken columns. JS toggles html.pos-fit-scale
- * and sets width/height/transform on .pos-page.
- */
-html.pos-fit-scale,
-html.pos-fit-scale body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    overflow: hidden;
-    background: #120e0a;
-    touch-action: manipulation;
-}
-
-html.pos-fit-scale .pos-page {
-    position: relative;
-    flex-shrink: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
     box-sizing: border-box;
-    /* width/height/transform/margins applied inline by fit script */
 }
 
-/* Lock desktop POS geometry while scaled (media queries still see real viewport). */
-html.pos-fit-scale .pos-main {
-    flex-direction: row !important;
-    overflow: hidden !important;
-}
-
-html.pos-fit-scale .pos-left {
-    flex: 1 1 auto !important;
-    width: auto !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    padding: 24px !important;
-}
-
-html.pos-fit-scale .pos-right {
-    flex: 0 0 384px !important;
-    width: 384px !important;
-    min-width: 384px !important;
-    max-width: 384px !important;
-    border-left: 1px solid rgba(244, 140, 37, 0.2) !important;
-    border-top: 0 !important;
-    padding: 24px 24px 24px 25px !important;
-}
-
-html.pos-fit-scale .pos-header {
-    height: 78px !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    padding: 16px 24px 17px !important;
-}
-
-html.pos-fit-scale .header-main-tabs {
-    flex-wrap: nowrap !important;
-    height: 100% !important;
-    gap: 28px !important;
-}
-
-html.pos-fit-scale .header-main-tab {
-    font-size: 22px !important;
-    white-space: nowrap !important;
-}
-
-html.pos-fit-scale .menu-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-}
-
-html.pos-fit-scale .waste-tab-layout {
-    grid-template-columns: 1.5fr 1fr !important;
-}
-
-html.pos-fit-scale .kitchen-layout {
-    grid-template-columns: minmax(0, 1fr) 230px !important;
-    grid-template-rows: minmax(0, 1fr) !important;
-}
-
-html.pos-fit-scale .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
-html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-}
-
-/* CSS fallback before JS: scale + lock desktop layout on small viewports */
-@media (max-width: 1365px), (max-height: 899px) {
-    html:not(.pos-fit-scale) body {
-        overflow: hidden;
-        background: #120e0a;
-    }
-
-    html:not(.pos-fit-scale) .pos-page {
-        width: 1366px;
-        height: 900px;
-        transform-origin: top left;
-        transform: scale(min(100vw / 1366, 100dvh / 900));
-    }
-
-    html:not(.pos-fit-scale) .pos-main {
-        flex-direction: row !important;
-    }
-
-    html:not(.pos-fit-scale) .pos-right {
-        flex: 0 0 384px !important;
-        width: 384px !important;
-        min-width: 384px !important;
-        max-width: 384px !important;
-        border-left: 1px solid rgba(244, 140, 37, 0.2) !important;
-        border-top: 0 !important;
-    }
-
-    html:not(.pos-fit-scale) .menu-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    }
-}
 .pos-page > .staff-main-panel {
     flex: 1;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
     overflow-y: auto;
 }
+
 .pos-page > .staff-main-panel--pos {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .pos-header {
-    height: 78px;
+    height: auto;
+    min-height: 64px;
     border-bottom: 1px solid #2d2d2d;
     background: rgba(18, 14, 10, 0.95);
-    padding: 16px 24px 17px;
+    padding: 12px 16px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
     position: sticky;
     top: 0;
     z-index: 100;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* Header-level main tabs: Order Processing Queue / BI Insights */
 .header-main-tabs {
     display: flex;
     align-items: center;
-    gap: 28px;
-    height: 100%;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    height: auto;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .header-main-tab {
@@ -193,14 +105,14 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
     background: transparent;
     color: rgba(255, 255, 255, 0.65);
     font-family: inherit;
-    font-size: 22px;
-    line-height: 1;
+    font-size: 15px;
+    line-height: 1.15;
     font-weight: 700;
     letter-spacing: 0.01em;
     text-transform: uppercase;
     cursor: pointer;
     transition: color 0.2s, border-color 0.2s;
-    white-space: nowrap;
+    white-space: normal;
     position: relative;
 }
 
@@ -668,24 +580,28 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 .pos-main {
     flex: 1;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: stretch;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
+    box-sizing: border-box;
 }
 
 .pos-left {
     flex: 1 1 auto;
     min-width: 0;
-    width: auto;
+    width: 100%;
     max-width: 100%;
-    padding: 24px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
     overflow-x: hidden;
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .left-view,
@@ -1164,8 +1080,10 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 
 .menu-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
 }
 
 /* staff-main-panel: wraps either the POS queue or the BI Insights full view */
@@ -1396,15 +1314,15 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 }
 
 .pos-right {
-    /* Never let the cart column shrink into a thin vertical strip on tablets. */
-    flex: 0 0 384px;
-    width: 384px;
+    flex: 0 0 auto;
+    width: 100%;
     max-width: 100%;
-    min-width: 300px;
+    min-width: 0;
     box-sizing: border-box;
-    border-left: 1px solid rgba(244, 140, 37, 0.2);
+    border-left: 0;
+    border-top: 1px solid rgba(244, 140, 37, 0.2);
     background: rgba(0, 0, 0, 0.2);
-    padding: 24px 24px 24px 25px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
@@ -1948,19 +1866,25 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 
 .opq-layout {
     display: flex;
+    flex-direction: column;
     flex: 1;
     min-height: 0;
+    width: 100%;
+    max-width: 100%;
     overflow: hidden;
 }
 
 .opq-main {
     flex: 1;
     min-width: 0;
+    width: 100%;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
-    padding: 24px 24px 24px 24px;
-    gap: 24px;
+    padding: 16px;
+    gap: 16px;
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 /* Top bar: title + action buttons */
@@ -3010,12 +2934,14 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 
 .kitchen-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 230px;
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
     gap: 12px;
     min-height: 0;
+    width: 100%;
+    max-width: 100%;
     flex: 1;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .kitchen-layout > .opq-grid,
@@ -3134,8 +3060,8 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 }
 
 .kitchen-serving-panel {
-    width: 230px;
-    max-width: 230px;
+    width: 100%;
+    max-width: 100%;
     border: 1px solid #3d3025;
     border-radius: 12px;
     background: #1e1812;
@@ -3673,14 +3599,19 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 
 .staff-main-panel--waste-tab {
     background: #120e0a;
-    padding: 24px;
+    padding: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .waste-tab-layout {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
     min-height: 0;
+    width: 100%;
+    max-width: 100%;
     flex: 1;
 }
 
@@ -5021,9 +4952,9 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
     background: #1e1e1e;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    width: 660px;
-    max-width: calc(100vw - 48px);
-    max-height: calc(100vh - 48px);
+    width: min(660px, 100%);
+    max-width: calc(100% - 24px);
+    max-height: min(92dvh, calc(100% - 24px));
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -5756,15 +5687,18 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
 
 /* ─── OPQ Right Sidebar ──────────────────────────────────────── */
 .opq-sidebar {
-    width: 384px;
+    width: 100%;
+    max-width: 100%;
     flex-shrink: 0;
     background: #2a2118;
-    border-left: 1px solid #1e1e1e;
+    border-left: 0;
+    border-top: 1px solid #1e1e1e;
     display: flex;
     flex-direction: column;
-    gap: 32px;
-    padding: 24px;
+    gap: 24px;
+    padding: 16px;
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .opq-sidebar-section {
@@ -6942,160 +6876,52 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
     font-weight: 700;
 }
 
-/* Wide tablet / small laptop: keep side-by-side POS, but allow cart to flex. */
-@media (max-width: 1200px) and (min-width: 901px) {
-    .pos-main {
-        flex-direction: row;
-    }
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE-FIRST BREAKPOINTS (min-width)
+═══════════════════════════════════════════════════════════════ */
 
-    .pos-right {
-        flex: 0 0 min(360px, 38vw);
-        width: min(360px, 38vw);
-        min-width: 280px;
-    }
-
-    .dual-fields {
-        grid-template-columns: 1fr;
-    }
-
+/* Small phones: single-column cards */
+@media (max-width: 479px) {
     .menu-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .waste-tab-layout {
         grid-template-columns: 1fr;
     }
 
-    .kitchen-layout {
+    .reason-chips {
         grid-template-columns: 1fr;
-        grid-template-rows: minmax(0, 1fr) auto;
     }
 
-    .kitchen-layout > .kitchen-serving-panel,
-    .staff-main-panel--kitchen .kitchen-serving-panel {
-        max-width: 100%;
-        width: 100%;
+    .header-station-btn {
+        font-size: 11px;
     }
 
     .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
-    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid,
+    .opq-grid:not(.opq-queue-partitions) {
+        grid-template-columns: 1fr;
     }
 }
 
-/* Phone / portrait tablet: stack menu above cart at full width. */
-@media (max-width: 900px) {
-    .pos-page {
-        height: 100dvh;
-        max-width: 100%;
-        overflow-x: hidden;
-        overflow-y: auto;
-    }
-
-    .pos-page > .staff-main-panel--pos {
-        overflow: visible;
-        min-height: 0;
-    }
-
-    .pos-main {
-        flex-direction: column;
-        overflow: visible;
-        min-height: 0;
-    }
-
-    .pos-left {
-        flex: 1 1 auto;
+/* Tables: keep scroll inside wrapper, not the page */
+@media (max-width: 767px) {
+    .log-list,
+    .table-wrap {
         width: 100%;
         max-width: 100%;
-        min-width: 0;
-        padding: 16px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .pos-right {
-        flex: 0 0 auto;
+    .log-row {
+        grid-template-columns: 56px 1fr 48px 116px 70px;
+        font-size: 12px;
+        min-width: 420px;
+    }
+
+    .header-meta {
         width: 100%;
-        max-width: 100%;
-        min-width: 0;
-        border-left: 0;
-        border-top: 1px solid rgba(244, 140, 37, 0.2);
-        padding: 16px;
-    }
-
-    .pos-header {
-        height: auto;
-        min-height: 64px;
+        justify-content: space-between;
+        gap: 12px;
         flex-wrap: wrap;
-        gap: 10px;
-        padding: 12px 16px;
-    }
-
-    .header-main-tabs {
-        flex-wrap: wrap;
-        gap: 12px 18px;
-        height: auto;
-    }
-
-    .header-main-tab {
-        font-size: 16px;
-        white-space: normal;
-    }
-
-    .dual-fields {
-        grid-template-columns: 1fr;
-    }
-
-    .menu-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .waste-tab-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .kitchen-layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: minmax(0, 1fr) auto;
-    }
-
-    .kitchen-layout > .kitchen-serving-panel,
-    .staff-main-panel--kitchen .kitchen-serving-panel {
-        max-width: 100%;
-        width: 100%;
-    }
-
-    .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
-    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-/* Portrait tablets specifically (tall + not phone-narrow). */
-@media (max-width: 1024px) and (orientation: portrait) {
-    .pos-main {
-        flex-direction: column;
-    }
-
-    .pos-left,
-    .pos-right {
-        flex: 0 0 auto;
-        width: 100%;
-        max-width: 100%;
-        min-width: 0;
-    }
-
-    .pos-right {
-        border-left: 0;
-        border-top: 1px solid rgba(244, 140, 37, 0.2);
-    }
-}
-
-@media (max-width: 980px) {
-    .menu-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .staff-main-panel--waste-tab {
-        padding: 16px;
     }
 
     .pay-modal,
@@ -7103,9 +6929,9 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
     .pos-modal,
     .shortage-modal,
     .ses-dialog__panel {
-        width: min(100%, calc(100vw - 24px));
-        max-width: calc(100vw - 24px);
-        max-height: min(92vh, 100%);
+        width: min(100%, calc(100% - 24px));
+        max-width: calc(100% - 24px);
+        max-height: min(92dvh, 100%);
     }
 
     .pay-modal-backdrop,
@@ -7117,86 +6943,125 @@ html.pos-fit-scale .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid
     }
 }
 
-@media (max-width: 760px) {
-    .pos-header {
-        height: auto;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 12px;
-    }
-
-    .header-meta {
-        width: 100%;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .header-station-btns,
-    .pos-header-actions {
-        flex-wrap: wrap;
-        max-width: 100%;
-    }
-
-    .reason-chips {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .log-row {
-        grid-template-columns: 56px 1fr 48px 116px 70px;
-        font-size: 12px;
-        min-width: 420px;
-    }
-
-    .log-list,
-    .table-wrap {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
+/* Tablet+ : 3-col menu */
+@media (min-width: 768px) {
     .menu-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
     }
 
-    .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
-    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid,
-    .opq-grid:not(.opq-queue-partitions) {
-        grid-template-columns: 1fr;
-    }
-
-    .staff-opq-actions,
-    .opq-card-foot {
-        grid-template-columns: 1fr 1fr;
-    }
-
+    .pos-left,
     .pos-right {
-        padding: 16px;
+        padding: 20px;
     }
 
     .staff-main-panel--waste-tab {
-        padding: 12px;
+        padding: 16px;
     }
 
-    img {
-        max-width: 100%;
-        height: auto;
+    .header-main-tab {
+        font-size: 18px;
     }
 }
 
-@media (max-width: 480px) {
+/* Large tablet / small laptop: restore side-by-side POS */
+@media (min-width: 1024px) {
+    .pos-page {
+        height: 100vh;
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    .pos-page > .staff-main-panel--pos {
+        overflow: hidden;
+    }
+
+    .pos-header {
+        height: 78px;
+        flex-wrap: nowrap;
+        padding: 16px 24px 17px;
+        gap: 0;
+    }
+
+    .header-main-tabs {
+        flex-wrap: nowrap;
+        height: 100%;
+        gap: 28px;
+    }
+
+    .header-main-tab {
+        font-size: 22px;
+        white-space: nowrap;
+    }
+
+    .pos-main {
+        flex-direction: row;
+        overflow: hidden;
+    }
+
+    .pos-left {
+        flex: 1 1 auto;
+        width: auto;
+        max-width: none;
+        padding: 24px;
+        gap: 24px;
+    }
+
+    .pos-right {
+        flex: 0 0 min(384px, 36%);
+        width: min(384px, 36%);
+        min-width: 280px;
+        max-width: 420px;
+        border-left: 1px solid rgba(244, 140, 37, 0.2);
+        border-top: 0;
+        padding: 24px 24px 24px 25px;
+    }
+
     .menu-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
     }
 
-    .reason-chips {
-        grid-template-columns: 1fr;
+    .waste-tab-layout {
+        grid-template-columns: 1.5fr 1fr;
     }
 
-    .header-station-btn {
-        font-size: 11px;
+    .staff-main-panel--waste-tab {
+        padding: 24px;
+    }
+
+    .kitchen-layout {
+        grid-template-columns: minmax(0, 1fr) 230px;
+        grid-template-rows: minmax(0, 1fr);
+        overflow: hidden;
+    }
+
+    .kitchen-serving-panel {
+        width: 230px;
+        max-width: 230px;
+    }
+
+    .opq-layout {
+        flex-direction: row;
+    }
+
+    .opq-main {
+        padding: 24px;
+        gap: 24px;
+    }
+
+    .opq-sidebar {
+        width: min(384px, 36%);
+        max-width: 420px;
+        border-left: 1px solid #1e1e1e;
+        border-top: 0;
+        padding: 24px;
+        gap: 32px;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
+    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

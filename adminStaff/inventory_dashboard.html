@@ -276,9 +276,30 @@
             </section>
 
             <section class="inv-view-panel" id="inventory-movement-panel" data-inv-view="movement">
-            <section class="stock-movement-source-tabs" id="stock-movement-source-tabs" aria-label="Stock movement source">
-                <button type="button" class="stock-movement-source-tab stock-movement-source-tab--active" data-movement-source="menu">Menu Sales</button>
-                <button type="button" class="stock-movement-source-tab" data-movement-source="inventory">Inventory Items</button>
+            <section class="stock-movement-toolbar">
+                <section class="stock-movement-source-tabs" id="stock-movement-source-tabs" aria-label="Stock movement source">
+                    <button type="button" class="stock-movement-source-tab stock-movement-source-tab--active" data-movement-source="menu">Menu Sales</button>
+                    <button type="button" class="stock-movement-source-tab" data-movement-source="inventory">Inventory Items</button>
+                </section>
+                <section class="stock-movement-date-panel">
+                    <div class="stock-movement-date-bar">
+                        <span class="stock-movement-date-bar__summary" id="stock-movement-date-summary">Showing today</span>
+                        <button type="button" class="btn btn-muted btn-compact" id="stock-movement-cal-today">Today</button>
+                        <button type="button" class="btn btn-muted btn-compact" id="stock-movement-date-toggle" aria-expanded="false" aria-haspopup="dialog">Filter dates</button>
+                    </div>
+                    <div class="stock-movement-calendar" id="stock-movement-calendar" hidden>
+                        <div class="stock-movement-calendar__head">
+                            <button type="button" class="stock-movement-calendar__nav" id="stock-movement-cal-prev" aria-label="Previous month">‹</button>
+                            <strong id="stock-movement-cal-label">Month</strong>
+                            <button type="button" class="stock-movement-calendar__nav" id="stock-movement-cal-next" aria-label="Next month">›</button>
+                        </div>
+                        <div class="stock-movement-calendar__weekdays" aria-hidden="true">
+                            <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                        </div>
+                        <div class="stock-movement-calendar__grid" id="stock-movement-cal-grid"></div>
+                        <p class="stock-movement-calendar__hint" id="stock-movement-cal-hint">Tap days to filter. Select multiple to add totals together.</p>
+                    </div>
+                </section>
             </section>
             <section class="chips-row" id="stock-movement-chip-row"></section>
             <section class="stock-movement" id="inventory-stock-movement">
@@ -733,6 +754,19 @@
         var stockMovementPeriod = document.getElementById('stock-movement-period');
         var movementChipRow = document.getElementById('stock-movement-chip-row');
         var movementSourceTabs = document.getElementById('stock-movement-source-tabs');
+        var stockMovementDateToggle = document.getElementById('stock-movement-date-toggle');
+        var stockMovementDateSummary = document.getElementById('stock-movement-date-summary');
+        var stockMovementCalendar = document.getElementById('stock-movement-calendar');
+        var stockMovementCalPrev = document.getElementById('stock-movement-cal-prev');
+        var stockMovementCalNext = document.getElementById('stock-movement-cal-next');
+        var stockMovementCalLabel = document.getElementById('stock-movement-cal-label');
+        var stockMovementCalGrid = document.getElementById('stock-movement-cal-grid');
+        var stockMovementCalHint = document.getElementById('stock-movement-cal-hint');
+        var stockMovementCalToday = document.getElementById('stock-movement-cal-today');
+        var movementSelectedDates = {};
+        var movementCalendarMonth = new Date();
+        movementCalendarMonth.setDate(1);
+        movementCalendarMonth.setHours(0, 0, 0, 0);
         var lowTitle  = document.getElementById('inventory-low-stock-title');
         var searchIn  = document.querySelector('.search-wrap input');
         var addBtn    = document.getElementById('btn-add-stock');
@@ -3990,22 +4024,161 @@
             return parts.length ? parts.join(' · ') : '0 moved';
         }
 
+        function applyMovementTodayDefault() {
+            var today = getTodayIsoDate();
+            movementSelectedDates = {};
+            movementSelectedDates[today] = true;
+            movementCalendarMonth = new Date();
+            movementCalendarMonth.setDate(1);
+            movementCalendarMonth.setHours(0, 0, 0, 0);
+        }
+
+        function getSelectedMovementDates() {
+            var keys = Object.keys(movementSelectedDates).filter(function (k) {
+                return !!movementSelectedDates[k] && /^\d{4}-\d{2}-\d{2}$/.test(k);
+            }).sort();
+            if (!keys.length) {
+                applyMovementTodayDefault();
+                return [getTodayIsoDate()];
+            }
+            return keys;
+        }
+
+        function formatMovementDateLabel(dates) {
+            var list = Array.isArray(dates) ? dates.slice() : [];
+            if (!list.length) return 'Today';
+            var today = getTodayIsoDate();
+            if (list.length === 1) {
+                return list[0] === today ? 'Today' : list[0];
+            }
+            return list.length + ' days';
+        }
+
+        function updateMovementDateFilterUi() {
+            var selected = getSelectedMovementDates();
+            var label = formatMovementDateLabel(selected);
+            if (stockMovementDateToggle) {
+                stockMovementDateToggle.textContent = 'Filter dates';
+                stockMovementDateToggle.classList.toggle(
+                    'is-active',
+                    !(selected.length === 1 && selected[0] === getTodayIsoDate())
+                );
+            }
+            if (stockMovementDateSummary) {
+                if (selected.length === 1) {
+                    stockMovementDateSummary.textContent = selected[0] === getTodayIsoDate()
+                        ? 'Showing today'
+                        : ('Showing ' + selected[0]);
+                } else {
+                    stockMovementDateSummary.textContent = 'Showing ' + selected.length + ' days (totals added together)';
+                }
+            }
+            if (stockMovementCalHint) {
+                stockMovementCalHint.textContent = selected.length > 1
+                    ? 'Selected ' + selected.length + ' days — totals added together.'
+                    : 'Tap days to filter. Select multiple to add totals together.';
+            }
+            if (stockMovementCalToday) {
+                var onlyToday = selected.length === 1 && selected[0] === getTodayIsoDate();
+                stockMovementCalToday.disabled = onlyToday;
+            }
+            return label;
+        }
+
+        function setMovementCalendarOpen(open) {
+            var isOpen = !!open;
+            if (stockMovementCalendar) stockMovementCalendar.hidden = !isOpen;
+            if (stockMovementDateToggle) {
+                stockMovementDateToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+            if (isOpen) renderMovementCalendar();
+        }
+
+        function renderMovementCalendar() {
+            if (!stockMovementCalGrid || !stockMovementCalLabel) return;
+            var year = movementCalendarMonth.getFullYear();
+            var month = movementCalendarMonth.getMonth();
+            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            stockMovementCalLabel.textContent = monthNames[month] + ' ' + year;
+            var firstDay = new Date(year, month, 1);
+            var startWeekday = firstDay.getDay();
+            var daysInMonth = new Date(year, month + 1, 0).getDate();
+            var todayIso = getTodayIsoDate();
+            var html = '';
+            var i;
+            for (i = 0; i < startWeekday; i += 1) {
+                html += '<span class="receipt-summary-calendar__day is-empty"></span>';
+            }
+            for (i = 1; i <= daysInMonth; i += 1) {
+                var iso = year + '-' + pad2(month + 1) + '-' + pad2(i);
+                var classes = ['receipt-summary-calendar__day'];
+                if (movementSelectedDates[iso]) classes.push('is-selected');
+                if (iso === todayIso) classes.push('is-today');
+                html += '<button type="button" class="' + classes.join(' ') + '" data-movement-cal-date="' + escAttr(iso) + '">' +
+                    '<span class="receipt-summary-calendar__day-num">' + i + '</span>' +
+                '</button>';
+            }
+            stockMovementCalGrid.innerHTML = html;
+            updateMovementDateFilterUi();
+        }
+
+        function toggleMovementDate(isoDate) {
+            var key = String(isoDate || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+            if (movementSelectedDates[key]) {
+                delete movementSelectedDates[key];
+                if (!Object.keys(movementSelectedDates).length) {
+                    movementSelectedDates[getTodayIsoDate()] = true;
+                }
+            } else {
+                movementSelectedDates[key] = true;
+            }
+            renderMovementCalendar();
+            reloadMovementForSelectedDates();
+        }
+
+        function resetMovementDatesToToday() {
+            applyMovementTodayDefault();
+            renderMovementCalendar();
+            reloadMovementForSelectedDates();
+        }
+
+        function reloadMovementForSelectedDates() {
+            updateMovementDateFilterUi();
+            if (selectedMovementSource === 'inventory') {
+                loadInventoryStockMovement();
+            } else {
+                loadStockMovement();
+            }
+        }
+
+        function movementPeriodPrefix() {
+            var selected = getSelectedMovementDates();
+            if (selected.length === 1 && selected[0] === getTodayIsoDate()) return "Today's";
+            if (selected.length === 1) return selected[0];
+            return selected.length + ' days\'';
+        }
+
         function renderStockMovement() {
             if (!stockMovementList) return;
             var isInventorySource = selectedMovementSource === 'inventory';
             var items = getFilteredMovementItems();
+            var periodWord = movementPeriodPrefix();
+            updateMovementDateFilterUi();
             if (!items.length) {
-                var emptyMsg = isInventorySource ? 'No non-consumable inventory movement today yet.' : 'No sales today yet.';
+                var emptyMsg = isInventorySource
+                    ? 'No non-consumable inventory movement for the selected day(s).'
+                    : 'No sales for the selected day(s).';
                 if (selectedMovementCategory !== 'All') {
                     emptyMsg = isInventorySource
-                        ? 'No non-consumable inventory movement today for ' + selectedMovementCategory + '.'
-                        : 'No sales today for ' + selectedMovementCategory + '.';
+                        ? 'No non-consumable inventory movement for ' + selectedMovementCategory + ' on the selected day(s).'
+                        : 'No sales for ' + selectedMovementCategory + ' on the selected day(s).';
                 }
                 stockMovementList.innerHTML = '<p class="stock-movement__empty">' + emptyMsg + '</p>';
                 if (stockMovementPeriod) {
                     stockMovementPeriod.textContent = isInventorySource
-                        ? 'Today\'s non-consumable inventory stock movement'
-                        : 'Today\'s sold menu items';
+                        ? periodWord + ' non-consumable inventory stock movement'
+                        : periodWord + ' sold menu items';
                 }
                 return;
             }
@@ -4045,13 +4218,13 @@
             if (stockMovementPeriod) {
                 if (isInventorySource) {
                     var invLabel = selectedMovementCategory === 'All'
-                        ? 'Today\'s non-consumable inventory movement'
-                        : 'Today\'s ' + selectedMovementCategory + ' non-consumable inventory movement';
+                        ? periodWord + ' non-consumable inventory movement'
+                        : periodWord + ' ' + selectedMovementCategory + ' non-consumable inventory movement';
                     stockMovementPeriod.textContent = invLabel + ' (used, received, wasted)';
                 } else {
                     var label = selectedMovementCategory === 'All'
-                        ? 'Today\'s sales'
-                        : 'Today\'s ' + selectedMovementCategory + ' sales';
+                        ? periodWord + ' sales'
+                        : periodWord + ' ' + selectedMovementCategory + ' sales';
                     stockMovementPeriod.textContent = label + ' (processed orders only)';
                 }
             }
@@ -4059,7 +4232,10 @@
 
         function loadInventoryStockMovement() {
             var cacheBust = Date.now();
-            fetch('api/inventory.php?movement=today&movement_date=' + encodeURIComponent(getTodayIsoDate()) + '&_=' + cacheBust, { cache: 'no-store' })
+            var dates = getSelectedMovementDates();
+            var url = 'api/inventory.php?movement=today&movement_dates=' + encodeURIComponent(dates.join(',')) +
+                '&movement_date=' + encodeURIComponent(dates[0]) + '&_=' + cacheBust;
+            fetch(url, { cache: 'no-store' })
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (!d || !d.success) {
@@ -4102,24 +4278,31 @@
                 });
             }
             renderMovementChips();
-            if (selectedMovementSource === 'inventory' && !allInventoryMovementItems.length) {
-                loadInventoryStockMovement();
-            } else {
-                renderStockMovement();
-            }
+            reloadMovementForSelectedDates();
         }
 
         function loadStockMovement() {
             var cacheBust = Date.now();
+            var selectedDates = getSelectedMovementDates();
+            var dateSet = {};
+            selectedDates.forEach(function (d) { dateSet[d] = true; });
+
+            var orderFetches = selectedDates.map(function (iso) {
+                return fetch(
+                    'api/orders.php?limit=200&date=' + encodeURIComponent(iso) + '&_=' + cacheBust,
+                    { cache: 'no-store' }
+                ).then(function (r) { return r.json(); }).catch(function () { return null; });
+            });
+
             Promise.all([
                 fetch('api/dashboard.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
+                Promise.all(orderFetches)
             ])
                 .then(function (res) {
                     var dashRes = res[0];
                     var menuRes = res[1];
-                    var ordersRes = res[2];
+                    var ordersBatches = res[2] || [];
                     if (!dashRes || !dashRes.success) {
                         allMovementItems = [];
                         renderMovementChips();
@@ -4138,16 +4321,17 @@
                         });
                     }
 
-                    var todayKey = getTodayIsoDate();
                     var movementByKey = {};
                     var usedOrdersApi = false;
-                    if (ordersRes && ordersRes.success && Array.isArray(ordersRes.orders)) {
+                    ordersBatches.forEach(function (ordersRes) {
+                        if (!ordersRes || !ordersRes.success || !Array.isArray(ordersRes.orders)) return;
                         usedOrdersApi = true;
                         ordersRes.orders.forEach(function (order) {
                             if (!order || !order.created_at) return;
                             var st = String(order.status || '').toLowerCase();
                             if (st !== 'confirmed' && st !== 'served') return;
-                            if (String(order.created_at).slice(0, 10) !== todayKey) return;
+                            var orderDay = String(order.created_at).slice(0, 10);
+                            if (!dateSet[orderDay]) return;
 
                             (order.items || []).forEach(function (line) {
                                 var baseName = String(line && line.name || '').trim();
@@ -4176,11 +4360,11 @@
                                 movementByKey[k].qty_sold += qty;
                             });
                         });
-                    }
+                    });
 
                     if (usedOrdersApi) {
                         allMovementItems = Object.keys(movementByKey).map(function (k) { return movementByKey[k]; });
-                    } else {
+                    } else if (selectedDates.length === 1 && selectedDates[0] === getTodayIsoDate()) {
                         allMovementItems = (dashRes.top_items_today || []).map(function (it) {
                             var nm = String(it.name || '').trim();
                             var key = nm.toLowerCase();
@@ -4195,6 +4379,8 @@
                         }).filter(function (it) {
                             return it.name && it.qty_sold > 0;
                         });
+                    } else {
+                        allMovementItems = [];
                     }
 
                     allMovementItems.sort(function (a, b) {
@@ -4732,6 +4918,9 @@
             invViewPanels.forEach(function (panel) {
                 panel.classList.toggle('is-active', panel.getAttribute('data-inv-view') === view);
             });
+            if (view === 'movement') {
+                reloadMovementForSelectedDates();
+            }
         }
 
         invViewTabs.forEach(function (tab) {
@@ -4740,6 +4929,59 @@
             });
         });
 
+        if (stockMovementDateToggle) {
+            stockMovementDateToggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var open = !(stockMovementCalendar && !stockMovementCalendar.hidden);
+                setMovementCalendarOpen(open);
+            });
+        }
+        document.addEventListener('click', function (e) {
+            if (!stockMovementCalendar || stockMovementCalendar.hidden) return;
+            var panel = stockMovementCalendar.closest('.stock-movement-date-panel');
+            if (!panel) return;
+            // Day cells re-render and detach e.target mid-bubble; use composedPath.
+            var path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+            var inside = path.length
+                ? path.indexOf(panel) !== -1
+                : panel.contains(e.target);
+            if (inside) return;
+            setMovementCalendarOpen(false);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') setMovementCalendarOpen(false);
+        });
+        if (stockMovementCalPrev) {
+            stockMovementCalPrev.addEventListener('click', function (e) {
+                e.stopPropagation();
+                movementCalendarMonth.setMonth(movementCalendarMonth.getMonth() - 1);
+                renderMovementCalendar();
+            });
+        }
+        if (stockMovementCalNext) {
+            stockMovementCalNext.addEventListener('click', function (e) {
+                e.stopPropagation();
+                movementCalendarMonth.setMonth(movementCalendarMonth.getMonth() + 1);
+                renderMovementCalendar();
+            });
+        }
+        if (stockMovementCalGrid) {
+            stockMovementCalGrid.addEventListener('click', function (e) {
+                var btn = e.target && e.target.closest ? e.target.closest('[data-movement-cal-date]') : null;
+                if (!btn) return;
+                e.stopPropagation();
+                toggleMovementDate(btn.getAttribute('data-movement-cal-date'));
+            });
+        }
+        if (stockMovementCalToday) {
+            stockMovementCalToday.addEventListener('click', function (e) {
+                e.stopPropagation();
+                resetMovementDatesToToday();
+            });
+        }
+
+        applyMovementTodayDefault();
+        updateMovementDateFilterUi();
         loadInventory();
         loadStockMovement();
         loadSavedSuppliers();

@@ -930,10 +930,58 @@ if ($movementDate === '') {
     $movementDate = date('Y-m-d');
 }
 if (isset($_GET['movement']) && strtolower(trim((string)$_GET['movement'])) === 'today') {
-  ok([
-      'movement_date' => $movementDate,
-      'items' => fetch_inventory_movement_for_date($pdo, $movementDate),
-  ]);
+    $datesRaw = trim((string)($_GET['movement_dates'] ?? ''));
+    $dates = [];
+    if ($datesRaw !== '') {
+        foreach (explode(',', $datesRaw) as $chunk) {
+            $d = trim($chunk);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+                $dates[$d] = $d;
+            }
+        }
+        $dates = array_values($dates);
+    }
+    if (!$dates) {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $movementDate)) {
+            $movementDate = date('Y-m-d');
+        }
+        $dates = [$movementDate];
+    }
+    sort($dates);
+
+    $merged = [];
+    foreach ($dates as $d) {
+        foreach (fetch_inventory_movement_for_date($pdo, $d) as $row) {
+            $id = (int)($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            if (!isset($merged[$id])) {
+                $merged[$id] = $row;
+                continue;
+            }
+            $merged[$id]['qty_used'] = round((float)$merged[$id]['qty_used'] + (float)($row['qty_used'] ?? 0), 2);
+            $merged[$id]['qty_received'] = round((float)$merged[$id]['qty_received'] + (float)($row['qty_received'] ?? 0), 2);
+            $merged[$id]['qty_wasted'] = round((float)$merged[$id]['qty_wasted'] + (float)($row['qty_wasted'] ?? 0), 2);
+            $merged[$id]['qty_movement'] = round(
+                (float)$merged[$id]['qty_used'] + (float)$merged[$id]['qty_received'] + (float)$merged[$id]['qty_wasted'],
+                2
+            );
+        }
+    }
+
+    $items = array_values(array_filter($merged, static function ($row) {
+        return (float)($row['qty_movement'] ?? 0) > 0;
+    }));
+    usort($items, static function ($a, $b) {
+        return (float)($b['qty_movement'] ?? 0) <=> (float)($a['qty_movement'] ?? 0);
+    });
+
+    ok([
+        'movement_date' => $dates[0],
+        'movement_dates' => $dates,
+        'items' => $items,
+    ]);
 }
 
 if (isset($_GET['edit_history']) && trim((string)$_GET['edit_history']) === '1') {

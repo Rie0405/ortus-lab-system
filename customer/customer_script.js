@@ -1227,19 +1227,24 @@ function getKioskTabCategories() {
     var cats = menuData.categories || [];
     var tabs = [];
     var insertedBev = false;
+    var seenNames = {};
     cats.forEach(function (c) {
         // Hide standalone Add-ons category tab (registered addons still appear in product Add-ons UI).
         if (isAddonCategoryName(c.name)) return;
         var id = parseInt(c.id, 10);
-        if (categoryNameMergesIntoBeverages(c.name)) {
+        if (categoryNameMergesIntoBeverages(c.name) || isBeverageCategoryName(c.name)) {
             if (id > 0) beverageCategoryIds.push(id);
             if (!insertedBev) {
                 tabs.push({ key: BEVERAGES_MERGED_KEY, id: null, name: 'Beverages' });
                 insertedBev = true;
+                seenNames.beverages = true;
             }
             return;
         }
         if (!(id > 0)) return;
+        var norm = String(c.name || '').trim().toLowerCase();
+        if (norm && seenNames[norm]) return;
+        if (norm) seenNames[norm] = true;
         tabs.push({
             key: dynamicCategoryCircleKey(id),
             id: id,
@@ -1249,7 +1254,16 @@ function getKioskTabCategories() {
     if (!insertedBev && (menuData.items || []).some(isBeverageItem)) {
         tabs.unshift({ key: BEVERAGES_MERGED_KEY, id: null, name: 'Beverages' });
     }
-    return tabs;
+    // Safety: never show two tabs with the same label (e.g. Beverages + Beverages).
+    var out = [];
+    var used = {};
+    tabs.forEach(function (tab) {
+        var label = String(tab && tab.name || '').trim().toLowerCase();
+        if (label && used[label]) return;
+        if (label) used[label] = true;
+        out.push(tab);
+    });
+    return out;
 }
 
 function getKioskTabIcon(tab) {

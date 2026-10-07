@@ -2003,19 +2003,27 @@
                 if (!requirePosCustomerName()) {
                     return Promise.resolve();
                 }
-                var items = posCarts.dine_in.map(function (x) {
+                var editOrderId = parseInt(posEditingOrder.id, 10) || 0;
+                var items = getAllPosCartLines().map(function (x) {
                     return {
                         menu_item_id: x.menu_item_id,
                         quantity: x.quantity,
                         notes: x.notes || "",
                         unit_price: x.price
                     };
+                }).filter(function (x) {
+                    return (parseInt(x.menu_item_id, 10) || 0) > 0;
                 });
+                if (!items.length) {
+                    return Promise.reject(new Error("Nothing to confirm."));
+                }
                 var orderSource = String(posEditingOrder.order_source || "kiosk").toLowerCase();
                 // Returned kitchen/bar orders must go back to stations after edit.
-                var wasReturned = !!posEditingOrder.kitchen_returned;
+                var wasReturned = !!posEditingOrder.kitchen_returned
+                    || (typeof window.staffIsReturnedKitchenOrder === "function"
+                        && window.staffIsReturnedKitchenOrder(editOrderId));
                 var payload = {
-                    id: posEditingOrder.id,
+                    id: editOrderId,
                     action: "update_cart",
                     // Normal pending queue edits stay pending.
                     // Returned orders re-confirm so they reappear on Bar/Kitchen/etc.
@@ -2039,6 +2047,9 @@
                       if (!d.success) throw new Error(d.error || "Failed to save order.");
                       clearCart();
                       if (wasReturned || String(d.status || "").toLowerCase() === "confirmed") {
+                          if (typeof window.staffReleaseOrderBackToStations === "function") {
+                              window.staffReleaseOrderBackToStations(editOrderId);
+                          }
                           if (typeof window.staffActivateMainTab === "function") {
                               window.staffActivateMainTab("kitchen");
                           }
@@ -5737,6 +5748,36 @@
             var id = parseInt(orderId, 10) || 0;
             if (id && kitchenStationDoneById[id]) delete kitchenStationDoneById[id];
         }
+
+        /** Clear local station/serving/returned state so a re-confirmed returned order can reappear. */
+        function releaseOrderBackToStations(orderId) {
+            var id = parseInt(orderId, 10) || 0;
+            if (!id) return;
+            clearKitchenStationDone(id);
+            if (kitchenPriorityById[id]) delete kitchenPriorityById[id];
+            servingOrdersQueue = (servingOrdersQueue || []).filter(function (o) {
+                return (parseInt(o && o.id, 10) || 0) !== id;
+            });
+            returnedKitchenOrders = (returnedKitchenOrders || []).filter(function (o) {
+                return (parseInt(o && o.id, 10) || 0) !== id;
+            });
+            kitchenOrders = (kitchenOrders || []).filter(function (o) {
+                return (parseInt(o && o.id, 10) || 0) !== id;
+            });
+            try {
+                renderQueueDrawerReturned(returnedKitchenOrders);
+                renderKitchenOrders();
+                renderServingOrders();
+            } catch (e) { /* panels may not be ready */ }
+        }
+        window.staffReleaseOrderBackToStations = releaseOrderBackToStations;
+        window.staffIsReturnedKitchenOrder = function (orderId) {
+            var id = parseInt(orderId, 10) || 0;
+            if (!id) return false;
+            return (returnedKitchenOrders || []).some(function (o) {
+                return (parseInt(o && o.id, 10) || 0) === id;
+            });
+        };
         function orderMatchesKitchenCategory(order, group, opts) {
             opts = opts || {};
             var items = (order && order.items) || [];
@@ -6842,6 +6883,10 @@
                   }
                   closeKitchenReturnModal();
                   if (returnedFromKitchen) {
+                      // Leave serving queue so a later edit→confirm can land back on stations.
+                      servingOrdersQueue = (servingOrdersQueue || []).filter(function (o) {
+                          return (parseInt(o && o.id, 10) || 0) !== returnOrderId;
+                      });
                       upsertReturnedKitchenOrder(Object.assign({}, returnedFromKitchen, {
                           status: 'pending',
                           kitchen_returned: 1,
@@ -6852,6 +6897,7 @@
                       });
                       clearKitchenStationDone(returnOrderId);
                       renderKitchenOrders();
+                      renderServingOrders();
                       renderQueueDrawerReturned(returnedKitchenOrders);
                   }
                   queueDrawerOpenReturnedPending = true;
@@ -9144,10 +9190,19 @@
                 returnedKitchenOrders = (returnedRes && returnedRes.success) ? (returnedRes.orders || []) : [];
                 renderPendingOrders();
                 var confirmedKitchen = (kitchenRes && kitchenRes.success) ? (kitchenRes.orders || []) : [];
-                var confirmedSet = new Set(confirmedKitchen.map(function (o) { return parseInt(o.id, 10) || 0; }));
-                // Keep only still-confirmed orders in local "serving" queue.
+                var confirmedById = {};
+                confirmedKitchen.forEach(function (o) {
+                    var cid = parseInt(o && o.id, 10) || 0;
+                    if (cid) confirmedById[cid] = o;
+                });
+                var confirmedSet = new Set(Object.keys(confirmedById).map(function (k) { return parseInt(k, 10); }));
+                // Keep only still-confirmed orders in local "serving" queue,
+                // and refresh their item payloads from API (returned-order edits).
                 servingOrdersQueue = servingOrdersQueue.filter(function (o) {
                     return confirmedSet.has(parseInt(o && o.id, 10) || 0);
+                }).map(function (o) {
+                    var cid = parseInt(o && o.id, 10) || 0;
+                    return confirmedById[cid] || o;
                 });
                 var servingSet = new Set(servingOrdersQueue.map(function (o) { return parseInt(o.id, 10) || 0; }));
                 kitchenOrders = confirmedKitchen.filter(function (o) {

@@ -256,6 +256,33 @@ function assign_station_tickets_to_order(PDO $pdo, int $orderId, array $menuItem
     }
 
     $stations = stations_for_menu_item_ids($pdo, $menuItemIds);
+
+    // Drop stale station tickets when cart changes (e.g. returned order edit adds/removes stations).
+    $keepKeys = [];
+    if ($stations) {
+        foreach ($stations as $st) {
+            $keepKeys[] = (string)$st['key'];
+        }
+    } else {
+        $keepKeys[] = 'kitchen';
+    }
+    try {
+        if ($keepKeys) {
+            $placeholders = implode(',', array_fill(0, count($keepKeys), '?'));
+            $del = $pdo->prepare(
+                "DELETE FROM order_station_tickets
+                  WHERE order_id = ?
+                    AND station_key NOT IN ($placeholders)"
+            );
+            $del->execute(array_merge([$orderId], $keepKeys));
+        } else {
+            $pdo->prepare('DELETE FROM order_station_tickets WHERE order_id = :oid')
+                ->execute([':oid' => $orderId]);
+        }
+    } catch (Throwable $e) {
+        // Non-fatal if table missing during bootstrap.
+    }
+
     if (!$stations) {
         // Ensure at least one ticket so UI validation does not fail.
         $ticket = allocate_next_station_ticket($pdo, 'kitchen');

@@ -611,6 +611,12 @@ if ($m === 'PUT') {
     }
 
     if ($action === 'discount' || $action === 'edit' || $action === 'update_cart') {
+        // Run schema ensures BEFORE the transaction — MySQL DDL auto-commits
+        // and would otherwise leave commit() with "no active transaction".
+        if ($action === 'update_cart') {
+            ensure_order_items_cost_schema($pdo);
+            ensure_kitchen_ticket_schema($pdo);
+        }
         $prevStmt = $pdo->prepare(
             'SELECT status, gross_amount, order_source, kitchen_returned
              FROM orders WHERE id = :id FOR UPDATE'
@@ -642,7 +648,6 @@ if ($m === 'PUT') {
             }
 
             if ($action === 'update_cart') {
-                ensure_order_items_cost_schema($pdo);
                 $items = $b['items'] ?? [];
                 if (!is_array($items) || empty($items)) {
                     if ($pdo->inTransaction()) $pdo->rollBack();
@@ -838,10 +843,10 @@ if ($m === 'PUT') {
                 $pdo->prepare('UPDATE orders SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);
             }
 
-            $pdo->commit();
+            if ($pdo->inTransaction()) {
+                $pdo->commit();
+            }
             $orderSource = strtolower((string)($prev['order_source'] ?? ''));
-            $wasKitchenReturned = (int)($prev['kitchen_returned'] ?? 0) === 1;
-            $fromKitchenReturn = !empty($b['from_kitchen_return']);
             $didConfirmCart = $action === 'update_cart'
                 && (!empty($b['confirm']) || $wasKitchenReturned || $fromKitchenReturn);
             if ($didConfirmCart) {
@@ -854,7 +859,7 @@ if ($m === 'PUT') {
                     'main_category_ids' => $mainCategoryIds,
                 ]);
                 ok([
-                    'message' => $wasKitchenReturned
+                    'message' => ($wasKitchenReturned || $fromKitchenReturn)
                         ? 'Returned order updated and sent back to stations.'
                         : 'Order confirmed.',
                     'status' => 'confirmed',
@@ -873,7 +878,9 @@ if ($m === 'PUT') {
                 ok(['message' => $msg]);
             }
         } catch (Exception $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             fail('Failed to update order: ' . $e->getMessage(), 500);
         }
     }

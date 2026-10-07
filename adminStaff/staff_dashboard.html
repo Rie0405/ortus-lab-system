@@ -1902,13 +1902,7 @@
 
             function updateConfirmButtonForEditing() {
                 if (!confirmBtn) return;
-                if (!posEditingOrder) {
-                    confirmBtn.textContent = "Confirm Payment";
-                    return;
-                }
-                confirmBtn.textContent = posEditingOrder.kitchen_returned
-                    ? "Save & Send to Station"
-                    : "Save Order";
+                confirmBtn.textContent = posEditingOrder ? "Confirm" : "Confirm Payment";
             }
 
             function updateEditingBanner() {

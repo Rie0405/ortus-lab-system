@@ -6649,6 +6649,18 @@ button {
     }
 }
 
+@media (max-width: 900px) {
+    .bi-grid {
+        grid-template-columns: 1fr;
+    }
+    .pos-shell,
+    .pos-main,
+    body {
+        overflow-x: clip;
+        max-width: 100vw;
+    }
+}
+
 @media (max-width: 760px) {
     .pos-header {
         height: auto;
@@ -6667,9 +6679,20 @@ button {
         grid-template-columns: 1fr 1fr;
     }
 
+    .log-table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .log-row {
-        grid-template-columns: 56px 1fr 48px 116px 70px;
+        grid-template-columns: 56px minmax(0, 1fr) 48px minmax(96px, 116px) 70px;
         font-size: 12px;
+        min-width: 0;
+    }
+
+    .log-row > * {
+        min-width: 0;
+        overflow-wrap: anywhere;
     }
 }
 

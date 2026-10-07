@@ -45,17 +45,21 @@ function variance_status_from_difference(float $difference): string
     return 'accurate';
 }
 
-function get_cash_sales_total(PDO $pdo, string $date): float
+function get_cash_sales_total(PDO $pdo, string $date, int $staffId = 0): float
 {
     $saleCond = sql_order_counts_as_sale();
-    $sum = $pdo->prepare(
-        'SELECT COALESCE(SUM(total_amount), 0) AS cash_sales
+    $sql = 'SELECT COALESCE(SUM(total_amount), 0) AS cash_sales
          FROM orders
          WHERE DATE(created_at) = :d
            AND payment_method = "cash"
-           AND ' . $saleCond
-    );
-    $sum->execute([':d' => $date]);
+           AND ' . $saleCond;
+    $params = [':d' => $date];
+    if ($staffId > 0) {
+        $sql .= ' AND staff_id = :sid';
+        $params[':sid'] = $staffId;
+    }
+    $sum = $pdo->prepare($sql);
+    $sum->execute($params);
     return (float)$sum->fetchColumn();
 }
 
@@ -67,28 +71,40 @@ function normalize_currency_amount(float $amount): float
 
 if ($m === 'GET') {
     $openingFloat = (float)($_GET['opening_float'] ?? 0);
+    $scopeStaffId = (int)($_GET['staff_id'] ?? 0);
+    if ($scopeStaffId <= 0) {
+        $scopeStaffId = $staffId;
+    }
     $saleCond = sql_order_counts_as_sale();
-    $sum = $pdo->prepare(
-        'SELECT
+    $sumSql = 'SELECT
             COALESCE(SUM(total_amount), 0) AS expected_revenue,
             COALESCE(SUM(gross_amount), 0) AS gross_sales,
             COALESCE(SUM(discount_amount), 0) AS discount_total,
             COUNT(*) AS total_orders
          FROM orders
          WHERE DATE(created_at) = :d
-           AND ' . $saleCond
-    );
-    $sum->execute([':d' => $date]);
+           AND ' . $saleCond;
+    $sumParams = [':d' => $date];
+    if ($scopeStaffId > 0) {
+        $sumSql .= ' AND staff_id = :sid';
+        $sumParams[':sid'] = $scopeStaffId;
+    }
+    $sum = $pdo->prepare($sumSql);
+    $sum->execute($sumParams);
     $summary = $sum->fetch();
-    $cashSales = get_cash_sales_total($pdo, $date);
+    $cashSales = get_cash_sales_total($pdo, $date, $scopeStaffId);
     $expectedDrawer = normalize_currency_amount(max(0, $openingFloat) + $cashSales);
 
-    $waste = $pdo->prepare(
-        'SELECT COALESCE(SUM(estimated_value), 0) AS waste_total
+    $wasteSql = 'SELECT COALESCE(SUM(estimated_value), 0) AS waste_total
          FROM waste_log
-         WHERE DATE(logged_at) = :d'
-    );
-    $waste->execute([':d' => $date]);
+         WHERE DATE(logged_at) = :d';
+    $wasteParams = [':d' => $date];
+    if ($scopeStaffId > 0) {
+        $wasteSql .= ' AND staff_id = :sid';
+        $wasteParams[':sid'] = $scopeStaffId;
+    }
+    $waste = $pdo->prepare($wasteSql);
+    $waste->execute($wasteParams);
     $wasteTotal = (float)$waste->fetchColumn();
 
     $ver = $pdo->prepare(
@@ -97,7 +113,7 @@ if ($m === 'GET') {
          WHERE report_date = :d AND staff_id = :sid
          LIMIT 1'
     );
-    $ver->execute([':d' => $date, ':sid' => $staffId]);
+    $ver->execute([':d' => $date, ':sid' => $scopeStaffId]);
     $verification = $ver->fetch() ?: null;
     if ($verification) {
         $verification['expected_revenue'] = (float)$verification['expected_revenue'];
@@ -132,7 +148,8 @@ if ($m === 'POST') {
     if ($cashDeclared < 0) fail('Cash declared cannot be negative.');
     if ($openingFloat < 0) fail('Opening float cannot be negative.');
 
-    $cashSales = get_cash_sales_total($pdo, $reportDate);
+    $postStaffId = (int)($b['staff_id'] ?? $staffId);
+    $cashSales = get_cash_sales_total($pdo, $reportDate, $postStaffId);
     $expected = normalize_currency_amount($openingFloat + $cashSales);
     $diff = normalize_currency_amount($cashDeclared - $expected);
     $status = variance_status_from_difference($diff);
@@ -155,7 +172,7 @@ if ($m === 'POST') {
         ':decl' => $cashDeclared,
         ':diff' => $diff,
         ':notes' => $notes ?: null,
-        ':sid' => $staffId ?: null,
+        ':sid' => $postStaffId ?: null,
     ]);
 
     // New shift after finalize — kitchen tickets + POS/KIO order # restart at 001.

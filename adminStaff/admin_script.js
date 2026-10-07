@@ -9,6 +9,7 @@
     var moneyError   = document.getElementById('starting-money-error');
 
     var pendingStaffRedirect = '';
+    var pendingStaffId = 0;
     var loginNext = '';
 
     function getLoginNext() {
@@ -71,15 +72,18 @@
     }
 
     function getStartingMoneyStorageKey() {
-        return 'staff_sales_report_starting_money_' + new Date().toISOString().slice(0, 10);
+        var sid = pendingStaffId || 0;
+        return 'staff_sales_report_starting_money_' + sid + '_' + new Date().toISOString().slice(0, 10);
     }
 
     function getStartingMoneyLockedKey() {
-        return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
+        var sid = pendingStaffId || 0;
+        return 'staff_sales_report_starting_money_locked_' + sid + '_' + new Date().toISOString().slice(0, 10);
     }
 
-    /** Once set for today (any staff on this device), skip the popup until shift reset/next day. */
+    /** Per-staff: each cashier must set their own starting money for the day. */
     function hasStartingMoneyForToday() {
+        if (!pendingStaffId) return false;
         if (localStorage.getItem(getStartingMoneyLockedKey()) === '1') {
             return true;
         }
@@ -162,11 +166,22 @@
             return false;
         }
 
-        localStorage.setItem(
-            getStartingMoneyStorageKey(),
-            JSON.stringify({ base: amount, additional_inputs: [], total: amount })
-        );
+        var payloadObj = { base: amount, additional_inputs: [], total: amount };
+        localStorage.setItem(getStartingMoneyStorageKey(), JSON.stringify(payloadObj));
         localStorage.setItem(getStartingMoneyLockedKey(), '1');
+        if (pendingStaffId) {
+            fetch('api/staff_sales_report.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    staff_id: pendingStaffId,
+                    report_date: new Date().toISOString().slice(0, 10),
+                    starting_money: payloadObj,
+                    starting_money_locked: true
+                })
+            }).catch(function () {});
+        }
         return true;
     }
 
@@ -225,8 +240,9 @@
 
                 // Role decides destination — never treat admin as staff because of ?next=.
                 if (role === 'staff') {
+                    pendingStaffId = parseInt(data.user && data.user.id, 10) || 0;
                     pendingStaffRedirect = safeNext || redirect || 'staff_dashboard.html';
-                    // Shared float for the day — only prompt on the first staff login / shift open.
+                    // Each staff has their own drawer float for the day.
                     if (hasStartingMoneyForToday()) {
                         // Still show inventory checking on POS if not completed yet today.
                         markPendingInventoryCheck();

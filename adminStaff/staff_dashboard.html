@@ -7,11 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-pos-card-price">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-adapt">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
     <link rel="stylesheet" href="../shared/modal_viewport.css?v=20261007b">
+    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-adapt">
 </head>
 <body>
     <div class="pos-page">
@@ -5267,13 +5268,31 @@
                 var role = String(currentUser.role || '').toLowerCase();
                 if (role === 'staff') {
                     showStaffName(currentUser.name);
+                    if (typeof hydrateStaffDrawerFromServer === 'function') {
+                        hydrateStaffDrawerFromServer();
+                    }
                     return;
                 }
 
                 if (role === 'admin') {
                     loadCashiersForAdmin().then(function () {
                         showCashierPicker();
+                        if (typeof hydrateStaffDrawerFromServer === 'function') {
+                            hydrateStaffDrawerFromServer();
+                        }
                     });
+                    if (actingSelect && !actingSelect._drawerScopeBound) {
+                        actingSelect._drawerScopeBound = true;
+                        actingSelect.addEventListener('change', function () {
+                            if (typeof hydrateStaffDrawerFromServer === 'function') {
+                                hydrateStaffDrawerFromServer().then(function () {
+                                    if (typeof loadStaffData === 'function') loadStaffData();
+                                });
+                            } else if (typeof loadStaffData === 'function') {
+                                loadStaffData();
+                            }
+                        });
+                    }
                     return;
                 }
 
@@ -6134,32 +6153,75 @@
             };
         }
         function getStartingMoneyStorageKey() {
-            return 'staff_sales_report_starting_money_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_sales_report_starting_money');
         }
         function getStartingMoneyLockedKey() {
-            return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_sales_report_starting_money_locked');
         }
         function getAccuracyStorageKey() {
-            return 'staff_sales_report_accuracy_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_sales_report_accuracy');
+        }
+        function getDrawerStaffScopeId() {
+            var id = null;
+            if (typeof window.getPosActingStaffId === 'function') {
+                id = window.getPosActingStaffId();
+            }
+            if (!id && currentUser) id = parseInt(currentUser.id, 10) || null;
+            return id || 0;
+        }
+        function staffScopedDayKey(prefix) {
+            return prefix + '_' + getDrawerStaffScopeId() + '_' + new Date().toISOString().slice(0, 10);
         }
         function syncStaffSalesReportSnapshot() {
-            var staffId = null;
-            if (typeof window.getPosActingStaffId === 'function') {
-                staffId = window.getPosActingStaffId();
-            }
+            var staffId = getDrawerStaffScopeId();
+            if (!staffId) return;
             var payload = {
+                staff_id: staffId,
                 report_date: new Date().toISOString().slice(0, 10),
                 starting_money: localStorage.getItem(getStartingMoneyStorageKey()),
                 starting_money_locked: localStorage.getItem(getStartingMoneyLockedKey()) === '1',
-                accuracy: localStorage.getItem(getAccuracyStorageKey())
+                accuracy: localStorage.getItem(getAccuracyStorageKey()),
+                cash_mgmt: getCashMgmtEntries(),
+                cash_refunds: getCashRefundEntries()
             };
-            if (staffId) payload.staff_id = staffId;
             fetch('api/staff_sales_report.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify(payload)
             }).catch(function () {});
+        }
+        function hydrateStaffDrawerFromServer() {
+            var staffId = getDrawerStaffScopeId();
+            if (!staffId) return Promise.resolve();
+            var date = new Date().toISOString().slice(0, 10);
+            return fetch('api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(date), { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success || !d.report) return;
+                    var report = d.report;
+                    if (report.starting_money && !localStorage.getItem(getStartingMoneyStorageKey())) {
+                        try {
+                            localStorage.setItem(getStartingMoneyStorageKey(), JSON.stringify(report.starting_money));
+                        } catch (e) {}
+                    }
+                    if (report.starting_money_locked) {
+                        try { localStorage.setItem(getStartingMoneyLockedKey(), '1'); } catch (e) {}
+                    }
+                    if (report.accuracy && !localStorage.getItem(getAccuracyStorageKey())) {
+                        try {
+                            localStorage.setItem(getAccuracyStorageKey(), JSON.stringify(report.accuracy));
+                        } catch (e) {}
+                    }
+                    if (Array.isArray(report.cash_mgmt) && report.cash_mgmt.length && !getCashMgmtEntries().length) {
+                        saveCashMgmtEntries(report.cash_mgmt);
+                    }
+                    if (Array.isArray(report.cash_refunds) && report.cash_refunds.length && !getCashRefundEntries().length) {
+                        saveCashRefundEntries(report.cash_refunds);
+                    }
+                    updateCashMgmtDrawerDisplay();
+                })
+                .catch(function () {});
         }
         function getSavedStartingMoneyTotal() {
             var raw = localStorage.getItem(getStartingMoneyStorageKey());
@@ -6182,13 +6244,13 @@
             return 'staff_shift_history_clear_after_ms';
         }
         function getCashMgmtStorageKey() {
-            return 'staff_cash_management_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_cash_management');
         }
         function getCashRefundsStorageKey() {
-            return 'staff_cash_refunds_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_cash_refunds');
         }
         function getRefundedOrdersStorageKey() {
-            return 'staff_refunded_orders_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_refunded_orders');
         }
         function getRefundedOrderSnapshots() {
             try {
@@ -6283,13 +6345,14 @@
             if (cashDrawerPaidInEl) cashDrawerPaidInEl.textContent = peso(totals.paidIn);
             if (cashDrawerPaidOutEl) cashDrawerPaidOutEl.textContent = peso(totals.paidOut);
             if (cashDrawerCashRefundsEl) cashDrawerCashRefundsEl.textContent = peso(cashRefunds);
-            var expected = lastBaseExpectedCash + totals.paidIn - totals.paidOut;
+            var expected = lastBaseExpectedCash + totals.paidIn - totals.paidOut - cashRefunds;
             if (cashDrawerExpectedCashEl) cashDrawerExpectedCashEl.textContent = peso(expected);
             if (!accuracyLocked) evaluateAccuracyFromInput();
         }
         function getExpectedCashDrawerAmount() {
             var totals = computeCashMgmtTotals();
-            return Math.round((lastBaseExpectedCash + totals.paidIn - totals.paidOut) * 100) / 100;
+            var cashRefunds = computeCashRefundsTotal();
+            return Math.round((lastBaseExpectedCash + totals.paidIn - totals.paidOut - cashRefunds) * 100) / 100;
         }
         function normalizeAccuracyMode(value) {
             var mode = String(value || 'accurate').toLowerCase();
@@ -6447,10 +6510,12 @@
                 type: cashMgmtType,
                 amount: amount,
                 reason: reason,
+                staff_id: getDrawerStaffScopeId() || null,
                 created_at: new Date().toISOString()
             });
             saveCashMgmtEntries(entries);
             updateCashMgmtDrawerDisplay();
+            syncStaffSalesReportSnapshot();
             closeCashMgmtModal();
         }
 
@@ -7269,9 +7334,11 @@
                         order_number: order.order_number || '',
                         amount: refundAmount,
                         reason: refundReason,
+                        staff_id: getDrawerStaffScopeId() || null,
                         created_at: new Date().toISOString()
                     });
                     saveCashRefundEntries(refunds);
+                    syncStaffSalesReportSnapshot();
                 }
                 saveRefundedOrderSnapshot(order, refundReason);
                 closeRefundModal();
@@ -8981,10 +9048,10 @@
                 fetch('api/orders.php?status=' + encodeURIComponent(queueStatus) + '&kitchen_returned=0&limit=50&source=' + encodeURIComponent(queueSource) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?status=confirmed&limit=50&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?status=served&limit=100&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/orders.php?type=daily_summary&date=' + encodeURIComponent(todayYmd) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/orders.php?type=daily_summary&date=' + encodeURIComponent(todayYmd) + (getDrawerStaffScopeId() ? ('&staff_id=' + encodeURIComponent(getDrawerStaffScopeId())) : '') + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/waste.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/waste.php?type=daily_summary&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/revenue_verification.php?opening_float=' + encodeURIComponent(getSavedStartingMoneyTotal()) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(todayYmd) + (getDrawerStaffScopeId() ? ('&staff_id=' + encodeURIComponent(getDrawerStaffScopeId())) : '') + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/revenue_verification.php?opening_float=' + encodeURIComponent(getSavedStartingMoneyTotal()) + (getDrawerStaffScopeId() ? ('&staff_id=' + encodeURIComponent(getDrawerStaffScopeId())) : '') + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?status=pending&kitchen_returned=1&limit=50&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
@@ -10058,11 +10125,15 @@
             }
 
             function getStartingMoneyStorageKeyLocal() {
-                return 'staff_sales_report_starting_money_' + new Date().toISOString().slice(0, 10);
+                if (typeof getStartingMoneyStorageKey === 'function') return getStartingMoneyStorageKey();
+                var sid = (typeof getDrawerStaffScopeId === 'function' ? getDrawerStaffScopeId() : 0) || 0;
+                return 'staff_sales_report_starting_money_' + sid + '_' + new Date().toISOString().slice(0, 10);
             }
 
             function getStartingMoneyLockedKeyLocal() {
-                return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
+                if (typeof getStartingMoneyLockedKey === 'function') return getStartingMoneyLockedKey();
+                var sid = (typeof getDrawerStaffScopeId === 'function' ? getDrawerStaffScopeId() : 0) || 0;
+                return 'staff_sales_report_starting_money_locked_' + sid + '_' + new Date().toISOString().slice(0, 10);
             }
 
             function hasStartingMoneyForTodayLocal() {

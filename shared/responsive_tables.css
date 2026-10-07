@@ -1,0 +1,136 @@
+/* Shared phone/tablet table adaptation for adminStaff dashboards */
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    overflow-x: clip;
+}
+
+/* Stacked card rows below 900px */
+@media (max-width: 900px) {
+    .table-wrap {
+        overflow-x: visible !important;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .table-head {
+        display: none !important;
+    }
+
+    .table-row {
+        min-width: 0 !important;
+        width: 100%;
+        max-width: 100%;
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+        align-items: stretch !important;
+        padding: 12px 14px !important;
+        box-sizing: border-box;
+    }
+
+    .table-row > * {
+        min-width: 0;
+        max-width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        text-align: right;
+    }
+
+    .table-row > *[data-label]::before {
+        content: attr(data-label);
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        text-align: left;
+        flex: 0 1 auto;
+        max-width: 45%;
+    }
+
+    .table-row > .item-col,
+    .table-row > .name,
+    .table-row > .actions,
+    .table-row > .acts {
+        text-align: left;
+    }
+
+    .table-row > .item-col[data-label],
+    .table-row > .name[data-label] {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+
+    .table-row > .item-col[data-label]::before,
+    .table-row > .name[data-label]::before {
+        width: 100%;
+        max-width: 100%;
+        margin-bottom: 2px;
+    }
+
+    .table-row > .actions,
+    .table-row > .acts {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .table-row--category-label,
+    .table-row--category-empty {
+        display: block !important;
+    }
+
+    .table-row--category-label > *,
+    .table-row--category-empty > * {
+        display: block;
+        text-align: left;
+    }
+
+    .chips-row,
+    .chip-row {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+    }
+
+    .inv-filter-bar,
+    .menu-filter-bar,
+    .chips-toolbar,
+    .stock-movement-filter-toolbar,
+    .stock-movement-toolbar {
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .stock-movement-search,
+    .menu-search {
+        width: 100%;
+        flex: 1 1 100%;
+        max-width: 100%;
+        margin-left: 0;
+    }
+
+    .stock-movement-search input,
+    .menu-search input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+@media (max-width: 640px) {
+    .alert-grid,
+    .stats-grid,
+    .kpi-grid,
+    .metric-grid {
+        grid-template-columns: 1fr !important;
+    }
+}

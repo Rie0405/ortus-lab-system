@@ -7,11 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261006-logout-red">
+    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261007-adapt">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
     <link rel="stylesheet" href="../shared/modal_viewport.css?v=20261007b">
+    <link rel="stylesheet" href="../shared/responsive_tables.css?v=20261007-adapt">
 </head>
 <body>
     <div class="sales-page">
@@ -1178,14 +1179,14 @@
                 var dt = formatDate(r.created_at);
                 return '' +
                     '<tr>' +
-                        '<td>' + esc(dt.day + ' ' + dt.time) + '</td>' +
-                        '<td class="sales-report-order-code">' + esc(r.order_code ? ('#' + r.order_code) : '—') + '</td>' +
-                        '<td>' + esc(r.item_name) + '</td>' +
-                        '<td class="sales-report-amt">' + esc(peso(r.price)) + '</td>' +
-                        '<td class="sales-report-amt">' + esc(peso(r.cost)) + '</td>' +
-                        '<td>' + esc(String(r.qty)) + '</td>' +
-                        '<td class="sales-report-amt">' + esc(peso(r.total)) + '</td>' +
-                        '<td class="sales-report-amt">' + esc(peso(r.total_cost)) + '</td>' +
+                        '<td data-label="Date">' + esc(dt.day + ' ' + dt.time) + '</td>' +
+                        '<td class="sales-report-order-code" data-label="Order">' + esc(r.order_code ? ('#' + r.order_code) : '—') + '</td>' +
+                        '<td data-label="Item">' + esc(r.item_name) + '</td>' +
+                        '<td class="sales-report-amt" data-label="Price">' + esc(peso(r.price)) + '</td>' +
+                        '<td class="sales-report-amt" data-label="Cost">' + esc(peso(r.cost)) + '</td>' +
+                        '<td data-label="Qty">' + esc(String(r.qty)) + '</td>' +
+                        '<td class="sales-report-amt" data-label="Total">' + esc(peso(r.total)) + '</td>' +
+                        '<td class="sales-report-amt" data-label="Total cost">' + esc(peso(r.total_cost)) + '</td>' +
                     '</tr>';
             }).join('');
 
@@ -1214,14 +1215,14 @@
                 var row = document.createElement('div');
                 row.className = 'table-row';
                 row.innerHTML =
-                    '<div><strong>' + esc(dt.day) + '</strong><small>' + esc(dt.time) + '</small></div>' +
-                    '<div class="tx">#' + esc(o.order_number) + '</div>' +
-                    '<div>' + esc(o.staff_name) + '</div>' +
-                    '<div>' + esc(shortItems(o.items_sold)) + '</div>' +
-                    '<div class="amount">' + peso(o.total_amount) + '</div>' +
-                    '<div>' + esc(formatPaymentCell(o)) + '</div>' +
-                    '<div><span class="status ' + status.cls + '">' + status.label + '</span></div>' +
-                    '<div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>';
+                    '<div data-label="Date"><strong>' + esc(dt.day) + '</strong><small>' + esc(dt.time) + '</small></div>' +
+                    '<div class="tx" data-label="Order">#' + esc(o.order_number) + '</div>' +
+                    '<div data-label="Staff">' + esc(o.staff_name) + '</div>' +
+                    '<div data-label="Items">' + esc(shortItems(o.items_sold)) + '</div>' +
+                    '<div class="amount" data-label="Amount">' + peso(o.total_amount) + '</div>' +
+                    '<div data-label="Payment">' + esc(formatPaymentCell(o)) + '</div>' +
+                    '<div data-label="Status"><span class="status ' + status.cls + '">' + status.label + '</span></div>' +
+                    '<div class="actions" data-label="Actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>';
                 tableWrap.appendChild(row);
             });
 
@@ -1328,14 +1329,14 @@
                 var typeLabel = rec.discount_label || (type === 'pwd' ? 'PWD' : 'Senior Citizen');
                 return (
                     '<tr>' +
-                        '<td>' + esc(formatDiscountDateTime(rec.created_at)) + '</td>' +
-                        '<td><span class="sales-report-order-code">' + esc(rec.order_number || '—') + '</span></td>' +
-                        '<td><span class="discount-records-type discount-records-type--' + typeClass + '">' + esc(typeLabel) + '</span></td>' +
-                        '<td>' + esc(rec.customer_name || '—') + '</td>' +
-                        '<td><span class="discount-records-id">' + esc(rec.id_number || '—') + '</span></td>' +
-                        '<td>' + peso(rec.gross_amount || 0) + '</td>' +
-                        '<td>' + peso(rec.discount_amount || 0) + '</td>' +
-                        '<td>' + peso(rec.net_amount || 0) + '</td>' +
+                        '<td data-label="Date">' + esc(formatDiscountDateTime(rec.created_at)) + '</td>' +
+                        '<td data-label="Order"><span class="sales-report-order-code">' + esc(rec.order_number || '—') + '</span></td>' +
+                        '<td data-label="Type"><span class="discount-records-type discount-records-type--' + typeClass + '">' + esc(typeLabel) + '</span></td>' +
+                        '<td data-label="Customer">' + esc(rec.customer_name || '—') + '</td>' +
+                        '<td data-label="ID"><span class="discount-records-id">' + esc(rec.id_number || '—') + '</span></td>' +
+                        '<td data-label="Gross">' + peso(rec.gross_amount || 0) + '</td>' +
+                        '<td data-label="Discount">' + peso(rec.discount_amount || 0) + '</td>' +
+                        '<td data-label="Net">' + peso(rec.net_amount || 0) + '</td>' +
                     '</tr>'
                 );
             }).join('');
@@ -2244,30 +2245,45 @@
                 return toMoney(raw);
             }
         }
-        function getLocalCashMgmtTotals(dateKey) {
+        function cashMgmtTotalsFromEntries(entries) {
+            if (!Array.isArray(entries)) return { paidIn: 0, paidOut: 0 };
+            return entries.reduce(function (acc, entry) {
+                var amount = toMoney(entry && entry.amount);
+                if (!amount) return acc;
+                if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
+                else acc.paidIn += amount;
+                return acc;
+            }, { paidIn: 0, paidOut: 0 });
+        }
+        function cashRefundsTotalFromEntries(entries) {
+            if (!Array.isArray(entries)) return 0;
+            return entries.reduce(function (sum, entry) {
+                return sum + toMoney(entry && entry.amount);
+            }, 0);
+        }
+        /** Prefer DB report (per staff). Fallback: staff-scoped localStorage only. */
+        function getStaffCashMgmtTotals(staffId, dateKey, report) {
+            if (report && Array.isArray(report.cash_mgmt)) {
+                return cashMgmtTotalsFromEntries(report.cash_mgmt);
+            }
             try {
-                var raw = localStorage.getItem('staff_cash_management_' + dateKey);
+                var sid = parseInt(staffId, 10) || 0;
+                var raw = localStorage.getItem('staff_cash_management_' + sid + '_' + dateKey);
                 var parsed = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(parsed)) return { paidIn: 0, paidOut: 0 };
-                return parsed.reduce(function (acc, entry) {
-                    var amount = toMoney(entry && entry.amount);
-                    if (!amount) return acc;
-                    if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
-                    else acc.paidIn += amount;
-                    return acc;
-                }, { paidIn: 0, paidOut: 0 });
+                return cashMgmtTotalsFromEntries(parsed);
             } catch (e) {
                 return { paidIn: 0, paidOut: 0 };
             }
         }
-        function getLocalCashRefundsTotal(dateKey) {
+        function getStaffCashRefundsTotal(staffId, dateKey, report) {
+            if (report && Array.isArray(report.cash_refunds)) {
+                return cashRefundsTotalFromEntries(report.cash_refunds);
+            }
             try {
-                var raw = localStorage.getItem('staff_cash_refunds_' + dateKey);
+                var sid = parseInt(staffId, 10) || 0;
+                var raw = localStorage.getItem('staff_cash_refunds_' + sid + '_' + dateKey);
                 var parsed = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(parsed)) return 0;
-                return parsed.reduce(function (sum, entry) {
-                    return sum + toMoney(entry && entry.amount);
-                }, 0);
+                return cashRefundsTotalFromEntries(parsed);
             } catch (e) {
                 return 0;
             }
@@ -2383,7 +2399,7 @@
             Promise.all([
                 fetch('api/orders.php?limit=200&staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); })
+                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(shiftDate) + '&staff_id=' + encodeURIComponent(staffId), { cache: 'no-store' }).then(function (r) { return r.json(); })
             ]).then(function (results) {
                 if (String(staffId) !== String(selectedStaffId) || String(shiftDate) !== String(selectedShiftDate)) return;
                 var ordersRes = results[0];
@@ -2408,8 +2424,8 @@
                 });
                 var report = reportRes && reportRes.success ? reportRes.report : null;
                 var starting = report ? parseStartingMoney(report.starting_money) : 0;
-                var localMgmt = getLocalCashMgmtTotals(shiftDate);
-                var localRefunds = getLocalCashRefundsTotal(shiftDate);
+                var staffMgmt = getStaffCashMgmtTotals(staffId, shiftDate, report);
+                var staffRefunds = getStaffCashRefundsTotal(staffId, shiftDate, report);
                 var waste = 0;
                 if (wasteRes && wasteRes.success && wasteRes.summary) {
                     waste = toMoney(wasteRes.summary.total_estimated_value);
@@ -2423,13 +2439,13 @@
                     gcash: gcash,
                     total: cash + gcash,
                     discounts: discounts,
-                    refunds: localRefunds,
-                    paidIn: localMgmt.paidIn,
-                    paidOut: localMgmt.paidOut,
+                    refunds: staffRefunds,
+                    paidIn: staffMgmt.paidIn,
+                    paidOut: staffMgmt.paidOut,
                     waste: waste,
                     expected: accuracyExpected != null
                         ? accuracyExpected
-                        : Math.max(0, starting + cash - localRefunds + localMgmt.paidIn - localMgmt.paidOut)
+                        : Math.max(0, starting + cash - staffRefunds + staffMgmt.paidIn - staffMgmt.paidOut)
                 });
             }).catch(function () {
                 setDrawerPlaceholders();

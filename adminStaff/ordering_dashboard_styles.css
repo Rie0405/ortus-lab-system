@@ -620,7 +620,13 @@ body.modal-open {
     gap: 0;
     align-items: stretch;
     padding: 0;
-    min-width: 1140px;
+    min-width: 0;
+}
+@media (min-width: 901px) {
+    .table-head,
+    .table-row {
+        min-width: 1140px;
+    }
 }
 .table-head {
     background: rgba(45, 36, 27, 0.5);
@@ -2073,7 +2079,7 @@ body.modal-open {
     font-weight: 700;
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1320px) and (min-width: 901px) {
     .product-catalog-row {
         grid-template-columns: 1fr;
     }
@@ -2096,4 +2102,16 @@ body.modal-open {
         padding: 14px 16px;
     }
     .foot-left { flex-wrap: wrap; gap: 12px; }
+    .product-catalog-row {
+        grid-template-columns: 1fr;
+    }
+    .order-main { padding: 16px; }
+    .stat-grid { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: visible; }
+    .table-head,
+    .table-row { min-width: 0; }
+    .order-page {
+        overflow-x: clip;
+        max-width: 100vw;
+    }
 }

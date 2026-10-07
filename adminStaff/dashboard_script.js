@@ -2138,19 +2138,19 @@ function apiCall(method, url, body) {
             var statusLabel = item.is_available ? 'AVAILABLE' : 'SOLD OUT';
 
             row.innerHTML =
-                '<div><div class="prod-img-placeholder"></div></div>' +
-                '<div class="name"><strong>' + escHtml(item.name) + '</strong>' +
+                '<div data-label="Image"><div class="prod-img-placeholder"></div></div>' +
+                '<div class="name" data-label="Product"><strong>' + escHtml(item.name) + '</strong>' +
                     '<small>' + escHtml(stripIngredientsFromDescription(item.description || '') || '--') + '</small></div>' +
-                '<div><span class="cat">' + escHtml(displayCategoryLabelForTable(item.category_name)) + '</span></div>' +
-                '<div class="price price--cost">₱' + parseFloat(item.cost_price || 0).toFixed(2) + '</div>' +
-                '<div class="price">₱' + parseFloat(item.price || 0).toFixed(2) + '</div>' +
-                '<div>' +
+                '<div data-label="Category"><span class="cat">' + escHtml(displayCategoryLabelForTable(item.category_name)) + '</span></div>' +
+                '<div class="price price--cost" data-label="Cost">₱' + parseFloat(item.cost_price || 0).toFixed(2) + '</div>' +
+                '<div class="price" data-label="Price">₱' + parseFloat(item.price || 0).toFixed(2) + '</div>' +
+                '<div data-label="Status">' +
                     '<span class="pill ' + statusClass + '">' + statusLabel + '</span>' +
                     '<button class="status-toggle-btn ' + (item.is_available ? 'to-out' : 'to-ok') + '" data-toggle-availability="' + item.id + '" data-next-availability="' + (item.is_available ? '0' : '1') + '">' +
                         (item.is_available ? 'Mark Sold Out' : 'Mark Available') +
                     '</button>' +
                 '</div>' +
-                '<div class="acts">' +
+                '<div class="acts" data-label="Actions">' +
                     '<button class="acts-btn" data-edit-id="' + item.id + '">Edit</button>' +
                     '<span class="acts-separator">|</span>' +
                     '<button class="acts-btn" data-recipe-id="' + item.id + '">Recipe</button>' +

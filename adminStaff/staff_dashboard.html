@@ -1366,6 +1366,9 @@
             function categoryNameMergesIntoBeverages(name) {
                 var n = (name || '').trim().toLowerCase();
                 if (!n) return false;
+                // Include admin "Beverages" so it does not appear beside the merged chip.
+                if (n === 'beverages' || n === 'beverage') return true;
+                if (n.indexOf('beverage') !== -1) return true;
                 if (n === 'drinks') return true;
                 if (/\brefresher/.test(n)) return true;
                 if (n.indexOf('frappe') !== -1) return true;

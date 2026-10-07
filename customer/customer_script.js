@@ -365,11 +365,13 @@ function parseVariantsFromDescription(description) {
 function categoryNameMergesIntoCustomerBeverages(name) {
     var n = (name || '').trim().toLowerCase();
     if (!n) return false;
+    if (n === 'beverages' || n === 'beverage') return true;
+    if (n.indexOf('beverage') !== -1) return true;
     if (n === 'drinks') return true;
     if (/\brefresher/.test(n)) return true;
     if (n.indexOf('frappe') !== -1) return true;
     if (/\bnon[\s-]*coffee\b/.test(n) || n === 'noncoffee' || n === 'non coffee') return true;
-    if (n === 'coffee' || n === 'beverages') return true;
+    if (n === 'coffee') return true;
     return false;
 }
 
@@ -1191,10 +1193,16 @@ function getCustomerBevCircleKey(item) {
     return 'nonCoffee';
 }
 
-/** Same merge rule as adminStaff/staff_dashboard.html POS category chips. */
+/**
+ * Merge drink-related API categories into one kiosk tab: Beverages.
+ * Must include the admin category named "Beverages" itself — otherwise the UI
+ * shows a synthetic "Beverages" tab plus a second "Beverages" from the API.
+ */
 function categoryNameMergesIntoBeverages(name) {
     var n = String(name || '').trim().toLowerCase();
     if (!n) return false;
+    if (n === 'beverages' || n === 'beverage') return true;
+    if (n.indexOf('beverage') !== -1) return true;
     if (n === 'drinks') return true;
     if (/\brefresher/.test(n)) return true;
     if (n.indexOf('frappe') !== -1) return true;

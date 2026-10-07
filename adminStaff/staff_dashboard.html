@@ -37,7 +37,7 @@
             <div class="header-meta">
                 <div class="meta-cell">
                     <span>SHIFT TIME</span>
-                    <strong class="clock">05:42:10</strong>
+                    <strong class="clock" id="staff-shift-clock">—</strong>
                 </div>
                 <div class="meta-cell meta-cell--staff">
                     <span id="staff-user-label">STAFF</span>
@@ -282,102 +282,7 @@
                 </div>
 
                     <div class="opq-grid" id="staff-opq-grid">
-                        <!-- Order Card 1 -->
-                        <article class="opq-card">
-                            <header class="opq-card-head">
-                                <div class="opq-card-info">
-                                    <h3 class="opq-card-name">Table 12 •<br>Takeaway</h3>
-                </div>
-                                <div class="opq-card-meta">
-                                    <span class="opq-pending-badge">PENDING</span>
-                                </div>
-                            </header>
-                            <div class="opq-card-items">
-                                <div class="opq-item">
-                                    <span>2x Cortado (Oat Milk)</span>
-                                    <span class="opq-price">₱9.50</span>
-                                </div>
-                                <div class="opq-item">
-                                    <span>1x Diesel Bagel (Extra Cream Cheese)</span>
-                                    <span class="opq-price">₱15.00</span>
-                                </div>
-                                <div class="opq-card-total">
-                                    <span>TOTAL AMOUNT</span>
-                                    <strong class="opq-total-val">₱24.50</strong>
-                                </div>
-                            </div>
-                            <footer class="opq-card-foot staff-opq-actions">
-                                <button type="button" class="opq-action-btn opq-action-btn--confirm">Confirm</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--void">Delete</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--discount">Discount</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--edit">Edit</button>
-                            </footer>
-                        </article>
-
-                        <!-- Order Card 2 -->
-                        <article class="opq-card">
-                            <header class="opq-card-head">
-                                <div class="opq-card-info">
-                                    <h3 class="opq-card-name">Curbside<br>Pickup</h3>
-                                </div>
-                                <div class="opq-card-meta">
-                                    <span class="opq-pending-badge">PENDING</span>
-                                </div>
-                            </header>
-                            <div class="opq-card-items">
-                                <div class="opq-item">
-                                    <span>1x Black Coffee (Large)</span>
-                                    <span class="opq-price">₱4.00</span>
-                                </div>
-                                <div class="opq-item">
-                                    <span>2x Butter Croissant</span>
-                                    <span class="opq-price">₱8.00</span>
-                                </div>
-                                <div class="opq-card-total">
-                                    <span>TOTAL AMOUNT</span>
-                                    <strong class="opq-total-val">₱12.00</strong>
-                                </div>
-                            </div>
-                            <footer class="opq-card-foot staff-opq-actions">
-                                <button type="button" class="opq-action-btn opq-action-btn--confirm">Confirm</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--void">Delete</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--discount">Discount</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--edit">Edit</button>
-                            </footer>
-                        </article>
-
-                        <!-- Order Card 3 -->
-                        <article class="opq-card">
-                            <header class="opq-card-head">
-                                <div class="opq-card-info">
-                                    <h3 class="opq-card-name">Garage Bar •<br>Seated</h3>
-                                </div>
-                                <div class="opq-card-meta">
-                                    <span class="opq-pending-badge">PENDING</span>
-                                </div>
-                            </header>
-                            <div class="opq-card-items">
-                                <div class="opq-item">
-                                    <span>3x Espresso Shots</span>
-                                    <span class="opq-price">₱12.00</span>
-                                </div>
-                                <div class="opq-item">
-                                    <span>1x Garage Burger (Well Done)</span>
-                                    <span class="opq-price">₱26.00</span>
-                                </div>
-                                <div class="opq-card-total">
-                                    <span>TOTAL AMOUNT</span>
-                                    <strong class="opq-total-val">₱38.00</strong>
-                                </div>
-                            </div>
-                            <footer class="opq-card-foot staff-opq-actions">
-                                <button type="button" class="opq-action-btn opq-action-btn--confirm">Confirm</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--void">Delete</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--discount">Discount</button>
-                                <button type="button" class="opq-action-btn opq-action-btn--edit">Edit</button>
-                            </footer>
-                        </article>
-                    </div>
+            </div>
                 </div>
 
             </div>
@@ -390,7 +295,7 @@
             <div class="opq-main">
                 <div class="opq-topbar">
                     <div class="opq-topbar-left">
-                        <h2 class="opq-title" id="kitchen-station-title">BAR ORDERS</h2>
+                        <h2 class="opq-title" id="kitchen-station-title">STATION ORDERS</h2>
                         <span class="opq-badge" id="kitchen-pending-count">0 ACTIVE</span>
                     </div>
                     <button type="button" class="opq-done-all-btn" id="done-all-orders-btn">DONE ALL</button>
@@ -469,19 +374,7 @@
                                             DAILY WASTE LOGS
                                         </h3>
                                         <div class="opq-activity" id="staff-last-actions">
-                                            <div class="opq-activity-item opq-activity-item--orange">
-                                                <p>Order #0428 Confirmed</p>
-                                                <span>05:38:12</span>
-                                            </div>
-                                            <div class="opq-activity-item opq-activity-item--red">
-                                                <p>Logged Waste: 1x Croissant</p>
-                                                <span>05:15:44</span>
-                                            </div>
-                                            <div class="opq-activity-item opq-activity-item--orange">
-                                                <p>Shift started</p>
-                                                <span>00:00:01</span>
-                                            </div>
-                                        </div>
+            </div>
                                     </section>
                                 </div>
                             </div>
@@ -5319,6 +5212,17 @@
     <script>
     (function () {
         var opqGrid = document.getElementById('staff-opq-grid');
+        var staffShiftClockEl = document.getElementById('staff-shift-clock');
+        function tickStaffShiftClock() {
+            if (!staffShiftClockEl) return;
+            var now = new Date();
+            var hh = String(now.getHours()).padStart(2, '0');
+            var mm = String(now.getMinutes()).padStart(2, '0');
+            var ss = String(now.getSeconds()).padStart(2, '0');
+            staffShiftClockEl.textContent = hh + ':' + mm + ':' + ss;
+        }
+        tickStaffShiftClock();
+        window.setInterval(tickStaffShiftClock, 1000);
         var pendingBadge = document.getElementById('staff-pending-count');
         var kitchenGrid = document.getElementById('kitchen-orders-grid');
         var kitchenBadge = document.getElementById('kitchen-pending-count');
@@ -9301,6 +9205,10 @@
                 } catch (e) {}
             }).catch(function (e) {
                 console.warn('Staff data load failed:', e.message);
+                pendingOrders = [];
+                returnedKitchenOrders = [];
+                if (typeof renderPendingOrders === 'function') renderPendingOrders();
+                if (typeof renderLastActions === 'function') renderLastActions([], []);
             });
         }
 

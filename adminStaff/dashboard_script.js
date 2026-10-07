@@ -2854,7 +2854,16 @@ function apiCall(method, url, body) {
                     unavailableEl.innerHTML = unavailableCount + ' <span class="warn">items</span>';
                 }
             }).catch(function () {});
-        }).catch(function (err) { console.error('Menu load failed:', err); });
+        }).catch(function (err) {
+            console.error('Menu load failed:', err);
+            allItems = [];
+            categories = [];
+            subcategories = [];
+            mainCategories = [];
+            var totalEl = document.querySelector('.stat-card:first-child p');
+            if (totalEl) totalEl.innerHTML = '0 <span>items</span>';
+            renderFilterChips();
+        });
     }
 
     // ── Create item ───────────────────────────────────────────────────────────

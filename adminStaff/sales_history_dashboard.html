@@ -327,11 +327,7 @@
                 </article>
             </section>
 
-            <section class="filter-bar">
-                <button class="filter-pill"><img src="icons_admin/watch_icon.svg" alt=""> Oct 01 - Oct 31</button>
-                <button class="filter-pill">All Payments</button>
-                <button class="filter-pill">All Status</button>
-            </section>
+            
 
             <div class="scroll-note">SCROLL FOR MORE</div>
 
@@ -345,67 +341,6 @@
                     <span>PAYMENT</span>
                     <span>STATUS</span>
                     <span>ACTIONS</span>
-                </div>
-
-                <div class="table-row">
-                    <div><strong>Oct 24, 2023</strong><small>4:30 PM</small></div>
-                    <div class="tx">#GC-9928</div>
-                    <div>Mike Rossi</div>
-                    <div>2x Espresso, 1x Diesel Bu...</div>
-                    <div class="amount">$45.00</div>
-                    <div>Card</div>
-                    <div><span class="status ok">COMPLETED</span></div>
-                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
-                </div>
-                <div class="table-row">
-                    <div><strong>Oct 24, 2023</strong><small>4:15 PM</small></div>
-                    <div class="tx">#GC-9927</div>
-                    <div>Sarah Jenkins</div>
-                    <div>1x Cold Brew, 1x Avocado...</div>
-                    <div class="amount">$22.50</div>
-                    <div>Cash</div>
-                    <div><span class="status warn">REFUNDED</span></div>
-                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
-                </div>
-                <div class="table-row">
-                    <div><strong>Oct 24, 2023</strong><small>3:50 PM</small></div>
-                    <div class="tx">#GC-9926</div>
-                    <div>Mike Rossi</div>
-                    <div>4x Latte, 4x Blueberry M...</div>
-                    <div class="amount">$64.00</div>
-                    <div>NFC</div>
-                    <div><span class="status ok">COMPLETED</span></div>
-                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
-                </div>
-                <div class="table-row">
-                    <div><strong>Oct 24, 2023</strong><small>3:50 PM</small></div>
-                    <div class="tx">#GC-9926</div>
-                    <div>Mike Rossi</div>
-                    <div>4x Latte, 4x Blueberry M...</div>
-                    <div class="amount">$64.00</div>
-                    <div>NFC</div>
-                    <div><span class="status ok">COMPLETED</span></div>
-                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
-                </div>
-                <div class="table-row">
-                    <div><strong>Oct 24, 2023</strong><small>3:50 PM</small></div>
-                    <div class="tx">#GC-9926</div>
-                    <div>Mike Rossi</div>
-                    <div>4x Latte, 4x Blueberry M...</div>
-                    <div class="amount">$64.00</div>
-                    <div>NFC</div>
-                    <div><span class="status ok">COMPLETED</span></div>
-                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
-                </div>
-                <div class="table-row">
-                    <div><strong>Oct 24, 2023</strong><small>3:22 PM</small></div>
-                    <div class="tx">#GC-9925</div>
-                    <div>Sarah Jenkins</div>
-                    <div>1x Flat White</div>
-                    <div class="amount">$4.50</div>
-                    <div>Card</div>
-                    <div><span class="status ok">COMPLETED</span></div>
-                    <div class="actions"><button title="View">&#128065;</button><button title="Return">&#8617;</button></div>
                 </div>
             </section>
 
@@ -1503,7 +1438,12 @@
                     var d = res[0];
                     var ordersRes = res[1];
                     var menuRes = res[2];
-                    if (!d.success) return;
+                    if (!d.success) {
+                        allOrders = [];
+                        salesReportOrdersCache = [];
+                        if (tableWrap) renderRows();
+                        return;
+                    }
 
                     var summary = d.summary || {};
                     var pct = d.pct || {};
@@ -1549,7 +1489,12 @@
                     renderSalesReportFromCache();
                     loadDiscountPurchasesTable();
                 })
-                .catch(function (e) { console.warn('Sales data unavailable:', e.message); });
+                .catch(function (e) {
+                    console.warn('Sales data unavailable:', e.message);
+                    allOrders = [];
+                    salesReportOrdersCache = [];
+                    if (tableWrap) renderRows();
+                });
         }
 
         if (salesReportDateToggle) {

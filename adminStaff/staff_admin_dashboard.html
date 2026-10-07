@@ -54,105 +54,17 @@
             <section class="staff-kpi-row">
                 <article class="staff-kpi-card">
                     <h3>Total Crew</h3>
-                    <p class="staff-kpi-value">32</p>
-                </article>
-                <article class="staff-kpi-card">
-                    <h3>On Shift</h3>
-                    <p class="staff-kpi-value">12</p>
+                    <p class="staff-kpi-value" id="staff-kpi-total">—</p>
                 </article>
                 <article class="staff-kpi-card">
                     <h3>Active Managers</h3>
-                    <p class="staff-kpi-value">03</p>
-                </article>
-                <article class="staff-kpi-card">
-                    <h3>Open Roles</h3>
-                    <p class="staff-kpi-value">02</p>
+                    <p class="staff-kpi-value" id="staff-kpi-admins">—</p>
                 </article>
             </section>
 
-            <section class="staff-filters-row">
-                <div class="staff-chip-group">
-                    <button class="staff-chip staff-chip--active">All Staff</button>
-                    <button class="staff-chip">Managers</button>
-                    <button class="staff-chip">Full Time</button>
-                    <button class="staff-chip">Students</button>
-                </div>
-                <div class="staff-icons">
-                    <button class="staff-icon-btn" aria-label="Sort staff">
-                        <img src="icons_admin/sort_icon.svg" alt="">
-                    </button>
-                    <button class="staff-icon-btn" aria-label="Filter staff">
-                        <img src="icons_admin/filter_icon.svg" alt="">
-                    </button>
-                </div>
-            </section>
+            
 
             <section class="staff-cards">
-                <article class="staff-card">
-                    <div class="staff-card-top">
-                        <div class="staff-avatar staff-avatar--manager">
-                            <img src="https://www.figma.com/api/mcp/asset/5fea8a80-9bdb-4e68-969d-74382eabbf49" alt="Marcus Thorne">
-                        </div>
-                        <div class="staff-meta">
-                            <h2>Marcus Thorne</h2>
-                            <span class="staff-tag staff-tag--manager">Manager</span>
-                        </div>
-                    </div>
-                    <div class="staff-card-body">
-                        <div class="staff-line">
-                            <span class="staff-line-label">Phone</span>
-                            <span class="staff-line-value">+1 (555) 123-4567</span>
-                        </div>
-                        <div class="staff-line">
-                            <span class="staff-line-label">Email</span>
-                            <span class="staff-line-value">m.thorne@garagebrew.com</span>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="staff-card">
-                    <div class="staff-card-top">
-                        <div class="staff-avatar staff-avatar--full">
-                            <img src="https://www.figma.com/api/mcp/asset/9a9f6924-04b8-4c39-b4a0-a182a045a881" alt="Elena Vance">
-                        </div>
-                        <div class="staff-meta">
-                            <h2>Elena Vance</h2>
-                            <span class="staff-tag staff-tag--full">Full Time</span>
-                        </div>
-                    </div>
-                    <div class="staff-card-body">
-                        <div class="staff-line">
-                            <span class="staff-line-label">Phone</span>
-                            <span class="staff-line-value">+1 (555) 987-6543</span>
-                        </div>
-                        <div class="staff-line">
-                            <span class="staff-line-label">Email</span>
-                            <span class="staff-line-value">e.vance@garagebrew.com</span>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="staff-card">
-                    <div class="staff-card-top">
-                        <div class="staff-avatar staff-avatar--part">
-                            <img src="https://www.figma.com/api/mcp/asset/2f9d396f-0ccd-4b0d-8a3a-6fb3d43b1103" alt="Kaelen Moore">
-                        </div>
-                        <div class="staff-meta">
-                            <h2>Kaelen Moore</h2>
-                            <span class="staff-tag staff-tag--part">Part Time</span>
-                        </div>
-                    </div>
-                    <div class="staff-card-body">
-                        <div class="staff-line">
-                            <span class="staff-line-label">Phone</span>
-                            <span class="staff-line-value">+1 (555) 234-5678</span>
-                        </div>
-                        <div class="staff-line">
-                            <span class="staff-line-label">Email</span>
-                            <span class="staff-line-value">k.moore@garagebrew.com</span>
-                        </div>
-                    </div>
-                </article>
             </section>
         </main>
 
@@ -227,8 +139,8 @@
     (function () {
         var cardsSection  = document.querySelector('.staff-cards');
         var registerBtn   = document.getElementById('btn-register-crew');
-        var kpiTotal      = document.querySelectorAll('.staff-kpi-value')[0];
-        var kpiAdmins     = document.querySelectorAll('.staff-kpi-value')[2];
+        var kpiTotal      = document.getElementById('staff-kpi-total');
+        var kpiAdmins     = document.getElementById('staff-kpi-admins');
 
         var modalBackdrop = document.getElementById('register-crew-modal');
         var modalClose    = document.getElementById('register-crew-close');
@@ -336,13 +248,23 @@
             fetch('api/staff.php')
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
-                    if (!d.success) return;
-                    var users = d.users;
+                    if (!d.success) {
+                        renderCards([]);
+                        if (kpiTotal) kpiTotal.textContent = '0';
+                        if (kpiAdmins) kpiAdmins.textContent = '0';
+                        return;
+                    }
+                    var users = d.users || [];
                     renderCards(users);
                     if (kpiTotal)  kpiTotal.textContent  = users.filter(function(u){return u.is_active;}).length;
                     if (kpiAdmins) kpiAdmins.textContent = users.filter(function(u){return u.role==='admin'&&u.is_active;}).length;
                 })
-                .catch(function (e) { console.warn('Staff load unavailable:', e.message); });
+                .catch(function (e) {
+                    console.warn('Staff load unavailable:', e.message);
+                    renderCards([]);
+                    if (kpiTotal) kpiTotal.textContent = '0';
+                    if (kpiAdmins) kpiAdmins.textContent = '0';
+                });
         }
 
         // Register Crew: open modal and submit via form

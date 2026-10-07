@@ -1,0 +1,175 @@
+/**
+ * Ortus — viewport-flexible dialogs / popups
+ * Keeps modals inside the screen: max-height, scrollable body, pinned header/footer.
+ * Include AFTER page stylesheets so these rules win on domain short viewports.
+ */
+
+/* Backdrops / overlays: allow scroll + safe-area padding on short/tall devices */
+.product-modal-backdrop,
+.gcash-config-backdrop,
+.pos-modal-backdrop,
+.pay-modal-backdrop,
+.inv-modal-backdrop,
+.app-modal-backdrop,
+.receipt-modal-backdrop,
+.forecast-modal-backdrop,
+.sh-modal-backdrop,
+.cash-modal-overlay,
+.starting-money-overlay,
+.img-crop-overlay,
+.ingredient-modal-overlay {
+    box-sizing: border-box;
+    padding: max(12px, env(safe-area-inset-top, 0px))
+             max(12px, env(safe-area-inset-right, 0px))
+             max(12px, env(safe-area-inset-bottom, 0px))
+             max(12px, env(safe-area-inset-left, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Dialog shells */
+.product-modal,
+.gcash-config-modal,
+.pos-modal,
+.pay-modal,
+.inv-modal,
+.app-modal,
+.receipt-modal,
+.receipt-summary-modal,
+.receipt-detail-modal,
+.forecast-modal,
+.cash-modal,
+.cash-modal--checkout,
+.starting-money-modal,
+.img-crop-modal,
+.addon-register-modal,
+.discount-rate-modal,
+.sh-modal,
+.ingredient-modal {
+    box-sizing: border-box;
+    width: min(100%, var(--ortus-modal-width, 100%));
+    max-width: min(100%, calc(100vw - 24px));
+    max-height: min(92vh, calc(100dvh - 24px), calc(100vh - 24px));
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Scrollable content regions */
+.product-modal__body,
+.gcash-config-modal__body,
+.pos-modal__body,
+.pay-modal__body,
+.inv-modal__body,
+.app-modal__body,
+.receipt-modal__body,
+.receipt-summary-modal__body,
+.receipt-detail-modal__body,
+.forecast-modal__body,
+.cash-modal-body,
+.starting-money-modal__body,
+.img-crop-modal__stage,
+.sh-modal__body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Flat dialogs without a dedicated body wrapper — scroll the shell */
+.ingredient-modal,
+.starting-money-modal {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+.ingredient-checklist {
+    max-height: min(320px, 40vh) !important;
+}
+
+/* Pin chrome so actions stay reachable */
+.product-modal__header,
+.product-modal__footer,
+.gcash-config-modal__header,
+.gcash-config-modal__footer,
+.pos-modal__header,
+.pos-modal__footer,
+.pay-modal__header,
+.pay-modal__footer,
+.inv-modal__header,
+.inv-modal__footer,
+.app-modal__header,
+.app-modal__footer,
+.receipt-modal__header,
+.receipt-modal__footer,
+.receipt-summary-modal__header,
+.receipt-summary-modal__footer,
+.receipt-detail-modal__header,
+.receipt-detail-modal__footer,
+.forecast-modal__header,
+.cash-modal-header,
+.cash-modal-actions,
+.img-crop-modal__head,
+.img-crop-modal__controls,
+.img-crop-modal__actions,
+.sh-modal__header,
+.sh-modal__footer,
+.ingredient-modal-title,
+.ingredient-modal-sub,
+.ingredient-modal-note,
+.ingredient-modal-actions {
+    flex-shrink: 0 !important;
+}
+
+/* Tall media inside dialogs should not force the footer off-screen */
+.gcash-config-modal--kiosk .product-upload-dropzone--gcash-qr,
+.product-upload-dropzone--gcash-qr {
+    max-height: min(320px, 42vh) !important;
+}
+
+.img-crop-viewport {
+    max-height: min(360px, 50vh) !important;
+}
+
+/* Kiosk success / simple cash cards: drop fixed min-height on short screens */
+.cash-modal:not(.cash-modal--checkout) {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    justify-content: flex-start !important;
+}
+
+@media (max-height: 720px) {
+    .cash-modal:not(.cash-modal--checkout) {
+        padding: 40px 40px 32px !important;
+        border-radius: 28px !important;
+    }
+
+    .cash-modal-message {
+        font-size: clamp(22px, 5vh, 40px) !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .product-modal,
+    .gcash-config-modal,
+    .pos-modal,
+    .pay-modal,
+    .inv-modal,
+    .inv-modal--wide,
+    .app-modal,
+    .receipt-modal,
+    .sh-modal,
+    .forecast-modal {
+        width: 100% !important;
+        max-width: calc(100vw - 16px) !important;
+    }
+
+    .product-modal__grid {
+        grid-template-columns: 1fr !important;
+    }
+}

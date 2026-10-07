@@ -782,6 +782,19 @@ function apiCall(method, url, body) {
         var sizeInp = row.querySelector('.variant-input--size');
         var priceInp = row.querySelector('.variant-input--price');
         var costInp = row.querySelector('.variant-input--cost');
+        // Always start blank — browsers often autofill cloned number inputs from the last row.
+        if (sizeInp) {
+            sizeInp.value = '';
+            sizeInp.setAttribute('autocomplete', 'off');
+        }
+        if (priceInp) {
+            priceInp.value = '';
+            priceInp.setAttribute('autocomplete', 'off');
+        }
+        if (costInp) {
+            costInp.value = '';
+            costInp.setAttribute('autocomplete', 'off');
+        }
         if (data) {
             if (sizeInp) sizeInp.value = formatVariantDisplayName(data) || String(data.name || data.size || '').trim();
             if (priceInp && data.price != null && data.price !== '') priceInp.value = data.price;
@@ -818,8 +831,8 @@ function apiCall(method, url, body) {
     function ensureDefaultCreateVariantRows() {
         if (!createVariantsListEl) return;
         if (createVariantsListEl.querySelector('.variant-input-row')) return;
+        // Default template: Iced only — add Hot (or others) via + ADD VARIANT.
         addCreateVariantRow({ name: DEFAULT_COLD_VARIANT_NAME });
-        addCreateVariantRow({ name: DEFAULT_HOT_VARIANT_NAME });
     }
 
     function syncCreateVariantsUI() {
@@ -989,6 +1002,18 @@ function apiCall(method, url, body) {
         var sizeInp = row.querySelector('.variant-input--size');
         var priceInp = row.querySelector('.variant-input--price');
         var costInp = row.querySelector('.variant-input--cost');
+        if (sizeInp) {
+            sizeInp.value = '';
+            sizeInp.setAttribute('autocomplete', 'off');
+        }
+        if (priceInp) {
+            priceInp.value = '';
+            priceInp.setAttribute('autocomplete', 'off');
+        }
+        if (costInp) {
+            costInp.value = '';
+            costInp.setAttribute('autocomplete', 'off');
+        }
         if (data) {
             if (sizeInp) sizeInp.value = formatVariantDisplayName(data) || String(data.name || data.size || '').trim();
             if (priceInp && data.price != null && data.price !== '') priceInp.value = data.price;
@@ -1083,10 +1108,7 @@ function apiCall(method, url, body) {
                 };
             });
         if (!rows.length) {
-            rows = [
-                { name: DEFAULT_COLD_VARIANT_NAME, price: item.price, cost: item.cost_price },
-                { name: DEFAULT_HOT_VARIANT_NAME, price: item.price, cost: item.cost_price }
-            ];
+            rows = [{ name: DEFAULT_COLD_VARIANT_NAME }];
         }
         rows.forEach(function (v) {
             addEditVariantRow({
@@ -1113,7 +1135,6 @@ function apiCall(method, url, body) {
                 if (row) row.remove();
                 if (editVariantsListEl && !editVariantsListEl.querySelector('.variant-input-row')) {
                     addEditVariantRow({ name: DEFAULT_COLD_VARIANT_NAME });
-                    addEditVariantRow({ name: DEFAULT_HOT_VARIANT_NAME });
                 }
             });
         }

@@ -536,13 +536,6 @@ function apply_main_category_variants_to_menu_item(array &$item, array $mainCats
     $enabled = $mc && !empty($mc['variants_enabled']) && !empty($mc['variants']);
 
     $perItem = parse_variants_from_description($item['description'] ?? '');
-    $perItemByName = [];
-    foreach ($perItem as $pv) {
-        $n = variant_display_name_from_parsed($pv);
-        if ($n !== '') {
-            $perItemByName[strtolower($n)] = $pv;
-        }
-    }
 
     $desc = (string)($item['description'] ?? '');
     $lines = preg_split("/\r\n|\n|\r/", $desc) ?: [];
@@ -556,31 +549,11 @@ function apply_main_category_variants_to_menu_item(array &$item, array $mainCats
         ? (float)$item['cost_price']
         : null;
 
+    // Prefer per-product Variants: line (edit/create modal). Station JSON is only a
+    // fallback template — otherwise adding Hot in Update gets wiped on next GET
+    // when main_categories.variants_json still only lists Iced.
     $merged = [];
-    if ($enabled) {
-        foreach ($mc['variants'] as $mv) {
-            $name = trim((string)($mv['name'] ?? ''));
-            if ($name === '') {
-                continue;
-            }
-            $price = $itemPrice;
-            $cost = $itemCost;
-            $hit = $perItemByName[strtolower($name)] ?? null;
-            if ($hit !== null) {
-                if (isset($hit['price']) && is_numeric($hit['price'])) {
-                    $price = (float)$hit['price'];
-                }
-                if (array_key_exists('cost', $hit) && $hit['cost'] !== null && is_numeric($hit['cost'])) {
-                    $cost = (float)$hit['cost'];
-                }
-            }
-            $merged[] = [
-                'name' => $name,
-                'price' => $price,
-                'cost' => $cost,
-            ];
-        }
-    } elseif ($perItem) {
+    if ($perItem) {
         foreach ($perItem as $pv) {
             $name = variant_display_name_from_parsed($pv);
             if ($name === '') {
@@ -588,10 +561,24 @@ function apply_main_category_variants_to_menu_item(array &$item, array $mainCats
             }
             $merged[] = [
                 'name' => $name,
-                'price' => isset($pv['price']) ? (float)$pv['price'] : $itemPrice,
-                'cost' => array_key_exists('cost', $pv) && $pv['cost'] !== null
+                'price' => isset($pv['price']) && is_numeric($pv['price'])
+                    ? (float)$pv['price']
+                    : $itemPrice,
+                'cost' => array_key_exists('cost', $pv) && $pv['cost'] !== null && is_numeric($pv['cost'])
                     ? (float)$pv['cost']
                     : $itemCost,
+            ];
+        }
+    } elseif ($enabled) {
+        foreach ($mc['variants'] as $mv) {
+            $name = trim((string)($mv['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $merged[] = [
+                'name' => $name,
+                'price' => $itemPrice,
+                'cost' => $itemCost,
             ];
         }
     }

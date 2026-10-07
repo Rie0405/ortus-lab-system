@@ -1038,7 +1038,35 @@ function apiCall(method, url, body) {
         }
         var mainMeta = findMainCategoryById(item.main_category_id);
         var stationOn = !!(mainMeta && Number(mainMeta.variants_enabled) === 1 && Array.isArray(mainMeta.variants) && mainMeta.variants.length);
-        var itemVariants = Array.isArray(item.variants) ? item.variants : [];
+        var itemVariants = Array.isArray(item.variants) ? item.variants.slice() : [];
+        // Fallback: parse Variants: from description if API list empty/stale.
+        if (!itemVariants.length && item.description) {
+            var descLine = null;
+            String(item.description).split(/\r?\n/).forEach(function (ln) {
+                if (!descLine && /^\s*Variants\s*:/i.test(String(ln || '').trim())) descLine = ln;
+            });
+            if (descLine) {
+                var payload = String(descLine).replace(/^\s*Variants\s*:/i, '').trim();
+                payload.split(';').forEach(function (seg) {
+                    var s = String(seg || '').trim();
+                    if (!s) return;
+                    var eq = s.lastIndexOf('=');
+                    if (eq === -1) return;
+                    var left = s.substring(0, eq).trim();
+                    var right = s.substring(eq + 1).trim();
+                    var costSplit = right.match(/^([\d.,]+)\s*(?:\/\s*cost\s*([\d.,]+))?$/i);
+                    var price = costSplit ? parseFloat(String(costSplit[1]).replace(/,/g, '')) : parseFloat(String(right).replace(/,/g, ''));
+                    var cost = costSplit && costSplit[2] != null
+                        ? parseFloat(String(costSplit[2]).replace(/,/g, ''))
+                        : null;
+                    itemVariants.push({
+                        name: left,
+                        price: Number.isFinite(price) ? price : item.price,
+                        cost: Number.isFinite(cost) ? cost : item.cost_price
+                    });
+                });
+            }
+        }
         var show = stationOn || itemVariants.length > 0;
         if (!show) {
             syncEditVariantsUI(false);
@@ -3275,17 +3303,55 @@ function apiCall(method, url, body) {
                 editPrimaryBtn.disabled    = true;
                 editPrimaryBtn.textContent = 'SAVING…';
 
-                apiCall('PUT', 'api/menu.php', payload).then(function (res) {
-                    if (res.success) {
+                function syncStationVariantNamesFromEdit() {
+                    if (!editVariantsOn || !formEditVariants.length || !editMainCatId) {
+                        return Promise.resolve(null);
+                    }
+                    var cat = findMainCategoryById(editMainCatId);
+                    if (!cat) return Promise.resolve(null);
+                    var nameMap = {};
+                    (Array.isArray(cat.variants) ? cat.variants : []).forEach(function (v) {
+                        var n = String(v && (v.name || v.size) || '').trim();
+                        if (n) nameMap[n.toLowerCase()] = n;
+                    });
+                    formEditVariants.forEach(function (v) {
+                        var n = String(v.name || '').trim();
+                        if (n) nameMap[n.toLowerCase()] = n;
+                    });
+                    var variantsForStation = Object.keys(nameMap).map(function (k) {
+                        return { name: nameMap[k], price: null, cost: null };
+                    });
+                    if (!variantsForStation.length) return Promise.resolve(null);
+                    return apiCall('PUT', 'api/main_categories.php', {
+                        id: editMainCatId,
+                        name: cat.name,
+                        variants_enabled: 1,
+                        variants: variantsForStation
+                    }).catch(function (err) {
+                        console.warn('Station variant name sync failed:', err);
+                        return null;
+                    });
+                }
+
+                apiCall('PUT', 'api/menu.php', payload)
+                    .then(function (res) {
+                        if (!res.success) {
+                            alert('Error: ' + res.error);
+                            return null;
+                        }
+                        return syncStationVariantNamesFromEdit().then(function () {
+                            return res;
+                        });
+                    })
+                    .then(function (res) {
+                        if (!res) return;
                         closeModal(editBackdrop);
                         loadItems();
-                    } else {
-                        alert('Error: ' + res.error);
-                    }
-                }).finally(function () {
-                    editPrimaryBtn.disabled    = false;
-                    editPrimaryBtn.textContent = 'Done';
-                });
+                    })
+                    .finally(function () {
+                        editPrimaryBtn.disabled    = false;
+                        editPrimaryBtn.textContent = 'Done';
+                    });
             });
         }
     }

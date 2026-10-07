@@ -143,6 +143,80 @@ function ensure_order_type_schema(PDO $pdo): void {
     );
 }
 
+function ensure_order_item_fulfillment_schema(PDO $pdo): void {
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM order_items LIKE 'fulfillment'");
+    $stmt->execute();
+    if ($stmt->fetch()) {
+        return;
+    }
+    $pdo->exec(
+        "ALTER TABLE order_items
+         ADD COLUMN fulfillment VARCHAR(20) NULL DEFAULT NULL AFTER notes"
+    );
+}
+
+function normalize_item_fulfillment($raw): ?string {
+    $v = strtolower(trim((string)$raw));
+    $v = preg_replace('/[\s-]+/', '_', $v) ?? $v;
+    if (in_array($v, ['take_out', 'takeout'], true)) {
+        return 'take_out';
+    }
+    if (in_array($v, ['dine_in', 'dinein'], true)) {
+        return 'dine_in';
+    }
+    if ($v === 'mixed') {
+        return null;
+    }
+    return null;
+}
+
+function fulfillment_display_label(string $fulfillment): string {
+    return $fulfillment === 'take_out' ? 'Take out' : 'Dine in';
+}
+
+function fulfillment_from_notes(?string $notes): ?string {
+    if (!is_string($notes) || $notes === '') {
+        return null;
+    }
+    if (preg_match('/(?:^|\|)\s*Order type\s*:\s*([^|]+)/i', $notes, $m)) {
+        return normalize_item_fulfillment($m[1]);
+    }
+    return null;
+}
+
+function notes_with_fulfillment(?string $notes, ?string $fulfillment): string {
+    $base = trim((string)$notes);
+    $base = preg_replace('/(?:^|\s*\|\s*)Order type\s*:\s*[^|]*/i', '', $base) ?? $base;
+    $base = trim(preg_replace('/^\s*\|\s*|\s*\|\s*$/', '', $base) ?? '');
+    if ($fulfillment === null || $fulfillment === '') {
+        return $base;
+    }
+    $label = fulfillment_display_label($fulfillment);
+    return $base !== '' ? ($base . ' | Order type: ' . $label) : ('Order type: ' . $label);
+}
+
+function resolve_order_type_from_fulfillments(array $fulfillments, string $fallback = 'dine_in'): string {
+    $hasDine = false;
+    $hasTake = false;
+    foreach ($fulfillments as $f) {
+        if ($f === 'take_out') {
+            $hasTake = true;
+        } elseif ($f === 'dine_in') {
+            $hasDine = true;
+        }
+    }
+    if ($hasDine && $hasTake) {
+        return 'mixed';
+    }
+    if ($hasTake) {
+        return 'take_out';
+    }
+    if ($hasDine) {
+        return 'dine_in';
+    }
+    return in_array($fallback, ['dine_in', 'take_out', 'mixed'], true) ? $fallback : 'dine_in';
+}
+
 function ensure_order_customer_name_schema(PDO $pdo): void {
     $stmt = $pdo->prepare("SHOW COLUMNS FROM orders LIKE 'customer_name'");
     $stmt->execute();
@@ -200,6 +274,7 @@ if ($m === 'GET') {
     ensure_order_source_schema(db());
     ensure_order_type_schema(db());
     ensure_order_customer_name_schema(db());
+    ensure_order_item_fulfillment_schema(db());
     ensure_order_refund_reason_schema(db());
     ensure_order_discount_schema(db());
     ensure_kitchen_returned_schema(db());
@@ -311,12 +386,14 @@ if ($m === 'GET') {
     // Attach items for each order
     if (!empty($orders)) {
         $ids = implode(',', array_column($orders, 'id'));
+        ensure_order_item_fulfillment_schema(db());
         $items = db()->query(
             "SELECT oi.order_id, oi.menu_item_id, mi.name, oi.quantity, oi.unit_price, oi.subtotal,
                     COALESCE(oi.unit_cost, 0) AS unit_cost,
                     COALESCE(oi.line_cost, 0) AS line_cost,
                     COALESCE(mi.cost_price, 0) AS menu_cost_price,
                     oi.notes,
+                    oi.fulfillment,
                     COALESCE(c.name, '') AS category_name,
                     COALESCE(mi.main_category_id, 0) AS main_category_id,
                     COALESCE(mc.name, '') AS main_category_name
@@ -332,6 +409,11 @@ if ($m === 'GET') {
         $itemMap = [];
         foreach ($items as $item) {
             $item['main_category_id'] = (int)($item['main_category_id'] ?? 0);
+            $fulfillment = normalize_item_fulfillment($item['fulfillment'] ?? null);
+            if ($fulfillment === null) {
+                $fulfillment = fulfillment_from_notes($item['notes'] ?? null);
+            }
+            $item['fulfillment'] = $fulfillment;
             $itemMap[$item['order_id']][] = $item;
         }
         foreach ($orders as &$order) {
@@ -404,7 +486,8 @@ if ($m === 'POST') {
     if (!in_array($orderSource, ['pos', 'kiosk'], true)) $orderSource = 'pos';
 
     $rawOrderType = strtolower(trim((string)($b['order_type'] ?? 'dine_in')));
-    $orderType    = in_array($rawOrderType, ['dine_in', 'take_out'], true) ? $rawOrderType : 'dine_in';
+    $rawOrderType = preg_replace('/[\s-]+/', '_', $rawOrderType) ?? $rawOrderType;
+    $orderType    = in_array($rawOrderType, ['dine_in', 'take_out', 'mixed'], true) ? $rawOrderType : 'dine_in';
 
     $pdo = db();
     // DDL must run outside beginTransaction — implicit commit would leave nothing to commit().
@@ -413,6 +496,7 @@ if ($m === 'POST') {
     ensure_inventory_applicable_menu_variant_schema_orders($pdo);
     ensure_order_inventory_deduction_schema($pdo);
     ensure_order_items_cost_schema($pdo);
+    ensure_order_item_fulfillment_schema($pdo);
     ensure_receipt_token_schema($pdo);
     ensure_kitchen_ticket_schema($pdo);
     ensure_order_number_schema($pdo);
@@ -431,10 +515,22 @@ if ($m === 'POST') {
 
         $grossAmount = 0;
         $itemRows = [];
+        $lineFulfillments = [];
         foreach ($items as $item) {
             $menuId  = (int)$item['menu_item_id'];
             $qty     = max(1, (int)$item['quantity']);
             $notes   = trim($item['notes'] ?? '');
+            $fulfillment = normalize_item_fulfillment($item['fulfillment'] ?? ($item['order_type'] ?? null));
+            if ($fulfillment === null) {
+                $fulfillment = fulfillment_from_notes($notes);
+            }
+            if ($fulfillment === null && $orderType !== 'mixed') {
+                $fulfillment = normalize_item_fulfillment($orderType);
+            }
+            if ($fulfillment === null) {
+                $fulfillment = 'dine_in';
+            }
+            $notes = notes_with_fulfillment($notes, $fulfillment);
 
             // Resolve price from menu + variant notes (matches POS cart pricing).
             $priceRow = $pdo->prepare('SELECT price, description FROM menu_items WHERE id = :id AND is_available = 1');
@@ -448,8 +544,10 @@ if ($m === 'POST') {
             $unitPrice = resolve_menu_item_unit_price($row, $notes, $clientUnitPrice);
             $subtotal  = $unitPrice * $qty;
             $grossAmount += $subtotal;
-            $itemRows[] = [$menuId, $qty, $unitPrice, $subtotal, $notes];
+            $itemRows[] = [$menuId, $qty, $unitPrice, $subtotal, $notes, $fulfillment];
+            $lineFulfillments[] = $fulfillment;
         }
+        $orderType = resolve_order_type_from_fulfillments($lineFulfillments, $orderType);
 
         validate_order_discount_payload($discount);
         $discountLines = normalize_order_discount_lines($b['discount'] ?? null);
@@ -512,10 +610,10 @@ if ($m === 'POST') {
         $stationTicketsPayload = $stationTickets['by_main_id'];
 
         $insItem = $pdo->prepare(
-            'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
-             VALUES (:oid, :mid, :qty, :up, :sub, :unit_cost, :line_cost, :notes)'
+            'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes, fulfillment)
+             VALUES (:oid, :mid, :qty, :up, :sub, :unit_cost, :line_cost, :notes, :fulfillment)'
         );
-        foreach ($itemRows as [$mid, $qty, $up, $sub, $notes]) {
+        foreach ($itemRows as [$mid, $qty, $up, $sub, $notes, $fulfillment]) {
             $costSnapshot = snapshot_order_line_cost($pdo, (int)$mid, (int)$qty, $notes);
             $insItem->execute([
                 ':oid'   => $orderId,
@@ -526,6 +624,7 @@ if ($m === 'POST') {
                 ':unit_cost' => $costSnapshot['unit_cost'],
                 ':line_cost' => $costSnapshot['line_cost'],
                 ':notes' => $notes ?: null,
+                ':fulfillment' => $fulfillment ?: null,
             ]);
         }
 
@@ -615,6 +714,7 @@ if ($m === 'PUT') {
         // and would otherwise leave commit() with "no active transaction".
         if ($action === 'update_cart') {
             ensure_order_items_cost_schema($pdo);
+            ensure_order_item_fulfillment_schema($pdo);
             ensure_kitchen_ticket_schema($pdo);
         }
         $prevStmt = $pdo->prepare(
@@ -656,6 +756,11 @@ if ($m === 'PUT') {
 
                 $grossAmount = 0;
                 $itemRows = [];
+                $lineFulfillments = [];
+                $fallbackOrderType = array_key_exists('order_type', $b)
+                    ? strtolower(trim((string)$b['order_type']))
+                    : 'dine_in';
+                $fallbackOrderType = preg_replace('/[\s-]+/', '_', $fallbackOrderType) ?? $fallbackOrderType;
                 foreach ($items as $item) {
                     $menuId = (int)($item['menu_item_id'] ?? 0);
                     $qty = max(1, (int)($item['quantity'] ?? 1));
@@ -664,6 +769,17 @@ if ($m === 'PUT') {
                         if ($pdo->inTransaction()) $pdo->rollBack();
                         fail('Invalid menu item in cart.');
                     }
+                    $fulfillment = normalize_item_fulfillment($item['fulfillment'] ?? ($item['order_type'] ?? null));
+                    if ($fulfillment === null) {
+                        $fulfillment = fulfillment_from_notes($notes);
+                    }
+                    if ($fulfillment === null && $fallbackOrderType !== 'mixed') {
+                        $fulfillment = normalize_item_fulfillment($fallbackOrderType);
+                    }
+                    if ($fulfillment === null) {
+                        $fulfillment = 'dine_in';
+                    }
+                    $notes = notes_with_fulfillment($notes, $fulfillment);
 
                     $priceRow = $pdo->prepare('SELECT price, description FROM menu_items WHERE id = :id AND is_available = 1');
                     $priceRow->execute([':id' => $menuId]);
@@ -676,7 +792,8 @@ if ($m === 'PUT') {
                     $unitPrice = resolve_menu_item_unit_price($row, $notes, $clientUnitPrice);
                     $subtotal = $unitPrice * $qty;
                     $grossAmount += $subtotal;
-                    $itemRows[] = [$menuId, $qty, $unitPrice, $subtotal, $notes];
+                    $itemRows[] = [$menuId, $qty, $unitPrice, $subtotal, $notes, $fulfillment];
+                    $lineFulfillments[] = $fulfillment;
                 }
 
                 $discount = normalize_order_discount_payload($b['discount'] ?? null);
@@ -704,10 +821,10 @@ if ($m === 'PUT') {
                 $pdo->prepare('DELETE FROM order_items WHERE order_id = :id')->execute([':id' => $id]);
 
                 $insItem = $pdo->prepare(
-                    'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes)
-                     VALUES (:oid, :mid, :qty, :up, :sub, :unit_cost, :line_cost, :notes)'
+                    'INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, unit_cost, line_cost, notes, fulfillment)
+                     VALUES (:oid, :mid, :qty, :up, :sub, :unit_cost, :line_cost, :notes, :fulfillment)'
                 );
-                foreach ($itemRows as [$mid, $qty, $up, $sub, $notes]) {
+                foreach ($itemRows as [$mid, $qty, $up, $sub, $notes, $fulfillment]) {
                     $costSnapshot = snapshot_order_line_cost($pdo, (int)$mid, (int)$qty, $notes);
                     $insItem->execute([
                         ':oid'   => $id,
@@ -718,15 +835,14 @@ if ($m === 'PUT') {
                         ':unit_cost' => $costSnapshot['unit_cost'],
                         ':line_cost' => $costSnapshot['line_cost'],
                         ':notes' => $notes ?: null,
+                        ':fulfillment' => $fulfillment ?: null,
                     ]);
                 }
 
                 $customerName = array_key_exists('customer_name', $b)
                     ? trim((string)$b['customer_name'])
                     : null;
-                $orderType = array_key_exists('order_type', $b)
-                    ? trim((string)$b['order_type'])
-                    : null;
+                $orderType = resolve_order_type_from_fulfillments($lineFulfillments, $fallbackOrderType);
 
                 $sets = [
                     'discount_type = :dtype',

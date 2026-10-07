@@ -2066,6 +2066,82 @@
                             '<div class="shift-archive-notes">' + escArc(notesText) + '</div>' +
                         '</div>'
                     );
+                })() +
+                (function () {
+                    function wasteReasonText(entry) {
+                        var notes = String(entry && entry.notes || '').trim();
+                        var reason = String(entry && entry.reason || '').trim();
+                        var fromNotes = notes.match(/(?:^|\|\s*)Reason:\s*(.+)$/i);
+                        if (fromNotes && fromNotes[1]) return fromNotes[1].trim();
+                        if (notes && !/^Menu waste entry/i.test(notes) && !/^Waste breakdown/i.test(notes)) {
+                            return notes;
+                        }
+                        if (reason) return reason.replace(/_/g, ' ');
+                        return 'No reason provided';
+                    }
+                    var wasteEntries = Array.isArray(snap.waste_entries) ? snap.waste_entries : [];
+                    var wasteRows = wasteEntries.map(function (w) {
+                        var reason = wasteReasonText(w);
+                        var item = String((w && w.item_name) || 'Item');
+                        var amount = pesoArc(w && w.estimated_value);
+                        return (
+                            '<div class="shift-archive-reason">' +
+                                '<div class="shift-archive-reason__main">' +
+                                    '<span class="shift-archive-reason__label">' + escArc(item) + '</span>' +
+                                    '<strong>' + amount + '</strong>' +
+                                '</div>' +
+                                '<p class="shift-archive-reason__text">' + escArc(reason) + '</p>' +
+                            '</div>'
+                        );
+                    }).join('');
+
+                    var refunds = Array.isArray(snap.refunds) ? snap.refunds.slice() : [];
+                    if (!refunds.length && Array.isArray(snap.cash_refunds)) {
+                        refunds = snap.cash_refunds.map(function (cr) {
+                            return {
+                                order_number: cr && cr.order_number,
+                                amount: cr && cr.amount,
+                                reason: (cr && (cr.reason || cr.refund_reason)) || '',
+                                payment_method: (cr && cr.payment_method) || 'cash'
+                            };
+                        });
+                    }
+                    var refundRows = refunds.filter(function (r) {
+                        return String((r && (r.reason || r.refund_reason)) || '').trim() !== '';
+                    }).map(function (r) {
+                        var reason = String((r && (r.reason || r.refund_reason)) || '').trim();
+                        var orderLabel = r && r.order_number
+                            ? ('Order #' + r.order_number)
+                            : 'Refund';
+                        var pay = String((r && r.payment_method) || '').toLowerCase();
+                        if (pay) orderLabel += ' · ' + pay.toUpperCase();
+                        return (
+                            '<div class="shift-archive-reason">' +
+                                '<div class="shift-archive-reason__main">' +
+                                    '<span class="shift-archive-reason__label">' + escArc(orderLabel) + '</span>' +
+                                    '<strong>' + pesoArc(r && r.amount) + '</strong>' +
+                                '</div>' +
+                                '<p class="shift-archive-reason__text">' + escArc(reason) + '</p>' +
+                            '</div>'
+                        );
+                    }).join('');
+
+                    var blocks = '';
+                    if (wasteRows) {
+                        blocks +=
+                            '<div class="shift-archive-drawer shift-archive-drawer--reasons">' +
+                                '<h4 class="shift-archive-drawer__title">Waste Reasons</h4>' +
+                                wasteRows +
+                            '</div>';
+                    }
+                    if (refundRows) {
+                        blocks +=
+                            '<div class="shift-archive-drawer shift-archive-drawer--reasons">' +
+                                '<h4 class="shift-archive-drawer__title">Refund Reasons</h4>' +
+                                refundRows +
+                            '</div>';
+                    }
+                    return blocks;
                 })();
         }
         function selectArchive(id, btn) {

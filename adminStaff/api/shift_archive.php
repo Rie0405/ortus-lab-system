@@ -33,7 +33,138 @@ function shift_archive_decode_snapshot($raw): array
     return is_array($decoded) ? $decoded : [];
 }
 
-function shift_archive_row(?array $row, bool $includeSnapshot = true): ?array
+/**
+ * Fill waste/refund reason lists from live tables when older snapshots omit them.
+ */
+function shift_archive_enrich_reasons(PDO $pdo, array $archiveRow, array $snapshot): array
+{
+    $staffId = isset($archiveRow['staff_id']) && $archiveRow['staff_id'] !== null
+        ? (int)$archiveRow['staff_id']
+        : 0;
+    $shiftDate = (string)($archiveRow['shift_date'] ?? '');
+    if ($staffId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $shiftDate)) {
+        return $snapshot;
+    }
+
+    $startedMs = isset($snapshot['shift_started_ms']) ? (int)$snapshot['shift_started_ms'] : 0;
+    $startedAt = $startedMs > 0 ? date('Y-m-d H:i:s', (int)floor($startedMs / 1000)) : null;
+
+    $wasteList = $snapshot['waste_entries'] ?? null;
+    if (!is_array($wasteList) || count($wasteList) === 0) {
+        try {
+            $sql = 'SELECT
+                        w.id, w.quantity, w.reason, w.notes, w.estimated_value, w.logged_at,
+                        COALESCE(i.item_name, m.name, "Unknown Item") AS item_name
+                      FROM waste_log w
+                      LEFT JOIN inventory_items i ON i.id = w.inventory_item_id
+                      LEFT JOIN menu_items m ON m.id = w.menu_item_id
+                     WHERE w.parent_waste_id IS NULL
+                       AND w.staff_id = :sid
+                       AND DATE(w.logged_at) = :d';
+            $params = [':sid' => $staffId, ':d' => $shiftDate];
+            if ($startedAt) {
+                $sql .= ' AND w.logged_at >= :started';
+                $params[':started'] = $startedAt;
+            }
+            $sql .= ' ORDER BY w.logged_at ASC, w.id ASC';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $wasteList = [];
+            foreach ($stmt->fetchAll() ?: [] as $w) {
+                $wasteList[] = [
+                    'id' => (int)($w['id'] ?? 0),
+                    'item_name' => (string)($w['item_name'] ?? 'Unknown Item'),
+                    'quantity' => (float)($w['quantity'] ?? 0),
+                    'reason' => (string)($w['reason'] ?? ''),
+                    'notes' => $w['notes'] !== null ? (string)$w['notes'] : '',
+                    'estimated_value' => (float)($w['estimated_value'] ?? 0),
+                    'logged_at' => $w['logged_at'] ?? null,
+                ];
+            }
+            $snapshot['waste_entries'] = $wasteList;
+        } catch (Throwable $e) {
+            // Best-effort enrichment.
+        }
+    }
+
+    $refunds = $snapshot['refunds'] ?? null;
+    $cashRefunds = is_array($snapshot['cash_refunds'] ?? null) ? $snapshot['cash_refunds'] : [];
+    $hasRefundReasons = is_array($refunds) && count($refunds) > 0;
+    if (!$hasRefundReasons && count($cashRefunds) > 0) {
+        $mapped = [];
+        foreach ($cashRefunds as $cr) {
+            if (!is_array($cr)) {
+                continue;
+            }
+            $reason = trim((string)($cr['reason'] ?? $cr['refund_reason'] ?? ''));
+            if ($reason === '') {
+                continue;
+            }
+            $mapped[] = [
+                'order_id' => isset($cr['order_id']) ? (int)$cr['order_id'] : null,
+                'order_number' => (string)($cr['order_number'] ?? ''),
+                'amount' => (float)($cr['amount'] ?? 0),
+                'reason' => $reason,
+                'payment_method' => (string)($cr['payment_method'] ?? 'cash'),
+                'created_at' => $cr['created_at'] ?? null,
+            ];
+        }
+        if (count($mapped) > 0) {
+            $snapshot['refunds'] = $mapped;
+            $hasRefundReasons = true;
+        }
+    }
+
+    if (!$hasRefundReasons) {
+        try {
+            // Ensure column exists (same helper as orders API when available).
+            try {
+                $col = $pdo->query("SHOW COLUMNS FROM orders LIKE 'refund_reason'");
+                if ($col && !$col->fetch()) {
+                    $pdo->exec(
+                        'ALTER TABLE orders ADD COLUMN refund_reason VARCHAR(200) NULL DEFAULT NULL AFTER customer_name'
+                    );
+                }
+            } catch (Throwable $e) {
+                // Ignore schema probe failures.
+            }
+
+            $sql = 'SELECT id, order_number, total_amount, refund_reason, payment_method, created_at
+                      FROM orders
+                     WHERE status = \'voided\'
+                       AND staff_id = :sid
+                       AND DATE(created_at) = :d
+                       AND refund_reason IS NOT NULL
+                       AND TRIM(refund_reason) <> \'\'';
+            $params = [':sid' => $staffId, ':d' => $shiftDate];
+            if ($startedAt) {
+                $sql .= ' AND created_at >= :started';
+                $params[':started'] = $startedAt;
+            }
+            $sql .= ' ORDER BY created_at ASC, id ASC';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $mapped = [];
+            foreach ($stmt->fetchAll() ?: [] as $o) {
+                $mapped[] = [
+                    'order_id' => (int)($o['id'] ?? 0),
+                    'order_number' => (string)($o['order_number'] ?? ''),
+                    'amount' => (float)($o['total_amount'] ?? 0),
+                    'reason' => trim((string)($o['refund_reason'] ?? '')),
+                    'payment_method' => (string)($o['payment_method'] ?? 'cash'),
+                    'created_at' => $o['created_at'] ?? null,
+                ];
+            }
+            $snapshot['refunds'] = $mapped;
+        } catch (Throwable $e) {
+            // Best-effort enrichment.
+        }
+    }
+
+    return $snapshot;
+}
+
+function shift_archive_row(?array $row, bool $includeSnapshot = true, ?PDO $pdo = null): ?array
 {
     if (!$row) {
         return null;
@@ -47,7 +178,11 @@ function shift_archive_row(?array $row, bool $includeSnapshot = true): ?array
         'created_at' => (string)($row['created_at'] ?? ''),
     ];
     if ($includeSnapshot) {
-        $out['snapshot'] = shift_archive_decode_snapshot($row['snapshot_json'] ?? null);
+        $snap = shift_archive_decode_snapshot($row['snapshot_json'] ?? null);
+        if ($pdo instanceof PDO) {
+            $snap = shift_archive_enrich_reasons($pdo, $row, $snap);
+        }
+        $out['snapshot'] = $snap;
     } else {
         $snap = shift_archive_decode_snapshot($row['snapshot_json'] ?? null);
         $summary = is_array($snap['summary'] ?? null) ? $snap['summary'] : [];
@@ -136,7 +271,7 @@ if ($m === 'GET') {
         if (!$row) {
             fail('Archive not found.', 404);
         }
-        ok(['archive' => shift_archive_row($row, true)]);
+        ok(['archive' => shift_archive_row($row, true, $pdo)]);
     }
 
     $limit = (int)($_GET['limit'] ?? 50);
@@ -236,7 +371,7 @@ if ($m === 'POST') {
     $fetch->execute([':id' => $newId]);
     ok([
         'message' => 'Shift archived.',
-        'archive' => shift_archive_row($fetch->fetch() ?: null, true),
+        'archive' => shift_archive_row($fetch->fetch() ?: null, true, $pdo),
     ], 201);
 }
 

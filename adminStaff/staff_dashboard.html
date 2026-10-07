@@ -833,6 +833,10 @@
                             <span>GCash Ref. No.</span>
                             <strong id="order-refund-gcash-ref">—</strong>
                         </div>
+                        <div class="order-refund-summary__row" id="order-refund-discount-row" hidden>
+                            <span id="order-refund-discount-label">Discount</span>
+                            <strong id="order-refund-discount">—</strong>
+                        </div>
                         <div class="order-refund-summary__row order-refund-summary__row--total">
                             <span>Refund Amount</span>
                             <strong id="order-refund-amount">₱0.00</strong>
@@ -878,6 +882,10 @@
                         <div class="order-refund-summary__row" id="order-refund-confirm-gcash-ref-row" hidden>
                             <span>GCash Ref. No.</span>
                             <strong id="order-refund-confirm-gcash-ref">—</strong>
+                        </div>
+                        <div class="order-refund-summary__row" id="order-refund-confirm-discount-row" hidden>
+                            <span id="order-refund-confirm-discount-label">Discount</span>
+                            <strong id="order-refund-confirm-discount">—</strong>
                         </div>
                         <div class="order-refund-summary__row">
                             <span>Refund Reason</span>
@@ -977,7 +985,7 @@
                     </label>
                     <label class="cash-mgmt-modal__field" id="queue-discount-id-wrap">
                         <span class="cash-mgmt-modal__label">PWD / Senior ID Number</span>
-                        <input type="text" class="cash-mgmt-modal__text" id="queue-discount-id" maxlength="80" placeholder="ID from kiosk or ID card">
+                        <input type="text" class="cash-mgmt-modal__text" id="queue-discount-id" maxlength="80" placeholder="ID from kiosk or ID card" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
                     </label>
                     <p class="cash-mgmt-modal__error" id="queue-discount-error" hidden role="alert"></p>
                     <div class="order-refund-confirm-actions">
@@ -1011,7 +1019,7 @@
                     </label>
                     <label class="cash-mgmt-modal__field" id="pos-discount-modal-id-wrap">
                         <span class="cash-mgmt-modal__label">ID Number</span>
-                        <input type="text" class="cash-mgmt-modal__text" id="pos-discount-modal-id" maxlength="80" placeholder="Senior/PWD ID">
+                        <input type="text" class="cash-mgmt-modal__text" id="pos-discount-modal-id" maxlength="80" placeholder="Senior/PWD ID" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
                     </label>
                     <p class="cash-mgmt-modal__error" id="pos-discount-modal-error" hidden role="alert"></p>
                     <button type="button" class="cash-mgmt-modal__submit order-refund-submit" id="pos-discount-modal-submit">APPLY DISCOUNT</button>
@@ -1450,6 +1458,44 @@
                 return String(id || "").trim().toUpperCase().replace(/\s+/g, "");
             }
 
+            function digitsOnlyDiscountId(value) {
+                return String(value || "").replace(/\D+/g, "");
+            }
+
+            function bindDiscountIdDigitsOnly(input) {
+                if (!input || input.dataset.digitsOnlyBound === "1") return;
+                input.dataset.digitsOnlyBound = "1";
+                input.addEventListener("input", function () {
+                    var cleaned = digitsOnlyDiscountId(input.value);
+                    if (input.value !== cleaned) input.value = cleaned;
+                });
+                input.addEventListener("paste", function (e) {
+                    e.preventDefault();
+                    var text = "";
+                    try {
+                        text = (e.clipboardData || window.clipboardData).getData("text") || "";
+                    } catch (err) {
+                        text = "";
+                    }
+                    var start = input.selectionStart != null ? input.selectionStart : input.value.length;
+                    var end = input.selectionEnd != null ? input.selectionEnd : input.value.length;
+                    var next = digitsOnlyDiscountId(
+                        input.value.slice(0, start) + text + input.value.slice(end)
+                    );
+                    if (input.maxLength > 0) next = next.slice(0, input.maxLength);
+                    input.value = next;
+                });
+                input.addEventListener("keydown", function (e) {
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    var key = e.key || "";
+                    if (key.length === 1 && !/[0-9]/.test(key)) {
+                        e.preventDefault();
+                    }
+                });
+            }
+            window.digitsOnlyDiscountId = digitsOnlyDiscountId;
+            window.bindDiscountIdDigitsOnly = bindDiscountIdDigitsOnly;
+
             function getLineDiscount(bucket, idx) {
                 for (var i = 0; i < posLineDiscounts.length; i++) {
                     var d = posLineDiscounts[i];
@@ -1775,7 +1821,7 @@
                     posDiscountModalName.value = (existing && existing.customer_name) || getPosCustomerName() || "";
                 }
                 if (posDiscountModalId) {
-                    posDiscountModalId.value = (existing && existing.id_number) || "";
+                    posDiscountModalId.value = digitsOnlyDiscountId((existing && existing.id_number) || "");
                 }
                 syncPosDiscountModalIdFields();
                 showPosDiscountModalError("");
@@ -1828,7 +1874,8 @@
                 }
 
                 var customerName = posDiscountModalName ? posDiscountModalName.value.trim() : "";
-                var idNumber = posDiscountModalId ? posDiscountModalId.value.trim() : "";
+                var idNumber = posDiscountModalId ? digitsOnlyDiscountId(posDiscountModalId.value) : "";
+                if (posDiscountModalId) posDiscountModalId.value = idNumber;
                 if (type === "senior" || type === "pwd") {
                     if (!customerName) {
                         showPosDiscountModalError("Customer name is required.");
@@ -2706,8 +2753,12 @@
                                     return;
                                 }
                                 if (posDiscountSelectMode) {
-                                    setPosDiscountSelectMode(false);
+                                    // Cancel Select: drop any line discounts applied in this pick session.
+                                    clearAllPosDiscounts();
                                     selectedCategoryId = getDefaultMenuCategoryId();
+                                    setPosDiscountSelectMode(false);
+                                    syncDiscountInputs();
+                                    updateTotals();
                                 } else {
                                     selectedCategoryId = POS_DISCOUNT_VIEW;
                                     setPosDiscountSelectMode(true);
@@ -3265,6 +3316,7 @@
             if (posDiscountModalType) {
                 posDiscountModalType.addEventListener("change", syncPosDiscountModalIdFields);
             }
+            if (posDiscountModalId) bindDiscountIdDigitsOnly(posDiscountModalId);
             if (posDiscountModalClose) posDiscountModalClose.addEventListener("click", closePosDiscountDetailsModal);
             if (posDiscountModalSubmit) posDiscountModalSubmit.addEventListener("click", submitPosDiscountDetails);
             if (posDiscountModal) {
@@ -3279,8 +3331,11 @@
                     return;
                 }
                 if (posDiscountSelectMode) {
+                    clearAllPosDiscounts();
                     selectedCategoryId = getDefaultMenuCategoryId();
                     setPosDiscountSelectMode(false);
+                    syncDiscountInputs();
+                    updateTotals();
                 }
             });
 
@@ -3814,14 +3869,80 @@
                 }
             }
 
-            function buildPosPayItemRows(lines) {
-                return (lines || []).map(function (item) {
+            function findPayLineDiscount(bucket, idx) {
+                var lines = (posCartData && posCartData.discount && Array.isArray(posCartData.discount.lines))
+                    ? posCartData.discount.lines
+                    : [];
+                for (var i = 0; i < lines.length; i++) {
+                    var d = lines[i];
+                    if (!d) continue;
+                    if (String(d.bucket || "") === String(bucket || "") && parseInt(d.idx, 10) === idx) {
+                        return d;
+                    }
+                }
+                return null;
+            }
+
+            function payLineDiscountPercent(disc) {
+                if (!disc) return 0;
+                var type = String(disc.type || "").toLowerCase();
+                if (type === "custom") {
+                    return Math.max(0, Math.min(100, Math.round(Number(disc.rate) || 0)));
+                }
+                if (type === "senior" || type === "pwd") return 20;
+                return 0;
+            }
+
+            function payLineDiscountTypeLabel(disc) {
+                if (!disc) return "";
+                var type = String(disc.type || "").toLowerCase();
+                if (type === "senior") return "Senior Citizen ID";
+                if (type === "pwd") return "PWD ID";
+                if (type === "custom") {
+                    var pct = payLineDiscountPercent(disc);
+                    return pct > 0 ? ("Custom discount (" + pct + "%)") : "Custom discount";
+                }
+                return "";
+            }
+
+            function buildPosPayItemRows(lines, bucket) {
+                return (lines || []).map(function (item, idx) {
                     var qty = parseInt(item.quantity, 10) || 1;
-                    var lineTotal = (Number(item.price) || 0) * qty;
+                    var unit = Number(item.price) || 0;
+                    var lineTotal = Math.round(unit * qty * 100) / 100;
+                    var disc = findPayLineDiscount(bucket, idx);
+                    var pct = payLineDiscountPercent(disc);
+                    var hasDiscount = !!disc && pct > 0;
+                    var typeLabel = payLineDiscountTypeLabel(disc);
+                    var nameHtml = '<span class="pay-order-summary-name">' + escapeHtml(qty + "x " + (item.name || "Item")) + '</span>';
+                    var amtHtml = '<span class="pay-order-summary-amt">' + formatPHP(lineTotal) + '</span>';
+                    var rowCls = "pay-order-summary-row";
+                    if (hasDiscount) {
+                        var unitDisc = Math.round(unit * (pct / 100) * 100) / 100;
+                        var discountedTotal = Math.round(Math.max(0, lineTotal - unitDisc) * 100) / 100;
+                        rowCls += " pay-order-summary-row--discounted";
+                        if (typeLabel) {
+                            nameHtml =
+                                '<span class="pay-order-summary-name-wrap">' +
+                                nameHtml +
+                                '<span class="pay-order-summary-discount-type">' + escapeHtml(typeLabel) + '</span>' +
+                                '</span>';
+                        }
+                        amtHtml =
+                            '<span class="pay-order-summary-amt-stack">' +
+                            '<span class="pay-order-summary-amt pay-order-summary-amt--orig">' +
+                            formatPHP(lineTotal) +
+                            ' <span class="pay-order-summary-amt__pct">(' + pct + '%)</span>' +
+                            '</span>' +
+                            '<span class="pay-order-summary-amt pay-order-summary-amt--discounted">' +
+                            formatPHP(discountedTotal) +
+                            '</span>' +
+                            '</span>';
+                    }
                     return (
-                        '<div class="pay-order-summary-row">' +
-                        '<span class="pay-order-summary-name">' + escapeHtml(qty + "x " + (item.name || "Item")) + '</span>' +
-                        '<span class="pay-order-summary-amt">' + formatPHP(lineTotal) + '</span>' +
+                        '<div class="' + rowCls + '">' +
+                        nameHtml +
+                        amtHtml +
                         '</div>'
                     );
                 }).join("");
@@ -3829,6 +3950,7 @@
 
             function renderPosPayOrderSummary(detail) {
                 if (!payOrderItemsSummary) return;
+                posCartData = detail || posCartData;
                 var buckets = detail && detail.cartBuckets;
                 var dineLines = buckets && buckets.dine_in ? buckets.dine_in : [];
                 var takeLines = buckets && buckets.take_out ? buckets.take_out : [];
@@ -3843,7 +3965,7 @@
                     payOrderItemsSummary.hidden = false;
                     payOrderItemsSummary.innerHTML =
                         '<div class="pay-order-summary-card">' +
-                        '<div class="pay-order-summary-group__items">' + buildPosPayItemRows(flat) + '</div>' +
+                        '<div class="pay-order-summary-group__items">' + buildPosPayItemRows(flat, "dine_in") + '</div>' +
                         '</div>';
                     return;
                 }
@@ -3852,14 +3974,14 @@
                     html +=
                         '<div class="pay-order-summary-group">' +
                         '<p class="pay-order-summary-group__label">Orders to dine in:</p>' +
-                        '<div class="pay-order-summary-group__items">' + buildPosPayItemRows(dineLines) + '</div>' +
+                        '<div class="pay-order-summary-group__items">' + buildPosPayItemRows(dineLines, "dine_in") + '</div>' +
                         '</div>';
                 }
                 if (takeLines.length) {
                     html +=
                         '<div class="pay-order-summary-group pay-order-summary-group--takeout">' +
                         '<p class="pay-order-summary-group__label pay-order-summary-group__label--takeout">Orders to take out:</p>' +
-                        '<div class="pay-order-summary-group__items">' + buildPosPayItemRows(takeLines) + '</div>' +
+                        '<div class="pay-order-summary-group__items">' + buildPosPayItemRows(takeLines, "take_out") + '</div>' +
                         '</div>';
                 }
                 html += '</div>';
@@ -4272,14 +4394,20 @@
                 });
             }
 
-            function mapPosCartLinesForSubmit(lines) {
+            function mapPosCartLinesForSubmit(lines, fulfillment) {
+                var lineFulfillment = fulfillment === "take_out" ? "take_out" : (fulfillment === "dine_in" ? "dine_in" : null);
                 return (lines || []).map(function (x) {
-                    return {
+                    var f = x && x.fulfillment
+                        ? (String(x.fulfillment).toLowerCase() === "take_out" ? "take_out" : "dine_in")
+                        : lineFulfillment;
+                    var row = {
                         menu_item_id: x.menu_item_id,
                         quantity: x.quantity,
                         notes: x.notes || "",
                         unit_price: x.price
                     };
+                    if (f) row.fulfillment = f;
+                    return row;
                 });
             }
 
@@ -4381,54 +4509,54 @@
                 }
 
                 if (posCartData) {
-                    var jobs = [];
+                    var dineLines = [];
+                    var takeLines = [];
                     if (posCartData.cartBuckets) {
-                        if (posCartData.cartBuckets.dine_in && posCartData.cartBuckets.dine_in.length) {
-                            jobs.push({ order_type: "dine_in", lines: posCartData.cartBuckets.dine_in });
-                        }
-                        if (posCartData.cartBuckets.take_out && posCartData.cartBuckets.take_out.length) {
-                            jobs.push({ order_type: "take_out", lines: posCartData.cartBuckets.take_out });
-                        }
+                        dineLines = (posCartData.cartBuckets.dine_in || []).map(function (x) {
+                            return Object.assign({}, x, { fulfillment: "dine_in" });
+                        });
+                        takeLines = (posCartData.cartBuckets.take_out || []).map(function (x) {
+                            return Object.assign({}, x, { fulfillment: "take_out" });
+                        });
                     }
-                    if (!jobs.length) {
-                        var fallbackLines = posCartData.cart || [];
-                        if (!fallbackLines.length) { closePayModal(); return; }
-                        jobs.push({ order_type: currentFulfillment, lines: fallbackLines });
+                    var mergedLines = dineLines.concat(takeLines);
+                    if (!mergedLines.length) {
+                        mergedLines = (posCartData.cart || []).map(function (x) {
+                            return Object.assign({}, x, {
+                                fulfillment: currentFulfillment === "take_out" ? "take_out" : "dine_in"
+                            });
+                        });
                     }
+                    if (!mergedLines.length) { closePayModal(); return; }
 
-                    var expectedJobs = 0;
+                    var orderType = (dineLines.length && takeLines.length)
+                        ? "mixed"
+                        : (takeLines.length ? "take_out" : (dineLines.length ? "dine_in" : currentFulfillment));
+                    var payload = buildPosOrderPayload(orderType, mergedLines, true);
+                    if (!payload.items.length) { closePayModal(); return; }
+
                     var recordedCount = 0;
                     var lastError = "";
                     var restockOnly = false;
-                    var chain = Promise.resolve();
-                    jobs.forEach(function (job, idx) {
-                        chain = chain.then(function () {
-                            var payload = buildPosOrderPayload(job.order_type, job.lines, idx === 0);
-                            if (!payload.items.length) return null;
-                            expectedJobs += 1;
-                            return postPosOrderWithShortageHandling(payload).then(function (res) {
-                                if (res && res.restocked) {
-                                    restockOnly = true;
-                                    return res;
-                                }
-                                if (typeof window.isOrderFullyRecorded === "function"
-                                    ? window.isOrderFullyRecorded(res)
-                                    : (res && res.success && res.order_id && res.order_number &&
-                                        (res.kitchen_ticket_number || res.bar_ticket_number))) {
-                                    recordedCount += 1;
-                                } else if (res && res.error) {
-                                    lastError = String(res.error || "");
-                                }
-                                return res;
-                            });
-                        });
-                    });
-                    chain.then(function () {
+                    postPosOrderWithShortageHandling(payload).then(function (res) {
+                        if (res && res.restocked) {
+                            restockOnly = true;
+                            return;
+                        }
+                        if (typeof window.isOrderFullyRecorded === "function"
+                            ? window.isOrderFullyRecorded(res)
+                            : (res && res.success && res.order_id && res.order_number &&
+                                (res.kitchen_ticket_number || res.bar_ticket_number))) {
+                            recordedCount = 1;
+                        } else if (res && res.error) {
+                            lastError = String(res.error || "");
+                        }
+                    }).then(function () {
                         // After restock: keep pay modal open so staff can complete payment again.
                         if (restockOnly && recordedCount === 0) {
                             return;
                         }
-                        var allRecorded = expectedJobs > 0 && recordedCount === expectedJobs;
+                        var allRecorded = recordedCount === 1;
                         if (recordedCount > 0) {
                             if (window.posOrderCompleted) window.posOrderCompleted();
                             closePayModal();
@@ -4438,7 +4566,7 @@
                         }
                         if (!allRecorded && lastError) {
                             alert(lastError);
-                        } else if (!allRecorded && expectedJobs > 0) {
+                        } else if (!allRecorded) {
                             alert("Transaction not successful. Order was not fully recorded.");
                         }
                     }).catch(function (err) {
@@ -5392,6 +5520,9 @@
         var refundCustomerNameEl = document.getElementById('order-refund-customer-name');
         var refundGcashRefRow = document.getElementById('order-refund-gcash-ref-row');
         var refundGcashRefEl = document.getElementById('order-refund-gcash-ref');
+        var refundDiscountRow = document.getElementById('order-refund-discount-row');
+        var refundDiscountLabelEl = document.getElementById('order-refund-discount-label');
+        var refundDiscountEl = document.getElementById('order-refund-discount');
         var refundAmountEl = document.getElementById('order-refund-amount');
         var refundReasonInput = document.getElementById('order-refund-reason');
         var selectedRefundOrder = null;
@@ -5409,6 +5540,9 @@
         var refundConfirmCustomerNameEl = document.getElementById('order-refund-confirm-customer-name');
         var refundConfirmGcashRefRow = document.getElementById('order-refund-confirm-gcash-ref-row');
         var refundConfirmGcashRefEl = document.getElementById('order-refund-confirm-gcash-ref');
+        var refundConfirmDiscountRow = document.getElementById('order-refund-confirm-discount-row');
+        var refundConfirmDiscountLabelEl = document.getElementById('order-refund-confirm-discount-label');
+        var refundConfirmDiscountEl = document.getElementById('order-refund-confirm-discount');
         var refundConfirmReasonEl = document.getElementById('order-refund-confirm-reason');
         var refundConfirmAmountEl = document.getElementById('order-refund-confirm-amount');
 
@@ -5478,6 +5612,27 @@
                 label += " · ID " + idNumber;
             }
             return label;
+        }
+
+        function getOrderDiscountAmount(order) {
+            var discount = toMoney(order && order.discount_amount);
+            if (discount > 0) return discount;
+            var gross = toMoney(order && order.gross_amount);
+            var total = toMoney(order && order.total_amount);
+            if (gross > total) return toMoney(gross - total);
+            return 0;
+        }
+
+        function fillRefundDiscountSummary(order, rowEl, labelEl, amountEl) {
+            var discount = getOrderDiscountAmount(order);
+            var indicator = formatAppliedDiscountIndicator(order);
+            var hasDiscount = discount > 0 || !!indicator;
+            if (rowEl) rowEl.hidden = !hasDiscount;
+            if (!hasDiscount) return;
+            if (labelEl) labelEl.textContent = indicator ? ('Discount · ' + indicator) : 'Discount';
+            if (amountEl) {
+                amountEl.textContent = discount > 0 ? ('-' + peso(discount)) : '—';
+            }
         }
 
         function orderHasPendingDiscountRequest(order) {
@@ -6689,7 +6844,8 @@
             }
             if (!orderTypeLabel) {
                 var rawType = String(order && order.order_type || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-                if (rawType === 'take_out' || rawType === 'takeout') orderTypeLabel = 'Take out';
+                if (rawType === 'mixed') orderTypeLabel = 'Dine in + Take out';
+                else if (rawType === 'take_out' || rawType === 'takeout') orderTypeLabel = 'Take out';
                 else if (rawType === 'pickup' || rawType === 'pick_up') orderTypeLabel = 'Pick up';
                 else if (rawType === 'dine_in' || rawType === 'dinein') orderTypeLabel = 'Dine in';
             }
@@ -6705,12 +6861,14 @@
             targetEl.innerHTML = items.map(function (item) {
                 var qty = parseInt(item && item.quantity, 10) || 0;
                 var name = esc(item && item.name || 'Item');
-                var notes = item && item.notes ? '<span class="order-refund-item__notes">' + esc(item.notes) + '</span>' : '';
+                var cleanNotes = notesWithoutOrderType(item && item.notes);
+                var notes = cleanNotes ? '<span class="order-refund-item__notes">' + esc(cleanNotes) + '</span>' : '';
+                var badge = itemFulfillmentBadgeHtml(item);
                 return (
                     '<div class="order-refund-item">' +
                     '<div class="order-refund-item__main">' +
                     '<span class="order-refund-item__qty">' + qty + '×</span>' +
-                    '<span class="order-refund-item__name">' + name + notes + '</span>' +
+                    '<span class="order-refund-item__name">' + name + badge + notes + '</span>' +
                     '</div>' +
                     '<span class="order-refund-item__price">' + peso(lineItemSubtotal(item)) + '</span>' +
                     '</div>'
@@ -6739,6 +6897,7 @@
             if (refundCustomerNameEl) refundCustomerNameEl.textContent = customerName || '—';
             if (refundGcashRefRow) refundGcashRefRow.hidden = !isGcash;
             if (refundGcashRefEl) refundGcashRefEl.textContent = gcashRef || '—';
+            fillRefundDiscountSummary(order, refundDiscountRow, refundDiscountLabelEl, refundDiscountEl);
             if (refundAmountEl) refundAmountEl.textContent = peso(refundAmount);
             if (refundReasonInput) refundReasonInput.value = '';
             refundModal.classList.add('is-visible');
@@ -6772,6 +6931,12 @@
             if (refundConfirmCustomerNameEl) refundConfirmCustomerNameEl.textContent = customerName || '—';
             if (refundConfirmGcashRefRow) refundConfirmGcashRefRow.hidden = !isGcash;
             if (refundConfirmGcashRefEl) refundConfirmGcashRefEl.textContent = gcashRef || '—';
+            fillRefundDiscountSummary(
+                order,
+                refundConfirmDiscountRow,
+                refundConfirmDiscountLabelEl,
+                refundConfirmDiscountEl
+            );
             if (refundConfirmReasonEl) refundConfirmReasonEl.textContent = pendingRefundReason || '—';
             if (refundConfirmAmountEl) refundConfirmAmountEl.textContent = peso(refundAmount);
             refundConfirmModal.classList.add('is-visible');
@@ -7066,7 +7231,13 @@
             }
             if (queueDiscountId) {
                 var existingId = String(order.discount_id_number || '').trim();
-                queueDiscountId.value = existingId.toUpperCase() === 'KIOSK-REQUEST' ? '' : existingId;
+                if (existingId.toUpperCase() === 'KIOSK-REQUEST') {
+                    queueDiscountId.value = '';
+                } else if (typeof window.digitsOnlyDiscountId === 'function') {
+                    queueDiscountId.value = window.digitsOnlyDiscountId(existingId);
+                } else {
+                    queueDiscountId.value = existingId.replace(/\D+/g, '');
+                }
             }
             syncQueueDiscountFields();
             showQueueModalError(queueDiscountError, '');
@@ -7243,6 +7414,10 @@
                 }
             }
             var idNumber = queueDiscountId ? String(queueDiscountId.value || '').trim() : '';
+            idNumber = typeof window.digitsOnlyDiscountId === 'function'
+                ? window.digitsOnlyDiscountId(idNumber)
+                : idNumber.replace(/\D+/g, '');
+            if (queueDiscountId) queueDiscountId.value = idNumber;
             var customerName = queueDiscountName ? String(queueDiscountName.value || '').trim() : '';
             if ((type === 'senior' || type === 'pwd') && !idNumber) {
                 showQueueModalError(queueDiscountError, 'PWD / Senior ID number is required.');
@@ -7964,6 +8139,8 @@
                 var display = getOrderTypeDisplayFromOrder(order);
                 raw = String(display || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
             }
+            // Mixed dine-in + take-out stays one receipt/card under dine-in partition.
+            if (raw === 'mixed' || /dine.+take/.test(raw)) return 'dine_in';
             if (raw === 'take_out' || raw === 'takeout') return 'take_out';
             if (raw === 'pickup' || raw === 'pick_up') return 'pickup';
             if (raw === 'dine_in' || raw === 'dinein') return 'dine_in';
@@ -8253,10 +8430,47 @@
         function formatKitchenOrderTypeLabel(raw) {
             if (raw == null || raw === '') return '';
             var s = String(raw).trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (s === 'mixed') return 'Dine in + Take out';
             if (s === 'dine_in') return 'Dine in';
             if (s === 'take_out') return 'Take out';
             if (s === 'pickup' || s === 'pick_up') return 'Pick up';
             return String(raw).trim();
+        }
+
+        function normalizeItemFulfillmentKey(raw) {
+            var s = String(raw || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (s === 'take_out' || s === 'takeout') return 'take_out';
+            if (s === 'dine_in' || s === 'dinein') return 'dine_in';
+            return '';
+        }
+
+        function getItemFulfillmentKey(item) {
+            var direct = normalizeItemFulfillmentKey(item && item.fulfillment);
+            if (direct) return direct;
+            var notes = String((item && item.notes) || '');
+            var m = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/i.exec(notes);
+            if (m && m[1]) return normalizeItemFulfillmentKey(m[1]);
+            return '';
+        }
+
+        function formatItemFulfillmentLabel(item) {
+            var key = getItemFulfillmentKey(item);
+            if (key === 'take_out') return 'Take out';
+            if (key === 'dine_in') return 'Dine in';
+            return '';
+        }
+
+        function itemFulfillmentBadgeHtml(item) {
+            var label = formatItemFulfillmentLabel(item);
+            if (!label) return '';
+            var key = getItemFulfillmentKey(item);
+            return '<span class="order-fulfillment-badge order-fulfillment-badge--' + esc(key) + '">' + esc(label) + '</span>';
+        }
+
+        function notesWithoutOrderType(notes) {
+            var base = String(notes || '');
+            base = base.replace(/(?:^|\s*\|\s*)Order type\s*:\s*[^|]*/gi, '');
+            return base.replace(/^\s*\|\s*|\s*\|\s*$/g, '').trim();
         }
 
         /** Split kiosk/customer order line notes (pipe-separated metadata). */
@@ -8296,9 +8510,21 @@
         }
 
         function getOrderTypeDisplayFromOrder(order) {
+            var rawType = String(order && order.order_type || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (rawType === 'mixed') return 'Dine in + Take out';
+            var items = (order && order.items) || [];
+            var hasDine = false;
+            var hasTake = false;
+            items.forEach(function (it) {
+                var key = getItemFulfillmentKey(it);
+                if (key === 'take_out') hasTake = true;
+                else if (key === 'dine_in') hasDine = true;
+            });
+            if (hasDine && hasTake) return 'Dine in + Take out';
+            if (hasTake && !hasDine) return 'Take out';
+            if (hasDine && !hasTake) return 'Dine in';
             var direct = formatKitchenOrderTypeLabel(order && order.order_type);
             if (direct) return direct;
-            var items = (order && order.items) || [];
             for (var i = 0; i < items.length; i++) {
                 var raw = String((items[i] && items[i].notes) || '');
                 var m = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/i.exec(raw);
@@ -8503,6 +8729,13 @@
         function collectKitchenLineItemDetailLines(item, order) {
             var parts = extractKitchenDetailParts(item && item.notes);
             var lines = [];
+            var orderTypeLabel = getOrderTypeDisplayFromOrder(order);
+            var isMixed = /dine in \+ take out/i.test(orderTypeLabel)
+                || String(order && order.order_type || '').toLowerCase() === 'mixed';
+            var lineFulfillment = formatItemFulfillmentLabel(item);
+            if (isMixed && lineFulfillment) {
+                lines.push('Order type: ' + lineFulfillment);
+            }
             var treatAsDrink = isKitchenDrinkItem(item) || !!(parts.temp || parts.size);
             if (treatAsDrink) {
                 if (parts.temp) lines.push('Temperature: ' + parts.temp);
@@ -8830,10 +9063,12 @@
                     items
                         .map(function (item) {
                             var sub = lineItemSubtotal(item);
+                            var badge = itemFulfillmentBadgeHtml(item);
                             return (
                                 '<div class="waste-history-item__line">' +
                                 '<span class="waste-history-item__name">' +
                                 esc((item.quantity || 0) + 'x ' + (item.name || 'Item')) +
+                                badge +
                                 '</span>' +
                                 '<span class="waste-history-item__price">' +
                                 peso(sub) +
@@ -9933,6 +10168,52 @@
                     ? getShiftHistoryClearAfterMs()
                     : 0;
 
+                var wasteForArchive = (typeof wasteEntriesCache !== 'undefined' && Array.isArray(wasteEntriesCache)
+                    ? wasteEntriesCache
+                    : []
+                ).filter(function (w) {
+                    var ts = (w && (w.logged_at || w.created_at)) || '';
+                    if (!ts) return false;
+                    if (String(ts).slice(0, 10) !== shiftDate) return false;
+                    if (typeof orderCreatedAfterShiftClear === 'function') {
+                        return orderCreatedAfterShiftClear({ created_at: ts });
+                    }
+                    return true;
+                }).map(function (w) {
+                    return {
+                        id: w && w.id != null ? w.id : null,
+                        item_name: String((w && w.item_name) || 'Unknown Item'),
+                        quantity: parseFloat(w && w.quantity) || 0,
+                        reason: String((w && w.reason) || ''),
+                        notes: String((w && w.notes) || ''),
+                        estimated_value: parseFloat(w && w.estimated_value) || 0,
+                        logged_at: (w && (w.logged_at || w.created_at)) || null
+                    };
+                });
+
+                var refundsForArchive = [];
+                var seenRefundKeys = {};
+                function pushRefundArchive(entry) {
+                    if (!entry) return;
+                    var key = String(entry.order_id || entry.id || '') + '|' + String(entry.reason || entry.refund_reason || '');
+                    if (seenRefundKeys[key]) return;
+                    seenRefundKeys[key] = true;
+                    refundsForArchive.push({
+                        order_id: entry.order_id != null ? entry.order_id : (entry.id != null ? entry.id : null),
+                        order_number: String(entry.order_number || ''),
+                        amount: parseFloat(entry.amount != null ? entry.amount : entry.total_amount) || 0,
+                        reason: String(entry.reason || entry.refund_reason || '').trim(),
+                        payment_method: String(entry.payment_method || 'cash'),
+                        created_at: entry.created_at || entry.refunded_at || null
+                    });
+                }
+                if (typeof getCashRefundEntries === 'function') {
+                    getCashRefundEntries().forEach(pushRefundArchive);
+                }
+                if (typeof getRefundedOrderSnapshots === 'function') {
+                    getRefundedOrderSnapshots().forEach(pushRefundArchive);
+                }
+
                 return {
                     staff_id: info.id || null,
                     staff_name: info.name || 'Staff',
@@ -9975,7 +10256,9 @@
                             status: status
                         },
                         cash_mgmt: typeof getCashMgmtEntries === 'function' ? getCashMgmtEntries() : [],
-                        cash_refunds: typeof getCashRefundEntries === 'function' ? getCashRefundEntries() : []
+                        cash_refunds: typeof getCashRefundEntries === 'function' ? getCashRefundEntries() : [],
+                        waste_entries: wasteForArchive,
+                        refunds: refundsForArchive
                     }
                 };
             }
@@ -10231,6 +10514,16 @@
         if (queueDiscountVoid) queueDiscountVoid.addEventListener('click', voidQueueDiscountFromModal);
         if (queueDiscountSubmit) queueDiscountSubmit.addEventListener('click', processQueueDiscount);
         if (queueDiscountType) queueDiscountType.addEventListener('change', syncQueueDiscountFields);
+        if (queueDiscountId) {
+            if (typeof window.bindDiscountIdDigitsOnly === 'function') {
+                window.bindDiscountIdDigitsOnly(queueDiscountId);
+            } else {
+                queueDiscountId.addEventListener('input', function () {
+                    var cleaned = String(queueDiscountId.value || '').replace(/\D+/g, '');
+                    if (queueDiscountId.value !== cleaned) queueDiscountId.value = cleaned;
+                });
+            }
+        }
         if (queueDiscountModal) {
             queueDiscountModal.addEventListener('click', function (e) {
                 if (e.target === queueDiscountModal) closeQueueDiscountModal();

@@ -634,6 +634,50 @@ body {
     word-break: break-word;
 }
 
+.shift-archive-drawer--reasons {
+    margin-top: 12px;
+}
+
+.shift-archive-reason {
+    padding: 10px 12px;
+    border-top: 1px solid rgba(61, 48, 37, 0.55);
+}
+
+.shift-archive-reason:first-of-type {
+    border-top: 0;
+}
+
+.shift-archive-reason__main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: #cbd5e1;
+}
+
+.shift-archive-reason__main strong {
+    color: #f8fafc;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.shift-archive-reason__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shift-archive-reason__text {
+    margin: 6px 0 0;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 @media (max-width: 760px) {
     .shift-archive-layout {
         grid-template-columns: 1fr;

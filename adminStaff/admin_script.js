@@ -9,7 +9,17 @@
     var moneyError   = document.getElementById('starting-money-error');
 
     var pendingStaffRedirect = '';
+    var pendingStaffId = 0;
     var loginNext = '';
+
+    function localYmd(dateObj) {
+        var d = dateObj instanceof Date ? dateObj : new Date();
+        if (isNaN(d.getTime())) d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
 
     function getLoginNext() {
         try {
@@ -71,18 +81,26 @@
     }
 
     function getStartingMoneyStorageKey() {
-        return 'staff_sales_report_starting_money_' + new Date().toISOString().slice(0, 10);
+        var sid = pendingStaffId || 0;
+        return 'staff_sales_report_starting_money_' + sid + '_' + localYmd(new Date());
     }
 
     function getStartingMoneyLockedKey() {
-        return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
+        var sid = pendingStaffId || 0;
+        return 'staff_sales_report_starting_money_locked_' + sid + '_' + localYmd(new Date());
     }
 
-    /** Once set for today (any staff on this device), skip the popup until shift reset/next day. */
-    function hasStartingMoneyForToday() {
-        if (localStorage.getItem(getStartingMoneyLockedKey()) === '1') {
-            return true;
-        }
+    function applyStartingMoneyLocal(payloadObj, locked) {
+        try {
+            localStorage.setItem(getStartingMoneyStorageKey(), JSON.stringify(payloadObj));
+            if (locked) localStorage.setItem(getStartingMoneyLockedKey(), '1');
+        } catch (e) {}
+    }
+
+    /** Local cache only — server is source of truth across devices. */
+    function hasStartingMoneyLocally() {
+        if (!pendingStaffId) return false;
+        if (localStorage.getItem(getStartingMoneyLockedKey()) === '1') return true;
         try {
             var raw = localStorage.getItem(getStartingMoneyStorageKey());
             if (!raw) return false;
@@ -94,6 +112,32 @@
         } catch (e) {
             return false;
         }
+    }
+
+    function fetchStartingMoneyFromServer() {
+        if (!pendingStaffId) return Promise.resolve(false);
+        var date = localYmd(new Date());
+        return fetch(
+            'api/staff_sales_report.php?staff_id=' + encodeURIComponent(pendingStaffId) +
+            '&date=' + encodeURIComponent(date),
+            { cache: 'no-store', credentials: 'same-origin' }
+        )
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d || !d.success) return false;
+                if (d.has_starting_money && d.report && d.report.starting_money) {
+                    applyStartingMoneyLocal(d.report.starting_money, !!d.report.starting_money_locked);
+                    return true;
+                }
+                if (d.has_starting_money) return true;
+                return false;
+            })
+            .catch(function () { return false; });
+    }
+
+    function resolveStartingMoneyReady() {
+        if (hasStartingMoneyLocally()) return Promise.resolve(true);
+        return fetchStartingMoneyFromServer();
     }
 
     function getInventoryCheckDoneKey() {
@@ -159,25 +203,62 @@
         if (!amount) {
             showMoneyError('Enter a starting money amount greater than zero.');
             if (moneyInput) moneyInput.focus();
-            return false;
+            return Promise.resolve(false);
+        }
+        if (!pendingStaffId) {
+            showMoneyError('Missing staff session. Please log in again.');
+            return Promise.resolve(false);
         }
 
-        localStorage.setItem(
-            getStartingMoneyStorageKey(),
-            JSON.stringify({ base: amount, additional_inputs: [], total: amount })
-        );
-        localStorage.setItem(getStartingMoneyLockedKey(), '1');
-        return true;
+        var payloadObj = { base: amount, additional_inputs: [], total: amount };
+        applyStartingMoneyLocal(payloadObj, true);
+
+        if (moneySaveBtn) {
+            moneySaveBtn.disabled = true;
+            moneySaveBtn.textContent = 'SAVING…';
+        }
+
+        return fetch('api/staff_sales_report.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                staff_id: pendingStaffId,
+                report_date: localYmd(new Date()),
+                starting_money: payloadObj,
+                starting_money_locked: true
+            })
+        })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (pack) {
+                if (!pack.ok || !pack.d || !pack.d.success) {
+                    showMoneyError((pack.d && pack.d.error) || 'Could not save starting money to server. Try again.');
+                    return false;
+                }
+                return true;
+            })
+            .catch(function () {
+                showMoneyError('Network error while saving starting money. Try again.');
+                return false;
+            })
+            .finally(function () {
+                if (moneySaveBtn) {
+                    moneySaveBtn.disabled = false;
+                    moneySaveBtn.textContent = 'Open shift';
+                }
+            });
     }
 
     if (moneySaveBtn) {
         moneySaveBtn.addEventListener('click', function () {
-            if (!saveStartingMoney()) return;
-            hideStartingMoneyOverlay();
-            markPendingInventoryCheck();
-            if (pendingStaffRedirect) {
-                continueStaffRedirect();
-            }
+            saveStartingMoney().then(function (ok) {
+                if (!ok) return;
+                hideStartingMoneyOverlay();
+                markPendingInventoryCheck();
+                if (pendingStaffRedirect) {
+                    continueStaffRedirect();
+                }
+            });
         });
     }
 
@@ -225,17 +306,19 @@
 
                 // Role decides destination — never treat admin as staff because of ?next=.
                 if (role === 'staff') {
+                    pendingStaffId = parseInt(data.user && data.user.id, 10) || 0;
                     pendingStaffRedirect = safeNext || redirect || 'staff_dashboard.html';
-                    // Shared float for the day — only prompt on the first staff login / shift open.
-                    if (hasStartingMoneyForToday()) {
-                        // Still show inventory checking on POS if not completed yet today.
-                        markPendingInventoryCheck();
-                        continueStaffRedirect();
-                        return;
-                    }
-                    showStartingMoneyOverlay();
-                    btn.disabled    = false;
-                    btn.textContent = 'LOGIN';
+                    // Server is source of truth across devices; localStorage is cache only.
+                    resolveStartingMoneyReady().then(function (ready) {
+                        if (ready) {
+                            markPendingInventoryCheck();
+                            continueStaffRedirect();
+                            return;
+                        }
+                        showStartingMoneyOverlay();
+                        btn.disabled = false;
+                        btn.textContent = 'LOGIN';
+                    });
                     return;
                 }
 

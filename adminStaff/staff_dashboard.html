@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-queue-shift-clear">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-server-first">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -5260,19 +5260,37 @@
                 currentUser = {
                     id: d.user.id,
                     role: d.user.role,
-                    name: d.user.name
+                    name: d.user.name || d.user.full_name || ''
                 };
 
                 var role = String(currentUser.role || '').toLowerCase();
                 if (role === 'staff') {
                     showStaffName(currentUser.name);
+                    if (typeof hydrateStaffDrawerFromServer === 'function') {
+                        hydrateStaffDrawerFromServer();
+                    }
                     return;
                 }
 
                 if (role === 'admin') {
                     loadCashiersForAdmin().then(function () {
                         showCashierPicker();
+                        if (typeof hydrateStaffDrawerFromServer === 'function') {
+                            hydrateStaffDrawerFromServer();
+                        }
                     });
+                    if (actingSelect && !actingSelect._drawerScopeBound) {
+                        actingSelect._drawerScopeBound = true;
+                        actingSelect.addEventListener('change', function () {
+                            if (typeof hydrateStaffDrawerFromServer === 'function') {
+                                hydrateStaffDrawerFromServer().then(function () {
+                                    if (typeof loadStaffData === 'function') loadStaffData();
+                                });
+                            } else if (typeof loadStaffData === 'function') {
+                                loadStaffData();
+                            }
+                        });
+                    }
                     return;
                 }
 
@@ -6132,27 +6150,49 @@
                 }
             };
         }
+        function localBusinessYmd(dateObj) {
+            var d = dateObj instanceof Date ? dateObj : new Date();
+            if (isNaN(d.getTime())) d = new Date();
+            var y = d.getFullYear();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+        function getDrawerStaffScopeId() {
+            var id = null;
+            if (typeof window.getPosActingStaffId === 'function') {
+                id = window.getPosActingStaffId();
+            }
+            if (!id && typeof window.getCurrentShiftStaffInfo === 'function') {
+                var info = window.getCurrentShiftStaffInfo();
+                id = info && info.id ? parseInt(info.id, 10) || null : null;
+            }
+            return id || 0;
+        }
+        function staffScopedDayKey(prefix) {
+            return prefix + '_' + getDrawerStaffScopeId() + '_' + localBusinessYmd(new Date());
+        }
         function getStartingMoneyStorageKey() {
-            return 'staff_sales_report_starting_money_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_sales_report_starting_money');
         }
         function getStartingMoneyLockedKey() {
-            return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_sales_report_starting_money_locked');
         }
         function getAccuracyStorageKey() {
-            return 'staff_sales_report_accuracy_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_sales_report_accuracy');
         }
         function syncStaffSalesReportSnapshot() {
-            var staffId = null;
-            if (typeof window.getPosActingStaffId === 'function') {
-                staffId = window.getPosActingStaffId();
-            }
+            var staffId = getDrawerStaffScopeId();
+            if (!staffId) return;
             var payload = {
-                report_date: new Date().toISOString().slice(0, 10),
+                staff_id: staffId,
+                report_date: localBusinessYmd(new Date()),
                 starting_money: localStorage.getItem(getStartingMoneyStorageKey()),
                 starting_money_locked: localStorage.getItem(getStartingMoneyLockedKey()) === '1',
-                accuracy: localStorage.getItem(getAccuracyStorageKey())
+                accuracy: localStorage.getItem(getAccuracyStorageKey()),
+                cash_mgmt: getCashMgmtEntries(),
+                cash_refunds: getCashRefundEntries()
             };
-            if (staffId) payload.staff_id = staffId;
             fetch('api/staff_sales_report.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -6160,6 +6200,54 @@
                 body: JSON.stringify(payload)
             }).catch(function () {});
         }
+        function hydrateStaffDrawerFromServer() {
+            var staffId = getDrawerStaffScopeId();
+            if (!staffId) return Promise.resolve();
+            var date = localBusinessYmd(new Date());
+            return fetch(
+                'api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) +
+                '&date=' + encodeURIComponent(date),
+                { cache: 'no-store', credentials: 'same-origin' }
+            )
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success || !d.report) return;
+                    var report = d.report;
+                    if (report.starting_money) {
+                        try {
+                            localStorage.setItem(getStartingMoneyStorageKey(), JSON.stringify(report.starting_money));
+                        } catch (e) {}
+                    }
+                    if (report.starting_money_locked) {
+                        try { localStorage.setItem(getStartingMoneyLockedKey(), '1'); } catch (e) {}
+                    }
+                    if (report.accuracy) {
+                        try {
+                            localStorage.setItem(getAccuracyStorageKey(), JSON.stringify(report.accuracy));
+                        } catch (e) {}
+                    }
+                    if (Array.isArray(report.cash_mgmt)) {
+                        saveCashMgmtEntries(report.cash_mgmt);
+                    }
+                    if (Array.isArray(report.cash_refunds)) {
+                        saveCashRefundEntries(report.cash_refunds);
+                    }
+                    if (typeof setStartingMoneyLocked === 'function') {
+                        try { setStartingMoneyLocked(!!report.starting_money_locked); } catch (e2) {}
+                    }
+                    if (typeof updateCashMgmtDrawerDisplay === 'function') {
+                        updateCashMgmtDrawerDisplay();
+                    }
+                    if (typeof updateStartingMoneyTotalDisplay === 'function') {
+                        try { updateStartingMoneyTotalDisplay(); } catch (e3) {}
+                    }
+                    if (typeof loadStartingMoney === 'function') {
+                        try { loadStartingMoney(); } catch (e4) {}
+                    }
+                })
+                .catch(function () {});
+        }
+        window.hydrateStaffDrawerFromServer = hydrateStaffDrawerFromServer;
         function getSavedStartingMoneyTotal() {
             var raw = localStorage.getItem(getStartingMoneyStorageKey());
             if (!raw) return 0;
@@ -6181,13 +6269,13 @@
             return 'staff_shift_history_clear_after_ms';
         }
         function getCashMgmtStorageKey() {
-            return 'staff_cash_management_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_cash_management');
         }
         function getCashRefundsStorageKey() {
-            return 'staff_cash_refunds_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_cash_refunds');
         }
         function getRefundedOrdersStorageKey() {
-            return 'staff_refunded_orders_' + new Date().toISOString().slice(0, 10);
+            return staffScopedDayKey('staff_refunded_orders');
         }
         function getRefundedOrderSnapshots() {
             try {
@@ -6450,6 +6538,7 @@
             });
             saveCashMgmtEntries(entries);
             updateCashMgmtDrawerDisplay();
+            syncStaffSalesReportSnapshot();
             closeCashMgmtModal();
         }
 
@@ -7271,6 +7360,7 @@
                         created_at: new Date().toISOString()
                     });
                     saveCashRefundEntries(refunds);
+                    syncStaffSalesReportSnapshot();
                 }
                 saveRefundedOrderSnapshot(order, refundReason);
                 closeRefundModal();
@@ -7352,11 +7442,22 @@
             return false;
         }
 
+        function parseServerDateMs(value) {
+            if (!value) return 0;
+            var s = String(value).trim();
+            // MySQL "YYYY-MM-DD HH:MM:SS" — treat as local wall time (no Z).
+            if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
+                s = s.replace(' ', 'T');
+            }
+            var t = new Date(s).getTime();
+            return Number.isFinite(t) ? t : 0;
+        }
         function orderCreatedAfterShiftClear(order) {
             var clearAfterMs = getShiftHistoryClearAfterMs();
             if (!clearAfterMs) return true;
-            var createdMs = new Date(order && order.created_at ? order.created_at : 0).getTime();
-            return createdMs >= clearAfterMs;
+            var createdMs = parseServerDateMs(order && order.created_at);
+            // 3-minute grace for server/client clock skew so live history isn't wiped.
+            return createdMs + (3 * 60 * 1000) >= clearAfterMs;
         }
 
         function filterOrdersForCurrentShift(orders) {
@@ -8958,7 +9059,9 @@
             var queueSource = currentQueueSource;
             var cacheBust = Date.now();
             var queueStatus = 'pending';
-            var todayYmd = new Date().toISOString().slice(0, 10);
+            var todayYmd = typeof localBusinessYmd === 'function'
+                ? localBusinessYmd(new Date())
+                : new Date().toISOString().slice(0, 10);
 
             // Ensure sales-history connectivity works even if API calls fail:
             // persist a brief summary derived from the current DOM values.
@@ -9804,7 +9907,10 @@
             }
 
             function finalizeCloseShift(cashDeclared) {
-                var reportDate = new Date().toISOString().slice(0, 10);
+                var reportDate = typeof localBusinessYmd === 'function'
+                    ? localBusinessYmd(new Date())
+                    : new Date().toISOString().slice(0, 10);
+                var actingSid = typeof getDrawerStaffScopeId === 'function' ? getDrawerStaffScopeId() : 0;
                 return fetch('api/revenue_verification.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -9812,7 +9918,8 @@
                         report_date: reportDate,
                         cash_declared: cashDeclared,
                         opening_float: getSavedStartingMoneyTotal(),
-                        notes: String((sesNotes && sesNotes.value) || '').trim()
+                        notes: String((sesNotes && sesNotes.value) || '').trim(),
+                        staff_id: actingSid || undefined
                     })
                 }).then(function (r) { return r.json(); })
                   .then(function (d) {
@@ -10075,11 +10182,21 @@
             }
 
             function getStartingMoneyStorageKeyLocal() {
-                return 'staff_sales_report_starting_money_' + new Date().toISOString().slice(0, 10);
+                if (typeof getStartingMoneyStorageKey === 'function') return getStartingMoneyStorageKey();
+                var sid = (typeof getDrawerStaffScopeId === 'function' ? getDrawerStaffScopeId() : 0) || 0;
+                var day = (typeof localBusinessYmd === 'function')
+                    ? localBusinessYmd(new Date())
+                    : new Date().toISOString().slice(0, 10);
+                return 'staff_sales_report_starting_money_' + sid + '_' + day;
             }
 
             function getStartingMoneyLockedKeyLocal() {
-                return 'staff_sales_report_starting_money_locked_' + new Date().toISOString().slice(0, 10);
+                if (typeof getStartingMoneyLockedKey === 'function') return getStartingMoneyLockedKey();
+                var sid = (typeof getDrawerStaffScopeId === 'function' ? getDrawerStaffScopeId() : 0) || 0;
+                var day = (typeof localBusinessYmd === 'function')
+                    ? localBusinessYmd(new Date())
+                    : new Date().toISOString().slice(0, 10);
+                return 'staff_sales_report_starting_money_locked_' + sid + '_' + day;
             }
 
             function hasStartingMoneyForTodayLocal() {
@@ -10219,10 +10336,12 @@
             window.setTimeout(maybeShowShiftOpenCheck, 250);
         })();
 
-        loadStaffData();
-        loadStartingMoney();
-        updateCashMgmtDrawerDisplay();
-        loadAccuracyState();
+        hydrateStaffDrawerFromServer().then(function () {
+            loadStartingMoney();
+            updateCashMgmtDrawerDisplay();
+            loadAccuracyState();
+            loadStaffData();
+        });
         connectStaffRealtimeStream();
         setInterval(loadStaffData, 30000);
         window.addEventListener('beforeunload', function () {

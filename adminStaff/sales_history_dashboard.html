@@ -2243,30 +2243,43 @@
                 return toMoney(raw);
             }
         }
-        function getLocalCashMgmtTotals(dateKey) {
+        function cashMgmtTotalsFromEntries(entries) {
+            if (!Array.isArray(entries)) return { paidIn: 0, paidOut: 0 };
+            return entries.reduce(function (acc, entry) {
+                var amount = toMoney(entry && entry.amount);
+                if (!amount) return acc;
+                if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
+                else acc.paidIn += amount;
+                return acc;
+            }, { paidIn: 0, paidOut: 0 });
+        }
+        function cashRefundsTotalFromEntries(entries) {
+            if (!Array.isArray(entries)) return 0;
+            return entries.reduce(function (sum, entry) {
+                return sum + toMoney(entry && entry.amount);
+            }, 0);
+        }
+        /** Prefer DB report (per staff). Fallback: staff-scoped localStorage cache. */
+        function getStaffCashMgmtTotals(staffId, dateKey, report) {
+            if (report && Array.isArray(report.cash_mgmt)) {
+                return cashMgmtTotalsFromEntries(report.cash_mgmt);
+            }
             try {
-                var raw = localStorage.getItem('staff_cash_management_' + dateKey);
-                var parsed = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(parsed)) return { paidIn: 0, paidOut: 0 };
-                return parsed.reduce(function (acc, entry) {
-                    var amount = toMoney(entry && entry.amount);
-                    if (!amount) return acc;
-                    if (String(entry.type || '') === 'paid_out') acc.paidOut += amount;
-                    else acc.paidIn += amount;
-                    return acc;
-                }, { paidIn: 0, paidOut: 0 });
+                var sid = parseInt(staffId, 10) || 0;
+                var raw = localStorage.getItem('staff_cash_management_' + sid + '_' + dateKey);
+                return cashMgmtTotalsFromEntries(raw ? JSON.parse(raw) : []);
             } catch (e) {
                 return { paidIn: 0, paidOut: 0 };
             }
         }
-        function getLocalCashRefundsTotal(dateKey) {
+        function getStaffCashRefundsTotal(staffId, dateKey, report) {
+            if (report && Array.isArray(report.cash_refunds)) {
+                return cashRefundsTotalFromEntries(report.cash_refunds);
+            }
             try {
-                var raw = localStorage.getItem('staff_cash_refunds_' + dateKey);
-                var parsed = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(parsed)) return 0;
-                return parsed.reduce(function (sum, entry) {
-                    return sum + toMoney(entry && entry.amount);
-                }, 0);
+                var sid = parseInt(staffId, 10) || 0;
+                var raw = localStorage.getItem('staff_cash_refunds_' + sid + '_' + dateKey);
+                return cashRefundsTotalFromEntries(raw ? JSON.parse(raw) : []);
             } catch (e) {
                 return 0;
             }
@@ -2382,7 +2395,7 @@
             Promise.all([
                 fetch('api/orders.php?limit=200&staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(shiftDate), { cache: 'no-store' }).then(function (r) { return r.json(); })
+                fetch('api/waste.php?type=daily_summary&date=' + encodeURIComponent(shiftDate) + '&staff_id=' + encodeURIComponent(staffId), { cache: 'no-store' }).then(function (r) { return r.json(); })
             ]).then(function (results) {
                 if (String(staffId) !== String(selectedStaffId) || String(shiftDate) !== String(selectedShiftDate)) return;
                 var ordersRes = results[0];
@@ -2407,8 +2420,8 @@
                 });
                 var report = reportRes && reportRes.success ? reportRes.report : null;
                 var starting = report ? parseStartingMoney(report.starting_money) : 0;
-                var localMgmt = getLocalCashMgmtTotals(shiftDate);
-                var localRefunds = getLocalCashRefundsTotal(shiftDate);
+                var staffMgmt = getStaffCashMgmtTotals(staffId, shiftDate, report);
+                var staffRefunds = getStaffCashRefundsTotal(staffId, shiftDate, report);
                 var waste = 0;
                 if (wasteRes && wasteRes.success && wasteRes.summary) {
                     waste = toMoney(wasteRes.summary.total_estimated_value);
@@ -2422,13 +2435,13 @@
                     gcash: gcash,
                     total: cash + gcash,
                     discounts: discounts,
-                    refunds: localRefunds,
-                    paidIn: localMgmt.paidIn,
-                    paidOut: localMgmt.paidOut,
+                    refunds: staffRefunds,
+                    paidIn: staffMgmt.paidIn,
+                    paidOut: staffMgmt.paidOut,
                     waste: waste,
                     expected: accuracyExpected != null
                         ? accuracyExpected
-                        : Math.max(0, starting + cash - localRefunds + localMgmt.paidIn - localMgmt.paidOut)
+                        : Math.max(0, starting + cash - staffRefunds + staffMgmt.paidIn - staffMgmt.paidOut)
                 });
             }).catch(function () {
                 setDrawerPlaceholders();

@@ -116,7 +116,8 @@ if ($m === 'POST') {
 
     ok([
         'user' => [
-            'id'        => $user['id'],
+            'id'        => (int)$user['id'],
+            'name'      => $user['full_name'],
             'full_name' => $user['full_name'],
             'username'  => $user['username'],
             'email'     => $user['email'],

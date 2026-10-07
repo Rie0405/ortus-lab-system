@@ -11,6 +11,8 @@ $pdo->exec(
         starting_money_json TEXT NULL,
         starting_money_locked TINYINT(1) NOT NULL DEFAULT 0,
         accuracy_json TEXT NULL,
+        cash_mgmt_json TEXT NULL,
+        cash_refunds_json TEXT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY uniq_staff_sales_report (staff_id, report_date),
         CONSTRAINT fk_staff_sales_report_staff
@@ -18,6 +20,16 @@ $pdo->exec(
             ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
 );
+try {
+    $pdo->exec('ALTER TABLE staff_sales_reports ADD COLUMN cash_mgmt_json TEXT NULL');
+} catch (Throwable $e) {
+    // already exists
+}
+try {
+    $pdo->exec('ALTER TABLE staff_sales_reports ADD COLUMN cash_refunds_json TEXT NULL');
+} catch (Throwable $e) {
+    // already exists
+}
 
 $m = method();
 $session = [
@@ -36,6 +48,20 @@ function decode_json_field($value): ?array {
     return is_array($decoded) ? $decoded : null;
 }
 
+function normalize_list_field($value): array {
+    $decoded = decode_json_field($value);
+    if (!is_array($decoded)) {
+        return [];
+    }
+    if (array_keys($decoded) === range(0, count($decoded) - 1)) {
+        return $decoded;
+    }
+    if (isset($decoded['entries']) && is_array($decoded['entries'])) {
+        return $decoded['entries'];
+    }
+    return [];
+}
+
 function normalize_report_row(?array $row): ?array {
     if (!$row) {
         return null;
@@ -48,8 +74,25 @@ function normalize_report_row(?array $row): ?array {
         'starting_money' => $starting,
         'starting_money_locked' => (bool)($row['starting_money_locked'] ?? false),
         'accuracy' => $accuracy,
+        'cash_mgmt' => normalize_list_field($row['cash_mgmt_json'] ?? null),
+        'cash_refunds' => normalize_list_field($row['cash_refunds_json'] ?? null),
         'updated_at' => $row['updated_at'] ?? null,
     ];
+}
+
+function report_has_starting_money(?array $report): bool {
+    if (!$report) {
+        return false;
+    }
+    if (!empty($report['starting_money_locked'])) {
+        return true;
+    }
+    $sm = $report['starting_money'] ?? null;
+    if (!is_array($sm)) {
+        return false;
+    }
+    $total = isset($sm['total']) ? (float)$sm['total'] : (isset($sm['base']) ? (float)$sm['base'] : 0.0);
+    return $total > 0;
 }
 
 if ($m === 'GET') {
@@ -63,15 +106,20 @@ if ($m === 'GET') {
     }
 
     $stmt = $pdo->prepare(
-        'SELECT staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json, updated_at
+        'SELECT staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json,
+                cash_mgmt_json, cash_refunds_json, updated_at
            FROM staff_sales_reports
           WHERE staff_id = :sid AND report_date = :d
           LIMIT 1'
     );
     $stmt->execute([':sid' => $staffId, ':d' => $reportDate]);
     $row = $stmt->fetch();
+    $report = normalize_report_row($row ?: null);
 
-    ok(['report' => normalize_report_row($row ?: null)]);
+    ok([
+        'report' => $report,
+        'has_starting_money' => report_has_starting_money($report),
+    ]);
 }
 
 if ($m === 'POST' || $m === 'PUT') {
@@ -107,8 +155,17 @@ if ($m === 'POST' || $m === 'PUT') {
 
     $locked = isset($b['starting_money_locked']) ? (int)(bool)$b['starting_money_locked'] : null;
 
+    $cashMgmt = null;
+    if (array_key_exists('cash_mgmt', $b)) {
+        $cashMgmt = is_array($b['cash_mgmt']) ? array_values($b['cash_mgmt']) : normalize_list_field($b['cash_mgmt']);
+    }
+    $cashRefunds = null;
+    if (array_key_exists('cash_refunds', $b)) {
+        $cashRefunds = is_array($b['cash_refunds']) ? array_values($b['cash_refunds']) : normalize_list_field($b['cash_refunds']);
+    }
+
     $existing = $pdo->prepare(
-        'SELECT starting_money_json, starting_money_locked, accuracy_json
+        'SELECT starting_money_json, starting_money_locked, accuracy_json, cash_mgmt_json, cash_refunds_json
            FROM staff_sales_reports
           WHERE staff_id = :sid AND report_date = :d
           LIMIT 1'
@@ -122,19 +179,27 @@ if ($m === 'POST' || $m === 'PUT') {
     $accuracyJson = $accuracy !== null
         ? json_encode($accuracy, JSON_UNESCAPED_UNICODE)
         : ($current['accuracy_json'] ?? null);
+    $cashMgmtJson = $cashMgmt !== null
+        ? json_encode($cashMgmt, JSON_UNESCAPED_UNICODE)
+        : ($current['cash_mgmt_json'] ?? null);
+    $cashRefundsJson = $cashRefunds !== null
+        ? json_encode($cashRefunds, JSON_UNESCAPED_UNICODE)
+        : ($current['cash_refunds_json'] ?? null);
     $lockedValue = $locked !== null
         ? $locked
         : (int)($current['starting_money_locked'] ?? 0);
 
     $upsert = $pdo->prepare(
         'INSERT INTO staff_sales_reports
-            (staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json)
+            (staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json, cash_mgmt_json, cash_refunds_json)
          VALUES
-            (:sid, :d, :sm, :locked, :acc)
+            (:sid, :d, :sm, :locked, :acc, :cm, :cr)
          ON DUPLICATE KEY UPDATE
             starting_money_json = VALUES(starting_money_json),
             starting_money_locked = VALUES(starting_money_locked),
             accuracy_json = VALUES(accuracy_json),
+            cash_mgmt_json = VALUES(cash_mgmt_json),
+            cash_refunds_json = VALUES(cash_refunds_json),
             updated_at = CURRENT_TIMESTAMP'
     );
     $upsert->execute([
@@ -143,9 +208,19 @@ if ($m === 'POST' || $m === 'PUT') {
         ':sm' => $startingJson,
         ':locked' => $lockedValue,
         ':acc' => $accuracyJson,
+        ':cm' => $cashMgmtJson,
+        ':cr' => $cashRefundsJson,
     ]);
 
-    ok(['message' => 'Staff sales report saved.', 'staff_id' => $staffId, 'report_date' => $reportDate]);
+    ok([
+        'message' => 'Staff sales report saved.',
+        'staff_id' => $staffId,
+        'report_date' => $reportDate,
+        'has_starting_money' => $lockedValue === 1 || report_has_starting_money([
+            'starting_money_locked' => (bool)$lockedValue,
+            'starting_money' => $startingMoney !== null ? $startingMoney : decode_json_field($startingJson),
+        ]),
+    ]);
 }
 
 fail('Method not allowed.', 405);

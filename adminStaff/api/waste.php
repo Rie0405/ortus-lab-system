@@ -118,19 +118,25 @@ if ($m === 'GET') {
     $date = trim((string)($_GET['date'] ?? date('Y-m-d')));
 
     if ($type === 'daily_summary') {
-        $sumStmt = $pdo->prepare(
-            'SELECT
+        $filterStaffId = (int)($_GET['staff_id'] ?? 0);
+        $sql = 'SELECT
                 COALESCE(SUM(estimated_value), 0) AS total_estimated_value,
                 COALESCE(SUM(quantity), 0) AS total_quantity,
                 COUNT(*) AS total_logs
              FROM waste_log
-             WHERE DATE(logged_at) = :d'
-        );
-        $sumStmt->execute([':d' => $date]);
+             WHERE DATE(logged_at) = :d';
+        $params = [':d' => $date];
+        if ($filterStaffId > 0) {
+            $sql .= ' AND staff_id = :sid';
+            $params[':sid'] = $filterStaffId;
+        }
+        $sumStmt = $pdo->prepare($sql);
+        $sumStmt->execute($params);
         $summary = $sumStmt->fetch() ?: [];
         ok([
             'summary' => [
                 'date' => $date,
+                'staff_id' => $filterStaffId > 0 ? $filterStaffId : null,
                 'total_estimated_value' => (float)($summary['total_estimated_value'] ?? 0),
                 'total_quantity' => (float)($summary['total_quantity'] ?? 0),
                 'total_logs' => (int)($summary['total_logs'] ?? 0),

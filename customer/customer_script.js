@@ -1562,8 +1562,12 @@ function getBeverageSearchQuery() {
 }
 
 function itemMatchesDrinkTempFilter(item) {
-    if (selectedDrinkTemp === 'hot') return !!item.serve_hot;
-    if (selectedDrinkTemp === 'cold') return !!item.serve_cold;
+    if (selectedDrinkTemp === 'hot') {
+        return item.serve_hot == null ? true : !!Number(item.serve_hot);
+    }
+    if (selectedDrinkTemp === 'cold') {
+        return item.serve_cold == null ? true : !!Number(item.serve_cold);
+    }
     return true;
 }
 
@@ -1619,12 +1623,13 @@ function setSelectedDrinkTemp(temp) {
 
 function wireBevTempFilters() {
     var wrap = document.getElementById('bev-temp-filters');
-    if (!wrap) return;
-    wrap.querySelectorAll('[data-drink-temp]').forEach(function (chip) {
-        chip.addEventListener('click', function (e) {
-            e.preventDefault();
-            setSelectedDrinkTemp(chip.getAttribute('data-drink-temp') || 'all');
-        });
+    if (!wrap || wrap.dataset.wired === '1') return;
+    wrap.dataset.wired = '1';
+    wrap.addEventListener('click', function (e) {
+        var chip = e.target && e.target.closest ? e.target.closest('[data-drink-temp]') : null;
+        if (!chip || !wrap.contains(chip)) return;
+        e.preventDefault();
+        setSelectedDrinkTemp(chip.getAttribute('data-drink-temp') || 'all');
     });
 }
 

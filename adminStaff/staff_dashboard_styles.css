@@ -5992,36 +5992,47 @@ img {
     background: rgba(0, 0, 0, 0.8);
 }
 
-/* Lightbox */
+/* Lightbox — must sit ABOVE payment modal (z-index 2000).
+   Old z-index:300 left enlarge overlay under the pay dialog (bg darkens, QR hidden). */
 .gcash-lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 300;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.92) !important;
+    z-index: 6100 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
+    padding: 24px;
+    box-sizing: border-box;
+    transform: translateZ(0);
 }
 
 .gcash-lightbox.is-visible {
-    opacity: 1;
-    pointer-events: auto;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 
 .gcash-lightbox__img {
-    max-width: 90vw;
-    max-height: 90vh;
+    position: relative;
+    z-index: 1;
+    max-width: min(90vw, 560px);
+    max-height: min(90vh, 560px);
+    width: auto;
+    height: auto;
     border-radius: 8px;
     object-fit: contain;
+    background: #fff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
 }
 
 .gcash-lightbox__close {
     position: absolute;
     top: 20px;
     right: 24px;
+    z-index: 2;
     background: rgba(255,255,255,0.1);
     border: none;
     color: #fff;

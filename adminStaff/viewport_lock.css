@@ -50,8 +50,7 @@ body {
 .order-list-body,
 .order-list--take-out,
 .modal-content,
-.pay-modal,
-.payment-modal-content,
+.pay-modal__scroll,
 .cash-mgmt-modal,
 .pos-modal,
 .shortage-modal,
@@ -65,6 +64,12 @@ body {
 .inv-page .inv-table-section {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+}
+
+/* Payment shell itself does not scroll — only .pay-modal__scroll */
+.pay-modal,
+.payment-modal-content {
+    overflow: hidden !important;
 }
 
 /* Standardize inputs to prevent iOS/Android focus zoom / jump */

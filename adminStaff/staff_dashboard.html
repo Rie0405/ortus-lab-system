@@ -7,11 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pay-modal-polish">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pay-scroll-unify">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
-    <link rel="stylesheet" href="viewport_lock.css?v=20261008-pay-polish">
+    <link rel="stylesheet" href="viewport_lock.css?v=20261008-pay-scroll">
     <script src="viewport_lock.js?v=20261008" defer></script>
 </head>
 <body>
@@ -554,112 +554,113 @@
                     </div>
                 </header>
 
-                <section class="pay-modal__section pay-modal__section--order-details">
-                    <p class="pay-modal__section-label">ORDER DETAILS</p>
-                    <div class="pay-order-details-card">
-                        <div class="pay-order-customer" id="pay-order-customer-row" hidden>
-                            <span class="pay-order-customer__label">Customer</span>
-                            <span class="pay-order-customer__name" id="pay-order-customer-label">—</span>
-                        </div>
-                        <div id="pay-order-items-summary" class="pay-order-items-summary" hidden></div>
-                    </div>
-                </section>
-
-                <!-- ── CASH BODY ─────────────────────────────────────── -->
-                <div class="pay-modal__body pay-modal__body--cash" id="pay-body-cash">
-                    <!-- Payment Method selector -->
-                    <section class="pay-modal__section">
-                        <p class="pay-modal__section-label">SELECT PAYMENT METHOD</p>
-                        <div class="pay-modal__methods">
-                            <button class="pay-method pay-method--active" data-method="cash">
-                                <span class="pay-method__icon">💵</span>
-                                <span class="pay-method__name">CASH</span>
-                            </button>
-                            <button class="pay-method" data-method="gcash">
-                                <span class="pay-method__icon">📱</span>
-                                <span class="pay-method__name">GCASH</span>
-                            </button>
-                        </div>
-                    </section>
-
-                    <!-- Cash fields -->
-                    <section class="pay-modal__section">
-                        <div class="pay-modal__field-group">
-                            <div class="pay-modal__field">
-                                <label class="pay-modal__field-label">AMOUNT RECEIVED</label>
-                                <div class="pay-modal__input-wrap">
-                                    <span class="pay-modal__currency">₱</span>
-                                    <input type="number" class="pay-modal__input" id="pay-amount-received" placeholder="0.00" min="0" step="0.01">
-                                </div>
-                                <div class="pay-suggest-amounts" id="pay-suggest-amounts" aria-label="Suggested amounts"></div>
+                <!-- Single grey scroll region: order details + payment method + inputs -->
+                <div class="pay-modal__scroll">
+                    <section class="pay-modal__section pay-modal__section--order-details">
+                        <p class="pay-modal__section-label">ORDER DETAILS</p>
+                        <div class="pay-order-details-card">
+                            <div class="pay-order-customer" id="pay-order-customer-row" hidden>
+                                <span class="pay-order-customer__label">Customer</span>
+                                <span class="pay-order-customer__name" id="pay-order-customer-label">—</span>
                             </div>
-                            <div class="pay-modal__field">
-                                <label class="pay-modal__field-label">CHANGE DUE</label>
-                                <div class="pay-modal__change-display">
-                                    <strong class="pay-modal__change-val" id="pay-change-due">₱0.00</strong>
-                                </div>
+                            <div id="pay-order-items-summary" class="pay-order-items-summary" hidden></div>
+                        </div>
+                    </section>
+
+                    <!-- ── CASH BODY ─────────────────────────────────────── -->
+                    <div class="pay-modal__body pay-modal__body--cash" id="pay-body-cash">
+                        <!-- Payment Method selector -->
+                        <section class="pay-modal__section">
+                            <p class="pay-modal__section-label">SELECT PAYMENT METHOD</p>
+                            <div class="pay-modal__methods">
+                                <button class="pay-method pay-method--active" data-method="cash">
+                                    <span class="pay-method__icon">💵</span>
+                                    <span class="pay-method__name">CASH</span>
+                                </button>
+                                <button class="pay-method" data-method="gcash">
+                                    <span class="pay-method__icon">📱</span>
+                                    <span class="pay-method__name">GCASH</span>
+                                </button>
                             </div>
-                        </div>
-                    </section>
+                        </section>
 
-                </div>
-
-                <!-- ── GCASH BODY ────────────────────────────────────── -->
-                <div class="pay-modal__body pay-modal__body--gcash" id="pay-body-gcash">
-                    <!-- Payment Method selector (same, mirrored) -->
-                    <section class="pay-modal__section">
-                        <p class="pay-modal__section-label">SELECT PAYMENT METHOD</p>
-                        <div class="pay-modal__methods">
-                            <button class="pay-method" data-method="cash">
-                                <span class="pay-method__icon">💵</span>
-                                <span class="pay-method__name">CASH</span>
-                            </button>
-                            <button class="pay-method pay-method--active" data-method="gcash">
-                                <span class="pay-method__icon">📱</span>
-                                <span class="pay-method__name">GCASH</span>
-                            </button>
-                        </div>
-                    </section>
-
-                    <!-- GCash verification fields -->
-                    <section class="pay-modal__section">
-                        <div class="gcash-cols">
-
-                            <!-- Left: order total + reference + status -->
-                            <div class="gcash-left">
+                        <!-- Cash fields -->
+                        <section class="pay-modal__section">
+                            <div class="pay-modal__field-group">
                                 <div class="pay-modal__field">
-                                    <label class="pay-modal__field-label">ORDER TOTAL</label>
-                                    <div class="pay-modal__change-display gcash-total-display">
-                                        <strong class="pay-modal__change-val gcash-total-val" id="gcash-order-total">₱0.00</strong>
+                                    <label class="pay-modal__field-label">AMOUNT RECEIVED</label>
+                                    <div class="pay-modal__input-wrap">
+                                        <span class="pay-modal__currency">₱</span>
+                                        <input type="number" class="pay-modal__input" id="pay-amount-received" placeholder="0.00" min="0" step="0.01">
+                                    </div>
+                                    <div class="pay-suggest-amounts" id="pay-suggest-amounts" aria-label="Suggested amounts"></div>
+                                </div>
+                                <div class="pay-modal__field">
+                                    <label class="pay-modal__field-label">CHANGE DUE</label>
+                                    <div class="pay-modal__change-display">
+                                        <strong class="pay-modal__change-val" id="pay-change-due">₱0.00</strong>
                                     </div>
                                 </div>
-                                <div class="pay-modal__field">
-                                    <label class="pay-modal__field-label">REFERENCE NUMBER</label>
-                                    <input type="text" class="pay-modal__input gcash-ref-input js-gcash-ref-digits" id="gcash-ref-number" placeholder="e.g. 0023948129481" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-                                </div>
                             </div>
+                        </section>
+                    </div>
 
-                            <!-- Right: kiosk GCash QR (same config as customer kiosk) -->
-                            <div class="gcash-right">
-                                <label class="pay-modal__field-label">GCASH QR CODE</label>
-                                <div class="gcash-qr-meta">
-                                    <p class="gcash-qr-number" id="gcash-number-display-staff" hidden></p>
-                                    <p class="gcash-qr-name" id="gcash-name-display-staff" hidden></p>
-                                </div>
-                                <div class="gcash-qr-panel" id="gcash-qr-panel">
-                                    <div class="gcash-qr-wrap" id="gcash-qr-wrap">
-                                        <img src="" alt="GCash QR Code" id="gcash-qr-img" class="gcash-qr-img gcash-qr-img--hidden">
-                                        <div class="gcash-qr-placeholder" id="gcash-qr-placeholder">
-                                            <span>QR not configured yet</span>
+                    <!-- ── GCASH BODY ────────────────────────────────────── -->
+                    <div class="pay-modal__body pay-modal__body--gcash" id="pay-body-gcash">
+                        <!-- Payment Method selector (same, mirrored) -->
+                        <section class="pay-modal__section">
+                            <p class="pay-modal__section-label">SELECT PAYMENT METHOD</p>
+                            <div class="pay-modal__methods">
+                                <button class="pay-method" data-method="cash">
+                                    <span class="pay-method__icon">💵</span>
+                                    <span class="pay-method__name">CASH</span>
+                                </button>
+                                <button class="pay-method pay-method--active" data-method="gcash">
+                                    <span class="pay-method__icon">📱</span>
+                                    <span class="pay-method__name">GCASH</span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- GCash verification fields -->
+                        <section class="pay-modal__section">
+                            <div class="gcash-cols">
+
+                                <!-- Left: order total + reference + status -->
+                                <div class="gcash-left">
+                                    <div class="pay-modal__field">
+                                        <label class="pay-modal__field-label">ORDER TOTAL</label>
+                                        <div class="pay-modal__change-display gcash-total-display">
+                                            <strong class="pay-modal__change-val gcash-total-val" id="gcash-order-total">₱0.00</strong>
                                         </div>
                                     </div>
-                                    <button type="button" class="gcash-enlarge-btn gcash-enlarge-btn-hidden" id="gcash-enlarge-btn">CLICK TO ENLARGE</button>
+                                    <div class="pay-modal__field">
+                                        <label class="pay-modal__field-label">REFERENCE NUMBER</label>
+                                        <input type="text" class="pay-modal__input gcash-ref-input js-gcash-ref-digits" id="gcash-ref-number" placeholder="e.g. 0023948129481" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+                                    </div>
                                 </div>
+
+                                <!-- Right: kiosk GCash QR (same config as customer kiosk) -->
+                                <div class="gcash-right">
+                                    <label class="pay-modal__field-label">GCASH QR CODE</label>
+                                    <div class="gcash-qr-meta">
+                                        <p class="gcash-qr-number" id="gcash-number-display-staff" hidden></p>
+                                        <p class="gcash-qr-name" id="gcash-name-display-staff" hidden></p>
+                                    </div>
+                                    <div class="gcash-qr-panel" id="gcash-qr-panel">
+                                        <div class="gcash-qr-wrap" id="gcash-qr-wrap">
+                                            <img src="" alt="GCash QR Code" id="gcash-qr-img" class="gcash-qr-img gcash-qr-img--hidden">
+                                            <div class="gcash-qr-placeholder" id="gcash-qr-placeholder">
+                                                <span>QR not configured yet</span>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="gcash-enlarge-btn gcash-enlarge-btn-hidden" id="gcash-enlarge-btn">CLICK TO ENLARGE</button>
+                                    </div>
+                                </div>
+
                             </div>
-
-                        </div>
-                    </section>
-
+                        </section>
+                    </div>
                 </div>
 
                 <!-- Footer -->

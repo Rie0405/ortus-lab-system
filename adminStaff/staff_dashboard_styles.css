@@ -1666,9 +1666,10 @@ img {
 }
 
 .pay-modal__section--order-details {
-    padding: 20px 32px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: linear-gradient(180deg, rgba(18, 18, 18, 0.55) 0%, rgba(30, 30, 30, 0.2) 100%);
+    padding: 0 0 0.25rem;
+    border-bottom: none;
+    background: transparent;
+    flex-shrink: 0;
 }
 
 .pay-modal__section--order-details .pay-modal__section-label {
@@ -5274,10 +5275,8 @@ img {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: space-between !important;
-    overflow-x: hidden;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start !important;
+    overflow: hidden !important; /* only .pay-modal__scroll scrolls */
     transform: translateZ(0);
     transition: none;
     box-sizing: border-box;
@@ -5289,7 +5288,7 @@ img {
     transform: none;
 }
 
-/* Header */
+/* Header — fixed black bar (does not scroll) */
 .pay-modal__header {
     background: #121212;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -5298,6 +5297,7 @@ img {
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
+    flex-shrink: 0;
 }
 
 .pay-modal__title {
@@ -5339,15 +5339,30 @@ img {
     line-height: 1.35;
 }
 
-/* Body — fills spacious modal between header and footer */
-.pay-modal__body {
-    padding: 1.25rem 1.5rem;
+/* One grey scroll area: Order Details + Payment Method + Amount / GCash */
+.pay-modal__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    background: #1e1e1e;
+    padding: 1.25rem 1.5rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    overflow-y: auto;
+}
+
+/* Cash / GCash panels live inside the scroll region (no nested scroll) */
+.pay-modal__body {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow: visible;
     min-height: 0;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
 }
 
 .pay-modal__section-label {
@@ -5576,14 +5591,15 @@ img {
     color: #ef4444;
 }
 
-/* Footer */
+/* Footer — fixed black bar (does not scroll) */
 .pay-modal__footer {
-    background: rgba(18, 18, 18, 0.8);
+    background: #121212;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     padding: 24px;
     display: flex;
     gap: 16px;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .pay-modal__btn {

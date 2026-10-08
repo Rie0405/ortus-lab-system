@@ -2013,20 +2013,46 @@
                 }
             }
 
+            function resolvePosLineFulfillment(item, orderType) {
+                var raw = item && item.fulfillment != null ? item.fulfillment : "";
+                var s = String(raw || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+                if (s === "take_out" || s === "takeout") return "take_out";
+                if (s === "dine_in" || s === "dinein") return "dine_in";
+                var notes = String((item && item.notes) || "");
+                var m = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/i.exec(notes);
+                if (m && m[1]) {
+                    var fromNotes = String(m[1]).trim().toLowerCase().replace(/[\s-]+/g, "_");
+                    if (fromNotes === "take_out" || fromNotes === "takeout") return "take_out";
+                    if (fromNotes === "dine_in" || fromNotes === "dinein") return "dine_in";
+                }
+                var ot = String(orderType || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+                if (ot === "take_out" || ot === "takeout") return "take_out";
+                if (ot === "dine_in" || ot === "dinein") return "dine_in";
+                return "dine_in";
+            }
+
             function loadPendingOrderIntoPos(order) {
                 if (!order || !Array.isArray(order.items)) return;
-                posCarts.dine_in = order.items.map(function (item) {
-                    return {
-                        menu_item_id: parseInt(item.menu_item_id, 10) || 0,
+                posCarts.dine_in.length = 0;
+                posCarts.take_out.length = 0;
+                var orderType = order.order_type || "";
+                order.items.forEach(function (item) {
+                    var menuId = parseInt(item.menu_item_id, 10) || 0;
+                    if (menuId <= 0) return;
+                    var fulfillment = resolvePosLineFulfillment(item, orderType);
+                    var row = {
+                        menu_item_id: menuId,
                         name: item.name || "Item",
                         price: parseFloat(item.unit_price) || 0,
                         quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
                         notes: item.notes || "",
-                        category_name: item.category_name || ""
+                        category_name: item.category_name || "",
+                        fulfillment: fulfillment
                     };
-                }).filter(function (x) { return x.menu_item_id > 0; });
-                posCarts.take_out.length = 0;
-                posActiveFulfillment = "dine_in";
+                    if (fulfillment === "take_out") posCarts.take_out.push(row);
+                    else posCarts.dine_in.push(row);
+                });
+                posActiveFulfillment = posCarts.dine_in.length ? "dine_in" : "take_out";
                 var customerName = order.customer_name ? String(order.customer_name).trim() : "";
                 if (!customerName && typeof window.getKitchenOrderCustomerName === "function") {
                     customerName = window.getKitchenOrderCustomerName(order) || "";
@@ -2036,26 +2062,31 @@
                 clearAllPosDiscounts();
                 var dtype = normalizeDiscountType(order.discount_type);
                 if (dtype === "senior" || dtype === "pwd" || dtype === "custom") {
+                    var attachBucket = "dine_in";
                     var attachIdx = 0;
                     var attachPrice = 0;
-                    posCarts.dine_in.forEach(function (it, i) {
-                        var p = Number(it.price) || 0;
-                        if (p > attachPrice) {
-                            attachPrice = p;
-                            attachIdx = i;
-                        }
+                    [["dine_in", posCarts.dine_in], ["take_out", posCarts.take_out]].forEach(function (pair) {
+                        (pair[1] || []).forEach(function (it, i) {
+                            var p = Number(it.price) || 0;
+                            if (p > attachPrice) {
+                                attachPrice = p;
+                                attachIdx = i;
+                                attachBucket = pair[0];
+                            }
+                        });
                     });
                     var customRate = Math.round(Number(order.discount_rate) || 0);
                     if (dtype === "custom" && customRate <= 0) customRate = getShiftDiscountRate() || 0;
                     if (dtype !== "custom" || customRate > 0) {
+                        var attachCart = attachBucket === "take_out" ? posCarts.take_out : posCarts.dine_in;
                         upsertLineDiscount({
-                            bucket: "dine_in",
+                            bucket: attachBucket,
                             idx: attachIdx,
                             type: dtype,
                             rate: dtype === "custom" ? customRate : 0,
                             customer_name: order.discount_customer_name || "",
                             id_number: order.discount_id_number || "",
-                            price: attachPrice || (posCarts.dine_in[attachIdx] && posCarts.dine_in[attachIdx].price) || 0
+                            price: attachPrice || (attachCart[attachIdx] && attachCart[attachIdx].price) || 0
                         });
                     }
                 }
@@ -2084,26 +2115,28 @@
             }
 
             function confirmPendingOrderFromPos() {
-                if (!posEditingOrder || posCarts.dine_in.length === 0) {
+                if (!posEditingOrder || getAllPosCartLines().length === 0) {
                     return Promise.reject(new Error("Nothing to confirm."));
                 }
                 if (!requirePosCustomerName()) {
                     return Promise.resolve();
                 }
                 var editOrderId = parseInt(posEditingOrder.id, 10) || 0;
-                var items = getAllPosCartLines().map(function (x) {
-                    return {
-                        menu_item_id: x.menu_item_id,
-                        quantity: x.quantity,
-                        notes: x.notes || "",
-                        unit_price: x.price
-                    };
-                }).filter(function (x) {
+                var dineLines = (posCarts.dine_in || []).map(function (x) {
+                    return Object.assign({}, x, { fulfillment: "dine_in" });
+                });
+                var takeLines = (posCarts.take_out || []).map(function (x) {
+                    return Object.assign({}, x, { fulfillment: "take_out" });
+                });
+                var items = mapPosCartLinesForSubmit(dineLines.concat(takeLines)).filter(function (x) {
                     return (parseInt(x.menu_item_id, 10) || 0) > 0;
                 });
                 if (!items.length) {
                     return Promise.reject(new Error("Nothing to confirm."));
                 }
+                var resolvedType = (dineLines.length && takeLines.length)
+                    ? "mixed"
+                    : (takeLines.length ? "take_out" : "dine_in");
                 var orderSource = String(posEditingOrder.order_source || "kiosk").toLowerCase();
                 // Returned kitchen/bar orders must go back to stations after edit.
                 var wasReturned = !!posEditingOrder.kitchen_returned
@@ -2119,7 +2152,7 @@
                     items: items,
                     discount: getPosDiscountPayload(),
                     customer_name: getPosCustomerName() || posEditingOrder.customer_name || "",
-                    order_type: posEditingOrder.order_type || "dine_in"
+                    order_type: resolvedType
                 };
                 if (confirmBtn) {
                     confirmBtn.disabled = true;
@@ -4471,9 +4504,13 @@
             function mapPosCartLinesForSubmit(lines, fulfillment) {
                 var lineFulfillment = fulfillment === "take_out" ? "take_out" : (fulfillment === "dine_in" ? "dine_in" : null);
                 return (lines || []).map(function (x) {
-                    var f = x && x.fulfillment
-                        ? (String(x.fulfillment).toLowerCase() === "take_out" ? "take_out" : "dine_in")
-                        : lineFulfillment;
+                    var f = null;
+                    if (x && x.fulfillment != null && String(x.fulfillment).trim() !== "") {
+                        var s = String(x.fulfillment).trim().toLowerCase().replace(/[\s-]+/g, "_");
+                        if (s === "take_out" || s === "takeout") f = "take_out";
+                        else if (s === "dine_in" || s === "dinein") f = "dine_in";
+                    }
+                    if (!f) f = lineFulfillment;
                     var row = {
                         menu_item_id: x.menu_item_id,
                         quantity: x.quantity,
@@ -8344,14 +8381,33 @@
                 var display = getOrderTypeDisplayFromOrder(order);
                 raw = String(display || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
             }
-            // Mixed dine-in + take-out stays one receipt/card under dine-in partition.
-            if (raw === 'mixed' || /dine.+take/.test(raw)) return 'dine_in';
+            // Mixed is not a column — lines are split by per-item fulfillment in groupOrdersByPartition.
+            if (raw === 'mixed' || /dine.+take/.test(raw)) return 'mixed';
             if (raw === 'take_out' || raw === 'takeout') return 'take_out';
             if (raw === 'pickup' || raw === 'pick_up') return 'pickup';
             if (raw === 'dine_in' || raw === 'dinein') return 'dine_in';
             if (/pick/.test(raw)) return 'pickup';
             if (/take/.test(raw)) return 'take_out';
             return 'dine_in';
+        }
+
+        /** Per-line partition from registered fulfillment / notes — never keyword-guess. */
+        function getOrderLinePartitionKey(item, order) {
+            var orderBucket = normalizeQueueOrderPartition(order);
+            if (orderBucket === 'pickup') return 'pickup';
+
+            var direct = normalizeItemFulfillmentKey(item && item.fulfillment);
+            if (!direct) {
+                var notes = String((item && item.notes) || '');
+                var m = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/i.exec(notes);
+                if (m && m[1]) direct = normalizeItemFulfillmentKey(m[1]);
+            }
+            if (direct === 'take_out' || direct === 'dine_in' || direct === 'pickup') {
+                return direct;
+            }
+            // Whole-order type only when not mixed (mixed must rely on per-line data).
+            if (orderBucket === 'take_out' || orderBucket === 'dine_in') return orderBucket;
+            return '';
         }
 
         function buildPendingOrderCardElement(order, idx, opts) {
@@ -9051,21 +9107,59 @@
             { key: 'pickup', label: 'Pick Up' }
         ];
 
-        function groupOrdersByPartition(orders) {
+        /**
+         * Place orders into Dine In / Take Out / Pick Up columns by line fulfillment.
+         * Mixed carts become separate cards per partition (take-out lines never under Dine In).
+         * opts.itemFilter(order) → items to consider (e.g. station-filtered kitchen lines).
+         */
+        function groupOrdersByPartition(orders, opts) {
+            opts = opts || {};
+            var itemFilter = typeof opts.itemFilter === 'function' ? opts.itemFilter : null;
             var grouped = { dine_in: [], take_out: [], pickup: [] };
             (orders || []).forEach(function (order) {
-                var bucket = normalizeQueueOrderPartition(order);
-                if (!grouped[bucket]) bucket = 'dine_in';
-                grouped[bucket].push(order);
+                var orderBucket = normalizeQueueOrderPartition(order);
+                var sourceItems = itemFilter ? itemFilter(order) : ((order && order.items) || []);
+                if (!Array.isArray(sourceItems)) sourceItems = [];
+
+                if (orderBucket === 'pickup') {
+                    if (sourceItems.length) {
+                        grouped.pickup.push(Object.assign({}, order, { items: sourceItems.slice() }));
+                    } else if (!itemFilter) {
+                        grouped.pickup.push(order);
+                    }
+                    return;
+                }
+
+                var byPart = { dine_in: [], take_out: [], pickup: [] };
+                sourceItems.forEach(function (item) {
+                    var key = getOrderLinePartitionKey(item, order);
+                    if (key === 'take_out') byPart.take_out.push(item);
+                    else if (key === 'pickup') byPart.pickup.push(item);
+                    else if (key === 'dine_in') byPart.dine_in.push(item);
+                    else if (orderBucket === 'take_out') byPart.take_out.push(item);
+                    else if (orderBucket === 'dine_in') byPart.dine_in.push(item);
+                    // Mixed/unresolved with no line fulfillment: omit rather than dump into dine_in.
+                });
+
+                if (!sourceItems.length && !itemFilter) {
+                    var fallback = (orderBucket === 'take_out') ? 'take_out' : 'dine_in';
+                    grouped[fallback].push(order);
+                    return;
+                }
+
+                ['dine_in', 'take_out', 'pickup'].forEach(function (part) {
+                    if (!byPart[part].length) return;
+                    grouped[part].push(Object.assign({}, order, { items: byPart[part] }));
+                });
             });
             return grouped;
         }
 
-        function renderPartitionedOrderGrid(container, orders, buildCardFn, emptyMessage) {
+        function renderPartitionedOrderGrid(container, orders, buildCardFn, emptyMessage, opts) {
             if (!container) return;
             container.innerHTML = '';
             container.classList.add('opq-queue-partitions');
-            var grouped = groupOrdersByPartition(orders);
+            var grouped = groupOrdersByPartition(orders, opts);
             QUEUE_ORDER_PARTITIONS.forEach(function (part) {
                 var section = document.createElement('section');
                 section.className = 'opq-queue-partition';
@@ -9229,9 +9323,22 @@
                     kitchenGrid,
                     orderedKitchen,
                     function (order, idx) {
-                        return buildKitchenOrderCardElement(order, idx, { hideOrderTypeLine: true });
+                        return buildKitchenOrderCardElement(order, idx, {
+                            hideOrderTypeLine: true,
+                            stationGroup: activeKitchenCategory
+                        });
                     },
-                    'No orders'
+                    'No orders',
+                    {
+                        // Partition after station filter so take-out lines on this capsule
+                        // never appear under the Dine In column.
+                        itemFilter: function (order) {
+                            return filterItemsForKitchenStation(
+                                (order && order.items) || [],
+                                activeKitchenCategory
+                            );
+                        }
+                    }
                 );
             }
 

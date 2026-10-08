@@ -542,7 +542,8 @@ if ($m === 'POST') {
             if ($fulfillment === null && $orderType !== 'mixed') {
                 $fulfillment = normalize_item_fulfillment($orderType);
             }
-            if ($fulfillment === null) {
+            // Never invent dine_in for mixed carts — that puts take-out lines under Dine In.
+            if ($fulfillment === null && $orderType !== 'mixed') {
                 $fulfillment = 'dine_in';
             }
             $notes = notes_with_fulfillment($notes, $fulfillment);
@@ -791,7 +792,8 @@ if ($m === 'PUT') {
                     if ($fulfillment === null && $fallbackOrderType !== 'mixed') {
                         $fulfillment = normalize_item_fulfillment($fallbackOrderType);
                     }
-                    if ($fulfillment === null) {
+                    // Never invent dine_in for mixed carts — that puts take-out lines under Dine In.
+                    if ($fulfillment === null && $fallbackOrderType !== 'mixed') {
                         $fulfillment = 'dine_in';
                     }
                     $notes = notes_with_fulfillment($notes, $fulfillment);

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-nav-flex">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261007-no-shift-time">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -44,10 +44,6 @@
             </div>
 
             <div class="header-meta">
-                <div class="meta-cell">
-                    <span>SHIFT TIME</span>
-                    <strong class="clock" id="staff-shift-clock">—</strong>
-                </div>
                 <div class="meta-cell meta-cell--staff">
                     <span id="staff-user-label">STAFF</span>
                     <strong id="staff-user-name">—</strong>
@@ -5467,17 +5463,6 @@
     <script>
     (function () {
         var opqGrid = document.getElementById('staff-opq-grid');
-        var staffShiftClockEl = document.getElementById('staff-shift-clock');
-        function tickStaffShiftClock() {
-            if (!staffShiftClockEl) return;
-            var now = new Date();
-            var hh = String(now.getHours()).padStart(2, '0');
-            var mm = String(now.getMinutes()).padStart(2, '0');
-            var ss = String(now.getSeconds()).padStart(2, '0');
-            staffShiftClockEl.textContent = hh + ':' + mm + ':' + ss;
-        }
-        tickStaffShiftClock();
-        window.setInterval(tickStaffShiftClock, 1000);
         var pendingBadge = document.getElementById('staff-pending-count');
         var kitchenGrid = document.getElementById('kitchen-orders-grid');
         var kitchenBadge = document.getElementById('kitchen-pending-count');

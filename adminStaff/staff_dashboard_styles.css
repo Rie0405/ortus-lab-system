@@ -331,6 +331,11 @@ img {
     color: #f48c25;
 }
 
+/* Shift time removed from header — hide if an old cached markup still has it */
+.header-meta > .meta-cell:not(.meta-cell--staff):not(.meta-cell--logout):not(.meta-cell--inv-check) {
+    display: none !important;
+}
+
 .meta-cell .clock {
     color: #f1f5f9;
     font-family: "Courier New", monospace;

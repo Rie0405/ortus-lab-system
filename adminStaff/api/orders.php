@@ -409,12 +409,13 @@ if ($m === 'GET') {
                     oi.notes,
                     oi.fulfillment,
                     COALESCE(c.name, '') AS category_name,
-                    COALESCE(mi.main_category_id, 0) AS main_category_id,
-                    COALESCE(mc.name, '') AS main_category_name
+                    COALESCE(NULLIF(mi.main_category_id, 0), NULLIF(c.main_category_id, 0), 0) AS main_category_id,
+                    COALESCE(mc.name, mc_cat.name, '') AS main_category_name
                FROM order_items oi
                JOIN menu_items mi ON mi.id = oi.menu_item_id
                LEFT JOIN categories c ON c.id = mi.category_id
-               LEFT JOIN main_categories mc ON mc.id = mi.main_category_id
+               LEFT JOIN main_categories mc ON mc.id = mi.main_category_id AND mc.is_active = 1
+               LEFT JOIN main_categories mc_cat ON mc_cat.id = c.main_category_id AND mc_cat.is_active = 1
               WHERE oi.order_id IN ($ids)"
         )->fetchAll();
 
@@ -1083,7 +1084,30 @@ if ($m === 'PUT') {
             }
         }
 
-        $pdo->commit();
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
+        // After status commit: re-assign station tickets for mixed kiosk carts.
+        // Schema helpers (CREATE/ALTER) must run BEFORE beginTransaction —
+        // MySQL implicitly commits open txns on DDL.
+        if ($status === 'confirmed') {
+            try {
+                ensure_kitchen_ticket_schema($pdo);
+                if (function_exists('ensure_main_categories_schema')) {
+                    ensure_main_categories_schema($pdo);
+                }
+                $pdo->beginTransaction();
+                assign_station_tickets_to_order($pdo, $id, []);
+                if ($pdo->inTransaction()) {
+                    $pdo->commit();
+                }
+            } catch (Throwable $ticketErr) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                // Status already saved; tickets are best-effort.
+            }
+        }
         $statusPayload = [
             'order_id' => $id,
             'order_source' => $orderSource,

@@ -1199,11 +1199,12 @@ body {
 .inv-manual-notes-cell {
     display: flex;
     align-items: center;
-    gap: 8px;
     min-width: 0;
+    width: 100%;
 }
 .inv-manual-notes-input {
     flex: 1;
+    width: 100%;
     min-width: 0;
     border: 1px solid #3d3025;
     border-radius: 8px;
@@ -1222,33 +1223,9 @@ body {
     border-color: #f48c25;
     box-shadow: 0 0 0 2px rgba(244, 140, 37, 0.18);
 }
-.inv-manual-notes-save {
-    flex-shrink: 0;
-    border: 1px solid #f48c25;
-    background: rgba(244, 140, 37, 0.12);
-    color: #f48c25;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
-    white-space: nowrap;
-    line-height: 1;
-}
-.inv-manual-notes-save:hover:not(:disabled) {
-    background: rgba(244, 140, 37, 0.22);
-}
-.inv-manual-notes-save:disabled {
-    opacity: 0.65;
-    cursor: default;
-}
-.inv-manual-notes-save.is-saved {
+.inv-manual-notes-input.is-saving {
     border-color: rgba(244, 140, 37, 0.55);
-    background: rgba(244, 140, 37, 0.22);
-    color: #ffd4a8;
+    opacity: 0.9;
 }
 
 .inv-stock-status-check {
@@ -2837,11 +2814,6 @@ body {
         max-width: 100%;
         padding: 2px 4px !important;
         font-size: 11px !important;
-    }
-
-    .inv-manual-notes-save {
-        font-size: 10px !important;
-        padding: 2px 6px !important;
     }
 
     .inv-category-label,

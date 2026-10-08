@@ -25,17 +25,28 @@ body {
     touch-action: manipulation !important;
 }
 
-/* Ensure main dashboard sections maintain their explicit size */
+/* POS shell: fixed height, no page-level scroll (panels scroll internally) */
 .main-dashboard-wrapper,
 .pos-container,
-.pos-page,
+.pos-page {
+    height: 100% !important;
+    width: 100% !important;
+    max-height: 100% !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Inventory / Menu admin: page must remain scrollable (long tables) */
 .order-page,
 .inv-page {
     height: 100% !important;
     width: 100% !important;
     max-height: 100% !important;
     position: relative !important;
-    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
     box-sizing: border-box !important;
 }
 

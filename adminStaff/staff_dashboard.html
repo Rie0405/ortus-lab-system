@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
-    <link rel="stylesheet" href="viewport_lock.css?v=20261008-pay-scroll">
+    <link rel="stylesheet" href="viewport_lock.css?v=20261008-inv-scroll">
     <script src="viewport_lock.js?v=20261008" defer></script>
     <style id="viewport-overlay-lock">
         /* 1. Prevent background repainting/blackout artifacts */
@@ -5890,19 +5890,35 @@
             if (/\bnon[\s-]*coffee\b/.test(c) || c === 'noncoffee' || c === 'non coffee') return true;
             if (c.indexOf('frappe') !== -1) return true;
             if (/\brefresher/.test(c)) return true;
-            if (c === 'drinks') return true;
+            if (c === 'drinks' || c.indexOf('drink') !== -1) return true;
             return false;
         }
         function isKitchenCategoryName(name) {
             var c = normKitchenCategoryName(name);
             if (!c) return false;
-            if (c.indexOf('pastr') !== -1 || c === 'meals' || c === 'meal') return true;
+            if (isPastryCategoryName(c) || c === 'meals' || c === 'meal') return true;
             if (c.indexOf('starter') !== -1 || c.indexOf('wing') !== -1 || c.indexOf('pasta') !== -1) return true;
             return !isBarCategoryName(c);
         }
         function isPastryCategoryName(name) {
             var c = normKitchenCategoryName(name);
-            return c.indexOf('pastr') !== -1;
+            if (!c) return false;
+            if (c.indexOf('pastr') !== -1) return true;
+            if (c.indexOf('bread') !== -1 || c.indexOf('bakery') !== -1 || c.indexOf('baked') !== -1) return true;
+            if (c.indexOf('dessert') !== -1 || c.indexOf('toast') !== -1 || c.indexOf('pastry') !== -1) return true;
+            return false;
+        }
+        /** Match a capsule/station by name keywords (e.g. "Bar & Dessert"). */
+        function findStationByNameHint(hints) {
+            var list = hints || [];
+            for (var i = 0; i < staffMainStations.length; i++) {
+                var st = staffMainStations[i];
+                var hay = String(st.name || '').toLowerCase() + ' ' + String(st.slug || '');
+                for (var h = 0; h < list.length; h++) {
+                    if (list[h] && hay.indexOf(list[h]) !== -1) return st;
+                }
+            }
+            return null;
         }
         function orderIsPastryOnly(order) {
             var items = (order && order.items) || [];
@@ -5932,13 +5948,27 @@
                 var byId = findStationByKey(stationKeyFromId(mid));
                 if (byId) return byId.key;
             }
-            var mcName = slugStationName(item && item.main_category_name);
-            if (mcName) {
-                var byName = findStationByKey(mcName);
-                if (byName) return byName.key;
+            var mcRaw = String(item && item.main_category_name || '').trim();
+            if (mcRaw) {
+                var byExact = findStationByKey(slugStationName(mcRaw));
+                if (byExact) return byExact.key;
+                // Partial: item main category "Dessert" → station "Bar & Dessert"
+                var byPartial = findStationByNameHint([normKitchenCategoryName(mcRaw)]);
+                if (byPartial) return byPartial.key;
             }
-            var wantSlug = isBarCategoryName(item && item.category_name) ? 'bar' : 'kitchen';
-            var legacy = findStationByKey(wantSlug);
+            var cat = item && item.category_name;
+            if (isBarCategoryName(cat)) {
+                var barSt = findStationByKey('bar') || findStationByNameHint(['bar', 'drink', 'beverage', 'coffee']);
+                if (barSt) return barSt.key;
+            }
+            if (isPastryCategoryName(cat) || isKitchenCategoryName(cat)) {
+                var foodSt = findStationByKey('kitchen')
+                    || findStationByKey('pastries')
+                    || findStationByNameHint(['dessert', 'pastr', 'bread', 'bakery', 'kitchen', 'food']);
+                if (foodSt) return foodSt.key;
+            }
+            var legacySlug = isBarCategoryName(cat) ? 'bar' : 'kitchen';
+            var legacy = findStationByKey(legacySlug);
             if (legacy) return legacy.key;
             return staffMainStations.length ? staffMainStations[0].key : '';
         }
@@ -6033,14 +6063,13 @@
         function getFilteredKitchenOrders(list, opts) {
             opts = opts || {};
             refreshKitchenCatButtons();
+            // After payment confirmation, kiosk lines (drinks + bread/pastry/dessert)
+            // must appear on matching capsule/station tabs. Do NOT drop the whole
+            // order when it contains a pastry/bread line.
             if (!kitchenCatButtons.length || !activeKitchenCategory) {
-                return (list || []).filter(function (order) {
-                    if (isKioskOrder(order) && orderHasPastryItem(order)) return false;
-                    return !orderIsPastryOnly(order);
-                });
+                return (list || []).slice();
             }
             return (list || []).filter(function (order) {
-                if (isKioskOrder(order) && orderHasPastryItem(order)) return false;
                 return orderMatchesKitchenCategory(order, activeKitchenCategory, opts);
             });
         }

@@ -111,12 +111,13 @@ function stations_for_menu_item_ids(PDO $pdo, array $menuItemIds): array
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $pdo->prepare(
         "SELECT DISTINCT
-                COALESCE(mi.main_category_id, 0) AS main_category_id,
-                COALESCE(mc.name, '') AS main_category_name,
+                COALESCE(NULLIF(mi.main_category_id, 0), NULLIF(c.main_category_id, 0), 0) AS main_category_id,
+                COALESCE(mc.name, mc_cat.name, '') AS main_category_name,
                 COALESCE(c.name, '') AS category_name
            FROM menu_items mi
-           LEFT JOIN main_categories mc ON mc.id = mi.main_category_id AND mc.is_active = 1
            LEFT JOIN categories c ON c.id = mi.category_id
+           LEFT JOIN main_categories mc ON mc.id = mi.main_category_id AND mc.is_active = 1
+           LEFT JOIN main_categories mc_cat ON mc_cat.id = c.main_category_id AND mc_cat.is_active = 1
           WHERE mi.id IN ($placeholders)"
     );
     $stmt->execute($ids);
@@ -127,20 +128,56 @@ function stations_for_menu_item_ids(PDO $pdo, array $menuItemIds): array
         $mcid = (int)($row['main_category_id'] ?? 0);
         $mcName = trim((string)($row['main_category_name'] ?? ''));
 
-        // Fallback when menu item has no main_category_id: map drink-like → Bar, else Kitchen.
+        // Fallback when menu item has no main_category_id: map drink-like → Bar*,
+        // pastry/bread/dessert → station whose name matches, else Kitchen / first station.
         if ($mcid <= 0 || $mcName === '') {
             $cat = strtolower(trim((string)($row['category_name'] ?? '')));
             $wantBar = ($cat === 'drinks' || $cat === 'beverages' || $cat === 'coffee'
                 || strpos($cat, 'drink') !== false || strpos($cat, 'coffee') !== false
                 || strpos($cat, 'frappe') !== false || strpos($cat, 'refresher') !== false);
-            $fallbackName = $wantBar ? 'Bar' : 'Kitchen';
-            $fb = $pdo->prepare(
-                "SELECT id, name FROM main_categories
-                  WHERE is_active = 1 AND LOWER(TRIM(name)) = LOWER(:n)
-                  LIMIT 1"
-            );
-            $fb->execute([':n' => $fallbackName]);
-            $fbRow = $fb->fetch(PDO::FETCH_ASSOC);
+            $wantPastry = (strpos($cat, 'pastr') !== false || strpos($cat, 'bread') !== false
+                || strpos($cat, 'bakery') !== false || strpos($cat, 'baked') !== false
+                || strpos($cat, 'dessert') !== false || strpos($cat, 'toast') !== false);
+
+            $fbRow = null;
+            if ($wantBar || $wantPastry) {
+                $allMc = $pdo->query(
+                    'SELECT id, name FROM main_categories WHERE is_active = 1 ORDER BY display_order ASC, id ASC'
+                )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                foreach ($allMc as $cand) {
+                    $n = strtolower(trim((string)($cand['name'] ?? '')));
+                    if ($wantBar && (strpos($n, 'bar') !== false || strpos($n, 'drink') !== false || strpos($n, 'beverage') !== false)) {
+                        $fbRow = $cand;
+                        break;
+                    }
+                    if ($wantPastry && (strpos($n, 'dessert') !== false || strpos($n, 'pastr') !== false
+                        || strpos($n, 'bread') !== false || strpos($n, 'bakery') !== false
+                        || strpos($n, 'kitchen') !== false || strpos($n, 'food') !== false)) {
+                        $fbRow = $cand;
+                        break;
+                    }
+                }
+                // Combined capsule e.g. "Bar & Dessert" — prefer it when either side matches.
+                if (!$fbRow) {
+                    foreach ($allMc as $cand) {
+                        $n = strtolower(trim((string)($cand['name'] ?? '')));
+                        if (strpos($n, 'bar') !== false && (strpos($n, 'dessert') !== false || strpos($n, 'pastr') !== false)) {
+                            $fbRow = $cand;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!$fbRow) {
+                $fallbackName = $wantBar ? 'Bar' : 'Kitchen';
+                $fb = $pdo->prepare(
+                    "SELECT id, name FROM main_categories
+                      WHERE is_active = 1 AND LOWER(TRIM(name)) = LOWER(:n)
+                      LIMIT 1"
+                );
+                $fb->execute([':n' => $fallbackName]);
+                $fbRow = $fb->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
             if ($fbRow) {
                 $mcid = (int)$fbRow['id'];
                 $mcName = (string)$fbRow['name'];

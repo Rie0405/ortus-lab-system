@@ -2535,14 +2535,20 @@ body {
     .alert-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* Tablet / laptop: keep ALL 8 automatic columns visible — compact fit, no horizontal scroll */
-@media (max-width: 1366px) {
-    .table-wrap {
+/*
+ * Tablet density (≤1024px): keep the original 8-column table structure.
+ * Markup uses .table-head / .table-row (grid) rather than <table>, but layout
+ * stays a traditional header + row table — not cards. No columns hidden.
+ */
+@media (max-width: 1024px) {
+    .table-wrap,
+    #inventory-table-wrap,
+    #inventory-secondary-table-wrap {
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box;
         overflow-x: hidden !important;
-        table-layout: auto;
+        table-layout: fixed !important;
     }
 
     .table-head,
@@ -2550,36 +2556,40 @@ body {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
-        gap: 4px !important;
-        padding: 6px 4px !important;
+        gap: 0 !important;
+        padding: 0 !important;
         font-size: 11px !important;
         box-sizing: border-box;
     }
 
     .table-head {
+        display: grid !important;
         font-size: 10px !important;
         letter-spacing: 0.04em;
     }
 
     .table-head--stacked .table-head-sub {
-        font-size: 8px !important;
+        font-size: 9px !important;
         letter-spacing: 0.02em;
+        line-height: 1.15;
     }
 
-    /* 8 columns: Item, Category, Stock Used, Stock Level, Batch Capacity, Per Piece, Status, Actions */
+    /* Fixed proportional widths for all 8 columns (20/11/14/14/10/8/11/12) */
     #inventory-table-wrap .table-head,
     #inventory-table-wrap .table-row {
+        display: grid !important;
         grid-template-columns:
-            minmax(0, 1.7fr)
-            minmax(0, 0.85fr)
-            minmax(0, 0.95fr)
-            minmax(0, 0.95fr)
-            minmax(52px, 0.7fr)
-            minmax(52px, 0.7fr)
-            minmax(0, 0.65fr)
-            minmax(56px, 0.75fr);
+            minmax(0, 20fr)  /* Item Details — 20% */
+            minmax(0, 11fr)  /* Category — 11% */
+            minmax(0, 14fr)  /* Stock Used — 14% */
+            minmax(0, 14fr)  /* Stock Level — 14% */
+            minmax(0, 10fr)  /* Batch Capacity — 10% */
+            minmax(0, 8fr)   /* Per Piece — 8% */
+            minmax(0, 11fr)  /* Status — 11% */
+            minmax(0, 12fr); /* Actions — 12% */
     }
 
+    /* Every column stays visible — no display:none on headers/cells */
     #inventory-table-wrap .table-head > *,
     #inventory-table-wrap .table-row > *,
     #inventory-table-wrap .inv-col-category,
@@ -2593,7 +2603,9 @@ body {
         opacity: 1 !important;
         min-width: 0 !important;
         max-width: 100%;
+        padding: 4px 6px !important;
         box-sizing: border-box;
+        overflow: hidden;
     }
 
     #inventory-table-wrap .table-head > span,
@@ -2601,9 +2613,20 @@ body {
         display: flex !important;
         flex-direction: column;
         align-items: flex-start;
+        justify-content: center;
     }
 
-    /* Category column is visible again — no duplicate under item title */
+    #inventory-table-wrap .table-row--category-label,
+    #inventory-table-wrap .table-row--category-empty {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    #inventory-table-wrap .table-row--category-label > *,
+    #inventory-table-wrap .table-row--category-empty > * {
+        overflow: visible;
+    }
+
     .item-col__tablet-meta {
         display: none !important;
     }
@@ -2611,6 +2634,7 @@ body {
     .item-col {
         gap: 6px;
         min-width: 0;
+        align-items: center;
     }
 
     .item-col img {
@@ -2621,18 +2645,18 @@ body {
     }
 
     .item-col strong {
-        font-size: 11px !important;
+        font-size: 12px !important;
         line-height: 1.2;
     }
 
     .item-col small {
-        font-size: 9px !important;
+        font-size: 10px !important;
     }
 
     .cat,
     .pill,
     .stock-type-badge {
-        font-size: 9px !important;
+        font-size: 10px !important;
     }
 
     .cat {
@@ -2644,16 +2668,17 @@ body {
     }
 
     .stock-used-display__main {
-        font-size: 11px !important;
+        font-size: 12px !important;
     }
 
     .stock-used-display__unit,
     .stock-used-display__sub {
-        font-size: 9px !important;
+        font-size: 10px !important;
     }
 
     .bar {
-        width: 48px;
+        width: 100%;
+        max-width: 72px;
         height: 3px;
     }
 
@@ -2668,14 +2693,15 @@ body {
 
     .inv-stock-level-cell strong,
     .stock-level-cell strong {
-        font-size: 11px !important;
+        font-size: 12px !important;
     }
 
     .inv-stock-level-cell__controls {
         display: inline-flex !important;
+        flex-wrap: wrap;
+        gap: 4px;
     }
 
-    /* Set lives in Batch Capacity / Per Piece columns — not duplicated in Stock Level */
     .inv-stock-level-cell .inv-stock-level-set,
     .stock-level-cell .inv-stock-level-set {
         display: none !important;
@@ -2688,14 +2714,16 @@ body {
         visibility: visible !important;
         opacity: 1 !important;
         padding: 2px 6px !important;
-        font-size: 9px !important;
+        font-size: 10px !important;
         flex-shrink: 0;
+        pointer-events: auto !important;
     }
 
     .inv-box-capacity-cell {
         display: flex !important;
         align-items: center;
         justify-content: center;
+        overflow: visible !important;
     }
 
     .btn-box-capacity,
@@ -2706,13 +2734,14 @@ body {
         justify-content: center !important;
         visibility: visible !important;
         opacity: 1 !important;
-        width: 45px !important;
-        min-width: 45px !important;
-        max-width: 45px !important;
+        width: 40px !important;
+        max-width: 40px !important;
+        min-width: 0 !important;
         padding: 2px 4px !important;
         font-size: 10px !important;
         border-radius: 6px;
         box-sizing: border-box;
+        pointer-events: auto !important;
     }
 
     .btn-box-capacity:not([data-configured]) {
@@ -2725,8 +2754,10 @@ body {
         display: flex !important;
         flex-direction: column;
         align-items: flex-start;
-        gap: 3px;
+        justify-content: center;
+        gap: 2px;
         min-width: 0;
+        overflow: visible !important;
     }
 
     .actions button,
@@ -2734,20 +2765,16 @@ body {
         font-size: 10px !important;
         letter-spacing: 0.03em;
         white-space: normal;
-        line-height: 1.15;
+        line-height: 1.2 !important;
         padding: 0 !important;
+        pointer-events: auto !important;
     }
 
-    /* Manual table: keep all of its columns visible and compact */
+    /* Manual table: compact traditional columns (all visible) */
     #inventory-secondary-table-wrap .table-head,
     #inventory-secondary-table-wrap .table-row {
-        grid-template-columns:
-            minmax(0, 1.6fr)
-            minmax(0, 0.9fr)
-            minmax(0, 1.3fr)
-            minmax(0, 0.7fr)
-            minmax(0, 1.2fr)
-            minmax(56px, 0.7fr);
+        display: grid !important;
+        grid-template-columns: 22% 14% 22% 12% 18% 12%;
         min-width: 0 !important;
     }
 
@@ -2757,13 +2784,15 @@ body {
         display: flex !important;
         visibility: visible !important;
         min-width: 0 !important;
+        padding: 4px 6px !important;
+        box-sizing: border-box;
     }
 
     .inv-manual-notes-input {
         width: 100%;
         max-width: 100%;
         padding: 2px 4px !important;
-        font-size: 10px !important;
+        font-size: 11px !important;
     }
 
     .inv-manual-notes-save {
@@ -2774,7 +2803,7 @@ body {
     .inv-category-label,
     .inv-category-empty {
         padding: 6px 4px !important;
-        font-size: 10px !important;
+        font-size: 11px !important;
     }
 }
 

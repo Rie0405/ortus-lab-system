@@ -50,7 +50,9 @@ img {
 .pos-page {
     width: 100%;
     max-width: 100%;
-    min-height: 100dvh;
+    /* svh: stable while virtual keyboard is open (dvh shrinks and reflows the shell) */
+    min-height: 100vh;
+    min-height: 100svh;
     height: auto;
     display: flex;
     flex-direction: column;
@@ -2260,15 +2262,16 @@ img {
     }
 }
 
-/* Returned Orders slide-out drawer (POS) — fixed width panel, body-only scroll */
+/* Returned Orders slide-out drawer (POS) — fixed width panel, body-only scroll.
+   Pin top+bottom (no 100vh) so keyboard open/close does not resize this fixed layer. */
 .queue-drawer-shell,
 .side-drawer,
 .sliding-panel {
     position: fixed !important;
     top: 0 !important;
     right: 0 !important;
-    bottom: auto !important;
-    height: 100vh !important;
+    bottom: 0 !important;
+    height: auto !important;
     width: 380px !important;
     max-width: 85vw !important;
     z-index: 1050 !important;
@@ -2281,7 +2284,6 @@ img {
     overflow: visible;
     transform: translateX(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    will-change: transform;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
 }
@@ -5213,9 +5215,9 @@ img {
 }
 
 /* ─── Payment Confirmation Modal ────────────────────────────── */
-/* Full-viewport fixed overlay; flex-centers the dialog on all devices.
-   Use top/right/bottom/left (not inset shorthand) so fixed edges stay stable
-   when the virtual keyboard resizes the visual viewport. */
+/* Pin with top/right/bottom/left only — avoid height:100%/100vh so the overlay
+   does not reflow every frame while the mobile keyboard animates.
+   max-height uses svh (stable) instead of dvh/vh (keyboard-tracking). */
 .pay-modal-backdrop,
 .payment-modal-overlay {
     position: fixed !important;
@@ -5223,9 +5225,9 @@ img {
     right: 0 !important;
     bottom: 0 !important;
     left: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100% !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 24px;
     background: rgba(0, 0, 0, 0.5);
@@ -5259,7 +5261,8 @@ img {
     border-radius: 8px;
     width: min(660px, 100%);
     max-width: min(660px, calc(100% - 24px));
-    max-height: 90vh !important;
+    max-height: 90vh;
+    max-height: 90svh;
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
@@ -7270,7 +7273,9 @@ img {
     .ses-dialog__panel {
         width: min(100%, calc(100% - 1.5rem));
         max-width: calc(100% - 1.5rem);
-        max-height: min(92dvh, 100%);
+        /* svh stays stable when the virtual keyboard opens (unlike dvh) */
+        max-height: min(92vh, 100%);
+        max-height: min(92svh, 100%);
     }
 
     .pay-modal-backdrop,
@@ -7292,12 +7297,41 @@ img {
     }
 }
 
+/*
+ * Touch / tablet: never vertically center input modals.
+ * Flex-centering + keyboard viewport changes fights scroll-into-view and flickers
+ * the focused input, suggest buttons, and footer actions. Width breakpoints stay intact.
+ */
+@media (hover: none) and (pointer: coarse) {
+    .pay-modal-backdrop,
+    .payment-modal-overlay,
+    .cash-mgmt-backdrop,
+    .pos-modal-backdrop,
+    .shortage-modal-backdrop {
+        align-items: flex-start !important;
+    }
+
+    .pay-modal-backdrop .pay-modal,
+    .pay-modal-backdrop .payment-modal-content,
+    .cash-mgmt-backdrop .cash-mgmt-modal,
+    .pos-modal-backdrop .pos-modal {
+        margin-top: 0.75rem;
+        margin-bottom: 0.75rem;
+        max-height: none;
+        max-height: calc(100% - 1.5rem);
+    }
+}
+
 /* Laptop/tablet+: keep menu + CURRENT ORDER side-by-side */
 @media (min-width: 768px) {
     .pos-page {
+        /* Prefer svh so keyboard open does not shrink/lock-reflow the whole shell */
         height: 100vh;
+        height: 100svh;
         min-height: 100vh;
+        min-height: 100svh;
         max-height: 100vh;
+        max-height: 100svh;
         overflow: hidden;
     }
 

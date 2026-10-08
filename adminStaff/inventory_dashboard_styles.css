@@ -612,10 +612,17 @@ body {
 }
 
 .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
     border: 1px solid #3d3025;
     border-radius: 12px;
     overflow: hidden;
     background: rgba(42, 33, 24, 0.92);
+}
+
+.item-col__tablet-meta {
+    display: none;
 }
 
 .table-head,
@@ -2491,6 +2498,10 @@ body {
 
 @media (max-width: 1280px) {
     .alert-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Intermediate widths: allow horizontal scroll only when full desktop columns still need room */
+@media (max-width: 1280px) and (min-width: 1025px) {
     .table-wrap {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -2499,6 +2510,164 @@ body {
     .table-head, .table-row { min-width: 1320px; }
     #inventory-secondary-table-wrap .table-head,
     #inventory-secondary-table-wrap .table-row { min-width: 1040px; }
+}
+
+/* Tablet and smaller: fit inventory tables without horizontal scroll */
+@media (max-width: 1024px) {
+    .table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        overflow-x: hidden !important;
+    }
+
+    .table-head,
+    .table-row {
+        min-width: 0 !important;
+        gap: 8px;
+        padding: 8px 6px !important;
+        font-size: 12px;
+        box-sizing: border-box;
+    }
+
+    .table-head {
+        font-size: 11px;
+        letter-spacing: 0.05em;
+    }
+
+    .table-head--stacked .table-head-sub {
+        font-size: 9px;
+    }
+
+    .item-col {
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .item-col img {
+        width: 24px;
+        height: 24px;
+        padding: 4px;
+        flex-shrink: 0;
+    }
+
+    .item-col strong {
+        font-size: 12px;
+        line-height: 1.25;
+    }
+
+    .item-col small {
+        font-size: 10px;
+    }
+
+    .item-col__tablet-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+        margin-top: 4px;
+    }
+
+    .item-col__tablet-meta .stock-type-badge {
+        margin-top: 0;
+        font-size: 9px;
+    }
+
+    .cat,
+    .pill,
+    .stock-type-badge {
+        font-size: 10px;
+    }
+
+    .cat {
+        padding: 2px 6px;
+    }
+
+    .pill {
+        padding: 3px 8px;
+    }
+
+    .stock-used-display__main {
+        font-size: 12px;
+    }
+
+    .stock-used-display__unit,
+    .stock-used-display__sub {
+        font-size: 10px;
+    }
+
+    .bar {
+        width: 64px;
+    }
+
+    .inv-stock-level-cell strong {
+        font-size: 12px;
+    }
+
+    .btn-open-stock-used,
+    .btn-box-capacity {
+        padding: 4px 8px;
+        min-width: 0;
+        font-size: 10px;
+    }
+
+    .actions,
+    .inv-manual-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .actions button,
+    .actions .link-btn {
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        white-space: normal;
+        line-height: 1.15;
+    }
+
+    /* Automatic table: drop Category / Batch Capacity / Per Piece; category shows under item title */
+    #inventory-table-wrap .table-head,
+    #inventory-table-wrap .table-row {
+        grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.75fr) minmax(64px, 0.85fr);
+    }
+
+    #inventory-table-wrap .inv-col-category,
+    #inventory-table-wrap .inv-col-batch-capacity,
+    #inventory-table-wrap .inv-col-per-piece {
+        display: none !important;
+    }
+
+    /* Manual table: drop Category column; keep notes usable */
+    #inventory-secondary-table-wrap .table-head,
+    #inventory-secondary-table-wrap .table-row {
+        grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 1.4fr) minmax(64px, 0.75fr);
+        min-width: 0 !important;
+    }
+
+    #inventory-secondary-table-wrap .inv-col-category {
+        display: none !important;
+    }
+
+    .inv-manual-notes-input {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+
+    .inv-manual-notes-save {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+
+    .inv-category-label {
+        padding: 8px 6px;
+        font-size: 11px;
+    }
+
+    .inv-category-empty {
+        padding: 8px 6px;
+        font-size: 11px;
+    }
 }
 
 @media (max-width: 900px) {

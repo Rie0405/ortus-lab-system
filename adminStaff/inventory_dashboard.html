@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261007-responsive">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-tablet-table">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
 </head>
@@ -117,7 +117,7 @@
             <section class="table-wrap" id="inventory-table-wrap">
                 <div class="table-head">
                     <span>ITEM DETAILS</span>
-                    <span>CATEGORY</span>
+                    <span class="inv-col-category">CATEGORY</span>
                     <div class="table-head--stacked">
                         <span>STOCK USED</span>
                         <span class="table-head-sub">open / active batch remaining</span>
@@ -126,11 +126,11 @@
                         <span>STOCK LEVEL</span>
                         <span class="table-head-sub">Open — amount of items in use or open packs</span>
                     </div>
-                    <div class="table-head--stacked">
+                    <div class="table-head--stacked inv-col-batch-capacity">
                         <span>Batch Capacity</span>
                         <span class="table-head-sub">Estimated servings quantity</span>
                     </div>
-                    <div class="table-head--stacked">
+                    <div class="table-head--stacked inv-col-per-piece">
                         <span>Per Piece</span>
                         <span class="table-head-sub">Pieces opened per batch</span>
                     </div>
@@ -149,7 +149,7 @@
                 <div class="table-wrap inv-table-partition__body" id="inventory-secondary-table-wrap">
                     <div class="table-head">
                         <span>ITEM DETAILS</span>
-                        <span>CATEGORY</span>
+                        <span class="inv-col-category">CATEGORY</span>
                         <div class="table-head--stacked">
                             <span>STOCK STATUS</span>
                             <span class="table-head-sub">good / low / critical</span>
@@ -3482,8 +3482,10 @@
                     var row = document.createElement('div');
                     row.className = 'table-row';
                     row.innerHTML =
-                        '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
-                        '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                        '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small>' +
+                            '<div class="item-col__tablet-meta"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                        '</div></div>' +
+                        '<div class="inv-col-category"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
                         '<div>' + buildStockStatusChecklistHtml(item.id, stockStatus) + '</div>' +
                         '<div class="inv-manual-cell-center"><span class="pill ' + status.pill + '">' + status.label + '</span></div>' +
                         '<div class="inv-manual-notes-cell">' +
@@ -3535,16 +3537,18 @@
             var openBtn = canOpen
                 ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open — amount of items in use or open packs">Open</button>'
                 : '<button type="button" class="btn-open-stock-used btn-open-stock-used--disabled" data-open-stock-blocked="1" data-open-block-reason="' + openBlockedReason + '" title="' + escAttr(openBlockedMsg) + '" aria-disabled="true">Open</button>';
-            return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small></div></div>' +
-                '<div><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+            return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small>' +
+                '<div class="item-col__tablet-meta"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                '</div></div>' +
+                '<div class="inv-col-category"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
                 '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
                 '<div class="inv-stock-level-cell"><strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' + openBtn + '</div>' +
-                '<div class="inv-box-capacity-cell">' +
+                '<div class="inv-box-capacity-cell inv-col-batch-capacity">' +
                     (nonConsumable
                         ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'
                         : '<button type="button" class="btn-box-capacity"' + (capacityConfigured ? ' data-configured="1"' : '') + ' data-orders-box-id="' + item.id + '" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</button>') +
                 '</div>' +
-                '<div class="inv-box-capacity-cell">' +
+                '<div class="inv-box-capacity-cell inv-col-per-piece">' +
                     (nonConsumable
                         ? '<button type="button" class="btn-box-capacity btn-batch-size" data-configured="1" data-batch-size-id="' + item.id + '" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</button>'
                         : '<span class="inv-box-capacity-na" title="' + escAttr(batchTitle) + '">' + esc(batchLabel) + '</span>') +

@@ -87,7 +87,7 @@ img {
     gap: 0.75rem 1rem;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1100;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -2295,10 +2295,11 @@ img {
 }
 
 .queue-drawer-tab,
-.drawer-toggle-btn {
+.drawer-toggle-btn,
+.sidebar-trigger-btn {
     position: absolute !important;
     left: -45px !important;
-    top: 20px !important;
+    top: 100px !important;
     right: auto !important;
     width: 40px;
     height: 96px;
@@ -2315,9 +2316,14 @@ img {
     justify-content: center;
     box-shadow: 0 4px 0 0 #991b1b, -6px 0 20px rgba(0, 0, 0, 0.35);
     transition: background 0.2s ease, box-shadow 0.2s ease;
-    z-index: 1060 !important;
+    z-index: 999 !important;
     -webkit-tap-highlight-color: transparent;
     will-change: auto;
+}
+
+.side-drawer .drawer-toggle-btn,
+.queue-drawer-shell .queue-drawer-tab {
+    top: 100px !important;
 }
 
 .queue-drawer-tab__badge {

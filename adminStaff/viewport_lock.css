@@ -91,6 +91,44 @@ textarea {
 }
 
 /*
+ * Keyboard-safe heights for staff POS (tablet typing glitch).
+ * Prefer % of the locked body / --vh shell — never live 100vh/dvh that
+ * resizes when the virtual keyboard opens.
+ */
+.pos-page {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+}
+
+.pay-modal,
+.payment-modal-content {
+    /* Fill overlay box, not viewport-vh (avoids squish on keyboard) */
+    height: auto !important;
+    max-height: calc(100% - 32px) !important;
+}
+
+.queue-drawer-shell,
+.side-drawer,
+.sliding-panel {
+    /* Already top+bottom pinned; keep height off vh */
+    height: auto !important;
+    top: 0 !important;
+    bottom: 0 !important;
+}
+
+@media (max-width: 1024px) {
+    input,
+    select,
+    textarea,
+    .pay-modal__input,
+    .cash-mgmt-modal__text,
+    .pos-customer-name__input {
+        font-size: 16px !important;
+    }
+}
+
+/*
  * Overlay/backdrop shells stay viewport-pinned (keyboard overlays them).
  * Top-aligned — no mid-screen re-center when visual viewport changes.
  */

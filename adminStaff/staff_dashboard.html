@@ -11,13 +11,29 @@
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
-    <link rel="stylesheet" href="viewport_lock.css?v=20261008-inv-scroll">
+    <link rel="stylesheet" href="viewport_lock.css?v=20261008-kb-min">
     <script src="viewport_lock.js?v=20261008" defer></script>
     <style id="viewport-overlay-lock">
-        /* 1. Prevent background repainting/blackout artifacts */
+        /* Prevent background repainting/blackout artifacts */
         body, html {
             background-color: #121212 !important;
             touch-action: manipulation !important;
+        }
+        /* Tablet: kill live vh locks that fight overlays-content + keyboard */
+        @media (max-width: 1024px) {
+            .pos-page {
+                height: 100% !important;
+                min-height: 0 !important;
+                max-height: 100% !important;
+            }
+            .pay-modal,
+            .payment-modal-content {
+                height: auto !important;
+                max-height: calc(100% - 32px) !important;
+            }
+            input, select, textarea {
+                font-size: 16px !important;
+            }
         }
     </style>
 </head>

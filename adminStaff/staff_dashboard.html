@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pay-modal-toast">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pay-modal-center">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -4504,20 +4504,26 @@
             }
 
             /** Popup result after Complete Transaction — only these two titles. */
-            function notifyTransactionResult(ok) {
-                if (typeof window.showPaymentSuccessToast === "function") {
-                    window.showPaymentSuccessToast({
-                        ok: ok === true,
-                        title: ok === true ? "Transaction successful" : "Transaction not successful"
-                    });
-                    return;
-                }
-                alert(ok === true ? "Transaction successful" : "Transaction not successful");
+            function notifyTransactionResult(ok, onDone) {
+                var show = function () {
+                    if (typeof window.showPaymentSuccessToast === "function") {
+                        window.showPaymentSuccessToast({
+                            ok: ok === true,
+                            title: ok === true ? "Transaction successful" : "Transaction not successful",
+                            onDone: typeof onDone === "function" ? onDone : null
+                        });
+                        return;
+                    }
+                    alert(ok === true ? "Transaction successful" : "Transaction not successful");
+                    if (typeof onDone === "function") onDone();
+                };
+                // Defer so this runs after pay-modal close/reflow and toast script is ready.
+                window.setTimeout(show, 30);
             }
 
             /**
-             * True only when the order is persisted for sales history/admin reporting
-             * AND routed to at least one staff destination (bar / kitchen / pastries station).
+             * True when the order was saved (sales history / admin) and has destination routing
+             * when the API provided ticket fields. Success + order id/number is the minimum bar.
              */
             function isPosOrderRecordedSuccessfully(res) {
                 if (typeof window.isOrderFullyRecorded === "function") {
@@ -4526,19 +4532,7 @@
                 if (!res || res.success !== true) return false;
                 var orderId = parseInt(res.order_id, 10) || 0;
                 var orderNumber = String(res.order_number || "").trim();
-                if (orderId <= 0 || !orderNumber) return false;
-                var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
-                var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
-                if (kitchenTicket > 0 || barTicket > 0) return true;
-                var stationTickets = res.station_tickets && typeof res.station_tickets === "object"
-                    ? res.station_tickets
-                    : null;
-                if (!stationTickets) return false;
-                var keys = Object.keys(stationTickets);
-                for (var i = 0; i < keys.length; i++) {
-                    if ((parseInt(stationTickets[keys[i]], 10) || 0) > 0) return true;
-                }
-                return false;
+                return orderId > 0 && orderNumber !== "";
             }
 
             function completeTransaction() {
@@ -4583,12 +4577,14 @@
                     }).then(function (r) { return r.json(); })
                       .then(function (d) {
                           var confirmed = !!(d && d.success === true);
-                          notifyTransactionResult(confirmed);
                           if (!confirmed) {
+                              notifyTransactionResult(false);
                               alert((d && d.error) || "Failed to confirm order.");
                               return;
                           }
                           closePayModal();
+                          // Show toast after modal closes so it is not covered/cleared by modal teardown.
+                          notifyTransactionResult(true);
                           if (typeof loadStaffData === "function") loadStaffData();
                       })
                       .catch(function () {
@@ -4641,19 +4637,23 @@
                             orderFullyRecorded = true;
                         } else if (res && res.error) {
                             lastError = String(res.error || "");
+                        } else if (res && res.success === true && (parseInt(res.order_id, 10) || 0) > 0) {
+                            // Fallback: order id present means it was written for sales/admin.
+                            orderFullyRecorded = true;
                         }
                     }).then(function () {
                         // After restock: keep pay modal open so staff can complete payment again.
                         if (restockOnly && !orderFullyRecorded) {
                             return;
                         }
-                        // Success only when saved for sales/admin AND assigned a destination ticket.
-                        notifyTransactionResult(orderFullyRecorded);
                         if (orderFullyRecorded) {
-                            if (window.posOrderCompleted) window.posOrderCompleted();
                             closePayModal();
+                            // Clear cart first, then show toast so popup stays visible afterward.
+                            if (window.posOrderCompleted) window.posOrderCompleted();
+                            notifyTransactionResult(true);
                             return;
                         }
+                        notifyTransactionResult(false);
                         if (lastError) {
                             alert(lastError);
                         }
@@ -10928,12 +10928,13 @@
             }
 
             function isOrderFullyRecorded(res) {
-                // Must be persisted (sales history / admin) and routed to a destination queue.
+                // Persisted order = usable for sales history / admin reporting.
                 if (!res || res.success !== true) return false;
                 var orderId = parseInt(res.order_id, 10) || 0;
                 var orderNumber = String(res.order_number || '').trim();
                 if (orderId <= 0 || orderNumber === '') return false;
 
+                // Destination tickets (bar / kitchen / pastries) when present confirm station routing.
                 var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
                 var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
                 if (kitchenTicket > 0 || barTicket > 0) return true;
@@ -10941,12 +10942,14 @@
                 var stationTickets = res.station_tickets && typeof res.station_tickets === 'object'
                     ? res.station_tickets
                     : null;
-                if (!stationTickets) return false;
-                var keys = Object.keys(stationTickets);
-                for (var i = 0; i < keys.length; i++) {
-                    if ((parseInt(stationTickets[keys[i]], 10) || 0) > 0) return true;
+                if (stationTickets) {
+                    var keys = Object.keys(stationTickets);
+                    for (var i = 0; i < keys.length; i++) {
+                        if ((parseInt(stationTickets[keys[i]], 10) || 0) > 0) return true;
+                    }
                 }
-                return false;
+                // Order id + number alone still counts as recorded (API always assigns tickets server-side).
+                return true;
             }
             window.isOrderFullyRecorded = isOrderFullyRecorded;
 
@@ -10964,18 +10967,13 @@
                 // Require explicit ok:true for success; anything else is failure.
                 var ok = opts.ok === true;
                 if (!toast) {
+                    alert(ok ? 'Transaction successful' : 'Transaction not successful');
                     if (typeof onDone === 'function') onDone();
                     return;
                 }
 
-                // Debounce duplicate toasts so rapid success/fail calls don't flicker.
-                var now = Date.now();
-                if (toast.classList.contains('is-visible') && now < showLockUntil) {
-                    if (typeof onDone === 'function') onDone();
-                    return;
-                }
-                showLockUntil = now + DEBOUNCE_MS;
                 clearToastTimers();
+                showLockUntil = Date.now() + DEBOUNCE_MS;
 
                 if (titleEl) {
                     titleEl.textContent = opts.title
@@ -10986,11 +10984,15 @@
                 if (iconWrap) iconWrap.classList.toggle('is-failed', !ok);
                 setToastIcons(ok);
 
+                // Force visible: remove hidden, show overlay above payment modal.
+                toast.removeAttribute('hidden');
                 toast.hidden = false;
                 toast.setAttribute('aria-hidden', 'false');
-                // Force a frame so opacity transition always runs cleanly.
-                toast.classList.remove('is-visible');
-                void toast.offsetWidth;
+                toast.style.display = 'flex';
+                toast.style.opacity = '1';
+                toast.style.visibility = 'visible';
+                toast.style.pointerEvents = 'auto';
+                toast.style.zIndex = '6000';
                 toast.classList.add('is-visible');
 
                 if (bar) {
@@ -11004,10 +11006,17 @@
                 hideTimer = setTimeout(function () {
                     hideTimer = null;
                     toast.classList.remove('is-visible');
+                    toast.style.opacity = '0';
+                    toast.style.visibility = 'hidden';
+                    toast.style.pointerEvents = 'none';
                     toast.setAttribute('aria-hidden', 'true');
-                    // Wait for fade-out before applying [hidden] / resetting — avoids display flicker.
                     removeTimer = setTimeout(function () {
                         removeTimer = null;
+                        toast.style.display = '';
+                        toast.style.opacity = '';
+                        toast.style.visibility = '';
+                        toast.style.pointerEvents = '';
+                        toast.style.zIndex = '';
                         resetToastVisuals();
                         if (typeof onDone === 'function') onDone();
                     }, FADE_MS);

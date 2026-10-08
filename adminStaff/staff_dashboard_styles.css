@@ -5213,23 +5213,30 @@ img {
 }
 
 /* ─── Payment Confirmation Modal ────────────────────────────── */
-/* Fixed overlay edges (not dynamic 100vh/dvh) so virtual keyboard doesn't jump the modal */
+/* Full-viewport fixed overlay; flex-centers the dialog on all devices.
+   Use top/right/bottom/left (not inset shorthand) so fixed edges stay stable
+   when the virtual keyboard resizes the visual viewport. */
 .pay-modal-backdrop,
 .payment-modal-overlay {
     position: fixed !important;
     top: 0 !important;
-    left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    inset: auto !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
     padding: 24px;
     background: rgba(0, 0, 0, 0.5);
     -webkit-backdrop-filter: blur(7.5px);
     backdrop-filter: blur(7.5px);
     display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
     z-index: 2000 !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain;
@@ -5251,7 +5258,7 @@ img {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     width: min(660px, 100%);
-    max-width: calc(100% - 24px);
+    max-width: min(660px, calc(100% - 24px));
     max-height: 90vh !important;
     display: flex;
     flex-direction: column;
@@ -5261,9 +5268,13 @@ img {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     transform: none;
     transition: none;
-    margin: auto;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    margin-top: auto;
+    margin-bottom: auto;
     box-sizing: border-box;
     flex-shrink: 0;
+    position: relative;
 }
 
 .pay-modal-backdrop.is-visible .pay-modal {
@@ -7266,8 +7277,18 @@ img {
     .cash-mgmt-backdrop,
     .pos-modal-backdrop {
         padding: 0.75rem;
+        /* Keep horizontal center; only pin to top so tall modals / keyboard stay usable */
+        justify-content: center !important;
         align-items: flex-start;
         overflow-y: auto;
+    }
+
+    .pay-modal-backdrop .pay-modal,
+    .pay-modal-backdrop .payment-modal-content {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
     }
 }
 
@@ -8410,48 +8431,41 @@ img {
     .ses-confirm-btn { width: 100%; }
 }
 
-/* Payment success toast (POS) — fixed, out of document flow; opacity-only show/hide */
+/* Payment success toast (POS) — full-screen centered popup (must sit above pay modal) */
 .payment-success-toast,
 .toast-container {
     position: fixed !important;
-    top: 20px !important;
-    right: 20px !important;
-    left: auto !important;
-    bottom: auto !important;
-    inset: auto !important;
-    z-index: 2000 !important;
-    display: flex !important;
-    align-items: flex-start;
-    justify-content: flex-end;
+    inset: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 6000 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
     width: auto;
-    max-width: min(360px, calc(100vw - 32px));
+    max-width: none;
     margin: 0;
-    padding: 0;
-    background: transparent;
+    padding: 16px;
+    background: rgba(8, 6, 4, 0.55);
     opacity: 0;
     visibility: hidden;
-    pointer-events: none !important;
-    transition: opacity 0.22s ease, visibility 0.22s ease;
-    will-change: opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    box-sizing: border-box;
 }
 .payment-success-toast.is-visible {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto !important;
-}
-.payment-success-toast[hidden] {
-    display: flex !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
-.payment-success-toast.is-visible[hidden] {
     display: flex !important;
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: auto !important;
+}
+.payment-success-toast[hidden] {
+    display: none !important;
+}
+.payment-success-toast.is-visible:not([hidden]) {
+    display: flex !important;
 }
 .payment-success-toast__card {
     position: relative;

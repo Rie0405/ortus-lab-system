@@ -715,6 +715,22 @@ body {
     text-transform: uppercase;
     color: #94a3b8;
 }
+
+/* Category column: Area badge above, type badge (Consumable / Non-Consumable) below */
+.category-cell,
+.table-row > .inv-col-category,
+.category-badges-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 4px !important;
+}
+.category-badges-wrapper .cat,
+.category-badges-wrapper .stock-type-badge {
+    margin-top: 0;
+    flex-shrink: 0;
+}
 .stock-type-badge--consumable { color: #92b832; }
 .stock-type-badge--non_consumable { color: #d5c400; }
 .inv-box-capacity-na {
@@ -2606,6 +2622,17 @@ body {
         padding: 4px 6px !important;
         box-sizing: border-box;
         overflow: hidden;
+    }
+
+    #inventory-table-wrap .table-row > .inv-col-category,
+    #inventory-table-wrap .table-row > .category-cell,
+    #inventory-table-wrap .category-badges-wrapper,
+    #inventory-secondary-table-wrap .table-row > .inv-col-category,
+    #inventory-secondary-table-wrap .category-badges-wrapper {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        gap: 4px !important;
     }
 
     #inventory-table-wrap .table-head > span,

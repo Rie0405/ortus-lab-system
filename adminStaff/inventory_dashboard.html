@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-tablet-density">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-category-stack">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
 </head>
@@ -3478,14 +3478,13 @@
                 group.items.forEach(function (item) {
                     var stockStatus = getManualStockStatus(item);
                     var status = manualStockStatusMeta(stockStatus);
-                    var stockType = getStockType(item);
                     var row = document.createElement('div');
                     row.className = 'table-row';
                     row.innerHTML =
                         '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small>' +
-                            '<div class="item-col__tablet-meta"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                            '<div class="item-col__tablet-meta">' + buildCategoryBadgesHtml(item) + '</div>' +
                         '</div></div>' +
-                        '<div class="inv-col-category"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                        buildCategoryCellHtml(item) +
                         '<div>' + buildStockStatusChecklistHtml(item.id, stockStatus) + '</div>' +
                         '<div class="inv-manual-cell-center"><span class="pill ' + status.pill + '">' + status.label + '</span></div>' +
                         '<div class="inv-manual-notes-cell">' +
@@ -3496,6 +3495,22 @@
                     manualTableWrap.appendChild(row);
                 });
             });
+        }
+
+        function buildCategoryBadgesHtml(item) {
+            var stockType = getStockType(item);
+            return (
+                '<div class="category-badges-wrapper">' +
+                    '<span class="cat">' + esc(item.category_name) + '</span>' +
+                    '<small class="stock-type-badge stock-type-badge--' + stockType + '">' +
+                        esc(formatStockTypeLabel(stockType)) +
+                    '</small>' +
+                '</div>'
+            );
+        }
+
+        function buildCategoryCellHtml(item) {
+            return '<div class="inv-col-category category-cell">' + buildCategoryBadgesHtml(item) + '</div>';
         }
 
         function buildAutomaticRowHtml(item) {
@@ -3528,7 +3543,6 @@
                         ? ('Kitchen Per Piece = Batch Capacity (' + batchSize + ')')
                         : 'Kitchen: set Batch Capacity first — that value becomes the Per Piece size')
                     : 'Not used for Bar consumable items — use Batch Capacity + Open instead');
-            var stockType = getStockType(item);
             var canOpen = !batchDisplay && capacityConfigured;
             var openBlockedReason = batchDisplay ? 'batch' : 'capacity';
             var openBlockedMsg = batchDisplay
@@ -3542,9 +3556,9 @@
                 ? '<button type="button" class="btn-box-capacity btn-batch-size inv-stock-level-set" data-configured="1" data-batch-size-id="' + item.id + '" title="' + escAttr(batchTitle) + '">' + esc(batchLabel === '—' ? 'Set' : batchLabel) + '</button>'
                 : '<button type="button" class="btn-box-capacity inv-stock-level-set"' + (capacityConfigured ? ' data-configured="1"' : '') + ' data-orders-box-id="' + item.id + '" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</button>';
             return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small>' +
-                '<div class="item-col__tablet-meta"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                '<div class="item-col__tablet-meta">' + buildCategoryBadgesHtml(item) + '</div>' +
                 '</div></div>' +
-                '<div class="inv-col-category"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
+                buildCategoryCellHtml(item) +
                 '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
                 '<div class="inv-stock-level-cell stock-level-cell">' +
                     '<strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' +

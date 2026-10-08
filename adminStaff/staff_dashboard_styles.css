@@ -4773,8 +4773,21 @@ img {
     filter: brightness(1.08);
 }
 
+/* Confirm must sit ABOVE the refund dialog (cash-mgmt-backdrop is 1200).
+   Old z-index:220 left confirm invisible under the first modal — bg darkened
+   but REFUND ORDER / confirm UI appeared unclickable. */
+#order-refund-modal {
+    z-index: 1200;
+}
 #order-refund-confirm-modal {
-    z-index: 220;
+    z-index: 1300 !important;
+}
+#order-refund-confirm-modal .cash-mgmt-modal {
+    position: relative;
+    z-index: 1;
+    max-height: min(85vh, 850px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sales-detail-card--drawer .sales-detail-card__title--inline {

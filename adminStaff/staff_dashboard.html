@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-nav-nowrap">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-toast-drawer">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -253,7 +253,7 @@
             </aside>
         </main>
 
-            <div class="queue-drawer-shell" id="queue-slide-drawer" aria-hidden="true">
+            <div class="queue-drawer-shell side-drawer" id="queue-slide-drawer" aria-hidden="true">
                 <aside class="queue-drawer-panel" id="queue-drawer-panel" aria-label="Returned orders panel">
                     <header class="queue-drawer-panel__head">
                         <h3 class="queue-drawer-panel__title">Returned Orders</h3>
@@ -8430,12 +8430,26 @@
             var tabBtn = document.getElementById('queue-drawer-tab');
             var panel = document.getElementById('queue-drawer-panel');
             if (!drawer || !tabBtn || !panel) return;
+            var drawerAnimating = false;
+            var drawerAnimTimer = null;
 
             function setDrawerOpen(open) {
+                open = !!open;
+                var isOpen = drawer.classList.contains('open') || drawer.classList.contains('is-open');
+                if (open === isOpen) return;
+                if (drawerAnimating) return;
+                drawerAnimating = true;
+                // Toggle class only — CSS transform handles the slide (no display/width changes).
+                drawer.classList.toggle('open', open);
                 drawer.classList.toggle('is-open', open);
                 drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
                 tabBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
                 tabBtn.setAttribute('aria-label', open ? 'Close returned orders panel' : 'Open returned orders panel');
+                if (drawerAnimTimer) clearTimeout(drawerAnimTimer);
+                drawerAnimTimer = setTimeout(function () {
+                    drawerAnimTimer = null;
+                    drawerAnimating = false;
+                }, 320);
             }
 
             window.openQueueDrawer = function () {
@@ -8445,15 +8459,12 @@
             tabBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                if (drawer.classList.contains('is-open')) {
-                    setDrawerOpen(false);
-                } else {
-                    window.openQueueDrawer();
-                }
+                var isOpen = drawer.classList.contains('open') || drawer.classList.contains('is-open');
+                setDrawerOpen(!isOpen);
             });
 
             document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && drawer.classList.contains('is-open')) {
+                if (e.key === 'Escape' && (drawer.classList.contains('open') || drawer.classList.contains('is-open'))) {
                     setDrawerOpen(false);
                 }
             });
@@ -10803,7 +10814,7 @@
         })();
     </script>
 
-    <div class="payment-success-toast" id="payment-success-toast" aria-hidden="true" hidden>
+    <div class="payment-success-toast toast-container" id="payment-success-toast" aria-hidden="true" hidden>
         <div class="payment-success-toast__card">
             <div class="payment-success-toast__bar" aria-hidden="true">
                 <span class="payment-success-toast__bar-fill" id="payment-success-toast-bar"></span>
@@ -10832,12 +10843,41 @@
             var iconOk = document.getElementById('payment-success-toast-icon-ok');
             var iconFail = document.getElementById('payment-success-toast-icon-fail');
             var hideTimer = null;
-            var DURATION_MS = 1800;
+            var removeTimer = null;
+            var showLockUntil = 0;
+            var DURATION_MS = 3000;
+            var FADE_MS = 220;
+            var DEBOUNCE_MS = 400;
 
             function setToastIcons(ok) {
                 // Inline display — SVG `hidden` is unreliable across browsers.
                 if (iconOk) iconOk.style.display = ok ? 'block' : 'none';
                 if (iconFail) iconFail.style.display = ok ? 'none' : 'block';
+            }
+
+            function clearToastTimers() {
+                if (hideTimer) {
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+                if (removeTimer) {
+                    clearTimeout(removeTimer);
+                    removeTimer = null;
+                }
+            }
+
+            function resetToastVisuals() {
+                toast.classList.remove('is-visible');
+                toast.classList.remove('is-failed');
+                toast.setAttribute('aria-hidden', 'true');
+                toast.hidden = true;
+                if (iconWrap) iconWrap.classList.remove('is-failed');
+                setToastIcons(true);
+                if (titleEl) titleEl.textContent = 'Transaction successful';
+                if (bar) {
+                    bar.style.transition = 'none';
+                    bar.style.width = '100%';
+                }
             }
 
             function isOrderFullyRecorded(res) {
@@ -10876,10 +10916,16 @@
                     if (typeof onDone === 'function') onDone();
                     return;
                 }
-                if (hideTimer) {
-                    clearTimeout(hideTimer);
-                    hideTimer = null;
+
+                // Debounce duplicate toasts so rapid success/fail calls don't flicker.
+                var now = Date.now();
+                if (toast.classList.contains('is-visible') && now < showLockUntil) {
+                    if (typeof onDone === 'function') onDone();
+                    return;
                 }
+                showLockUntil = now + DEBOUNCE_MS;
+                clearToastTimers();
+
                 if (titleEl) {
                     titleEl.textContent = opts.title
                         ? String(opts.title)
@@ -10891,7 +10937,11 @@
 
                 toast.hidden = false;
                 toast.setAttribute('aria-hidden', 'false');
+                // Force a frame so opacity transition always runs cleanly.
+                toast.classList.remove('is-visible');
+                void toast.offsetWidth;
                 toast.classList.add('is-visible');
+
                 if (bar) {
                     bar.style.transition = 'none';
                     bar.style.width = '100%';
@@ -10899,20 +10949,17 @@
                     bar.style.transition = 'width ' + DURATION_MS + 'ms linear';
                     bar.style.width = '0%';
                 }
+
                 hideTimer = setTimeout(function () {
                     hideTimer = null;
                     toast.classList.remove('is-visible');
-                    toast.classList.remove('is-failed');
                     toast.setAttribute('aria-hidden', 'true');
-                    toast.hidden = true;
-                    if (iconWrap) iconWrap.classList.remove('is-failed');
-                    setToastIcons(true);
-                    if (titleEl) titleEl.textContent = 'Transaction successful';
-                    if (bar) {
-                        bar.style.transition = 'none';
-                        bar.style.width = '100%';
-                    }
-                    if (typeof onDone === 'function') onDone();
+                    // Wait for fade-out before applying [hidden] / resetting — avoids display flicker.
+                    removeTimer = setTimeout(function () {
+                        removeTimer = null;
+                        resetToastVisuals();
+                        if (typeof onDone === 'function') onDone();
+                    }, FADE_MS);
                 }, DURATION_MS);
             };
         })();

@@ -3106,9 +3106,9 @@ img {
 
 .kitchen-layout > .kitchen-serving-panel {
     align-self: stretch;
-    width: 260px !important;
-    min-width: 260px !important;
-    max-width: 260px !important;
+    width: 190px !important;
+    min-width: 190px !important;
+    max-width: 190px !important;
     flex-shrink: 0 !important;
     height: 100% !important;
     overflow-x: hidden;
@@ -3246,8 +3246,8 @@ img {
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 4px 6px;
-    padding: 8px;
+    gap: 4px;
+    padding: 6px;
     border-bottom: 1px solid #3d3025;
     flex-shrink: 0;
     box-sizing: border-box;
@@ -3255,39 +3255,41 @@ img {
 
 .kitchen-serving-title {
     margin: 0;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     min-width: 0;
+    line-height: 1.25;
 }
 
 .kitchen-serving-badge {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     color: #f48c25;
     border: 1px solid rgba(244, 140, 37, 0.35);
     background: rgba(244, 140, 37, 0.14);
     border-radius: 999px;
-    padding: 2px 6px;
+    padding: 1px 5px;
     white-space: nowrap;
 }
 
 .kitchen-serving-head .opq-done-all-btn {
     margin-left: 0 !important;
-    width: 100%;
+    width: 100% !important;
     max-width: 100%;
     box-sizing: border-box;
-    padding: 6px 6px;
-    font-size: 10px;
-    letter-spacing: 0.04em;
+    padding: 4px 8px !important;
+    font-size: 9px !important;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
 }
 
 .kitchen-serving-list {
-    padding: 6px;
+    padding: 4px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     flex: 0 0 auto;
     max-height: min(240px, 32vh);
     overflow-y: auto;
@@ -3296,20 +3298,21 @@ img {
 
 .kitchen-serving-empty {
     border: 1px dashed rgba(244, 140, 37, 0.25);
-    border-radius: 10px;
-    padding: 8px 6px;
+    border-radius: 8px;
+    padding: 6px 4px;
     color: #94a3b8;
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1.3;
 }
 
 .kitchen-serving-item {
     border: 1px solid #3d3025;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #15110d;
-    padding: 6px;
+    padding: 4px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
     box-sizing: border-box;
 }
@@ -3318,43 +3321,47 @@ img {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
 }
 
 .kitchen-serving-item__id {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     color: #f48c25;
     text-transform: uppercase;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .kitchen-serving-item__type {
-    font-size: 11px;
+    font-size: 9px;
     color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
 }
 
 .kitchen-serving-item__code {
-    margin-top: -4px;
-    font-size: 11px;
+    margin-top: -2px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: #94a3b8;
 }
 
 .kitchen-serving-item__items {
-    margin-top: -2px;
-    font-size: 11px;
-    line-height: 1.4;
+    margin-top: 0;
+    font-size: 10px;
+    line-height: 1.3;
     color: #e2e8f0;
-    padding: 6px 8px;
-    border-left: 3px solid rgba(244, 140, 37, 0.45);
+    padding: 4px 6px;
+    border-left: 2px solid rgba(244, 140, 37, 0.45);
     background: rgba(0, 0, 0, 0.18);
-    border-radius: 0 6px 6px 0;
+    border-radius: 0 4px 4px 0;
     word-break: break-word;
     overflow-wrap: anywhere;
 }
@@ -3362,17 +3369,17 @@ img {
 .kitchen-serving-item__actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
 }
 
 .kitchen-serving-btn {
     border: 0;
-    border-radius: 8px;
-    padding: 7px 2px;
-    font-size: 9px;
+    border-radius: 6px;
+    padding: 4px 2px;
+    font-size: 8px;
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     cursor: pointer;
     min-width: 0;
@@ -3397,8 +3404,8 @@ img {
 }
 
 .kitchen-serving-head--waste {
-    padding: 8px;
-    gap: 6px;
+    padding: 6px;
+    gap: 4px;
 }
 
 .kitchen-waste-toggle {
@@ -3471,41 +3478,61 @@ img {
 }
 
 .kitchen-waste-wrap .waste-tab-form {
-    padding: 6px 8px 10px;
-    gap: 6px;
+    padding: 4px 6px 8px;
+    gap: 4px;
     display: flex;
     flex-direction: column;
     min-width: 0;
     box-sizing: border-box;
 }
 
+.kitchen-waste-wrap .waste-tab-form .opq-label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+}
+
 .kitchen-waste-wrap .waste-tab-form .opq-input,
 .kitchen-waste-wrap .waste-tab-form .waste-search-select,
 .kitchen-waste-wrap .waste-tab-form .waste-search-select__input {
-    width: 100%;
+    width: 100% !important;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+.kitchen-waste-wrap .waste-tab-form .waste-item-indicator {
+    font-size: 10px;
+    line-height: 1.3;
+    margin: 0;
 }
 
 .kitchen-waste-wrap .opq-waste-btn {
     margin-top: 2px;
-    width: 100%;
+    width: 100% !important;
     max-width: 100%;
     box-sizing: border-box;
+    padding: 4px 8px;
+    font-size: 10px;
 }
 
 .kitchen-waste-wrap .opq-sidebar-section {
     flex-shrink: 0;
     border-top: 1px solid #3d3025;
-    padding: 8px;
-    gap: 8px;
+    padding: 6px;
+    gap: 6px;
+}
+
+.kitchen-waste-wrap .opq-sidebar-title {
+    font-size: 10px;
+    letter-spacing: 0.04em;
 }
 
 .kitchen-serving-panel .opq-sidebar-section {
     flex-shrink: 0;
     border-top: 1px solid #3d3025;
-    padding: 8px;
+    padding: 6px;
     gap: 12px;
 }
 
@@ -7456,7 +7483,7 @@ img {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    /* Kitchen: keep 3 destination columns + compact served sidebar */
+    /* Kitchen: keep 3 destination columns + ultra-compact served sidebar */
     .kitchen-layout {
         display: flex !important;
         flex-direction: row !important;
@@ -7466,9 +7493,9 @@ img {
 
     .kitchen-layout > .kitchen-serving-panel,
     .kitchen-serving-panel {
-        width: 260px !important;
-        min-width: 260px !important;
-        max-width: 260px !important;
+        width: 190px !important;
+        min-width: 190px !important;
+        max-width: 190px !important;
         flex-shrink: 0 !important;
     }
 

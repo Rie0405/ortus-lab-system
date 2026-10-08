@@ -4025,6 +4025,11 @@ img {
     color: #fdba74;
 }
 
+.order-fulfillment-badge--pickup {
+    background: rgba(52, 211, 153, 0.16);
+    color: #6ee7b7;
+}
+
 .waste-history-item__price {
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;

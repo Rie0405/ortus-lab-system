@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-ses-maincat-filter">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pickup-badge">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -7059,7 +7059,7 @@
                 var name = esc(item && item.name || 'Item');
                 var cleanNotes = notesWithoutOrderType(item && item.notes);
                 var notes = cleanNotes ? '<span class="order-refund-item__notes">' + esc(cleanNotes) + '</span>' : '';
-                var badge = itemFulfillmentBadgeHtml(item);
+                var badge = itemFulfillmentBadgeHtml(item, order);
                 return (
                     '<div class="order-refund-item">' +
                     '<div class="order-refund-item__main">' +
@@ -8669,29 +8669,37 @@
             var s = String(raw || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
             if (s === 'take_out' || s === 'takeout') return 'take_out';
             if (s === 'dine_in' || s === 'dinein') return 'dine_in';
+            if (s === 'pickup' || s === 'pick_up') return 'pickup';
             return '';
         }
 
-        function getItemFulfillmentKey(item) {
+        function getItemFulfillmentKey(item, order) {
             var direct = normalizeItemFulfillmentKey(item && item.fulfillment);
             if (direct) return direct;
             var notes = String((item && item.notes) || '');
             var m = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/i.exec(notes);
-            if (m && m[1]) return normalizeItemFulfillmentKey(m[1]);
+            if (m && m[1]) {
+                var fromNotes = normalizeItemFulfillmentKey(m[1]);
+                if (fromNotes) return fromNotes;
+            }
+            // Whole-order pickup (common for kiosk) — show Pick up when line has no dine/take badge.
+            if (order && normalizeQueueOrderPartition(order) === 'pickup') return 'pickup';
             return '';
         }
 
-        function formatItemFulfillmentLabel(item) {
-            var key = getItemFulfillmentKey(item);
+        function formatItemFulfillmentLabel(item, order) {
+            var key = getItemFulfillmentKey(item, order);
             if (key === 'take_out') return 'Take out';
             if (key === 'dine_in') return 'Dine in';
+            if (key === 'pickup') return 'Pick up';
             return '';
         }
 
-        function itemFulfillmentBadgeHtml(item) {
-            var label = formatItemFulfillmentLabel(item);
+        function itemFulfillmentBadgeHtml(item, order) {
+            var key = getItemFulfillmentKey(item, order);
+            if (!key) return '';
+            var label = formatItemFulfillmentLabel(item, order);
             if (!label) return '';
-            var key = getItemFulfillmentKey(item);
             return '<span class="order-fulfillment-badge order-fulfillment-badge--' + esc(key) + '">' + esc(label) + '</span>';
         }
 
@@ -8739,6 +8747,7 @@
 
         function getOrderTypeDisplayFromOrder(order) {
             var rawType = String(order && order.order_type || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (rawType === 'pickup' || rawType === 'pick_up') return 'Pick up';
             if (rawType === 'mixed') return 'Dine in + Take out';
             var items = (order && order.items) || [];
             var hasDine = false;
@@ -9289,7 +9298,7 @@
                     items
                         .map(function (item) {
                             var sub = lineItemSubtotal(item);
-                            var badge = itemFulfillmentBadgeHtml(item);
+                            var badge = itemFulfillmentBadgeHtml(item, order);
                             return (
                                 '<div class="waste-history-item__line">' +
                                 '<span class="waste-history-item__name">' +
@@ -9376,9 +9385,11 @@
                 }
                 var paymentNote = isGcashOrder(order) ? (' · ' + formatOrderPaymentSummary(order)) : '';
                 var returnedNote = (!isRefundedView && isKitchenReturnedOrder(order)) ? ' · Returned (pending action)' : '';
+                var typeLabel = getOrderTypeDisplayFromOrder(order) || '';
+                var typeNote = typeLabel ? (' · ' + typeLabel) : '';
                 var subText = isRefundedView
-                    ? (sourceLabel + ' order - ' + servedAt + ' · Refunded' + (order.refund_reason ? ' · ' + order.refund_reason : '') + paymentNote)
-                    : (sourceLabel + ' order - ' + servedAt + returnedNote + ' · Tap to refund' + paymentNote);
+                    ? (sourceLabel + ' order' + typeNote + ' - ' + servedAt + ' · Refunded' + (order.refund_reason ? ' · ' + order.refund_reason : '') + paymentNote)
+                    : (sourceLabel + ' order' + typeNote + ' - ' + servedAt + returnedNote + ' · Tap to refund' + paymentNote);
                 row.innerHTML =
                     '<div class="waste-history-item__main">' +
                     built.linesHtml +

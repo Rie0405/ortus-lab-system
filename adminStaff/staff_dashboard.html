@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-toast-drawer">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-drawer-width">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -253,18 +253,18 @@
             </aside>
         </main>
 
-            <div class="queue-drawer-shell side-drawer" id="queue-slide-drawer" aria-hidden="true">
+            <div class="queue-drawer-shell side-drawer sliding-panel" id="queue-slide-drawer" aria-hidden="true">
                 <aside class="queue-drawer-panel" id="queue-drawer-panel" aria-label="Returned orders panel">
                     <header class="queue-drawer-panel__head">
                         <h3 class="queue-drawer-panel__title">Returned Orders</h3>
                     </header>
-                    <div class="queue-drawer-panel__body">
+                    <div class="queue-drawer-panel__body side-drawer-body panel-content">
                         <div class="queue-drawer-returned-list" id="queue-drawer-returned-list">
                             <p class="queue-drawer-empty">No returned orders from kitchen.</p>
                         </div>
                     </div>
                 </aside>
-                <button type="button" class="queue-drawer-tab" id="queue-drawer-tab" aria-expanded="false" aria-controls="queue-drawer-panel" aria-label="Open returned orders panel">
+                <button type="button" class="queue-drawer-tab drawer-toggle-btn" id="queue-drawer-tab" aria-expanded="false" aria-controls="queue-drawer-panel" aria-label="Open returned orders panel">
                     <span class="queue-drawer-tab__badge" id="queue-drawer-badge" hidden>0</span>
                     <span class="queue-drawer-tab__chev" aria-hidden="true"></span>
                 </button>

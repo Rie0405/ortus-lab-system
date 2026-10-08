@@ -3106,9 +3106,9 @@ img {
 
 .kitchen-layout > .kitchen-serving-panel {
     align-self: stretch;
-    width: 320px !important;
-    min-width: 320px !important;
-    max-width: 320px !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
     flex-shrink: 0 !important;
     height: 100% !important;
     overflow-x: hidden;
@@ -3246,18 +3246,20 @@ img {
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 6px 8px;
-    padding: 10px 10px;
+    gap: 4px 6px;
+    padding: 8px;
     border-bottom: 1px solid #3d3025;
     flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .kitchen-serving-title {
     margin: 0;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    min-width: 0;
 }
 
 .kitchen-serving-badge {
@@ -3267,50 +3269,57 @@ img {
     border: 1px solid rgba(244, 140, 37, 0.35);
     background: rgba(244, 140, 37, 0.14);
     border-radius: 999px;
-    padding: 3px 8px;
+    padding: 2px 6px;
     white-space: nowrap;
 }
 
 .kitchen-serving-head .opq-done-all-btn {
     margin-left: 0 !important;
     width: 100%;
-    padding: 7px 8px;
-    font-size: 11px;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 6px 6px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
 }
 
 .kitchen-serving-list {
-    padding: 8px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     flex: 0 0 auto;
     max-height: min(240px, 32vh);
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .kitchen-serving-empty {
     border: 1px dashed rgba(244, 140, 37, 0.25);
     border-radius: 10px;
-    padding: 10px 8px;
+    padding: 8px 6px;
     color: #94a3b8;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .kitchen-serving-item {
     border: 1px solid #3d3025;
     border-radius: 10px;
     background: #15110d;
-    padding: 8px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .kitchen-serving-item__head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
+    min-width: 0;
 }
 
 .kitchen-serving-item__id {
@@ -3339,30 +3348,35 @@ img {
 
 .kitchen-serving-item__items {
     margin-top: -2px;
-    font-size: 12px;
-    line-height: 1.45;
+    font-size: 11px;
+    line-height: 1.4;
     color: #e2e8f0;
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-left: 3px solid rgba(244, 140, 37, 0.45);
     background: rgba(0, 0, 0, 0.18);
     border-radius: 0 6px 6px 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .kitchen-serving-item__actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
 }
 
 .kitchen-serving-btn {
     border: 0;
     border-radius: 8px;
-    padding: 8px 4px;
-    font-size: 10px;
+    padding: 7px 2px;
+    font-size: 9px;
     font-weight: 800;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     cursor: pointer;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .kitchen-serving-btn--served {
@@ -3383,8 +3397,8 @@ img {
 }
 
 .kitchen-serving-head--waste {
-    padding: 10px;
-    gap: 8px;
+    padding: 8px;
+    gap: 6px;
 }
 
 .kitchen-waste-toggle {
@@ -3457,27 +3471,41 @@ img {
 }
 
 .kitchen-waste-wrap .waste-tab-form {
-    padding: 8px 10px 12px;
-    gap: 8px;
+    padding: 6px 8px 10px;
+    gap: 6px;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.kitchen-waste-wrap .waste-tab-form .opq-input,
+.kitchen-waste-wrap .waste-tab-form .waste-search-select,
+.kitchen-waste-wrap .waste-tab-form .waste-search-select__input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .kitchen-waste-wrap .opq-waste-btn {
     margin-top: 2px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .kitchen-waste-wrap .opq-sidebar-section {
     flex-shrink: 0;
     border-top: 1px solid #3d3025;
-    padding: 12px;
-    gap: 12px;
+    padding: 8px;
+    gap: 8px;
 }
 
 .kitchen-serving-panel .opq-sidebar-section {
     flex-shrink: 0;
     border-top: 1px solid #3d3025;
-    padding: 12px;
+    padding: 8px;
     gap: 12px;
 }
 
@@ -7428,7 +7456,7 @@ img {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    /* Kitchen: keep 3 destination columns + 320px served sidebar */
+    /* Kitchen: keep 3 destination columns + compact served sidebar */
     .kitchen-layout {
         display: flex !important;
         flex-direction: row !important;
@@ -7438,9 +7466,9 @@ img {
 
     .kitchen-layout > .kitchen-serving-panel,
     .kitchen-serving-panel {
-        width: 320px !important;
-        min-width: 320px !important;
-        max-width: 320px !important;
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
         flex-shrink: 0 !important;
     }
 

@@ -5213,44 +5213,61 @@ img {
 }
 
 /* ─── Payment Confirmation Modal ────────────────────────────── */
-.pay-modal-backdrop {
-    position: fixed;
-    inset: 0;
+/* Fixed overlay edges (not dynamic 100vh/dvh) so virtual keyboard doesn't jump the modal */
+.pay-modal-backdrop,
+.payment-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    inset: auto !important;
     padding: 24px;
     background: rgba(0, 0, 0, 0.5);
     -webkit-backdrop-filter: blur(7.5px);
     backdrop-filter: blur(7.5px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 2000 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
+    box-sizing: border-box;
 }
 
-.pay-modal-backdrop.is-visible {
+.pay-modal-backdrop.is-visible,
+.payment-modal-overlay.is-visible {
     opacity: 1;
     pointer-events: auto;
 }
 
-.pay-modal {
+.pay-modal,
+.payment-modal-content {
     background: #1e1e1e;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     width: min(660px, 100%);
     max-width: calc(100% - 24px);
-    max-height: min(92dvh, calc(100% - 24px));
+    max-height: 90vh !important;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    transform: translateY(12px);
-    transition: transform 0.25s ease;
+    transform: none;
+    transition: none;
+    margin: auto;
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .pay-modal-backdrop.is-visible .pay-modal {
-    transform: translateY(0);
+    transform: none;
 }
 
 /* Header */

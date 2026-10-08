@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-drawer-tab-top">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pay-modal-toast">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -537,8 +537,8 @@
         </div><!-- end staff-main-panel--waste -->
 
         <!-- Payment Confirmation Modal -->
-        <div class="pay-modal-backdrop" id="payment-confirm-modal" aria-hidden="true">
-            <div class="pay-modal" role="dialog" aria-modal="true" aria-labelledby="pay-modal-title">
+        <div class="pay-modal-backdrop payment-modal-overlay" id="payment-confirm-modal" aria-hidden="true">
+            <div class="pay-modal payment-modal-content" role="dialog" aria-modal="true" aria-labelledby="pay-modal-title">
 
                 <!-- Header -->
                 <header class="pay-modal__header">
@@ -3696,6 +3696,7 @@
             }
 
             function updateChangeDue() {
+                // Lightweight UI update only — do not re-render modal layout while typing.
                 if (!payReceived || !payChange) return;
                 var received = parseFloat(payReceived.value) || 0;
                 var change = received - orderTotal;
@@ -4503,7 +4504,23 @@
             }
 
             function completeTransaction() {
-                if (payComplete && payComplete.disabled) return;
+                // Strict payment validation BEFORE any toast / order submit.
+                if (currentMethod === "cash") {
+                    var cashReceived = parseFloat((payReceived && payReceived.value) || "");
+                    if (!Number.isFinite(cashReceived) || cashReceived < orderTotal) {
+                        updateCompleteButtonState();
+                        if (typeof window.showPaymentSuccessToast === "function") {
+                            window.showPaymentSuccessToast({
+                                ok: false,
+                                title: "Insufficient payment amount!"
+                            });
+                        } else {
+                            alert("Insufficient payment amount!");
+                        }
+                        if (payReceived) payReceived.focus();
+                        return;
+                    }
+                }
                 if (currentMethod === "gcash" && gcashRef) {
                     var refCheck = typeof window.sanitizeGcashRefDigits === "function"
                         ? window.sanitizeGcashRefDigits(gcashRef.value)
@@ -4516,6 +4533,7 @@
                         return;
                     }
                 }
+                if (payComplete && payComplete.disabled) return;
 
                 // Kiosk queue cash Confirm → record tender then confirm order.
                 if (queueCashConfirmOrderId) {
@@ -4534,13 +4552,28 @@
                     }).then(function (r) { return r.json(); })
                       .then(function (d) {
                           if (!d || !d.success) {
+                              if (typeof window.showPaymentSuccessToast === "function") {
+                                  window.showPaymentSuccessToast({
+                                      ok: false,
+                                      title: "Failed to process transaction. Try again."
+                                  });
+                              }
                               alert((d && d.error) || "Failed to confirm order.");
                               return;
+                          }
+                          if (typeof window.showPaymentSuccessToast === "function") {
+                              window.showPaymentSuccessToast({ ok: true });
                           }
                           closePayModal();
                           if (typeof loadStaffData === "function") loadStaffData();
                       })
                       .catch(function () {
+                          if (typeof window.showPaymentSuccessToast === "function") {
+                              window.showPaymentSuccessToast({
+                                  ok: false,
+                                  title: "System error during transaction processing"
+                              });
+                          }
                           alert("Network error while confirming order.");
                       })
                       .finally(function () {
@@ -4573,13 +4606,14 @@
                     var orderType = (dineLines.length && takeLines.length)
                         ? "mixed"
                         : (takeLines.length ? "take_out" : (dineLines.length ? "dine_in" : currentFulfillment));
-                    var payload = buildPosOrderPayload(orderType, mergedLines, true);
-                    if (!payload.items.length) { closePayModal(); return; }
+                    var orderPayload = buildPosOrderPayload(orderType, mergedLines, true);
+                    if (!orderPayload.items.length) { closePayModal(); return; }
 
                     var recordedCount = 0;
                     var lastError = "";
                     var restockOnly = false;
-                    postPosOrderWithShortageHandling(payload).then(function (res) {
+                    if (payComplete) payComplete.disabled = true;
+                    postPosOrderWithShortageHandling(orderPayload).then(function (res) {
                         if (res && res.restocked) {
                             restockOnly = true;
                             return;
@@ -4598,21 +4632,32 @@
                             return;
                         }
                         var allRecorded = recordedCount === 1;
-                        if (recordedCount > 0) {
+                        // Success toast ONLY after backend confirms the order was fully recorded.
+                        if (allRecorded) {
                             if (window.posOrderCompleted) window.posOrderCompleted();
                             closePayModal();
+                            if (typeof window.showPaymentSuccessToast === "function") {
+                                window.showPaymentSuccessToast({ ok: true });
+                            }
+                            return;
                         }
                         if (typeof window.showPaymentSuccessToast === "function") {
-                            window.showPaymentSuccessToast({ ok: !!allRecorded });
+                            window.showPaymentSuccessToast({
+                                ok: false,
+                                title: "Failed to process transaction. Try again."
+                            });
                         }
-                        if (!allRecorded && lastError) {
+                        if (lastError) {
                             alert(lastError);
-                        } else if (!allRecorded) {
+                        } else {
                             alert("Transaction not successful. Order was not fully recorded.");
                         }
                     }).catch(function (err) {
                         if (typeof window.showPaymentSuccessToast === "function") {
-                            window.showPaymentSuccessToast({ ok: false });
+                            window.showPaymentSuccessToast({
+                                ok: false,
+                                title: "System error during transaction processing"
+                            });
                         }
                         alert("Failed to create order: " + (err.message || err));
                     }).finally(function () {
@@ -4688,12 +4733,14 @@
                 });
             }
 
-            // Live change due (cash)
+            // Live change due (cash) — text/button state only; no modal re-render on keystrokes
             if (payReceived) {
                 payReceived.addEventListener("input", updateChangeDue);
+                payReceived.addEventListener("change", updateChangeDue);
             }
             if (gcashRef) {
                 gcashRef.addEventListener("input", updateCompleteButtonState);
+                gcashRef.addEventListener("change", updateCompleteButtonState);
             }
 
             loadGcashQrConfig(true);

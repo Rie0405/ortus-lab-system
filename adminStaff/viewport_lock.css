@@ -1,27 +1,70 @@
-/* System-wide viewport lock — prevents keyboard open/close from collapsing
-   layout height and re-centering overlays. Shared by staff / ordering / inventory. */
+/* System-wide viewport lock — keyboard floats OVER a fixed-height layout.
+   No layout height recalculation when the virtual keyboard appears.
+   Shared by staff / ordering / inventory. CSS only. */
 
-/* Lock root layout from dynamic viewport height collapse */
-html,
-body {
+/* Lock the root height to the physical screen boundaries */
+html {
     height: 100% !important;
-    max-height: 100% !important;
-    overflow-x: hidden !important;
-    /* Prevent mobile/tablet browsers from pushing layout around */
+    overflow: hidden !important;
     touch-action: manipulation !important;
 }
 
-/* Main shells scroll inside a locked viewport height (--vh set once on load) */
+body {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    /* Prefer locked --vh (set once on load); fall back to 100vh */
+    height: 100vh !important;
+    height: calc(var(--vh, 1vh) * 100) !important;
+    max-height: 100vh !important;
+    max-height: calc(var(--vh, 1vh) * 100) !important;
+    overflow: hidden !important; /* Prevents the body itself from squeezing or resizing */
+    touch-action: manipulation !important;
+}
+
+/* Ensure main dashboard sections maintain their explicit size */
+.main-dashboard-wrapper,
+.pos-container,
 .pos-page,
 .order-page,
 .inv-page {
-    height: calc(var(--vh, 1vh) * 100) !important;
-    min-height: calc(var(--vh, 1vh) * 100) !important;
-    max-height: calc(var(--vh, 1vh) * 100) !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
+    height: 100% !important;
+    width: 100% !important;
+    max-height: 100% !important;
+    position: relative !important;
+    overflow: hidden !important;
     box-sizing: border-box !important;
+}
+
+/* Internal scroll only — proportions stay fixed while keyboard overlays */
+.staff-main-panel,
+.pos-page > .staff-main-panel,
+.pos-left,
+.pos-right,
+.opq-main,
+.opq-queue-partition-body,
+.order-list,
+.order-list-body,
+.order-list--take-out,
+.modal-content,
+.pay-modal,
+.payment-modal-content,
+.cash-mgmt-modal,
+.pos-modal,
+.shortage-modal,
+.product-modal,
+.app-modal,
+.inv-modal,
+.gcash-config-modal,
+.ses-overlay,
+.order-page .table-wrap,
+.inv-page .table-wrap,
+.inv-page .inv-table-section {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
 }
 
 /* Standardize inputs to prevent iOS/Android focus zoom / jump */
@@ -32,8 +75,8 @@ textarea {
 }
 
 /*
- * Fix overlay/backdrop shells only (not inner .*-modal dialog panels).
- * Anchored to viewport edges; top-aligned so keyboard cannot mid-recenter jitter.
+ * Overlay/backdrop shells stay viewport-pinned (keyboard overlays them).
+ * Top-aligned — no mid-screen re-center when visual viewport changes.
  */
 .modal,
 .modal-overlay,
@@ -49,7 +92,6 @@ textarea {
 .receipt-modal-backdrop,
 .receipt-summary-backdrop,
 .receipt-detail-backdrop,
-.ses-overlay,
 .ses-dialog,
 [class*="modal-backdrop"],
 [class*="modal-overlay"] {
@@ -58,9 +100,11 @@ textarea {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
+    width: auto !important;
+    height: auto !important;
     align-items: flex-start !important;
     padding-top: 40px !important;
     overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: touch !important;
     box-sizing: border-box !important;
 }

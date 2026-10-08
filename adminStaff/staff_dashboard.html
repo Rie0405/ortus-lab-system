@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-gcash-lightbox-z">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-ses-maincat-filter">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -1109,6 +1109,12 @@
                         <div class="ses-section-head">
                             <div class="ses-section-title ses-section-title--yellow">INVENTORY STOCK</div>
                             <span class="ses-section-meta" id="ses-inventory-used-meta">REMAINING</span>
+                        </div>
+                        <div class="ses-inventory-filter">
+                            <label class="ses-inventory-filter__label" for="ses-inventory-main-cat-filter">Main Category</label>
+                            <select class="ses-inventory-filter__select" id="ses-inventory-main-cat-filter" aria-label="Filter inventory stock by main category">
+                                <option value="all">All categories</option>
+                            </select>
                         </div>
                         <table class="ses-table">
                             <thead>
@@ -4844,11 +4850,14 @@
             var sesAllStaffExpectedCashEl = document.getElementById("ses-all-staff-expected-cash");
             var sesInventoryUsedMetaEl = document.getElementById("ses-inventory-used-meta");
             var sesInventoryUsedTbody = document.getElementById("ses-inventory-used-tbody");
+            var sesInventoryMainCatFilterEl = document.getElementById("ses-inventory-main-cat-filter");
             var sesInventoryEditBtn = document.getElementById("ses-inventory-edit-btn");
             var sesInventoryConfirmBtn = document.getElementById("ses-inventory-confirm-btn");
             var sesInventoryEditMode = false;
             var sesInventoryStockItems = [];
             var sesInventoryBaselineById = {};
+            var sesInventoryMainCategories = [];
+            var sesInventoryMainCatFilter = 'all';
             var sesInventoryEditingStaffId = null;
             var sesInventoryEditingStaffName = '';
             var sesInventoryEditModal = document.getElementById("ses-inventory-edit-modal");
@@ -4981,6 +4990,43 @@
                     ? el.textContent.trim()
                     : (fallback || '₱0.00');
             }
+            function normalizeSesMainCatName(name) {
+                return String(name || '').trim();
+            }
+            function populateSesInventoryMainCatFilter(categories) {
+                if (!sesInventoryMainCatFilterEl) return;
+                var names = [];
+                if (Array.isArray(categories)) {
+                    categories.forEach(function (c) {
+                        var n = '';
+                        if (typeof c === 'string') n = normalizeSesMainCatName(c);
+                        else if (c && typeof c === 'object') n = normalizeSesMainCatName(c.name);
+                        if (n && names.indexOf(n) === -1) names.push(n);
+                    });
+                }
+                names.sort(function (a, b) {
+                    return a.localeCompare(b);
+                });
+                sesInventoryMainCategories = names;
+                var prev = sesInventoryMainCatFilter || 'all';
+                if (prev !== 'all' && names.indexOf(prev) === -1) prev = 'all';
+                sesInventoryMainCatFilter = prev;
+                sesInventoryMainCatFilterEl.innerHTML =
+                    '<option value="all">All categories</option>' +
+                    names.map(function (n) {
+                        return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+                    }).join('');
+                sesInventoryMainCatFilterEl.value = prev;
+            }
+            function getSesInventoryFilteredRows() {
+                var rows = sesInventoryStockItems.slice();
+                var want = normalizeSesMainCatName(sesInventoryMainCatFilter);
+                if (!want || want === 'all') return rows;
+                var wantLower = want.toLowerCase();
+                return rows.filter(function (it) {
+                    return String(it.category_name || '').trim().toLowerCase() === wantLower;
+                });
+            }
             function renderSesInventoryUsed(items) {
                 if (!sesInventoryUsedTbody) return;
                 if (Array.isArray(items)) {
@@ -4988,6 +5034,7 @@
                         return {
                             id: parseInt(it && it.id, 10) || 0,
                             name: String(it && it.name ? it.name : '').trim() || 'Unknown Item',
+                            category_name: normalizeSesMainCatName(it && it.category_name),
                             stock_units: Math.max(0, parseInt(it && it.stock_units, 10) || 0)
                         };
                     }).sort(function (a, b) {
@@ -4998,11 +5045,19 @@
                         if (it.id > 0) sesInventoryBaselineById[it.id] = it.stock_units;
                     });
                 }
-                var rows = sesInventoryStockItems.slice();
-                if (sesInventoryEditBtn) sesInventoryEditBtn.disabled = rows.length === 0 || sesInventoryEditMode;
-                if (sesInventoryConfirmBtn) sesInventoryConfirmBtn.disabled = rows.length === 0 || !sesInventoryEditMode;
-                if (!rows.length) {
+                var rows = getSesInventoryFilteredRows();
+                if (sesInventoryEditBtn) {
+                    sesInventoryEditBtn.disabled = sesInventoryStockItems.length === 0 || sesInventoryEditMode;
+                }
+                if (sesInventoryConfirmBtn) {
+                    sesInventoryConfirmBtn.disabled = sesInventoryStockItems.length === 0 || !sesInventoryEditMode;
+                }
+                if (!sesInventoryStockItems.length) {
                     sesInventoryUsedTbody.innerHTML = '<tr><td colspan="2" class="ses-muted">No inventory items found.</td></tr>';
+                    return;
+                }
+                if (!rows.length) {
+                    sesInventoryUsedTbody.innerHTML = '<tr><td colspan="2" class="ses-muted">No items in this main category.</td></tr>';
                     return;
                 }
                 sesInventoryUsedTbody.innerHTML = rows.map(function (it) {
@@ -5020,11 +5075,27 @@
                 fetch('api/inventory.php?_=' + (cacheBust || Date.now()), { cache: 'no-store' })
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
+                        var cats = [];
+                        if (d && d.success) {
+                            if (Array.isArray(d.main_categories) && d.main_categories.length) {
+                                cats = d.main_categories;
+                            } else if (Array.isArray(d.categories)) {
+                                cats = d.categories;
+                            }
+                        }
+                        populateSesInventoryMainCatFilter(cats);
                         renderSesInventoryUsed((d && d.success && d.items) ? d.items : []);
                     })
                     .catch(function () {
+                        populateSesInventoryMainCatFilter([]);
                         renderSesInventoryUsed([]);
                     });
+            }
+            if (sesInventoryMainCatFilterEl) {
+                sesInventoryMainCatFilterEl.addEventListener('change', function () {
+                    sesInventoryMainCatFilter = String(sesInventoryMainCatFilterEl.value || 'all');
+                    renderSesInventoryUsed();
+                });
             }
             function setSesInventoryEditMode(isEdit) {
                 sesInventoryEditMode = !!isEdit;

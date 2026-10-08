@@ -8395,6 +8395,37 @@ img {
 .ses-link-btn:hover {
     color: #fb923c;
 }
+.ses-inventory-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0 0 12px;
+}
+.ses-inventory-filter__label {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+.ses-inventory-filter__select {
+    width: 100%;
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: #120e0a;
+    color: #f1f5f9;
+    font: inherit;
+    font-size: 13px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+}
+.ses-inventory-filter__select:focus {
+    outline: none;
+    border-color: #f48c25;
+    box-shadow: 0 0 0 2px rgba(244, 140, 37, 0.18);
+}
+
 .ses-inventory-actions {
     margin-top: 12px;
     display: flex;

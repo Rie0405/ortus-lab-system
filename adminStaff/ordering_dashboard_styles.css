@@ -2085,6 +2085,129 @@ body.modal-open {
     .table-row { min-width: 1140px; }
 }
 
+/* Tablet: keep all 7 menu columns visible — compact traditional table, no cards */
+@media (max-width: 1024px) {
+    .table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        overflow-x: hidden !important;
+        table-layout: fixed !important;
+    }
+
+    .table-head,
+    .table-row {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        display: grid !important;
+        grid-template-columns:
+            minmax(0, 7fr)   /* IMAGE */
+            minmax(0, 25fr)  /* PRODUCT NAME */
+            minmax(0, 10fr)  /* CATEGORY */
+            minmax(0, 10fr)  /* COST PRICE */
+            minmax(0, 10fr)  /* SELLING PRICE */
+            minmax(0, 18fr)  /* STATUS */
+            minmax(0, 20fr); /* ACTIONS */
+        gap: 0 !important;
+    }
+
+    .table-head > *,
+    .table-row > * {
+        padding: 6px 4px !important;
+        font-size: 11px !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .table-head {
+        font-size: 10px !important;
+        letter-spacing: 0.04em;
+    }
+
+    .menu-img-cell,
+    .table-row > *:first-child {
+        justify-content: center;
+    }
+
+    .prod-img,
+    .prod-img-placeholder {
+        width: 35px !important;
+        height: 35px !important;
+        max-width: 35px !important;
+        max-height: 35px !important;
+        border-radius: 6px;
+    }
+
+    .name strong {
+        font-size: 11px !important;
+        line-height: 1.25;
+    }
+
+    .name small {
+        font-size: 10px !important;
+        line-height: 1.2;
+    }
+
+    .cat,
+    .price,
+    .price--cost {
+        font-size: 11px !important;
+    }
+
+    .pill {
+        font-size: 9px !important;
+        padding: 3px 7px !important;
+    }
+
+    .status-cell,
+    .table-row > *:nth-child(6) {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        gap: 4px !important;
+        flex-wrap: nowrap;
+        overflow: visible !important;
+    }
+
+    .status-toggle-btn {
+        margin-left: 0 !important;
+        font-size: 9px !important;
+        padding: 2px 7px !important;
+        white-space: nowrap;
+    }
+
+    .acts,
+    .actions-cell,
+    .table-row > .acts {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        gap: 2px !important;
+        flex-wrap: nowrap;
+        overflow: visible !important;
+    }
+
+    .acts-separator {
+        display: none !important;
+    }
+
+    .actions-cell a,
+    .actions-cell button,
+    .acts .acts-btn {
+        display: inline-block !important;
+        font-size: 10px !important;
+        margin-bottom: 2px !important;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        line-height: 1.2;
+    }
+}
+
 @media (max-width: 900px) {
     .top-nav { flex-wrap: wrap; padding: 14px 16px; gap: 12px; }
     .top-actions { margin-left: 0; flex-wrap: wrap; min-width: 0; }

@@ -80,6 +80,7 @@ textarea {
  */
 .modal,
 .modal-overlay,
+.modal-backdrop,
 .pay-modal-backdrop,
 .payment-modal-overlay,
 .cash-mgmt-backdrop,
@@ -102,8 +103,15 @@ textarea {
     bottom: 0 !important;
     width: auto !important;
     height: auto !important;
-    align-items: flex-start !important;
-    padding-top: 40px !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+    backdrop-filter: blur(2px) !important;
+    transform: translateZ(0) !important; /* Force GPU rendering to prevent blackout glitch */
+    will-change: opacity !important;
+    backface-visibility: hidden;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     box-sizing: border-box !important;

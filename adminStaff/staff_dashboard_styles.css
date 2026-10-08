@@ -5217,11 +5217,10 @@ img {
 }
 
 /* ─── Payment Confirmation Modal ────────────────────────────── */
-/* Pin with top/right/bottom/left only — avoid height:100%/100vh so the overlay
-   does not reflow every frame while the mobile keyboard animates.
-   max-height uses svh (stable) instead of dvh/vh (keyboard-tracking). */
+/* Stable GPU-composited overlay — prevents blackout artifacts while typing. */
 .pay-modal-backdrop,
-.payment-modal-overlay {
+.payment-modal-overlay,
+.modal-backdrop {
     position: fixed !important;
     top: 0 !important;
     right: 0 !important;
@@ -5231,10 +5230,13 @@ img {
     max-width: none !important;
     height: auto !important;
     margin: 0 !important;
-    padding: 24px;
-    background: rgba(0, 0, 0, 0.5);
-    -webkit-backdrop-filter: blur(7.5px);
-    backdrop-filter: blur(7.5px);
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.6) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+    backdrop-filter: blur(2px) !important;
+    transform: translateZ(0) !important;
+    will-change: opacity !important;
+    backface-visibility: hidden;
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -5256,27 +5258,28 @@ img {
     pointer-events: auto;
 }
 
+/* Spacious / near full-screen payment confirmation (all viewports) */
 .pay-modal,
-.payment-modal-content {
+.payment-modal-content,
+.payment-confirmation-modal,
+.modal-card {
     background: #1e1e1e;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    width: min(660px, 100%);
-    max-width: min(660px, calc(100% - 24px));
-    max-height: 90vh;
-    max-height: 90svh;
-    display: flex;
-    flex-direction: column;
+    width: 90vw !important;
+    max-width: 1100px !important;
+    height: 85vh !important;
+    max-height: 850px !important;
+    margin: auto !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
     overflow-x: hidden;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    transform: none;
+    transform: translateZ(0);
     transition: none;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    margin-top: auto;
-    margin-bottom: auto;
     box-sizing: border-box;
     flex-shrink: 0;
     position: relative;
@@ -5336,7 +5339,7 @@ img {
     line-height: 1.35;
 }
 
-/* Body */
+/* Body — fills spacious modal between header and footer */
 .pay-modal__body {
     padding: 1.25rem 1.5rem;
     display: flex;
@@ -5344,6 +5347,7 @@ img {
     gap: 1.5rem;
     overflow-y: auto;
     min-height: 0;
+    flex: 1 1 auto;
 }
 
 .pay-modal__section-label {
@@ -7270,24 +7274,32 @@ img {
         max-width: 100%;
     }
 
-    .pay-modal,
     .cash-mgmt-modal,
     .pos-modal,
     .shortage-modal,
     .ses-dialog__panel {
         width: min(100%, calc(100% - 1.5rem));
         max-width: calc(100% - 1.5rem);
-        /* svh stays stable when the virtual keyboard opens (unlike dvh) */
         max-height: min(92vh, 100%);
         max-height: min(92svh, 100%);
     }
 
+    /* Payment confirmation stays spacious on phones too */
+    .pay-modal,
+    .payment-modal-content {
+        width: 90vw !important;
+        max-width: 1100px !important;
+        height: 85vh !important;
+        max-height: 850px !important;
+        margin: auto !important;
+    }
+
     .pay-modal-backdrop,
+    .payment-modal-overlay,
     .pos-modal-backdrop {
         padding: 0.75rem;
-        /* Phone: top-pin tall overlays so keyboard does not fight vertical center */
         justify-content: center !important;
-        align-items: flex-start;
+        align-items: center !important;
         overflow-y: auto;
     }
 
@@ -7298,35 +7310,30 @@ img {
         align-items: center;
         overflow-y: auto;
     }
-
-    .pay-modal-backdrop .pay-modal,
-    .pay-modal-backdrop .payment-modal-content {
-        margin-left: auto !important;
-        margin-right: auto !important;
-        margin-top: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
 }
 
 /*
- * Touch: top-align only tall payment / shortage modals (keyboard fight).
- * Do NOT top-pin .cash-mgmt-backdrop or .pos-modal-backdrop — Return Order,
- * Refund, Void, and product customize are short dialogs and must stay centered
- * on tablet.
+ * Touch: shortage only top-aligned. Payment confirmation stays centered + spacious
+ * (no auto-focus keyboard, so mid-center is safe).
  */
 @media (hover: none) and (pointer: coarse) {
-    .pay-modal-backdrop,
-    .payment-modal-overlay,
     .shortage-modal-backdrop {
         align-items: flex-start !important;
     }
 
-    .pay-modal-backdrop .pay-modal,
-    .pay-modal-backdrop .payment-modal-content {
-        margin-top: 0.75rem;
-        margin-bottom: 0.75rem;
-        max-height: none;
-        max-height: calc(100% - 1.5rem);
+    .pay-modal-backdrop,
+    .payment-modal-overlay {
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .pay-modal,
+    .payment-modal-content {
+        width: 90vw !important;
+        max-width: 1100px !important;
+        height: 85vh !important;
+        max-height: 850px !important;
+        margin: auto !important;
     }
 }
 

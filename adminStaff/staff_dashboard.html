@@ -7,11 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-return-modal-center">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pay-modal-polish">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
-    <link rel="stylesheet" href="viewport_lock.css?v=20261008-overlay">
+    <link rel="stylesheet" href="viewport_lock.css?v=20261008-pay-polish">
     <script src="viewport_lock.js?v=20261008" defer></script>
 </head>
 <body>
@@ -3733,7 +3733,7 @@
                         var amount = parseFloat(btn.getAttribute("data-suggest-amount"));
                         if (!Number.isFinite(amount)) return;
                         setAmountReceived(amount);
-                        if (payReceived) payReceived.focus();
+                        /* No auto-focus — keyboard only opens on direct input tap */
                     });
                 });
             }
@@ -3860,7 +3860,7 @@
                 payBackdrop.classList.add("is-visible");
                 payBackdrop.setAttribute("aria-hidden", "false");
                 document.body.classList.add("modal-open");
-                if (payReceived) payReceived.focus();
+                /* No auto-focus on Amount Received — avoid forced virtual keyboard */
                 renderSuggestedAmounts();
                 updateCompleteButtonState();
             }
@@ -3890,7 +3890,7 @@
                 payBackdrop.classList.add("is-visible");
                 payBackdrop.setAttribute("aria-hidden", "false");
                 document.body.classList.add("modal-open");
-                if (payReceived) payReceived.focus();
+                /* No auto-focus on Amount Received — avoid forced virtual keyboard */
                 renderSuggestedAmounts();
                 updateCompleteButtonState();
             }
@@ -4056,7 +4056,7 @@
                 payBackdrop.classList.add("is-visible");
                 payBackdrop.setAttribute("aria-hidden", "false");
                 document.body.classList.add("modal-open");
-                if (payReceived) payReceived.focus();
+                /* No auto-focus on Amount Received — avoid forced virtual keyboard */
                 renderSuggestedAmounts();
                 updateCompleteButtonState();
             }
@@ -4544,7 +4544,6 @@
                     if (!Number.isFinite(cashReceived) || cashReceived < orderTotal) {
                         updateCompleteButtonState();
                         notifyTransactionResult(false);
-                        if (payReceived) payReceived.focus();
                         return;
                     }
                 }

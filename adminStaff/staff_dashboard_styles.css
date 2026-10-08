@@ -672,6 +672,7 @@ img {
     flex: 1;
     display: flex;
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
     width: 100%;
     max-width: 100%;
@@ -7006,7 +7007,7 @@ img {
     }
 }
 
-/* Tables: keep scroll inside wrapper, not the page */
+/* Phone: POS may stack; tables/modals stay contained */
 @media (max-width: 767px) {
     .log-list,
     .table-wrap {
@@ -7035,6 +7036,17 @@ img {
         flex-wrap: wrap;
     }
 
+    .pos-main {
+        flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .pos-left,
+    .pos-right {
+        width: 100%;
+        max-width: 100%;
+    }
+
     .pay-modal,
     .cash-mgmt-modal,
     .pos-modal,
@@ -7054,8 +7066,54 @@ img {
     }
 }
 
-/* Tablet+: horizontal nav (no hamburger) + 3-col menu */
+/* Laptop/tablet+: keep menu + CURRENT ORDER side-by-side */
 @media (min-width: 768px) {
+    .pos-page {
+        height: 100vh;
+        min-height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
+    }
+
+    .pos-page > .staff-main-panel--pos.is-active {
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .pos-main {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        overflow: hidden;
+        min-height: 0;
+        height: 100%;
+    }
+
+    .pos-left {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+        max-width: none;
+        height: 100%;
+        padding: 1.25rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .pos-right {
+        flex: 0 0 320px;
+        flex-shrink: 0;
+        width: 320px;
+        min-width: 320px;
+        max-width: 320px;
+        height: 100%;
+        padding: 1.25rem;
+        border-left: 1px solid rgba(244, 140, 37, 0.2);
+        border-top: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
     .pos-nav-toggle {
         display: none;
     }
@@ -7065,6 +7123,7 @@ img {
         align-items: center;
         justify-content: space-between;
         gap: 1rem 1.5rem;
+        flex-shrink: 0;
     }
 
     .pos-header__primary {
@@ -7156,12 +7215,7 @@ img {
 
     .menu-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.875rem;
-    }
-
-    .pos-left,
-    .pos-right {
-        padding: 1.25rem;
+        gap: 0.75rem;
     }
 
     .staff-main-panel--waste-tab {
@@ -7208,18 +7262,8 @@ img {
     }
 }
 
-/* Large tablet / small laptop: restore side-by-side POS */
+/* Desktop: roomier header + wider cart; side-by-side already from 768px */
 @media (min-width: 1025px) {
-    .pos-page {
-        height: 100vh;
-        min-height: 100vh;
-        overflow: hidden;
-    }
-
-    .pos-page > .staff-main-panel--pos {
-        overflow: hidden;
-    }
-
     .pos-header {
         height: auto;
         min-height: 4.875rem;
@@ -7267,26 +7311,17 @@ img {
         line-height: 1.35;
     }
 
-    .pos-main {
-        flex-direction: row;
-        overflow: hidden;
-    }
-
     .pos-left {
-        flex: 1 1 auto;
-        width: auto;
-        max-width: none;
         padding: 1.5rem;
         gap: 1.5rem;
     }
 
     .pos-right {
-        flex: 0 0 min(384px, 36%);
-        width: min(384px, 36%);
-        min-width: 280px;
-        max-width: 420px;
-        border-left: 1px solid rgba(244, 140, 37, 0.2);
-        border-top: 0;
+        flex: 0 0 380px;
+        flex-shrink: 0;
+        width: 380px;
+        min-width: 380px;
+        max-width: 380px;
         padding: 1.5rem;
     }
 

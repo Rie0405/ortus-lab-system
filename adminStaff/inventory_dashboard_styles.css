@@ -2087,29 +2087,39 @@ body {
 .inv-stock-level-cell,
 .stock-level-cell {
     display: flex !important;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
+    flex-direction: row !important;
+    flex-wrap: nowrap;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
     min-width: 0;
+    width: 100%;
+    padding-right: 12px !important;
     overflow: visible;
     visibility: visible !important;
+    box-sizing: border-box;
 }
 .inv-stock-level-cell > strong,
-.stock-level-cell > strong {
-    min-width: 0;
+.stock-level-cell > strong,
+.stock-level-value {
+    min-width: 65px !important;
     flex: 0 1 auto;
+    text-align: left !important;
+    font-weight: 700 !important;
     line-height: 1.2;
 }
 .inv-stock-level-cell__controls {
     display: inline-flex !important;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 6px;
     flex: 0 0 auto;
+    margin-left: auto !important;
     min-width: 0;
 }
 .inv-stock-level-cell .btn-open-stock-used,
+.inv-stock-level-cell .status-btn,
 .inv-stock-level-cell button:not(.inv-stock-level-set),
 .stock-level-cell .status-btn,
 .stock-level-cell button:not(.inv-stock-level-set) {
@@ -2118,7 +2128,8 @@ body {
     justify-content: center !important;
     visibility: visible !important;
     opacity: 1 !important;
-    flex-shrink: 0;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
 }
 /* Desktop: Set stays in Batch Capacity / Per Piece columns only */
 .inv-stock-level-cell .inv-stock-level-set,
@@ -2711,21 +2722,27 @@ body {
 
     .inv-stock-level-cell,
     .stock-level-cell {
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-        gap: 4px;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        padding-right: 6px !important;
         overflow: visible !important;
     }
 
     .inv-stock-level-cell strong,
-    .stock-level-cell strong {
+    .stock-level-cell strong,
+    .stock-level-value {
+        min-width: 52px !important;
         font-size: 12px !important;
+        text-align: left !important;
+        font-weight: 700 !important;
     }
 
     .inv-stock-level-cell__controls {
         display: inline-flex !important;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        margin-left: auto !important;
         gap: 4px;
     }
 

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-category-stack">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-stock-level-align">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
 </head>
@@ -3561,7 +3561,7 @@
                 buildCategoryCellHtml(item) +
                 '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
                 '<div class="inv-stock-level-cell stock-level-cell">' +
-                    '<strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' +
+                    '<strong class="stock-level-value">' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' +
                     '<div class="inv-stock-level-cell__controls">' + openBtn + stockLevelSetBtn + '</div>' +
                 '</div>' +
                 '<div class="inv-box-capacity-cell inv-col-batch-capacity">' +

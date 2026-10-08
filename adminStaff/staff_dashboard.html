@@ -6030,34 +6030,25 @@
             return String(order && order.order_source || '').toLowerCase() === 'kiosk';
         }
         function stationKeyForItem(item) {
+            // Strict ID routing — one main_category_id → one capsule (mc_{id}).
+            // No keyword / partial-name guesses (those merged distinct categories onto one tab).
             var mid = parseInt(item && item.main_category_id, 10) || 0;
             if (mid > 0) {
-                var byId = findStationByKey(stationKeyFromId(mid));
-                if (byId) return byId.key;
+                return stationKeyFromId(mid);
             }
+            // Exact registered name match only (adaptive to any main category name).
             var mcRaw = String(item && item.main_category_name || '').trim();
             if (mcRaw) {
-                var byExact = findStationByKey(slugStationName(mcRaw));
-                if (byExact) return byExact.key;
-                // Partial: item main category "Dessert" → station "Bar & Dessert"
-                var byPartial = findStationByNameHint([normKitchenCategoryName(mcRaw)]);
-                if (byPartial) return byPartial.key;
+                var want = normKitchenCategoryName(mcRaw);
+                var bySlug = findStationByKey(slugStationName(mcRaw));
+                if (bySlug) return bySlug.key;
+                for (var i = 0; i < staffMainStations.length; i++) {
+                    if (normKitchenCategoryName(staffMainStations[i].name) === want) {
+                        return staffMainStations[i].key;
+                    }
+                }
             }
-            var cat = item && item.category_name;
-            if (isBarCategoryName(cat)) {
-                var barSt = findStationByKey('bar') || findStationByNameHint(['bar', 'drink', 'beverage', 'coffee']);
-                if (barSt) return barSt.key;
-            }
-            if (isPastryCategoryName(cat) || isKitchenCategoryName(cat)) {
-                var foodSt = findStationByKey('kitchen')
-                    || findStationByKey('pastries')
-                    || findStationByNameHint(['dessert', 'pastr', 'bread', 'bakery', 'kitchen', 'food']);
-                if (foodSt) return foodSt.key;
-            }
-            var legacySlug = isBarCategoryName(cat) ? 'bar' : 'kitchen';
-            var legacy = findStationByKey(legacySlug);
-            if (legacy) return legacy.key;
-            return staffMainStations.length ? staffMainStations[0].key : '';
+            return '';
         }
         function itemMatchesKitchenStation(item, group) {
             var want = String(group || '').toLowerCase();
@@ -8268,15 +8259,19 @@
 
         function buildOpqActionsFooter(order) {
             var orderId = order && order.id != null ? order.id : order;
-            var hasDiscount = orderHasActiveDiscount(order);
-            var pendingRequest = orderHasPendingDiscountRequest(order);
-            var discountBtn;
-            if (hasDiscount) {
-                discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--void-discount" data-void-discount="' + orderId + '">Void Discount</button>';
-            } else if (pendingRequest) {
-                discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--discount opq-action-btn--verify-discount" data-discount-order="' + orderId + '">Verify ID</button>';
-            } else {
-                discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--discount" data-discount-order="' + orderId + '">' + esc(discountActionButtonLabel()) + '</button>';
+            var isKioskPickup = String(order && order.order_source || '').toLowerCase() === 'kiosk'
+                && normalizeQueueOrderPartition(order) === 'pickup';
+            var discountBtn = '';
+            if (!isKioskPickup) {
+                var hasDiscount = orderHasActiveDiscount(order);
+                var pendingRequest = orderHasPendingDiscountRequest(order);
+                if (hasDiscount) {
+                    discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--void-discount" data-void-discount="' + orderId + '">Void Discount</button>';
+                } else if (pendingRequest) {
+                    discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--discount opq-action-btn--verify-discount" data-discount-order="' + orderId + '">Verify ID</button>';
+                } else {
+                    discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--discount" data-discount-order="' + orderId + '">' + esc(discountActionButtonLabel()) + '</button>';
+                }
             }
             return (
                 '<footer class="opq-card-foot staff-opq-actions">' +
@@ -9136,10 +9131,8 @@
             var orderCustomer = getKitchenOrderCustomerName(order);
             var orderId = parseInt(order && order.id, 10) || 0;
             var isPriority = isKitchenOrderPrioritized(orderId);
-            var stationGroup = opts.stationGroup || activeKitchenCategory || 'bar';
+            var stationGroup = opts.stationGroup || activeKitchenCategory || '';
             var displayItems = filterItemsForKitchenStation(order.items || [], stationGroup);
-            // Fallback: if classification missed, still show something rather than a blank card.
-            if (!displayItems.length) displayItems = order.items || [];
             var itemsHtml = displayItems
                 .map(function (item) {
                     return (

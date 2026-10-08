@@ -125,76 +125,23 @@ function stations_for_menu_item_ids(PDO $pdo, array $menuItemIds): array
 
     $stations = [];
     foreach ($rows as $row) {
+        // Route strictly by registered main_category_id (item → subcategory → main).
+        // No keyword / name heuristics — those collapse distinct categories onto one station.
         $mcid = (int)($row['main_category_id'] ?? 0);
-        $mcName = trim((string)($row['main_category_name'] ?? ''));
-
-        // Fallback when menu item has no main_category_id: map drink-like → Bar*,
-        // pastry/bread/dessert → station whose name matches, else Kitchen / first station.
-        if ($mcid <= 0 || $mcName === '') {
-            $cat = strtolower(trim((string)($row['category_name'] ?? '')));
-            $wantBar = ($cat === 'drinks' || $cat === 'beverages' || $cat === 'coffee'
-                || strpos($cat, 'drink') !== false || strpos($cat, 'coffee') !== false
-                || strpos($cat, 'frappe') !== false || strpos($cat, 'refresher') !== false);
-            $wantPastry = (strpos($cat, 'pastr') !== false || strpos($cat, 'bread') !== false
-                || strpos($cat, 'bakery') !== false || strpos($cat, 'baked') !== false
-                || strpos($cat, 'dessert') !== false || strpos($cat, 'toast') !== false);
-
-            $fbRow = null;
-            if ($wantBar || $wantPastry) {
-                $allMc = $pdo->query(
-                    'SELECT id, name FROM main_categories WHERE is_active = 1 ORDER BY display_order ASC, id ASC'
-                )->fetchAll(PDO::FETCH_ASSOC) ?: [];
-                foreach ($allMc as $cand) {
-                    $n = strtolower(trim((string)($cand['name'] ?? '')));
-                    if ($wantBar && (strpos($n, 'bar') !== false || strpos($n, 'drink') !== false || strpos($n, 'beverage') !== false)) {
-                        $fbRow = $cand;
-                        break;
-                    }
-                    if ($wantPastry && (strpos($n, 'dessert') !== false || strpos($n, 'pastr') !== false
-                        || strpos($n, 'bread') !== false || strpos($n, 'bakery') !== false
-                        || strpos($n, 'kitchen') !== false || strpos($n, 'food') !== false)) {
-                        $fbRow = $cand;
-                        break;
-                    }
-                }
-                // Combined capsule e.g. "Bar & Dessert" — prefer it when either side matches.
-                if (!$fbRow) {
-                    foreach ($allMc as $cand) {
-                        $n = strtolower(trim((string)($cand['name'] ?? '')));
-                        if (strpos($n, 'bar') !== false && (strpos($n, 'dessert') !== false || strpos($n, 'pastr') !== false)) {
-                            $fbRow = $cand;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!$fbRow) {
-                $fallbackName = $wantBar ? 'Bar' : 'Kitchen';
-                $fb = $pdo->prepare(
-                    "SELECT id, name FROM main_categories
-                      WHERE is_active = 1 AND LOWER(TRIM(name)) = LOWER(:n)
-                      LIMIT 1"
-                );
-                $fb->execute([':n' => $fallbackName]);
-                $fbRow = $fb->fetch(PDO::FETCH_ASSOC) ?: null;
-            }
-            if ($fbRow) {
-                $mcid = (int)$fbRow['id'];
-                $mcName = (string)$fbRow['name'];
-            } else {
-                // Last resort: first active main category.
-                $any = $pdo->query(
-                    'SELECT id, name FROM main_categories WHERE is_active = 1 ORDER BY display_order ASC, id ASC LIMIT 1'
-                )->fetch(PDO::FETCH_ASSOC);
-                if ($any) {
-                    $mcid = (int)$any['id'];
-                    $mcName = (string)$any['name'];
-                }
-            }
-        }
-
         if ($mcid <= 0) {
             continue;
+        }
+        $mcName = trim((string)($row['main_category_name'] ?? ''));
+        if ($mcName === '') {
+            try {
+                $nameStmt = $pdo->prepare(
+                    'SELECT name FROM main_categories WHERE id = :id LIMIT 1'
+                );
+                $nameStmt->execute([':id' => $mcid]);
+                $mcName = trim((string)($nameStmt->fetchColumn() ?: ''));
+            } catch (Throwable $e) {
+                $mcName = '';
+            }
         }
         $key = station_key_for_main_category_id($mcid);
         $stations[$key] = [
@@ -296,12 +243,8 @@ function assign_station_tickets_to_order(PDO $pdo, int $orderId, array $menuItem
 
     // Drop stale station tickets when cart changes (e.g. returned order edit adds/removes stations).
     $keepKeys = [];
-    if ($stations) {
-        foreach ($stations as $st) {
-            $keepKeys[] = (string)$st['key'];
-        }
-    } else {
-        $keepKeys[] = 'kitchen';
+    foreach ($stations as $st) {
+        $keepKeys[] = (string)$st['key'];
     }
     try {
         if ($keepKeys) {
@@ -313,6 +256,7 @@ function assign_station_tickets_to_order(PDO $pdo, int $orderId, array $menuItem
             );
             $del->execute(array_merge([$orderId], $keepKeys));
         } else {
+            // No resolvable main categories — clear tickets rather than inventing a station.
             $pdo->prepare('DELETE FROM order_station_tickets WHERE order_id = :oid')
                 ->execute([':oid' => $orderId]);
         }
@@ -321,18 +265,9 @@ function assign_station_tickets_to_order(PDO $pdo, int $orderId, array $menuItem
     }
 
     if (!$stations) {
-        // Ensure at least one ticket so UI validation does not fail.
-        $ticket = allocate_next_station_ticket($pdo, 'kitchen');
-        $result['tickets']['kitchen'] = $ticket;
-        $result['kitchen'] = $ticket;
         $pdo->prepare(
-            'INSERT INTO order_station_tickets (order_id, station_key, main_category_id, ticket_number)
-             VALUES (:oid, :sk, NULL, :tn)
-             ON DUPLICATE KEY UPDATE ticket_number = VALUES(ticket_number)'
-        )->execute([':oid' => $orderId, ':sk' => 'kitchen', ':tn' => $ticket]);
-        $pdo->prepare(
-            'UPDATE orders SET kitchen_ticket_number = :kt, bar_ticket_number = :bt WHERE id = :id'
-        )->execute([':kt' => $ticket, ':bt' => null, ':id' => $orderId]);
+            'UPDATE orders SET kitchen_ticket_number = NULL, bar_ticket_number = NULL WHERE id = :id'
+        )->execute([':id' => $orderId]);
         return $result;
     }
 
@@ -472,12 +407,11 @@ function order_main_category_ids(PDO $pdo, int $orderId): array
     }
     try {
         $stmt = $pdo->prepare(
-            'SELECT DISTINCT mi.main_category_id
+            'SELECT DISTINCT COALESCE(NULLIF(mi.main_category_id, 0), NULLIF(c.main_category_id, 0), 0) AS main_category_id
                FROM order_items oi
                INNER JOIN menu_items mi ON mi.id = oi.menu_item_id
-              WHERE oi.order_id = :oid
-                AND mi.main_category_id IS NOT NULL
-                AND mi.main_category_id > 0'
+               LEFT JOIN categories c ON c.id = mi.category_id
+              WHERE oi.order_id = :oid'
         );
         $stmt->execute([':oid' => $orderId]);
         foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $id) {

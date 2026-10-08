@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-pos-modal-center">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261008-return-modal-center">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -3697,9 +3697,6 @@
 
             function updateChangeDue() {
                 // Lightweight UI update only — do not re-render modal layout while typing.
-                // #region agent log
-                fetch('api/debug_ingest.php',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e46449'},body:JSON.stringify({sessionId:'e46449',runId:'pre-fix',hypothesisId:'C',location:'staff_dashboard.html:updateChangeDue',message:'updateChangeDue enter',data:{value:payReceived?String(payReceived.value||''):null,orderTotal:orderTotal},timestamp:Date.now()})}).catch(function(){});
-                // #endregion
                 if (!payReceived || !payChange) return;
                 var received = parseFloat(payReceived.value) || 0;
                 var change = received - orderTotal;
@@ -3715,9 +3712,6 @@
             }
 
             function renderSuggestedAmounts() {
-                // #region agent log
-                fetch('api/debug_ingest.php',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e46449'},body:JSON.stringify({sessionId:'e46449',runId:'pre-fix',hypothesisId:'B',location:'staff_dashboard.html:renderSuggestedAmounts',message:'renderSuggestedAmounts rebuild',data:{hasSuggest:!!paySuggestAmounts},timestamp:Date.now()})}).catch(function(){});
-                // #endregion
                 if (!paySuggestAmounts) return;
                 var suggestions = buildSuggestedAmounts(orderTotal);
                 if (!suggestions.length) {
@@ -3761,14 +3755,8 @@
                         : refRaw.replace(/\D+/g, "");
                     allow = !!refDigits;
                 }
-                var prevDisabled = !!payComplete.disabled;
                 payComplete.disabled = !allow;
                 payComplete.classList.toggle("pay-modal__btn--disabled", !allow);
-                // #region agent log
-                if (prevDisabled !== !allow) {
-                    fetch('api/debug_ingest.php',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e46449'},body:JSON.stringify({sessionId:'e46449',runId:'pre-fix',hypothesisId:'C',location:'staff_dashboard.html:updateCompleteButtonState',message:'complete button disabled toggled',data:{prevDisabled:prevDisabled,allow:allow},timestamp:Date.now()})}).catch(function(){});
-                }
-                // #endregion
             }
 
             function syncPayMethodButtons() {
@@ -4754,311 +4742,6 @@
                 gcashRef.addEventListener("input", updateCompleteButtonState);
                 gcashRef.addEventListener("change", updateCompleteButtonState);
             }
-
-            // #region agent log
-            (function installPayFlickerProbe() {
-                var ENDPOINT_LOCAL = 'api/debug_ingest.php';
-                var ENDPOINT_REMOTE = 'http://127.0.0.1:7883/ingest/06fed95e-5b9f-4a75-b58c-2565461d8850';
-                var SESSION = 'e46449';
-                var RUN = 'pre-fix';
-                var inputId = 'pay-amount-received';
-                var watched = [
-                    { key: 'input', sel: '#pay-amount-received' },
-                    { key: 'inputWrap', sel: '#pay-amount-received' },
-                    { key: 'suggest', sel: '#pay-suggest-amounts' },
-                    { key: 'changeDue', sel: '#pay-change-due' },
-                    { key: 'footer', sel: '.pay-modal__footer' },
-                    { key: 'completeBtn', sel: '#pay-modal-complete' },
-                    { key: 'modal', sel: '#payment-confirm-modal .pay-modal' },
-                    { key: 'backdrop', sel: '#payment-confirm-modal' },
-                    { key: 'header', sel: '.pos-header' },
-                    { key: 'drawer', sel: '.queue-drawer-shell, .side-drawer' }
-                ];
-                var lastRects = {};
-                var lastVp = null;
-                var focusActive = false;
-                var rafId = 0;
-                var inputNodeRef = payReceived;
-                var styleEl = document.createElement('style');
-                styleEl.id = 'agent-flicker-debug-style';
-                styleEl.textContent = [
-                    '.debug-flicker-input{outline:2px solid #ef4444!important;}',
-                    '.debug-flicker-wrap{outline:2px solid #f59e0b!important;}',
-                    '.debug-flicker-suggest{outline:2px solid #22c55e!important;}',
-                    '.debug-flicker-footer{outline:2px solid #3b82f6!important;}',
-                    '.debug-flicker-modal{outline:2px solid #a855f7!important;}',
-                    '.debug-flicker-backdrop{outline:2px dashed #eab308!important;}'
-                ].join('');
-                document.head.appendChild(styleEl);
-
-                function dbg(hypothesisId, location, message, data) {
-                    var payload = JSON.stringify({
-                        sessionId: SESSION,
-                        runId: RUN,
-                        hypothesisId: hypothesisId,
-                        location: location,
-                        message: message,
-                        data: data || {},
-                        timestamp: Date.now()
-                    });
-                    // Prefer same-origin PHP writer (remote ingest was write-failed in this env).
-                    fetch(ENDPOINT_LOCAL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': SESSION },
-                        body: payload
-                    }).catch(function () {});
-                    fetch(ENDPOINT_REMOTE, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': SESSION },
-                        body: payload
-                    }).catch(function () {});
-                }
-
-                function viewportSnap() {
-                    var vv = window.visualViewport;
-                    return {
-                        innerH: window.innerHeight,
-                        innerW: window.innerWidth,
-                        clientH: document.documentElement.clientHeight,
-                        scrollY: window.scrollY || window.pageYOffset || 0,
-                        bodyScrollTop: document.body ? document.body.scrollTop : 0,
-                        vvH: vv ? vv.height : null,
-                        vvW: vv ? vv.width : null,
-                        vvOffsetTop: vv ? vv.offsetTop : null,
-                        vvOffsetLeft: vv ? vv.offsetLeft : null,
-                        vvScale: vv ? vv.scale : null,
-                        vvPageTop: vv ? vv.pageTop : null
-                    };
-                }
-
-                function rectOf(el) {
-                    if (!el) return null;
-                    var r = el.getBoundingClientRect();
-                    var cs = window.getComputedStyle(el);
-                    return {
-                        t: Math.round(r.top * 10) / 10,
-                        l: Math.round(r.left * 10) / 10,
-                        w: Math.round(r.width * 10) / 10,
-                        h: Math.round(r.height * 10) / 10,
-                        b: Math.round(r.bottom * 10) / 10,
-                        position: cs.position,
-                        transform: cs.transform,
-                        opacity: cs.opacity,
-                        display: cs.display,
-                        visibility: cs.visibility
-                    };
-                }
-
-                function resolveEl(item) {
-                    if (item.key === 'inputWrap') {
-                        var inp = document.getElementById(inputId);
-                        return inp ? inp.parentElement : null;
-                    }
-                    return document.querySelector(item.sel);
-                }
-
-                function snapshotAll() {
-                    var out = {};
-                    watched.forEach(function (item) {
-                        out[item.key] = rectOf(resolveEl(item));
-                    });
-                    return out;
-                }
-
-                function diffRects(prev, next) {
-                    var moved = [];
-                    Object.keys(next).forEach(function (k) {
-                        var a = prev[k];
-                        var b = next[k];
-                        if (!b) return;
-                        if (!a) {
-                            moved.push({ key: k, kind: 'appeared', next: b });
-                            return;
-                        }
-                        var changes = {};
-                        ['t', 'l', 'w', 'h', 'b', 'position', 'transform', 'opacity', 'display', 'visibility'].forEach(function (p) {
-                            if (a[p] !== b[p]) {
-                                if (typeof a[p] === 'number' && typeof b[p] === 'number') {
-                                    if (Math.abs(a[p] - b[p]) >= 0.5) changes[p] = { from: a[p], to: b[p], d: Math.round((b[p] - a[p]) * 10) / 10 };
-                                } else {
-                                    changes[p] = { from: a[p], to: b[p] };
-                                }
-                            }
-                        });
-                        if (Object.keys(changes).length) moved.push({ key: k, changes: changes, next: b });
-                    });
-                    return moved;
-                }
-
-                function checkDomIdentity(trigger) {
-                    var live = document.getElementById(inputId);
-                    var sameNode = live === inputNodeRef;
-                    var sameSuggestParent = !!(paySuggestAmounts && document.getElementById('pay-suggest-amounts') === paySuggestAmounts);
-                    if (!sameNode || !sameSuggestParent) {
-                        dbg('B', 'payFlickerProbe:domIdentity', 'DOM node identity changed', {
-                            trigger: trigger,
-                            inputSame: sameNode,
-                            suggestSame: sameSuggestParent,
-                            liveInputExists: !!live
-                        });
-                        inputNodeRef = live;
-                    }
-                    return { inputSame: sameNode, suggestSame: sameSuggestParent };
-                }
-
-                function reportEvent(hypothesisId, trigger, extra) {
-                    var vp = viewportSnap();
-                    var rects = snapshotAll();
-                    var moved = lastRects && Object.keys(lastRects).length ? diffRects(lastRects, rects) : [];
-                    var vpDelta = null;
-                    if (lastVp) {
-                        vpDelta = {};
-                        Object.keys(vp).forEach(function (k) {
-                            if (vp[k] !== lastVp[k]) vpDelta[k] = { from: lastVp[k], to: vp[k] };
-                        });
-                        if (!Object.keys(vpDelta).length) vpDelta = null;
-                    }
-                    var identity = checkDomIdentity(trigger);
-                    dbg(hypothesisId, 'payFlickerProbe:' + trigger, trigger, {
-                        trigger: trigger,
-                        vp: vp,
-                        vpDelta: vpDelta,
-                        moved: moved,
-                        identity: identity,
-                        activeElementId: document.activeElement && document.activeElement.id,
-                        modalVisible: !!(payBackdrop && payBackdrop.classList.contains('is-visible')),
-                        extra: extra || null
-                    });
-                    lastRects = rects;
-                    lastVp = vp;
-                }
-
-                function tick() {
-                    if (!focusActive) return;
-                    var rects = snapshotAll();
-                    var moved = diffRects(lastRects, rects);
-                    var vp = viewportSnap();
-                    var vpChanged = false;
-                    if (lastVp) {
-                        ['innerH', 'vvH', 'vvOffsetTop', 'scrollY', 'clientH'].forEach(function (k) {
-                            if (vp[k] !== lastVp[k]) vpChanged = true;
-                        });
-                    }
-                    if (moved.length || vpChanged) {
-                        dbg(vpChanged ? 'A' : 'D', 'payFlickerProbe:raf', 'layout/viewport delta while focused', {
-                            moved: moved,
-                            vp: vp,
-                            vpChanged: vpChanged,
-                            activeElementId: document.activeElement && document.activeElement.id
-                        });
-                        lastRects = rects;
-                        lastVp = vp;
-                    }
-                    rafId = requestAnimationFrame(tick);
-                }
-
-                function startWatch() {
-                    focusActive = true;
-                    lastRects = snapshotAll();
-                    lastVp = viewportSnap();
-                    if (payReceived) payReceived.classList.add('debug-flicker-input');
-                    if (payReceived && payReceived.parentElement) payReceived.parentElement.classList.add('debug-flicker-wrap');
-                    if (paySuggestAmounts) paySuggestAmounts.classList.add('debug-flicker-suggest');
-                    var footer = document.querySelector('#payment-confirm-modal .pay-modal__footer');
-                    if (footer) footer.classList.add('debug-flicker-footer');
-                    var modal = document.querySelector('#payment-confirm-modal .pay-modal');
-                    if (modal) modal.classList.add('debug-flicker-modal');
-                    if (payBackdrop) payBackdrop.classList.add('debug-flicker-backdrop');
-                    cancelAnimationFrame(rafId);
-                    rafId = requestAnimationFrame(tick);
-                }
-
-                function stopWatch() {
-                    focusActive = false;
-                    cancelAnimationFrame(rafId);
-                }
-
-                if (payReceived) {
-                    payReceived.addEventListener('focus', function () {
-                        startWatch();
-                        reportEvent('A', 'focus');
-                    });
-                    payReceived.addEventListener('blur', function () {
-                        reportEvent('D', 'blur');
-                        stopWatch();
-                    });
-                    payReceived.addEventListener('input', function () {
-                        reportEvent('C', 'input', {
-                            valueLen: String(payReceived.value || '').length,
-                            completeDisabled: !!(payComplete && payComplete.disabled)
-                        });
-                    });
-                }
-
-                window.addEventListener('resize', function () {
-                    if (!focusActive && !(payBackdrop && payBackdrop.classList.contains('is-visible'))) return;
-                    reportEvent('A', 'window-resize');
-                });
-                window.addEventListener('scroll', function () {
-                    if (!focusActive) return;
-                    reportEvent('D', 'window-scroll');
-                }, true);
-                if (window.visualViewport) {
-                    window.visualViewport.addEventListener('resize', function () {
-                        if (!focusActive && !(payBackdrop && payBackdrop.classList.contains('is-visible'))) return;
-                        reportEvent('A', 'visualViewport-resize');
-                    });
-                    window.visualViewport.addEventListener('scroll', function () {
-                        if (!focusActive) return;
-                        reportEvent('D', 'visualViewport-scroll');
-                    });
-                }
-
-                if (payBackdrop && typeof MutationObserver === 'function') {
-                    var mo = new MutationObserver(function (mutations) {
-                        if (!focusActive) return;
-                        var summary = mutations.slice(0, 12).map(function (m) {
-                            return {
-                                type: m.type,
-                                attr: m.attributeName || null,
-                                target: m.target && (m.target.id || m.target.className || m.target.nodeName),
-                                added: m.addedNodes ? m.addedNodes.length : 0,
-                                removed: m.removedNodes ? m.removedNodes.length : 0
-                            };
-                        });
-                        var hasChildList = mutations.some(function (m) { return m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length); });
-                        dbg(hasChildList ? 'B' : 'C', 'payFlickerProbe:mutation', 'pay modal DOM/attr mutation while focused', {
-                            count: mutations.length,
-                            summary: summary,
-                            identity: checkDomIdentity('mutation')
-                        });
-                    });
-                    mo.observe(payBackdrop, { subtree: true, childList: true, attributes: true, characterData: true });
-                }
-
-                var _updateChangeDue = updateChangeDue;
-                updateChangeDue = function () {
-                    dbg('C', 'payFlickerProbe:updateChangeDue', 'updateChangeDue called', {
-                        value: payReceived ? String(payReceived.value || '') : null
-                    });
-                    return _updateChangeDue.apply(this, arguments);
-                };
-                var _renderSuggestedAmounts = renderSuggestedAmounts;
-                renderSuggestedAmounts = function () {
-                    dbg('B', 'payFlickerProbe:renderSuggestedAmounts', 'renderSuggestedAmounts called (rebuilds suggest buttons)', {
-                        stackHint: 'suggest-rebuild'
-                    });
-                    return _renderSuggestedAmounts.apply(this, arguments);
-                };
-
-                dbg('A', 'payFlickerProbe:ready', 'pay flicker probe installed', {
-                    hasVisualViewport: !!window.visualViewport,
-                    hasResizeObserver: typeof ResizeObserver === 'function',
-                    hasMutationObserver: typeof MutationObserver === 'function',
-                    interactiveWidgetMeta: (document.querySelector('meta[name="viewport"]') || {}).content || null
-                });
-            })();
-            // #endregion
 
             loadGcashQrConfig(true);
 

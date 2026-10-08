@@ -4350,10 +4350,12 @@ img {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 210;
+    /* Above sticky pos-header (1100) — Return/Refund/Void dialogs must not sit under nav */
+    z-index: 1200;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
+    box-sizing: border-box;
 }
 
 .cash-mgmt-backdrop.is-visible {
@@ -7281,12 +7283,19 @@ img {
     }
 
     .pay-modal-backdrop,
-    .cash-mgmt-backdrop,
     .pos-modal-backdrop {
         padding: 0.75rem;
-        /* Keep horizontal center; only pin to top so tall modals / keyboard stay usable */
+        /* Phone: top-pin tall overlays so keyboard does not fight vertical center */
         justify-content: center !important;
         align-items: flex-start;
+        overflow-y: auto;
+    }
+
+    /* Phone: short reason dialogs (Return/Refund/Void) still center */
+    .cash-mgmt-backdrop {
+        padding: 0.75rem;
+        justify-content: center !important;
+        align-items: center;
         overflow-y: auto;
     }
 
@@ -7300,21 +7309,20 @@ img {
 }
 
 /*
- * Touch: top-align only KEYBOARD input modals (pay / cash / shortage).
- * Do NOT include .pos-modal-backdrop here — product customize must stay
- * vertically centered on tablet (pills only, no virtual-keyboard fight).
+ * Touch: top-align only tall payment / shortage modals (keyboard fight).
+ * Do NOT top-pin .cash-mgmt-backdrop or .pos-modal-backdrop — Return Order,
+ * Refund, Void, and product customize are short dialogs and must stay centered
+ * on tablet.
  */
 @media (hover: none) and (pointer: coarse) {
     .pay-modal-backdrop,
     .payment-modal-overlay,
-    .cash-mgmt-backdrop,
     .shortage-modal-backdrop {
         align-items: flex-start !important;
     }
 
     .pay-modal-backdrop .pay-modal,
-    .pay-modal-backdrop .payment-modal-content,
-    .cash-mgmt-backdrop .cash-mgmt-modal {
+    .pay-modal-backdrop .payment-modal-content {
         margin-top: 0.75rem;
         margin-bottom: 0.75rem;
         max-height: none;
@@ -7324,15 +7332,27 @@ img {
 
 /* Laptop/tablet+: keep menu + CURRENT ORDER side-by-side */
 @media (min-width: 768px) {
-    /* Product customize: stay vertically centered (not top-pinned like pay modal) */
-    .pos-modal-backdrop {
+    /* Product customize + Return/Refund/Void: vertically centered on tablet */
+    .pos-modal-backdrop,
+    .cash-mgmt-backdrop {
         align-items: center !important;
         justify-content: center !important;
         padding: 24px;
     }
 
-    .pos-modal-backdrop .pos-modal {
+    .pos-modal-backdrop .pos-modal,
+    .cash-mgmt-backdrop .cash-mgmt-modal {
         margin: auto;
+    }
+
+    /* Return Order / similar short reason dialogs */
+    #kitchen-return-modal,
+    #order-refund-modal,
+    #order-refund-confirm-modal,
+    #queue-void-modal,
+    #serving-waste-modal {
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     .pos-page {

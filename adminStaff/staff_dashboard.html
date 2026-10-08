@@ -4503,20 +4503,51 @@
                 });
             }
 
+            /** Popup result after Complete Transaction — only these two titles. */
+            function notifyTransactionResult(ok) {
+                if (typeof window.showPaymentSuccessToast === "function") {
+                    window.showPaymentSuccessToast({
+                        ok: ok === true,
+                        title: ok === true ? "Transaction successful" : "Transaction not successful"
+                    });
+                    return;
+                }
+                alert(ok === true ? "Transaction successful" : "Transaction not successful");
+            }
+
+            /**
+             * True only when the order is persisted for sales history/admin reporting
+             * AND routed to at least one staff destination (bar / kitchen / pastries station).
+             */
+            function isPosOrderRecordedSuccessfully(res) {
+                if (typeof window.isOrderFullyRecorded === "function") {
+                    return window.isOrderFullyRecorded(res) === true;
+                }
+                if (!res || res.success !== true) return false;
+                var orderId = parseInt(res.order_id, 10) || 0;
+                var orderNumber = String(res.order_number || "").trim();
+                if (orderId <= 0 || !orderNumber) return false;
+                var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
+                var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
+                if (kitchenTicket > 0 || barTicket > 0) return true;
+                var stationTickets = res.station_tickets && typeof res.station_tickets === "object"
+                    ? res.station_tickets
+                    : null;
+                if (!stationTickets) return false;
+                var keys = Object.keys(stationTickets);
+                for (var i = 0; i < keys.length; i++) {
+                    if ((parseInt(stationTickets[keys[i]], 10) || 0) > 0) return true;
+                }
+                return false;
+            }
+
             function completeTransaction() {
                 // Strict payment validation BEFORE any toast / order submit.
                 if (currentMethod === "cash") {
                     var cashReceived = parseFloat((payReceived && payReceived.value) || "");
                     if (!Number.isFinite(cashReceived) || cashReceived < orderTotal) {
                         updateCompleteButtonState();
-                        if (typeof window.showPaymentSuccessToast === "function") {
-                            window.showPaymentSuccessToast({
-                                ok: false,
-                                title: "Insufficient payment amount!"
-                            });
-                        } else {
-                            alert("Insufficient payment amount!");
-                        }
+                        notifyTransactionResult(false);
                         if (payReceived) payReceived.focus();
                         return;
                     }
@@ -4527,7 +4558,7 @@
                         : String(gcashRef.value || "").replace(/\D+/g, "");
                     gcashRef.value = refCheck;
                     if (!refCheck) {
-                        alert("Please enter the GCash reference number (numbers only).");
+                        notifyTransactionResult(false);
                         gcashRef.focus();
                         updateCompleteButtonState();
                         return;
@@ -4551,29 +4582,17 @@
                         body: JSON.stringify(payload)
                     }).then(function (r) { return r.json(); })
                       .then(function (d) {
-                          if (!d || !d.success) {
-                              if (typeof window.showPaymentSuccessToast === "function") {
-                                  window.showPaymentSuccessToast({
-                                      ok: false,
-                                      title: "Failed to process transaction. Try again."
-                                  });
-                              }
+                          var confirmed = !!(d && d.success === true);
+                          notifyTransactionResult(confirmed);
+                          if (!confirmed) {
                               alert((d && d.error) || "Failed to confirm order.");
                               return;
-                          }
-                          if (typeof window.showPaymentSuccessToast === "function") {
-                              window.showPaymentSuccessToast({ ok: true });
                           }
                           closePayModal();
                           if (typeof loadStaffData === "function") loadStaffData();
                       })
                       .catch(function () {
-                          if (typeof window.showPaymentSuccessToast === "function") {
-                              window.showPaymentSuccessToast({
-                                  ok: false,
-                                  title: "System error during transaction processing"
-                              });
-                          }
+                          notifyTransactionResult(false);
                           alert("Network error while confirming order.");
                       })
                       .finally(function () {
@@ -4609,7 +4628,7 @@
                     var orderPayload = buildPosOrderPayload(orderType, mergedLines, true);
                     if (!orderPayload.items.length) { closePayModal(); return; }
 
-                    var recordedCount = 0;
+                    var orderFullyRecorded = false;
                     var lastError = "";
                     var restockOnly = false;
                     if (payComplete) payComplete.disabled = true;
@@ -4618,47 +4637,28 @@
                             restockOnly = true;
                             return;
                         }
-                        if (typeof window.isOrderFullyRecorded === "function"
-                            ? window.isOrderFullyRecorded(res)
-                            : (res && res.success && res.order_id && res.order_number &&
-                                (res.kitchen_ticket_number || res.bar_ticket_number))) {
-                            recordedCount = 1;
+                        if (isPosOrderRecordedSuccessfully(res)) {
+                            orderFullyRecorded = true;
                         } else if (res && res.error) {
                             lastError = String(res.error || "");
                         }
                     }).then(function () {
                         // After restock: keep pay modal open so staff can complete payment again.
-                        if (restockOnly && recordedCount === 0) {
+                        if (restockOnly && !orderFullyRecorded) {
                             return;
                         }
-                        var allRecorded = recordedCount === 1;
-                        // Success toast ONLY after backend confirms the order was fully recorded.
-                        if (allRecorded) {
+                        // Success only when saved for sales/admin AND assigned a destination ticket.
+                        notifyTransactionResult(orderFullyRecorded);
+                        if (orderFullyRecorded) {
                             if (window.posOrderCompleted) window.posOrderCompleted();
                             closePayModal();
-                            if (typeof window.showPaymentSuccessToast === "function") {
-                                window.showPaymentSuccessToast({ ok: true });
-                            }
                             return;
-                        }
-                        if (typeof window.showPaymentSuccessToast === "function") {
-                            window.showPaymentSuccessToast({
-                                ok: false,
-                                title: "Failed to process transaction. Try again."
-                            });
                         }
                         if (lastError) {
                             alert(lastError);
-                        } else {
-                            alert("Transaction not successful. Order was not fully recorded.");
                         }
                     }).catch(function (err) {
-                        if (typeof window.showPaymentSuccessToast === "function") {
-                            window.showPaymentSuccessToast({
-                                ok: false,
-                                title: "System error during transaction processing"
-                            });
-                        }
+                        notifyTransactionResult(false);
                         alert("Failed to create order: " + (err.message || err));
                     }).finally(function () {
                         updateCompleteButtonState();
@@ -10928,21 +10928,25 @@
             }
 
             function isOrderFullyRecorded(res) {
+                // Must be persisted (sales history / admin) and routed to a destination queue.
                 if (!res || res.success !== true) return false;
                 var orderId = parseInt(res.order_id, 10) || 0;
                 var orderNumber = String(res.order_number || '').trim();
+                if (orderId <= 0 || orderNumber === '') return false;
+
                 var kitchenTicket = parseInt(res.kitchen_ticket_number, 10) || 0;
                 var barTicket = parseInt(res.bar_ticket_number, 10) || 0;
+                if (kitchenTicket > 0 || barTicket > 0) return true;
+
                 var stationTickets = res.station_tickets && typeof res.station_tickets === 'object'
                     ? res.station_tickets
                     : null;
-                var hasStationTicket = false;
-                if (stationTickets) {
-                    Object.keys(stationTickets).forEach(function (k) {
-                        if ((parseInt(stationTickets[k], 10) || 0) > 0) hasStationTicket = true;
-                    });
+                if (!stationTickets) return false;
+                var keys = Object.keys(stationTickets);
+                for (var i = 0; i < keys.length; i++) {
+                    if ((parseInt(stationTickets[keys[i]], 10) || 0) > 0) return true;
                 }
-                return orderId > 0 && orderNumber !== '' && (kitchenTicket > 0 || barTicket > 0 || hasStationTicket);
+                return false;
             }
             window.isOrderFullyRecorded = isOrderFullyRecorded;
 

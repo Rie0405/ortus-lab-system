@@ -6955,7 +6955,8 @@ img {
     opacity: 0;
     pointer-events: none;
     transition: opacity 160ms ease-out;
-    z-index: 30;
+    /* Above sticky pos-header (1100) so customize dialog is never clipped by nav */
+    z-index: 1200;
 }
 
 .pos-modal-backdrop.is-visible {
@@ -6973,6 +6974,7 @@ img {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    margin: auto;
 }
 
 .pos-modal__header {
@@ -7298,23 +7300,21 @@ img {
 }
 
 /*
- * Touch / tablet: never vertically center input modals.
- * Flex-centering + keyboard viewport changes fights scroll-into-view and flickers
- * the focused input, suggest buttons, and footer actions. Width breakpoints stay intact.
+ * Touch: top-align only KEYBOARD input modals (pay / cash / shortage).
+ * Do NOT include .pos-modal-backdrop here — product customize must stay
+ * vertically centered on tablet (pills only, no virtual-keyboard fight).
  */
 @media (hover: none) and (pointer: coarse) {
     .pay-modal-backdrop,
     .payment-modal-overlay,
     .cash-mgmt-backdrop,
-    .pos-modal-backdrop,
     .shortage-modal-backdrop {
         align-items: flex-start !important;
     }
 
     .pay-modal-backdrop .pay-modal,
     .pay-modal-backdrop .payment-modal-content,
-    .cash-mgmt-backdrop .cash-mgmt-modal,
-    .pos-modal-backdrop .pos-modal {
+    .cash-mgmt-backdrop .cash-mgmt-modal {
         margin-top: 0.75rem;
         margin-bottom: 0.75rem;
         max-height: none;
@@ -7324,6 +7324,17 @@ img {
 
 /* Laptop/tablet+: keep menu + CURRENT ORDER side-by-side */
 @media (min-width: 768px) {
+    /* Product customize: stay vertically centered (not top-pinned like pay modal) */
+    .pos-modal-backdrop {
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 24px;
+    }
+
+    .pos-modal-backdrop .pos-modal {
+        margin: auto;
+    }
+
     .pos-page {
         /* Prefer svh so keyboard open does not shrink/lock-reflow the whole shell */
         height: 100vh;

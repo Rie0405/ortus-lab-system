@@ -3061,24 +3061,32 @@ img {
 
 .staff-main-panel--kitchen {
     background: #120e0a;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .staff-main-panel--kitchen > .opq-main {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .kitchen-layout {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    gap: 12px;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    height: calc(100vh - 120px) !important;
+    max-height: calc(100dvh - 120px);
     min-height: 0;
-    width: 100%;
     max-width: 100%;
     flex: 1;
-    overflow: visible;
+    gap: 12px;
+    overflow: hidden !important;
+    align-items: stretch;
+    box-sizing: border-box;
 }
 
 .kitchen-layout > .opq-grid,
@@ -3086,27 +3094,44 @@ img {
     min-height: 0;
 }
 
-.kitchen-layout > .kitchen-serving-panel {
-    align-self: start;
-    width: 100%;
-    max-height: 100%;
+.kitchen-layout > .opq-grid {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
-.kitchen-layout > .opq-grid {
-    overflow-y: auto;
+.kitchen-layout > .kitchen-serving-panel {
+    align-self: stretch;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    flex-shrink: 0 !important;
+    height: 100% !important;
+    overflow-x: hidden;
+    overflow-y: auto !important;
 }
 
 .kitchen-layout > .opq-grid.opq-queue-partitions {
-    display: flex;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 16px !important;
+    width: 100% !important;
+    align-content: start;
+    align-items: start;
     overflow-y: auto;
-    align-content: flex-start;
-    gap: 16px;
 }
 
 .staff-main-panel--kitchen .opq-queue-partition {
-    padding: 0 8px;
-    flex: 1 1 0;
-    min-width: 0;
+    padding: 0;
+    flex: unset;
+    width: auto;
+    min-width: 0 !important;
+    max-width: none;
+    overflow: hidden;
 }
 
 .staff-main-panel--kitchen .opq-queue-partition:first-child {
@@ -3118,13 +3143,18 @@ img {
 }
 
 .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
+    width: 100%;
+    min-width: 0;
 }
 
-.staff-main-panel--kitchen .opq-queue-partition-body .opq-card.kitchen-card {
-    width: calc(50% - 5px);
-    min-width: 0;
-    max-width: 100%;
+.staff-main-panel--kitchen .opq-queue-partition-body .opq-card.kitchen-card,
+.staff-main-panel--kitchen .opq-card.kitchen-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     box-sizing: border-box;
 }
 
@@ -3208,6 +3238,7 @@ img {
     max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 .kitchen-serving-head {
@@ -7375,17 +7406,6 @@ img {
         padding: 1.5rem;
     }
 
-    .kitchen-layout {
-        grid-template-columns: minmax(0, 1fr) 230px;
-        grid-template-rows: minmax(0, 1fr);
-        overflow: hidden;
-    }
-
-    .kitchen-serving-panel {
-        width: 230px;
-        max-width: 230px;
-    }
-
     .opq-layout {
         flex-direction: row;
     }
@@ -7404,9 +7424,34 @@ img {
         gap: 2rem;
     }
 
-    .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
-    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
+    .staff-main-panel--queue .opq-queue-partition-body.opq-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Kitchen: keep 3 destination columns + 320px served sidebar */
+    .kitchen-layout {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow: hidden !important;
+    }
+
+    .kitchen-layout > .kitchen-serving-panel,
+    .kitchen-serving-panel {
+        width: 320px !important;
+        min-width: 320px !important;
+        max-width: 320px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .kitchen-layout > .opq-grid.opq-queue-partitions {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 16px !important;
+    }
+
+    .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 

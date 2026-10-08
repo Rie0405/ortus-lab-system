@@ -2068,11 +2068,46 @@ body {
     line-height: 1;
 }
 
-.inv-stock-level-cell {
-    display: flex;
+.inv-stock-level-cell,
+.stock-level-cell {
+    display: flex !important;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
+    min-width: 0;
+    overflow: visible;
+    visibility: visible !important;
+}
+.inv-stock-level-cell > strong,
+.stock-level-cell > strong {
+    min-width: 0;
+    flex: 0 1 auto;
+    line-height: 1.2;
+}
+.inv-stock-level-cell__controls {
+    display: inline-flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+.inv-stock-level-cell .btn-open-stock-used,
+.inv-stock-level-cell button:not(.inv-stock-level-set),
+.stock-level-cell .status-btn,
+.stock-level-cell button:not(.inv-stock-level-set) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex-shrink: 0;
+}
+/* Desktop: Set stays in Batch Capacity / Per Piece columns only */
+.inv-stock-level-cell .inv-stock-level-set,
+.stock-level-cell .inv-stock-level-set {
+    display: none !important;
 }
 .btn-open-stock-used {
     border: none;
@@ -2600,15 +2635,53 @@ body {
         width: 64px;
     }
 
-    .inv-stock-level-cell strong {
+    .inv-stock-level-cell,
+    .stock-level-cell {
+        display: flex !important;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 6px;
+        overflow: visible !important;
+    }
+
+    .inv-stock-level-cell strong,
+    .stock-level-cell strong {
         font-size: 12px;
     }
 
+    .inv-stock-level-cell__controls {
+        display: inline-flex !important;
+        width: 100%;
+    }
+
+    /* Show Set beside Open when Batch Capacity / Per Piece columns are hidden */
+    .inv-stock-level-cell .inv-stock-level-set,
+    .stock-level-cell .inv-stock-level-set {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
     .btn-open-stock-used,
-    .btn-box-capacity {
+    .btn-box-capacity,
+    .inv-stock-level-set {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         padding: 4px 8px;
         min-width: 0;
         font-size: 10px;
+        flex-shrink: 0;
+    }
+
+    #inventory-table-wrap .inv-stock-level-cell,
+    #inventory-table-wrap .stock-level-cell {
+        min-width: 0;
     }
 
     .actions,
@@ -2629,7 +2702,7 @@ body {
     /* Automatic table: drop Category / Batch Capacity / Per Piece; category shows under item title */
     #inventory-table-wrap .table-head,
     #inventory-table-wrap .table-row {
-        grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.75fr) minmax(64px, 0.85fr);
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(118px, 1.35fr) minmax(0, 0.7fr) minmax(64px, 0.85fr);
     }
 
     #inventory-table-wrap .inv-col-category,

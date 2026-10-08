@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-tablet-table">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-stock-level-open">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
 </head>
@@ -3537,12 +3537,19 @@
             var openBtn = canOpen
                 ? '<button type="button" class="btn-open-stock-used" data-open-stock-id="' + item.id + '" title="Open — amount of items in use or open packs">Open</button>'
                 : '<button type="button" class="btn-open-stock-used btn-open-stock-used--disabled" data-open-stock-blocked="1" data-open-block-reason="' + openBlockedReason + '" title="' + escAttr(openBlockedMsg) + '" aria-disabled="true">Open</button>';
+            /* Tablet mirror of Set (Batch Capacity / Per Piece); desktop keeps Set in its own columns */
+            var stockLevelSetBtn = nonConsumable
+                ? '<button type="button" class="btn-box-capacity btn-batch-size inv-stock-level-set" data-configured="1" data-batch-size-id="' + item.id + '" title="' + escAttr(batchTitle) + '">' + esc(batchLabel === '—' ? 'Set' : batchLabel) + '</button>'
+                : '<button type="button" class="btn-box-capacity inv-stock-level-set"' + (capacityConfigured ? ' data-configured="1"' : '') + ' data-orders-box-id="' + item.id + '" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</button>';
             return '<div class="item-col"><img src="icons_admin/stocksGreen_icon.svg" alt=""><div><strong>' + esc(item.name) + '</strong><small>ID: INV-' + item.id + '</small>' +
                 '<div class="item-col__tablet-meta"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
                 '</div></div>' +
                 '<div class="inv-col-category"><span class="cat">' + esc(item.category_name) + '</span><small class="stock-type-badge stock-type-badge--' + stockType + '">' + esc(formatStockTypeLabel(stockType)) + '</small></div>' +
                 '<div>' + formatStockUsedCell(item) + '<div class="bar"><span style="width:' + usedWidth + '%;background:' + usedColor + '"></span></div></div>' +
-                '<div class="inv-stock-level-cell"><strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' + openBtn + '</div>' +
+                '<div class="inv-stock-level-cell stock-level-cell">' +
+                    '<strong>' + formatStockLevel(item.stock_units, getItemUnit(item)) + '</strong>' +
+                    '<div class="inv-stock-level-cell__controls">' + openBtn + stockLevelSetBtn + '</div>' +
+                '</div>' +
                 '<div class="inv-box-capacity-cell inv-col-batch-capacity">' +
                     (nonConsumable
                         ? '<span class="inv-box-capacity-na" title="' + escAttr(capacityTitle) + '">' + esc(capacityLabel) + '</span>'

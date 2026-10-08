@@ -1520,15 +1520,21 @@ body {
 }
 
 .bev-temp-filters {
-    display: flex;
+    display: flex !important;
     flex-wrap: wrap;
+    align-items: center;
     gap: 12px;
-    margin: 0 0 12px;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding: 4px 0 10px;
-    background: #120e0a;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto;
+    margin: 0 0 20px !important;
+    padding: 0;
+    background: transparent;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .bev-temp-chip {
@@ -1823,18 +1829,23 @@ body {
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /* Side-by-side: category rail (left, own scroll) + products (right, own scroll) */
-.meals-layout {
-    display: grid;
-    grid-template-columns: 168px minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
-    gap: 20px;
+.meals-layout,
+.beverages-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+    gap: 20px !important;
     grid-row: 2;
     min-height: 0;
+    width: 100%;
+    max-width: 100%;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .meals-layout--category-tab {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex !important;
 }
 
 .meals-layout--category-tab .menu-category-pane {
@@ -1842,20 +1853,25 @@ body {
 }
 
 .meals-layout--category-tab .menu-products-pane {
-    grid-column: 1;
+    flex: 1 1 auto;
+    width: 100%;
 }
 
 .menu-category-pane {
-    grid-column: 1;
-    width: 168px;
+    flex: 0 0 140px;
+    width: 140px;
+    max-width: 140px;
+    min-width: 0;
     min-height: 0;
     max-height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding: 0 8px 8px 0;
+    padding: 0 4px 8px 0;
     box-sizing: border-box;
+    position: relative;
+    z-index: 1;
 }
 
 .menu-category-pane::-webkit-scrollbar {
@@ -1868,15 +1884,23 @@ body {
 }
 
 .menu-products-pane {
-    grid-column: 2;
+    flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
+    width: auto;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     padding-right: 4px;
     padding-bottom: 16px;
+    position: relative;
+    z-index: 0;
+    box-sizing: border-box;
 }
 
 .menu-products-pane::-webkit-scrollbar {
@@ -1889,20 +1913,51 @@ body {
 }
 
 /* Reuse meals side-rail layout for beverage category circles */
-.beverages-layout .prod-grid {
-    margin-top: 0;
+.beverages-layout .prod-grid,
+.meals-layout .prod-grid {
+    margin-top: 0 !important;
+    position: relative !important;
+    z-index: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
 }
 
 .menu-choice-hidden {
     display: none !important;
 }
 
-/* Vertical single-column layout for meal circles */
+/* Vertical single-column layout for meal / beverage subcategory circles */
 .menu-grid--meals {
+    display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 28px;
+    gap: 20px;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.menu-category-pane .menu-product {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.menu-category-pane .menu-product-circle {
+    width: 112px;
+    height: 112px;
+}
+
+.menu-category-pane .menu-product-name,
+.menu-category-pane .menu-product-circle-label {
+    max-width: 100%;
+    font-size: 12px;
+    line-height: 1.25;
+    white-space: normal;
+    text-align: center;
+    padding: 0 2px;
+    box-sizing: border-box;
 }
 
 .menu-grid--meals .menu-product-name,
@@ -3256,22 +3311,24 @@ body {
         height: 14px;
     }
 
-    .meals-layout {
-        gap: 14px;
-        grid-template-columns: 124px minmax(0, 1fr);
+    .meals-layout,
+    .beverages-layout {
+        gap: 16px !important;
     }
 
     .menu-category-pane {
-        width: 124px;
+        flex-basis: 112px;
+        width: 112px;
+        max-width: 112px;
+    }
+
+    .menu-category-pane .menu-product-circle {
+        width: 88px;
+        height: 88px;
     }
 
     .menu-grid--meals {
-        gap: 16px;
-    }
-
-    .menu-product-circle {
-        width: 96px;
-        height: 96px;
+        gap: 14px;
     }
 
     .menu-sidebar {
@@ -3609,13 +3666,20 @@ body {
         height: 84px;
     }
 
-    .meals-layout {
-        gap: 12px;
-        grid-template-columns: 108px minmax(0, 1fr);
+    .meals-layout,
+    .beverages-layout {
+        gap: 12px !important;
     }
 
     .menu-category-pane {
-        width: 108px;
+        flex-basis: 100px;
+        width: 100px;
+        max-width: 100px;
+    }
+
+    .menu-category-pane .menu-product-circle {
+        width: 80px;
+        height: 80px;
     }
 
     .menu-sidebar {
@@ -3725,17 +3789,20 @@ body {
         gap: 14px;
     }
 
-    .menu-product-circle {
+    .menu-category-pane .menu-product-circle {
         width: 86px;
         height: 86px;
     }
 
-    .meals-layout {
-        grid-template-columns: 112px minmax(0, 1fr);
+    .meals-layout,
+    .beverages-layout {
+        gap: 12px !important;
     }
 
     .menu-category-pane {
-        width: 112px;
+        flex-basis: 104px;
+        width: 104px;
+        max-width: 104px;
     }
 
     .menu-grid-area {

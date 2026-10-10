@@ -306,7 +306,7 @@
                 <div class="opq-main">
                     <div class="opq-topbar">
                         <div class="opq-topbar-left">
-                            <h2 class="opq-title">KIOSK PROCESSING QUEUE</h2>
+                            <h2 class="opq-title">PROCESSING QUEUE</h2>
                             <span class="opq-badge" id="staff-pending-count">0 ACTIVE</span>
                         </div>
                 </div>
@@ -5477,6 +5477,8 @@
                     check.then(function (info) {
                         finalizeBtn.disabled = false;
                         var pendingCount = (info && info.pendingCount) || 0;
+                        var pendingKioskCount = (info && info.pendingKioskCount) || 0;
+                        var pendingPosCount = (info && info.pendingPosCount) || 0;
                         var confirmedCount = (info && info.confirmedCount) || 0;
                         var kitchenCount = (info && info.kitchenCount) || 0;
                         var servingCount = (info && info.servingCount) || 0;
@@ -5487,7 +5489,12 @@
                                 ""
                             ];
                             if (pendingCount > 0) {
-                                lines.push("• " + pendingCount + " pending in Kiosk Processing Queue");
+                                lines.push("• " + pendingCount + " pending in Processing Queue");
+                                if (pendingKioskCount || pendingPosCount) {
+                                    lines.push(
+                                        "  → " + pendingKioskCount + " Kiosk, " + pendingPosCount + " POS (both show in the queue now)"
+                                    );
+                                }
                             }
                             if (confirmedCount > 0) {
                                 lines.push("• " + confirmedCount + " confirmed still open");
@@ -5498,7 +5505,14 @@
                                     lines.push("  → " + servingCount + " in Served Orders panel — click SERVED / SERVED ALL");
                                 }
                             }
+                            lines.push("");
+                            lines.push("Opening the matching panel so you can finish them.");
                             alert(lines.join("\n"));
+                            if (pendingCount > 0 && typeof window.staffActivateMainTab === "function") {
+                                window.staffActivateMainTab("queue-kiosk");
+                            } else if (confirmedCount > 0 && typeof window.staffActivateMainTab === "function") {
+                                window.staffActivateMainTab("kitchen");
+                            }
                             return;
                         }
                         openSES();
@@ -6144,6 +6158,23 @@
             });
             return present;
         }
+        function knownStationKeySet() {
+            var known = {};
+            (staffMainStations || []).forEach(function (st) {
+                var key = String(st && st.key || '').toLowerCase();
+                if (key) known[key] = true;
+            });
+            return known;
+        }
+        function orderKnownStationKeys(order) {
+            var known = knownStationKeySet();
+            return Object.keys(orderStationParts(order)).filter(function (k) {
+                return !!known[String(k || '').toLowerCase()];
+            });
+        }
+        function firstStationKey() {
+            return staffMainStations.length ? String(staffMainStations[0].key || '') : '';
+        }
         function isStationDoneForOrder(orderId, group) {
             var id = parseInt(orderId, 10) || 0;
             if (!id) return false;
@@ -6158,12 +6189,44 @@
                 kitchenStationDoneById[id] = {};
             }
             kitchenStationDoneById[id][group] = true;
-            var parts = orderStationParts(order);
+            // Only require currently active capsules. Deleted/unknown station keys
+            // must not keep an order stuck invisible forever.
+            var knownKeys = orderKnownStationKeys(order);
+            if (!knownKeys.length) {
+                return { fullyDone: true };
+            }
             var fullyDone = true;
-            Object.keys(parts).forEach(function (k) {
-                if (parts[k] && !kitchenStationDoneById[id][k]) fullyDone = false;
+            knownKeys.forEach(function (k) {
+                if (!kitchenStationDoneById[id][k]) fullyDone = false;
             });
             return { fullyDone: fullyDone };
+        }
+        function reconcileKitchenOrdersToServing() {
+            var stillActive = [];
+            (kitchenOrders || []).forEach(function (o) {
+                var orderId = parseInt(o && o.id, 10) || 0;
+                var knownKeys = orderKnownStationKeys(o);
+                // Unrouted / unknown-station orders stay in kitchen (shown on first capsule).
+                if (!knownKeys.length) {
+                    stillActive.push(o);
+                    return;
+                }
+                var allKnownDone = knownKeys.every(function (k) {
+                    return isStationDoneForOrder(orderId, k);
+                });
+                if (allKnownDone) {
+                    if (orderId && kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
+                    clearKitchenStationDone(orderId);
+                    if (orderId && !servingOrdersQueue.some(function (s) {
+                        return parseInt(s && s.id, 10) === orderId;
+                    })) {
+                        servingOrdersQueue.push(o);
+                    }
+                } else {
+                    stillActive.push(o);
+                }
+            });
+            kitchenOrders = stillActive;
         }
         function clearKitchenStationDone(orderId) {
             var id = parseInt(orderId, 10) || 0;
@@ -6205,11 +6268,12 @@
             if (!items.length) return false;
             var stationItems = filterItemsForKitchenStation(items, group);
             if (!stationItems.length) {
-                // Unrouted items (no main category): show on the first capsule so
-                // they are not invisible while still blocking close-shift.
-                var parts = orderStationParts(order);
-                if (Object.keys(parts).length) return false;
-                var firstKey = staffMainStations.length ? String(staffMainStations[0].key || '') : '';
+                // No lines for this capsule. If the order has no known active
+                // station at all (unrouted / deleted category), show it on the
+                // first capsule so it cannot block close-shift while invisible.
+                var knownKeys = orderKnownStationKeys(order);
+                if (knownKeys.length) return false;
+                var firstKey = firstStationKey();
                 if (!firstKey || String(group || '').toLowerCase() !== firstKey.toLowerCase()) {
                     return false;
                 }
@@ -8048,15 +8112,39 @@
                     return !servingSet[parseInt(o && o.id, 10) || 0];
                 });
 
+                // Unstick orders whose only remaining "stations" are deleted/unknown,
+                // or whose local Done flags already cover every active capsule.
+                reconcileKitchenOrdersToServing();
+
+                // If station-done flags still hide an order on every capsule, reset them.
+                (kitchenOrders || []).forEach(function (o) {
+                    var visibleSomewhere = (staffMainStations || []).some(function (st) {
+                        return orderMatchesKitchenCategory(o, st.key, { ignoreStationDone: true })
+                            && orderMatchesKitchenCategory(o, st.key);
+                    });
+                    if (!visibleSomewhere) {
+                        clearKitchenStationDone(o && o.id);
+                    }
+                });
+
                 try {
                     renderPendingOrders();
                     renderKitchenOrders();
                     renderServingOrders();
                 } catch (e) { /* panels may be hidden */ }
 
+                var pendingKiosk = 0;
+                var pendingPos = 0;
+                pendingList.forEach(function (o) {
+                    if (String(o && o.order_source || '').toLowerCase() === 'kiosk') pendingKiosk += 1;
+                    else pendingPos += 1;
+                });
+
                 return {
                     ok: true,
                     pendingCount: pendingList.length,
+                    pendingKioskCount: pendingKiosk,
+                    pendingPosCount: pendingPos,
                     confirmedCount: confirmedList.length,
                     kitchenCount: kitchenOrders.length,
                     servingCount: servingOrdersQueue.length,
@@ -8542,6 +8630,7 @@
                 );
             }).join('');
             var isKioskOrder = String(order && order.order_source || '').toLowerCase() === 'kiosk';
+            var sourceBadge = isKioskOrder ? 'KIOSK' : 'POS';
             var typeLine = opts.hideOrderTypeLine ? '' : getOrderTypeDisplayFromOrder(order);
             var pickupLaterLine = isPickupOrder(order) ? getPickupLaterTimeFromOrder(order) : '';
             var orderCustomer = getKitchenOrderCustomerName(order) || 'Guest';
@@ -8605,6 +8694,8 @@
                         '<div class="opq-card-head-status-row">' +
                             '<span class="opq-fcfs-label' + queueLabelClass + '">' + queueLabel + '</span>' +
                             '<span class="opq-pending-badge" style="display:inline-block">PENDING</span>' +
+                            '<span class="opq-pending-badge" style="display:inline-block;margin-left:6px;background:' +
+                                (isKioskOrder ? '#0369a1' : '#b45309') + '">' + sourceBadge + '</span>' +
                         '</div>' +
                         cardTitleHtml +
                         customerPaymentRow +
@@ -8635,24 +8726,15 @@
                 return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
             });
 
-            if (currentQueueSource === 'kiosk') {
-                renderPartitionedOrderGrid(
-                    opqGrid,
-                    orderedPending,
-                    function (order, idx) {
-                        return buildPendingOrderCardElement(order, idx, { hideOrderTypeLine: true });
-                    },
-                    'No orders'
-                );
-            } else {
-                if (!orderedPending.length) {
-                    opqGrid.innerHTML = '<article class="opq-card"><div class="opq-card-items"><div class="opq-item"><span>No pending orders.</span></div></div></article>';
-                } else {
-                    orderedPending.forEach(function (order, idx) {
-                        opqGrid.appendChild(buildPendingOrderCardElement(order, idx));
-                    });
-                }
-            }
+            // Always use partitioned layout so kiosk + POS pending both stay visible.
+            renderPartitionedOrderGrid(
+                opqGrid,
+                orderedPending,
+                function (order, idx) {
+                    return buildPendingOrderCardElement(order, idx, { hideOrderTypeLine: true });
+                },
+                'No orders'
+            );
 
             if (pendingBadge) pendingBadge.textContent = orderedPending.length + ' ACTIVE';
             renderQueueDrawerReturned(returnedKitchenOrders);
@@ -9869,8 +9951,10 @@
             } catch (e) {}
 
             Promise.all([
-                fetch('api/orders.php?status=' + encodeURIComponent(queueStatus) + '&kitchen_returned=0&limit=50&source=' + encodeURIComponent(queueSource) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/orders.php?status=confirmed&limit=50&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                // Show ALL pending (kiosk + POS). Source-only fetch hid POS pending from the
+                // queue UI while Finalize still counted them as open work.
+                fetch('api/orders.php?status=' + encodeURIComponent(queueStatus) + '&kitchen_returned=0&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/orders.php?status=confirmed&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?status=served&limit=100&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?type=daily_summary&date=' + encodeURIComponent(todayYmd) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/waste.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
@@ -9922,6 +10006,7 @@
                     kitchenOrders = confirmedKitchen.filter(function (o) {
                         return !servingSet.has(parseInt(o.id, 10) || 0);
                     });
+                    reconcileKitchenOrdersToServing();
                 }
                 renderKitchenOrders();
                 renderServingOrders();

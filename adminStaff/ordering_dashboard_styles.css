@@ -2312,6 +2312,173 @@ body.modal-open {
     }
 }
 
+/*
+ * Ordering product list — card view (Portrait / ≤900px).
+ * Markup is div-grid (.table-head / .table-row), not <table class="ordering-table">.
+ * Labels via nth-child ::before (no JS / data-label required).
+ */
+@media (max-width: 900px), (orientation: portrait) {
+    .order-main .table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        margin-top: 8px;
+    }
+
+    .order-main .table-wrap > .table-head {
+        display: none !important;
+    }
+
+    .order-main .table-wrap .table-row {
+        display: grid !important;
+        grid-template-columns: auto 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        margin-bottom: 18px !important;
+        background: #1a1a1a !important;
+        border: 1px solid #333 !important;
+        border-radius: 12px !important;
+        padding: 16px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+        gap: 0 12px !important;
+        align-items: center !important;
+        border-top: 0 !important;
+    }
+
+    .order-main .table-wrap .table-row > * {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 8px 0 !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid #282828 !important;
+        text-align: right !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+        grid-column: 1 / -1 !important;
+    }
+
+    /* Top: image + product name side-by-side */
+    .order-main .table-wrap .table-row > *:nth-child(1) {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        width: auto !important;
+        border-bottom: none !important;
+        justify-content: center !important;
+        padding: 6px 0 !important;
+    }
+
+    .order-main .table-wrap .table-row > *:nth-child(2),
+    .order-main .table-wrap .table-row > .name {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        border-bottom: none !important;
+        justify-content: flex-start !important;
+        align-items: flex-start !important;
+        text-align: left !important;
+        padding: 6px 0 !important;
+        flex-direction: column !important;
+    }
+
+    .order-main .table-wrap .table-row > *:last-child {
+        border-bottom: none !important;
+    }
+
+    .order-main .table-wrap .table-row > *::before {
+        font-weight: 700 !important;
+        color: #888 !important;
+        font-size: 0.8rem !important;
+        text-transform: uppercase !important;
+        text-align: left !important;
+        padding-right: 10px !important;
+        flex: 0 0 auto;
+        max-width: 46%;
+        line-height: 1.25;
+    }
+
+    .order-main .table-wrap .table-row > *:nth-child(1)::before { content: none !important; }
+    .order-main .table-wrap .table-row > *:nth-child(2)::before { content: none !important; }
+    .order-main .table-wrap .table-row > *:nth-child(3)::before { content: "Category"; }
+    .order-main .table-wrap .table-row > *:nth-child(4)::before { content: "Cost Price"; }
+    .order-main .table-wrap .table-row > *:nth-child(5)::before { content: "Selling Price"; }
+    .order-main .table-wrap .table-row > *:nth-child(6)::before { content: "Status"; }
+    .order-main .table-wrap .table-row > *:nth-child(7)::before { content: "Actions"; }
+
+    .order-main .table-wrap .menu-img-cell img,
+    .order-main .table-wrap .prod-img,
+    .order-main .table-wrap .prod-img-placeholder {
+        width: 60px !important;
+        height: 60px !important;
+        max-width: 60px !important;
+        max-height: 60px !important;
+        object-fit: cover !important;
+        border-radius: 8px !important;
+    }
+
+    .order-main .table-wrap .name strong {
+        font-size: 15px !important;
+        line-height: 1.3;
+        text-align: left;
+    }
+
+    .order-main .table-wrap .name small {
+        font-size: 12px !important;
+        text-align: left;
+    }
+
+    .order-main .table-wrap .table-row > .status-cell,
+    .order-main .table-wrap .table-row > *:nth-child(6) {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .order-main .table-wrap .table-row > .acts,
+    .order-main .table-wrap .table-row > .actions-cell,
+    .order-main .table-wrap .table-row > *:nth-child(7) {
+        border-bottom: none !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding-top: 12px !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        font-weight: 700 !important;
+    }
+
+    .order-main .table-wrap .acts-separator {
+        display: inline !important;
+        opacity: 0.45;
+    }
+
+    .order-main .table-wrap .acts .acts-btn,
+    .order-main .table-wrap .actions-cell button {
+        display: inline-flex !important;
+        font-size: 13px !important;
+        margin-bottom: 0 !important;
+        min-height: 36px;
+        padding: 6px 4px !important;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+    }
+
+    .order-main .table-wrap .status-toggle-btn {
+        margin-left: 0 !important;
+        font-size: 11px !important;
+        padding: 6px 10px !important;
+    }
+}
+
 @media (max-width: 640px) {
     .stat-grid { grid-template-columns: 1fr; }
     .order-main { padding: 12px; }

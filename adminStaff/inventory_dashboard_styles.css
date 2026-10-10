@@ -3092,6 +3092,100 @@ body {
     }
 }
 
+/* Phone / portrait: stack title actions, low-stock alerts, filter bar */
+@media (max-width: 768px), (orientation: portrait) {
+    .title-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 15px !important;
+        width: 100% !important;
+    }
+
+    .title-row > div:first-child {
+        width: 100% !important;
+    }
+
+    .title-row h1 {
+        font-size: clamp(28px, 7vw, 34px) !important;
+    }
+
+    .low-stock-title {
+        font-size: clamp(18px, 5vw, 24px) !important;
+    }
+
+    .title-actions {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        width: 100% !important;
+        justify-content: stretch !important;
+    }
+
+    .title-actions .btn {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 10px 8px !important;
+        font-size: 0.85rem !important;
+        text-align: center !important;
+        box-sizing: border-box !important;
+        min-height: 44px;
+        white-space: normal !important;
+        line-height: 1.25;
+    }
+
+    .alert-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        width: 100% !important;
+        grid-template-columns: none !important;
+    }
+
+    .alert-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .inv-filter-bar {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+    }
+
+    .inv-filter-bar > *,
+    .inv-filter-bar__actions {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+    }
+
+    .inv-filter-bar__actions {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        justify-content: stretch !important;
+    }
+
+    .inv-filter-btn,
+    .inv-edit-history-btn,
+    .inv-archive-btn {
+        width: 100% !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+
+    .inv-view-tabs {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+    }
+}
+
 @media (max-width: 640px) {
     .alert-grid { grid-template-columns: 1fr; }
     .title-row h1 { font-size: 28px; }

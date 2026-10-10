@@ -5461,19 +5461,51 @@
 
             if (finalizeBtn) {
                 finalizeBtn.addEventListener("click", function () {
-                    var outstanding = typeof window.getOutstandingShiftWorkCount === "function"
-                        ? window.getOutstandingShiftWorkCount()
-                        : 0;
-                    if (outstanding > 0) {
-                        var label = outstanding === 1 ? "order" : "orders";
-                        alert(
-                            "Cannot finalize and close shift. There " +
-                            (outstanding === 1 ? "is still 1 pending/active order" : ("are still " + outstanding + " pending/active " + label)) +
-                            " in the queue or kitchen. Finish or clear them first."
-                        );
-                        return;
-                    }
-                    openSES();
+                    if (finalizeBtn.disabled) return;
+                    finalizeBtn.disabled = true;
+                    var check = typeof window.checkOutstandingShiftWork === "function"
+                        ? window.checkOutstandingShiftWork()
+                        : Promise.resolve({
+                            pendingCount: typeof window.getOutstandingShiftWorkCount === "function"
+                                ? window.getOutstandingShiftWorkCount()
+                                : 0,
+                            confirmedCount: 0,
+                            kitchenCount: 0,
+                            servingCount: 0
+                        });
+
+                    check.then(function (info) {
+                        finalizeBtn.disabled = false;
+                        var pendingCount = (info && info.pendingCount) || 0;
+                        var confirmedCount = (info && info.confirmedCount) || 0;
+                        var kitchenCount = (info && info.kitchenCount) || 0;
+                        var servingCount = (info && info.servingCount) || 0;
+                        var total = pendingCount + confirmedCount;
+                        if (total > 0) {
+                            var lines = [
+                                "Cannot finalize and close shift until all open orders are finished.",
+                                ""
+                            ];
+                            if (pendingCount > 0) {
+                                lines.push("• " + pendingCount + " pending in Kiosk Processing Queue");
+                            }
+                            if (confirmedCount > 0) {
+                                lines.push("• " + confirmedCount + " confirmed still open");
+                                if (kitchenCount > 0) {
+                                    lines.push("  → " + kitchenCount + " still need DONE on a capsule tab");
+                                }
+                                if (servingCount > 0) {
+                                    lines.push("  → " + servingCount + " in Served Orders panel — click SERVED / SERVED ALL");
+                                }
+                            }
+                            alert(lines.join("\n"));
+                            return;
+                        }
+                        openSES();
+                    }).catch(function () {
+                        finalizeBtn.disabled = false;
+                        alert("Could not verify open orders. Check your connection and try again.");
+                    });
                 });
             }
             window.openShiftEndSummary = openSES;
@@ -6172,7 +6204,16 @@
             var items = (order && order.items) || [];
             if (!items.length) return false;
             var stationItems = filterItemsForKitchenStation(items, group);
-            if (!stationItems.length) return false;
+            if (!stationItems.length) {
+                // Unrouted items (no main category): show on the first capsule so
+                // they are not invisible while still blocking close-shift.
+                var parts = orderStationParts(order);
+                if (Object.keys(parts).length) return false;
+                var firstKey = staffMainStations.length ? String(staffMainStations[0].key || '') : '';
+                if (!firstKey || String(group || '').toLowerCase() !== firstKey.toLowerCase()) {
+                    return false;
+                }
+            }
             if (!opts.ignoreStationDone && isStationDoneForOrder(order && order.id, group)) {
                 return false;
             }
@@ -7939,7 +7980,9 @@
         function getOutstandingShiftWorkCount() {
             var ids = {};
             function add(list) {
-                filterOrdersForCurrentShift(list || []).forEach(function (order) {
+                // Live open work — same pools the queue/capsules use (do not hide via
+                // shift-clear localStorage; that marker is device-local).
+                (list || []).forEach(function (order) {
                     var id = parseInt(order && order.id, 10) || 0;
                     if (id) ids[id] = true;
                 });
@@ -7948,6 +7991,78 @@
             add(kitchenOrders);
             add(servingOrdersQueue);
             return Object.keys(ids).length;
+        }
+
+        /**
+         * Server-truth check before Finalize & Close Shift.
+         * Syncs local queue/kitchen/serving to the API so the UI matches the block reason.
+         */
+        function checkOutstandingShiftWork() {
+            var cacheBust = Date.now();
+            return Promise.all([
+                fetch('api/orders.php?status=pending&kitchen_returned=0&limit=200&_=' + cacheBust, { cache: 'no-store' })
+                    .then(function (r) { return r.json(); }),
+                fetch('api/orders.php?status=confirmed&limit=200&_=' + cacheBust, { cache: 'no-store' })
+                    .then(function (r) { return r.json(); })
+            ]).then(function (results) {
+                var pendingRes = results[0];
+                var kitchenRes = results[1];
+                if (!pendingRes || !pendingRes.success || !kitchenRes || !kitchenRes.success) {
+                    return {
+                        ok: false,
+                        pendingCount: (pendingOrders || []).length,
+                        confirmedCount: (kitchenOrders || []).length + (servingOrdersQueue || []).length,
+                        kitchenCount: (kitchenOrders || []).length,
+                        servingCount: (servingOrdersQueue || []).length,
+                        usedFallback: true
+                    };
+                }
+
+                var pendingList = pendingRes.orders || [];
+                var confirmedList = kitchenRes.orders || [];
+                var confirmedById = {};
+                confirmedList.forEach(function (o) {
+                    var cid = parseInt(o && o.id, 10) || 0;
+                    if (cid) confirmedById[cid] = o;
+                });
+                var confirmedSet = new Set(Object.keys(confirmedById).map(function (k) { return parseInt(k, 10); }));
+
+                pendingOrders = pendingList;
+
+                // Drop local serving ghosts that are no longer confirmed on the server.
+                servingOrdersQueue = (servingOrdersQueue || []).filter(function (o) {
+                    return confirmedSet.has(parseInt(o && o.id, 10) || 0);
+                }).map(function (o) {
+                    var cid = parseInt(o && o.id, 10) || 0;
+                    return confirmedById[cid] || o;
+                });
+
+                var servingSet = {};
+                servingOrdersQueue.forEach(function (o) {
+                    var sid = parseInt(o && o.id, 10) || 0;
+                    if (sid) servingSet[sid] = true;
+                });
+
+                // Any confirmed order not already in the local serving panel stays in kitchen.
+                kitchenOrders = confirmedList.filter(function (o) {
+                    return !servingSet[parseInt(o && o.id, 10) || 0];
+                });
+
+                try {
+                    renderPendingOrders();
+                    renderKitchenOrders();
+                    renderServingOrders();
+                } catch (e) { /* panels may be hidden */ }
+
+                return {
+                    ok: true,
+                    pendingCount: pendingList.length,
+                    confirmedCount: confirmedList.length,
+                    kitchenCount: kitchenOrders.length,
+                    servingCount: servingOrdersQueue.length,
+                    usedFallback: false
+                };
+            });
         }
 
         function computeShiftSummaryFromOrders(orders) {
@@ -8043,6 +8158,7 @@
         }
 
         window.getOutstandingShiftWorkCount = getOutstandingShiftWorkCount;
+        window.checkOutstandingShiftWork = checkOutstandingShiftWork;
         window.resetShiftSessionState = resetShiftSessionState;
         window.getShiftHistoryClearAfterMs = getShiftHistoryClearAfterMs;
         window.filterOrdersForCurrentShift = filterOrdersForCurrentShift;

@@ -1,0 +1,473 @@
+/*
+ * Fluid adaptive layout — shared by staff / inventory / ordering / sales history.
+ * Portrait OR width ≤ 900px: reflow to fit 100% viewport width, no page-level
+ * horizontal scrollbar. CSS only — no JS / API / handler changes.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* 1. HARD LOCK VIEWPORT WIDTH — eliminate page-level side scrolling          */
+/* -------------------------------------------------------------------------- */
+html,
+body,
+main,
+.app-container,
+.main-content,
+.pos-page,
+.inv-page,
+.order-page,
+.sales-page,
+.pos-main,
+.inv-main,
+.order-main,
+.sales-main,
+.staff-main-panel {
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+}
+
+html,
+body {
+    overflow-x: hidden !important;
+}
+
+.pos-page,
+.inv-page,
+.order-page,
+.sales-page,
+.pos-main,
+.inv-main,
+.order-main,
+.sales-main,
+.staff-main-panel,
+.top-nav,
+.pos-header,
+.sales-report-block,
+.inv-table-section {
+    overflow-x: hidden !important;
+    min-width: 0 !important;
+}
+
+/* Table shells may scroll internally on wide screens; page never side-scrolls */
+.table-wrap,
+.sales-report-table-wrap {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+    max-width: 100%;
+    height: auto;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2. FLUID PORTRAIT / NARROW REFLOW (≤900px OR portrait)                     */
+/* -------------------------------------------------------------------------- */
+@media (orientation: portrait), (max-width: 900px) {
+
+    /* --- A. Stack crowded horizontal headers / toolbars --- */
+    .top-nav,
+    .pos-header,
+    .pos-header__primary,
+    .pos-header__bar,
+    .heading-row,
+    .title-row,
+    .title-actions,
+    .heading-actions,
+    .staff-brief__head,
+    .sales-report-block__head,
+    .sales-report-block__actions,
+    .filter-bar,
+    .inv-filter-bar,
+    .chips-toolbar,
+    .menu-filter-bar,
+    .stock-movement-toolbar,
+    .staff-brief-activity__controls,
+    .ses-footer,
+    .dash-footer {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 12px !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+    }
+
+    .top-actions,
+    .top-links,
+    .header-main-tabs,
+    .header-meta,
+    .brand-block {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex-wrap: wrap !important;
+    }
+
+    .top-actions {
+        margin-left: 0 !important;
+    }
+
+    /* --- B. Grids → single-column (or compact) full-width blocks --- */
+    .alert-grid,
+    .stat-grid,
+    .metrics-grid,
+    .staff-brief__grid,
+    .category-grid,
+    .menu-grid,
+    .opq-grid,
+    .reason-chips,
+    .ses-columns,
+    .ses-all-staff-grid,
+    .waste-tab-layout,
+    .dual-fields {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Staff POS: menu + cart stack vertically */
+    .pos-main {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow-x: hidden !important;
+    }
+
+    .pos-left,
+    .pos-right {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+    }
+
+    /* Queue / kitchen partitions stack */
+    .opq-queue-partitions,
+    .opq-layout,
+    .kitchen-layout {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 12px !important;
+    }
+
+    .opq-queue-partition {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        border-right: 0 !important;
+    }
+
+    .opq-queue-partition-body.opq-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Filters / search full width */
+    .sales-report-filter,
+    .sales-report-filter--search,
+    .wide-search,
+    .menu-search,
+    .inv-filter-btn,
+    .menu-filter-btn,
+    .export-btn,
+    .cta-btn,
+    .btn,
+    .btn-primary,
+    .btn-muted {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .sales-report-filter,
+    .sales-report-filter--search,
+    .menu-search,
+    .wide-search {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    /* Pagination wraps cleanly */
+    .sales-report-pagination,
+    .pagination-container,
+    [class*="pagination"] {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 6px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* C. Semantic DATA tables → fluid cards (scoped — not all tables)    */
+    /*    Labels via nth-child ::before (no JS / data-label required).    */
+    /* ------------------------------------------------------------------ */
+
+    /* Sales History — customer orders + discounted purchases */
+    .sales-report-table-wrap {
+        overflow-x: hidden !important;
+        border: 0 !important;
+        background: transparent !important;
+    }
+
+    .sales-report-table {
+        min-width: 0 !important;
+        width: 100% !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+    }
+
+    .sales-report-table thead {
+        display: none !important;
+    }
+
+    .sales-report-table,
+    .sales-report-table tbody,
+    .sales-report-table tr,
+    .sales-report-table td {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .sales-report-table tbody tr {
+        margin-bottom: 14px !important;
+        background: #1e1e1e !important;
+        border: 1px solid #333 !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+    }
+
+    .sales-report-table tbody tr:has(td[colspan]),
+    .sales-report-table tbody tr:has(.sales-report-empty) {
+        background: transparent !important;
+        border: 0 !important;
+        padding: 16px 8px !important;
+    }
+
+    .sales-report-table td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #2a2a2a !important;
+        text-align: right !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        min-width: 0 !important;
+    }
+
+    .sales-report-table td:last-child {
+        border-bottom: none !important;
+    }
+
+    .sales-report-table td[colspan],
+    .sales-report-table td.sales-report-empty {
+        display: block !important;
+        text-align: center !important;
+        border-bottom: none !important;
+        justify-content: center !important;
+    }
+
+    .sales-report-table td[colspan]::before,
+    .sales-report-table td.sales-report-empty::before {
+        content: none !important;
+    }
+
+    .sales-report-table td::before {
+        content: attr(data-label);
+        font-weight: 700 !important;
+        color: #888 !important;
+        font-size: 0.8rem !important;
+        text-transform: uppercase !important;
+        text-align: left !important;
+        padding-right: 10px !important;
+        flex: 0 0 auto;
+        max-width: 46%;
+    }
+
+    /* Fallback labels when data-label is absent (dynamic JS rows) */
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(1)::before { content: "Date"; }
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(2)::before { content: "Order Code"; }
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(3)::before { content: "Item"; }
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(4)::before { content: "Price"; }
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(5)::before { content: "Costs"; }
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(6)::before { content: "Qty"; }
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(7)::before { content: "Total Price"; }
+    .sales-report-table:not(.discount-purchases-table) td:nth-child(8)::before { content: "Total Costs"; }
+
+    .discount-purchases-table td:nth-child(1)::before { content: "Date / Time"; }
+    .discount-purchases-table td:nth-child(2)::before { content: "Order"; }
+    .discount-purchases-table td:nth-child(3)::before { content: "Type"; }
+    .discount-purchases-table td:nth-child(4)::before { content: "Cardholder Name"; }
+    .discount-purchases-table td:nth-child(5)::before { content: "ID No."; }
+    .discount-purchases-table td:nth-child(6)::before { content: "Gross"; }
+    .discount-purchases-table td:nth-child(7)::before { content: "Discount"; }
+    .discount-purchases-table td:nth-child(8)::before { content: "Net"; }
+
+    /* Prefer data-label when present */
+    .sales-report-table td[data-label]::before {
+        content: attr(data-label) !important;
+    }
+
+    /* Staff Shift End inventory table */
+    .ses-table {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    .ses-table thead {
+        display: none !important;
+    }
+
+    .ses-table,
+    .ses-table tbody,
+    .ses-table tr,
+    .ses-table td {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .ses-table tbody tr {
+        margin-bottom: 14px !important;
+        background: #1e1e1e !important;
+        border: 1px solid #333 !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+    }
+
+    .ses-table td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #2a2a2a !important;
+        text-align: right !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+
+    .ses-table td:last-child {
+        border-bottom: none !important;
+    }
+
+    .ses-table td[colspan] {
+        display: block !important;
+        text-align: center !important;
+        border-bottom: none !important;
+    }
+
+    .ses-table td[colspan]::before {
+        content: none !important;
+    }
+
+    .ses-table td::before {
+        font-weight: 700 !important;
+        color: #888 !important;
+        font-size: 0.8rem !important;
+        text-transform: uppercase !important;
+        text-align: left !important;
+        padding-right: 10px !important;
+        flex: 0 0 auto;
+        max-width: 46%;
+    }
+
+    .ses-table td:nth-child(1)::before { content: "Item"; }
+    .ses-table td:nth-child(2)::before { content: "Stock Left"; }
+    .ses-table td[data-label]::before {
+        content: attr(data-label) !important;
+    }
+
+    /* Inventory edit-history table (real <table>) */
+    .inv-edit-history__table thead {
+        display: none !important;
+    }
+
+    .inv-edit-history__table,
+    .inv-edit-history__table tbody,
+    .inv-edit-history__table tr,
+    .inv-edit-history__table td {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .inv-edit-history__table tbody tr {
+        margin-bottom: 14px !important;
+        background: #1e1e1e !important;
+        border: 1px solid #333 !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+    }
+
+    .inv-edit-history__table td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #2a2a2a !important;
+        text-align: right !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+
+    .inv-edit-history__table td:last-child {
+        border-bottom: none !important;
+    }
+
+    .inv-edit-history__table td[colspan] {
+        display: block !important;
+        text-align: center !important;
+        border-bottom: none !important;
+    }
+
+    .inv-edit-history__table td[colspan]::before {
+        content: none !important;
+    }
+
+    .inv-edit-history__table td::before {
+        font-weight: 700 !important;
+        color: #888 !important;
+        font-size: 0.8rem !important;
+        text-transform: uppercase !important;
+        text-align: left !important;
+        padding-right: 10px !important;
+        flex: 0 0 auto;
+        max-width: 46%;
+    }
+
+    .inv-edit-history__table td:nth-child(1)::before { content: "Date/Time"; }
+    .inv-edit-history__table td:nth-child(2)::before { content: "Staff"; }
+    .inv-edit-history__table td:nth-child(3)::before { content: "Item"; }
+    .inv-edit-history__table td:nth-child(4)::before { content: "Old Stock"; }
+    .inv-edit-history__table td:nth-child(5)::before { content: "New Stock"; }
+    .inv-edit-history__table td:nth-child(6)::before { content: "Change"; }
+    .inv-edit-history__table td[data-label]::before {
+        content: attr(data-label) !important;
+    }
+
+    /* Keep calendar day grids usable (do not force 1-col) */
+    .sales-report-calendar__grid {
+        display: grid !important;
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+        width: 100% !important;
+    }
+}

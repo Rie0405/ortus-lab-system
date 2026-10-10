@@ -37,9 +37,10 @@ body {
     box-sizing: border-box !important;
 }
 
-/* Inventory / Menu admin: page must remain scrollable (long tables) */
+/* Inventory / Menu / Sales History admin: page must remain scrollable (long tables) */
 .order-page,
-.inv-page {
+.inv-page,
+.sales-page {
     height: 100% !important;
     width: 100% !important;
     max-height: 100% !important;

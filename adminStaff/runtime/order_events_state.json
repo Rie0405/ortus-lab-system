@@ -1,1 +1,1 @@
-{"id":1791451535267,"type":"order_status_changed","ts":"2026-10-08T09:25:35+00:00","payload":{"order_id":354,"order_source":"kiosk","from_status":"confirmed","status":"voided"}}
+{"id":1791618801470,"type":"order_status_changed","ts":"2026-10-10T07:53:21+00:00","payload":{"order_id":278,"order_source":"pos","from_status":"confirmed","status":"served","main_category_ids":[2]}}

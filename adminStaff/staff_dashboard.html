@@ -9203,16 +9203,28 @@
         }
 
         function pruneKitchenPriorityMap(activeOrders) {
-            // Prefer full active kitchen list so mixed orders keep priority/station-done
-            // even when hidden on the currently viewed station.
-            var source = (kitchenOrders && kitchenOrders.length) ? kitchenOrders : (activeOrders || []);
+            // Keep priority/station-done for any order still in kitchen, serving,
+            // or the current render set — never wipe state just because the
+            // active capsule filter is empty.
+            var keepIds = {};
+            function markList(list) {
+                (list || []).forEach(function (o) {
+                    var id = parseInt(o && o.id, 10) || 0;
+                    if (id) keepIds[id] = true;
+                });
+            }
+            markList(kitchenOrders);
+            markList(servingOrdersQueue);
+            markList(activeOrders);
             var keep = {};
             var keepStationDone = {};
-            (source || []).forEach(function (o) {
-                var id = parseInt(o && o.id, 10) || 0;
-                if (!id) return;
-                if (kitchenPriorityById[id]) keep[id] = kitchenPriorityById[id];
-                if (kitchenStationDoneById[id]) keepStationDone[id] = kitchenStationDoneById[id];
+            Object.keys(kitchenPriorityById || {}).forEach(function (key) {
+                var id = parseInt(key, 10) || 0;
+                if (id && keepIds[id]) keep[id] = kitchenPriorityById[id];
+            });
+            Object.keys(kitchenStationDoneById || {}).forEach(function (key) {
+                var id = parseInt(key, 10) || 0;
+                if (id && keepIds[id]) keepStationDone[id] = kitchenStationDoneById[id];
             });
             kitchenPriorityById = keep;
             kitchenStationDoneById = keepStationDone;
@@ -9771,25 +9783,30 @@
                 pendingOrders = (ordersRes && ordersRes.success) ? (ordersRes.orders || []) : [];
                 returnedKitchenOrders = (returnedRes && returnedRes.success) ? (returnedRes.orders || []) : [];
                 renderPendingOrders();
-                var confirmedKitchen = (kitchenRes && kitchenRes.success) ? (kitchenRes.orders || []) : [];
-                var confirmedById = {};
-                confirmedKitchen.forEach(function (o) {
-                    var cid = parseInt(o && o.id, 10) || 0;
-                    if (cid) confirmedById[cid] = o;
-                });
-                var confirmedSet = new Set(Object.keys(confirmedById).map(function (k) { return parseInt(k, 10); }));
-                // Keep only still-confirmed orders in local "serving" queue,
-                // and refresh their item payloads from API (returned-order edits).
-                servingOrdersQueue = servingOrdersQueue.filter(function (o) {
-                    return confirmedSet.has(parseInt(o && o.id, 10) || 0);
-                }).map(function (o) {
-                    var cid = parseInt(o && o.id, 10) || 0;
-                    return confirmedById[cid] || o;
-                });
-                var servingSet = new Set(servingOrdersQueue.map(function (o) { return parseInt(o.id, 10) || 0; }));
-                kitchenOrders = confirmedKitchen.filter(function (o) {
-                    return !servingSet.has(parseInt(o.id, 10) || 0);
-                });
+                // Only rebuild kitchen/serving when the confirmed fetch succeeds.
+                // A failed/empty poll must not wipe local DONE/SERVED queue state,
+                // or "Done All" orders come back on the next successful refresh.
+                if (kitchenRes && kitchenRes.success) {
+                    var confirmedKitchen = kitchenRes.orders || [];
+                    var confirmedById = {};
+                    confirmedKitchen.forEach(function (o) {
+                        var cid = parseInt(o && o.id, 10) || 0;
+                        if (cid) confirmedById[cid] = o;
+                    });
+                    var confirmedSet = new Set(Object.keys(confirmedById).map(function (k) { return parseInt(k, 10); }));
+                    // Keep only still-confirmed orders in local "serving" queue,
+                    // and refresh their item payloads from API (returned-order edits).
+                    servingOrdersQueue = servingOrdersQueue.filter(function (o) {
+                        return confirmedSet.has(parseInt(o && o.id, 10) || 0);
+                    }).map(function (o) {
+                        var cid = parseInt(o && o.id, 10) || 0;
+                        return confirmedById[cid] || o;
+                    });
+                    var servingSet = new Set(servingOrdersQueue.map(function (o) { return parseInt(o.id, 10) || 0; }));
+                    kitchenOrders = confirmedKitchen.filter(function (o) {
+                        return !servingSet.has(parseInt(o.id, 10) || 0);
+                    });
+                }
                 renderKitchenOrders();
                 renderServingOrders();
                 var allForHistory = (allOrdersRes && allOrdersRes.success) ? (allOrdersRes.orders || []) : [];
@@ -10106,16 +10123,21 @@
                     ? String(stationMeta.name || 'station').toLowerCase()
                     : 'station';
                 if (!window.confirm('Mark as done all pending ' + stationLabel + ' orders?')) return;
+                var visibleIds = {};
+                visible.forEach(function (o) {
+                    var vid = parseInt(o && o.id, 10) || 0;
+                    if (vid) visibleIds[vid] = true;
+                });
                 var stillActive = [];
                 kitchenOrders.forEach(function (o) {
-                    if (!orderMatchesKitchenCategory(o, activeKitchenCategory)) {
+                    var orderId = parseInt(o && o.id, 10) || 0;
+                    if (!orderId || !visibleIds[orderId]) {
                         stillActive.push(o);
                         return;
                     }
                     var stationResult = markKitchenStationDone(o, activeKitchenCategory || 'bar');
                     if (stationResult.fullyDone) {
-                        var orderId = parseInt(o && o.id, 10) || 0;
-                        if (orderId && kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
+                        if (kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
                         clearKitchenStationDone(orderId);
                         if (!servingOrdersQueue.some(function (s) { return parseInt(s && s.id, 10) === orderId; })) {
                             servingOrdersQueue.push(o);
@@ -10134,24 +10156,44 @@
         var servedAllBtn = document.getElementById('served-all-orders-btn');
         if (servedAllBtn) {
             servedAllBtn.addEventListener('click', function () {
-                if (!servingOrdersQueue.length) return;
-                if (!window.confirm('Mark ALL serving orders as served?')) return;
+                var visibleServing = getFilteredKitchenOrders(servingOrdersQueue, { ignoreStationDone: true });
+                if (!visibleServing.length) return;
+                var stationMeta = activeStationMeta();
+                var stationLabel = stationMeta
+                    ? String(stationMeta.name || 'station').toLowerCase()
+                    : 'station';
+                if (!window.confirm('Mark all ' + stationLabel + ' serving orders as served?')) return;
                 servedAllBtn.disabled = true;
-                var ids = servingOrdersQueue.map(function (o) { return parseInt(o && o.id, 10); }).filter(Boolean);
+                var ids = visibleServing.map(function (o) { return parseInt(o && o.id, 10); }).filter(Boolean);
                 Promise.all(ids.map(function (id) {
                     return fetch('api/orders.php', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: id, status: 'served' })
-                    }).then(function (r) { return r.json(); });
-                })).then(function () {
-                    servingOrdersQueue = [];
+                    }).then(function (r) { return r.json(); }).then(function (d) {
+                        return { id: id, ok: !!(d && d.success) };
+                    }).catch(function () {
+                        return { id: id, ok: false };
+                    });
+                })).then(function (results) {
+                    var servedIds = {};
+                    var failed = 0;
+                    (results || []).forEach(function (res) {
+                        if (res && res.ok) servedIds[res.id] = true;
+                        else failed += 1;
+                    });
+                    servingOrdersQueue = servingOrdersQueue.filter(function (o) {
+                        return !servedIds[parseInt(o && o.id, 10) || 0];
+                    });
                     renderServingOrders();
                     loadStaffData();
                     servedAllBtn.disabled = false;
+                    if (failed > 0) {
+                        alert(failed + ' order(s) failed to mark as served. They stayed in the serving list.');
+                    }
                 }).catch(function () {
                     servedAllBtn.disabled = false;
-                    alert('Some orders failed to update. Please reload.');
+                    alert('Some orders failed to update. Please try again.');
                 });
             });
         }

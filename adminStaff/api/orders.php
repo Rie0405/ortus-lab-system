@@ -402,7 +402,9 @@ if ($m === 'GET') {
         $ids = implode(',', array_column($orders, 'id'));
         ensure_order_item_fulfillment_schema(db());
         $items = db()->query(
-            "SELECT oi.order_id, oi.menu_item_id, mi.name, oi.quantity, oi.unit_price, oi.subtotal,
+            "SELECT oi.order_id, oi.menu_item_id,
+                    COALESCE(mi.name, CONCAT('Item #', oi.menu_item_id)) AS name,
+                    oi.quantity, oi.unit_price, oi.subtotal,
                     COALESCE(oi.unit_cost, 0) AS unit_cost,
                     COALESCE(oi.line_cost, 0) AS line_cost,
                     COALESCE(mi.cost_price, 0) AS menu_cost_price,
@@ -412,10 +414,10 @@ if ($m === 'GET') {
                     COALESCE(NULLIF(mi.main_category_id, 0), NULLIF(c.main_category_id, 0), 0) AS main_category_id,
                     COALESCE(mc.name, mc_cat.name, '') AS main_category_name
                FROM order_items oi
-               JOIN menu_items mi ON mi.id = oi.menu_item_id
+               LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
                LEFT JOIN categories c ON c.id = mi.category_id
-               LEFT JOIN main_categories mc ON mc.id = mi.main_category_id AND mc.is_active = 1
-               LEFT JOIN main_categories mc_cat ON mc_cat.id = c.main_category_id AND mc_cat.is_active = 1
+               LEFT JOIN main_categories mc ON mc.id = mi.main_category_id
+               LEFT JOIN main_categories mc_cat ON mc_cat.id = c.main_category_id
               WHERE oi.order_id IN ($ids)"
         )->fetchAll();
 

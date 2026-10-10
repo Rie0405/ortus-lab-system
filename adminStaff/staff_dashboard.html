@@ -5499,14 +5499,17 @@
                             if (confirmedCount > 0) {
                                 lines.push("• " + confirmedCount + " confirmed still open");
                                 if (kitchenCount > 0) {
-                                    lines.push("  → " + kitchenCount + " still need DONE on a capsule tab");
+                                    lines.push("  → " + kitchenCount + " on kitchen capsules — click DONE / DONE ALL");
                                 }
                                 if (servingCount > 0) {
                                     lines.push("  → " + servingCount + " in Served Orders panel — click SERVED / SERVED ALL");
                                 }
+                                if (!kitchenCount && !servingCount) {
+                                    lines.push("  → Open any capsule tab; stuck orders are force-shown there.");
+                                }
                             }
                             lines.push("");
-                            lines.push("Opening the matching panel so you can finish them.");
+                            lines.push("Opening the kitchen panel — finish DONE then SERVED ALL.");
                             alert(lines.join("\n"));
                             if (pendingCount > 0 && typeof window.staffActivateMainTab === "function") {
                                 window.staffActivateMainTab("queue-kiosk");
@@ -6265,7 +6268,18 @@
         function orderMatchesKitchenCategory(order, group, opts) {
             opts = opts || {};
             var items = (order && order.items) || [];
-            if (!items.length) return false;
+            var firstKey = firstStationKey();
+            // Empty-item / unroutable orders must still appear somewhere or they
+            // block Finalize while every capsule looks empty.
+            if (!items.length) {
+                if (!firstKey || String(group || '').toLowerCase() !== firstKey.toLowerCase()) {
+                    return false;
+                }
+                if (!opts.ignoreStationDone && isStationDoneForOrder(order && order.id, group)) {
+                    return false;
+                }
+                return true;
+            }
             var stationItems = filterItemsForKitchenStation(items, group);
             if (!stationItems.length) {
                 // No lines for this capsule. If the order has no known active
@@ -6273,7 +6287,6 @@
                 // first capsule so it cannot block close-shift while invisible.
                 var knownKeys = orderKnownStationKeys(order);
                 if (knownKeys.length) return false;
-                var firstKey = firstStationKey();
                 if (!firstKey || String(group || '').toLowerCase() !== firstKey.toLowerCase()) {
                     return false;
                 }
@@ -6282,6 +6295,38 @@
                 return false;
             }
             return true;
+        }
+
+        /** Make every confirmed kitchen order visible (or finishable via Served Orders). */
+        function surfaceStuckKitchenOrders() {
+            var firstKey = firstStationKey();
+            if (firstKey) {
+                activeKitchenCategory = firstKey;
+                window.staffKitchenCategory = firstKey;
+                try { syncKitchenCategoryButtons(); } catch (e) { /* ignore */ }
+                if (typeof window.staffSetStationHeaderActive === 'function') {
+                    window.staffSetStationHeaderActive(firstKey);
+                }
+            }
+
+            var stillKitchen = [];
+            (kitchenOrders || []).forEach(function (o) {
+                clearKitchenStationDone(o && o.id);
+                var canShow = !(staffMainStations || []).length || (staffMainStations || []).some(function (st) {
+                    return orderMatchesKitchenCategory(o, st.key, { ignoreStationDone: true });
+                });
+                if (!canShow) {
+                    var orderId = parseInt(o && o.id, 10) || 0;
+                    if (orderId && !servingOrdersQueue.some(function (s) {
+                        return parseInt(s && s.id, 10) === orderId;
+                    })) {
+                        servingOrdersQueue.push(o);
+                    }
+                } else {
+                    stillKitchen.push(o);
+                }
+            });
+            kitchenOrders = stillKitchen;
         }
         function getFilteredKitchenOrders(list, opts) {
             opts = opts || {};
@@ -8115,17 +8160,9 @@
                 // Unstick orders whose only remaining "stations" are deleted/unknown,
                 // or whose local Done flags already cover every active capsule.
                 reconcileKitchenOrdersToServing();
-
-                // If station-done flags still hide an order on every capsule, reset them.
-                (kitchenOrders || []).forEach(function (o) {
-                    var visibleSomewhere = (staffMainStations || []).some(function (st) {
-                        return orderMatchesKitchenCategory(o, st.key, { ignoreStationDone: true })
-                            && orderMatchesKitchenCategory(o, st.key);
-                    });
-                    if (!visibleSomewhere) {
-                        clearKitchenStationDone(o && o.id);
-                    }
-                });
+                // Reset Done flags / move truly unmatchable rows into Served Orders,
+                // and jump to the first capsule so staff can see remaining work.
+                surfaceStuckKitchenOrders();
 
                 try {
                     renderPendingOrders();
@@ -9448,9 +9485,12 @@
             var orderId = parseInt(order && order.id, 10) || 0;
             var isPriority = isKitchenOrderPrioritized(orderId);
             var stationGroup = opts.stationGroup || activeKitchenCategory || '';
-            var displayItems = filterItemsForKitchenStation(order.items || [], stationGroup);
-            var itemsHtml = displayItems
-                .map(function (item) {
+            var displayItems = opts.showAllItems
+                ? ((order.items || []).slice())
+                : filterItemsForKitchenStation(order.items || [], stationGroup);
+            if (!displayItems.length) displayItems = (order.items || []).slice();
+            var itemsHtml = displayItems.length
+                ? displayItems.map(function (item) {
                     return (
                         '<div class="opq-item kitchen-line-item">' +
                         '<div class="kitchen-item-title"><span class="opq-item-name">' +
@@ -9459,8 +9499,8 @@
                         formatKitchenLineItemMetaHtml(item, order) +
                         '</div>'
                     );
-                })
-                .join('');
+                }).join('')
+                : '<div class="opq-item"><span>No item lines on this order — mark DONE to clear.</span></div>';
             var card = document.createElement('article');
             var queueLabel = '';
             var queueLabelClass = '';
@@ -9520,7 +9560,15 @@
 
             // Live kitchen queue must ignore shift-clear localStorage (device-specific).
             var filtered = getFilteredKitchenOrders(kitchenOrders);
-            pruneKitchenPriorityMap(filtered);
+            var showingStuckFallback = false;
+            // If this capsule is empty but confirmed kitchen work still exists,
+            // force-show those orders so Finalize is not blocked by invisible rows.
+            if (!filtered.length && (kitchenOrders || []).length) {
+                filtered = (kitchenOrders || []).slice();
+                showingStuckFallback = true;
+                (kitchenOrders || []).forEach(function (o) { clearKitchenStationDone(o && o.id); });
+            }
+            pruneKitchenPriorityMap(kitchenOrders);
             var orderedKitchen = sortKitchenOrdersForDisplay(filtered);
 
             if (!orderedKitchen.length) {
@@ -9532,6 +9580,25 @@
                     : 'No station orders.';
                 kitchenGrid.innerHTML = '<article class="opq-card"><div class="opq-card-items"><div class="opq-item"><span>' + emptyLabel + '</span></div></div></article>';
             } else {
+                if (showingStuckFallback) {
+                    var stuckNote = document.createElement('article');
+                    stuckNote.className = 'opq-card';
+                    stuckNote.innerHTML = '<div class="opq-card-items"><div class="opq-item"><span>' +
+                        'Showing ' + orderedKitchen.length + ' open confirmed order(s) that were hidden from this capsule. Mark DONE / SERVED to clear them.' +
+                        '</span></div></div>';
+                    kitchenGrid.innerHTML = '';
+                    kitchenGrid.classList.remove('opq-queue-partitions');
+                    kitchenGrid.appendChild(stuckNote);
+                    orderedKitchen.forEach(function (order, idx) {
+                        kitchenGrid.appendChild(buildKitchenOrderCardElement(order, idx, {
+                            hideOrderTypeLine: true,
+                            stationGroup: activeKitchenCategory,
+                            showAllItems: true
+                        }));
+                    });
+                    if (kitchenBadge) kitchenBadge.textContent = orderedKitchen.length + ' ACTIVE';
+                    return;
+                }
                 renderPartitionedOrderGrid(
                     kitchenGrid,
                     orderedKitchen,
@@ -9566,6 +9633,12 @@
                 .sort(function (a, b) {
                     return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
                 });
+            // Same as kitchen: never hide open serving work behind station filters.
+            if (!ordered.length && (servingOrdersQueue || []).length) {
+                ordered = (servingOrdersQueue || []).slice().sort(function (a, b) {
+                    return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
+                });
+            }
             ordered.forEach(function (order) {
                 var row = document.createElement('article');
                 row.className = 'kitchen-serving-item';

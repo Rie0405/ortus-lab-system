@@ -48,6 +48,14 @@ function ensure_menu_serve_schema(PDO $pdo): void
 
     ensure_menu_cost_price_schema($pdo);
 
+    $hasActive = (bool)$pdo->query("SHOW COLUMNS FROM menu_items LIKE 'is_active'")->fetch();
+    if (!$hasActive) {
+        $pdo->exec(
+            'ALTER TABLE menu_items
+                ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER is_available'
+        );
+    }
+
     $rows = $pdo->query(
         "SELECT m.id, m.description, m.serve_hot, m.serve_cold
            FROM menu_items m
@@ -752,6 +760,9 @@ function cast_menu_item_row(array &$item): void
         $item['cost_price'] = (float)$item['cost_price'];
     }
     $item['is_available'] = (bool)$item['is_available'];
+    if (array_key_exists('is_active', $item)) {
+        $item['is_active'] = (bool)$item['is_active'];
+    }
     $item['serve_hot'] = (bool)($item['serve_hot'] ?? false);
     $item['serve_cold'] = (bool)($item['serve_cold'] ?? false);
     $item['main_category_id'] = isset($item['main_category_id']) && $item['main_category_id'] !== null

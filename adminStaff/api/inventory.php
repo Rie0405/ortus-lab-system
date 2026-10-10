@@ -554,7 +554,13 @@ if ($method === 'PUT') {
 
     $fields = [];
     $params = [':id' => $id];
+    $restoringFromArchive = false;
 
+    if (array_key_exists('is_active', $b)) {
+        $fields[] = 'is_active = :is_active';
+        $params[':is_active'] = (int)(bool)$b['is_active'];
+        $restoringFromArchive = ((int)(bool)$b['is_active'] === 1);
+    }
     if (array_key_exists('menu_item_id', $b)) {
         $fields[] = 'menu_item_id = :menu_item_id';
         $params[':menu_item_id'] = ($b['menu_item_id'] === '' || $b['menu_item_id'] === null) ? null : (int)$b['menu_item_id'];
@@ -876,7 +882,15 @@ if ($method === 'PUT') {
         $itemName = trim((string)($itemMeta['item_name'] ?? '')) ?: ('#' . $id);
         $isManual = normalize_inventory_entry_mode($itemMeta['entry_mode'] ?? ($b['entry_mode'] ?? 'automatic')) === 'manual';
 
-        if (array_key_exists('open_items_count', $b) && (int)$b['open_items_count'] > 0) {
+        if ($restoringFromArchive) {
+            log_system_activity($pdo, [
+                'source_key' => 'restore_inventory_item',
+                'source_label' => 'Restore Inventory Item',
+                'action' => 'inventory item restored: ' . $itemName,
+                'entity_type' => 'inventory_item',
+                'entity_id' => $id,
+            ]);
+        } elseif (array_key_exists('open_items_count', $b) && (int)$b['open_items_count'] > 0) {
             log_system_activity($pdo, [
                 'source_key' => 'inventory_open',
                 'source_label' => 'Open Item',
@@ -932,9 +946,9 @@ if ($method === 'DELETE') {
     $stmt = $pdo->prepare('UPDATE inventory_items SET is_active = 0 WHERE id = :id');
     $stmt->execute([':id' => $id]);
     log_system_activity($pdo, [
-        'source_key' => 'delete_inventory_item',
-        'source_label' => 'Delete Inventory Item',
-        'action' => 'inventory item deleted: ' . $deletedName,
+        'source_key' => 'archive_inventory_item',
+        'source_label' => 'Archive Inventory Item',
+        'action' => 'inventory item archived: ' . $deletedName,
         'entity_type' => 'inventory_item',
         'entity_id' => $id,
     ]);
@@ -1143,7 +1157,7 @@ $stmt = $pdo->query(
      FROM inventory_items i
      LEFT JOIN order_items oi ON oi.menu_item_id = i.menu_item_id
      LEFT JOIN orders o ON o.id = oi.order_id
-     WHERE i.is_active = 1
+     WHERE i.is_active = ' . (isset($_GET['archived']) && (string)$_GET['archived'] === '1' ? '0' : '1') . '
        AND i.menu_item_id IS NULL
      GROUP BY i.id
      ORDER BY i.category_name, i.item_name'

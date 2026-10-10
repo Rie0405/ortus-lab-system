@@ -41,22 +41,28 @@ if ($m === 'GET') {
     $subcats = fetch_active_subcategories(db());
     $mainCats = fetch_active_main_categories(db());
 
+    $archivedOnly = isset($_GET['archived']) && (string)$_GET['archived'] === '1';
+
     $sql = 'SELECT m.id, m.category_id, m.main_category_id, mc.name AS main_category_name,
                    m.subcategory_id, sc.name AS subcategory_name,
                    c.name AS category_name,
                    m.name, m.description, m.price, m.cost_price, m.image_url, m.is_available,
-                   m.serve_hot, m.serve_cold,
+                   m.is_active, m.serve_hot, m.serve_cold,
                    m.created_at, m.updated_at
               FROM menu_items m
-              JOIN categories c ON c.id = m.category_id AND c.is_active = 1
+              JOIN categories c ON c.id = m.category_id
               LEFT JOIN main_categories mc ON mc.id = COALESCE(m.main_category_id, c.main_category_id)
               LEFT JOIN subcategories sc ON sc.id = m.subcategory_id AND sc.is_active = 1
-             WHERE (c.main_category_id IS NULL OR c.main_category_id = 0
+             WHERE m.is_active = :active';
+    $params = [':active' => $archivedOnly ? 0 : 1];
+    if (!$archivedOnly) {
+        $sql .= ' AND c.is_active = 1
+               AND (c.main_category_id IS NULL OR c.main_category_id = 0
                     OR EXISTS (
                         SELECT 1 FROM main_categories mcx
                          WHERE mcx.id = c.main_category_id AND mcx.is_active = 1
                     ))';
-    $params = [];
+    }
     if ($categoryId) {
         $sql    .= ' AND m.category_id = :cid';
         $params[':cid'] = $categoryId;
@@ -85,7 +91,7 @@ if ($m === 'GET') {
     $fastMoving = fetch_fast_moving_items(db(), 100, 5);
     $bestSeller = fetch_best_seller(db(), 100);
     $unavailableProductsCount = (int)db()->query(
-        'SELECT COUNT(*) FROM menu_items WHERE is_available = 0'
+        'SELECT COUNT(*) FROM menu_items WHERE is_active = 1 AND is_available = 0'
     )->fetchColumn();
 
     ok([
@@ -231,6 +237,17 @@ if ($m === 'PUT') {
     if (isset($b['description']))  { $fields[] = 'description = :desc';   $params[':desc']  = trim($b['description']); }
     if (isset($b['image_url']))    { $fields[] = 'image_url = :img';      $params[':img']   = trim($b['image_url']); }
     if (isset($b['is_available'])) { $fields[] = 'is_available = :avail'; $params[':avail'] = (int)(bool)$b['is_available']; }
+    $restoringFromArchive = false;
+    if (isset($b['is_active'])) {
+        $fields[] = 'is_active = :iact';
+        $params[':iact'] = (int)(bool)$b['is_active'];
+        if ((int)(bool)$b['is_active'] === 1) {
+            $restoringFromArchive = true;
+            // Restoring from archive: make available again by default.
+            $fields[] = 'is_available = :avail_restore';
+            $params[':avail_restore'] = 1;
+        }
+    }
     if (isset($b['serve_hot']))    { $fields[] = 'serve_hot = :shot';    $params[':shot']  = (int)(bool)$b['serve_hot']; }
     if (isset($b['serve_cold']))   { $fields[] = 'serve_cold = :scold';  $params[':scold'] = (int)(bool)$b['serve_cold']; }
     if (array_key_exists('subcategory_id', $b)) {
@@ -297,21 +314,34 @@ if ($m === 'PUT') {
     $sql = 'UPDATE menu_items SET ' . implode(', ', $fields) . ' WHERE id = :id';
     db()->prepare($sql)->execute($params);
 
+    if ($restoringFromArchive) {
+        try {
+            ensure_addons_schema(db());
+            db()->prepare(
+                'UPDATE addons
+                    SET is_active = 1
+                  WHERE menu_item_id = :mid'
+            )->execute([':mid' => $id]);
+        } catch (Throwable $e) {
+            // Addons schema may be unavailable.
+        }
+    }
+
     $nameStmt = db()->prepare('SELECT name FROM menu_items WHERE id = :id LIMIT 1');
     $nameStmt->execute([':id' => $id]);
     $updatedName = trim((string)$nameStmt->fetchColumn()) ?: ('#' . $id);
     log_system_activity(db(), [
-        'source_key' => 'edit_menu_item',
-        'source_label' => 'Edit Menu Item',
-        'action' => 'menu item edited: ' . $updatedName,
+        'source_key' => $restoringFromArchive ? 'restore_menu_item' : 'edit_menu_item',
+        'source_label' => $restoringFromArchive ? 'Restore Menu Item' : 'Edit Menu Item',
+        'action' => ($restoringFromArchive ? 'menu item restored: ' : 'menu item edited: ') . $updatedName,
         'entity_type' => 'menu_item',
         'entity_id' => $id,
     ]);
 
-    ok(['message' => 'Item updated.']);
+    ok(['message' => $restoringFromArchive ? 'Item restored.' : 'Item updated.']);
 }
 
-// ─── DELETE  →  remove item (authenticated user) ──────────────────────────────
+// ─── DELETE  →  soft-archive item (authenticated user) ───────────────────────
 if ($m === 'DELETE') {
     require_auth();
     $b  = body();
@@ -319,79 +349,42 @@ if ($m === 'DELETE') {
     if (!$id) fail('Item ID is required.');
 
     $pdo = db();
+    ensure_menu_serve_schema($pdo);
 
-    $nameStmt = $pdo->prepare('SELECT name FROM menu_items WHERE id = :id LIMIT 1');
+    $nameStmt = $pdo->prepare('SELECT name FROM menu_items WHERE id = :id AND is_active = 1 LIMIT 1');
     $nameStmt->execute([':id' => $id]);
-    $deletedName = trim((string)$nameStmt->fetchColumn()) ?: ('#' . $id);
+    $archivedName = trim((string)$nameStmt->fetchColumn());
+    if ($archivedName === '') {
+        fail('Menu item not found or already archived.', 404);
+    }
 
-    // Detach / deactivate linked addon cards outside the main delete txn so a
-    // missing optional table cannot abort the transaction.
+    // Soft-archive only — keep recipes / sales history so Restore can bring it back.
+    $pdo->prepare(
+        'UPDATE menu_items
+            SET is_active = 0, is_available = 0
+          WHERE id = :id'
+    )->execute([':id' => $id]);
+
     try {
         ensure_addons_schema($pdo);
         $pdo->prepare(
             'UPDATE addons
-                SET is_active = 0, menu_item_id = NULL
+                SET is_active = 0
               WHERE menu_item_id = :mid'
         )->execute([':mid' => $id]);
     } catch (Throwable $e) {
         // Addons schema may be unavailable.
     }
 
-    try {
-        $hasRecipes = (bool)$pdo->query("SHOW TABLES LIKE 'recipes'")->fetchColumn();
-        if ($hasRecipes) {
-            $recipeIdsStmt = $pdo->prepare('SELECT id FROM recipes WHERE menu_item_id = :mid');
-            $recipeIdsStmt->execute([':mid' => $id]);
-            $recipeIds = array_map('intval', $recipeIdsStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
-            $hasRecipeIngredients = (bool)$pdo->query("SHOW TABLES LIKE 'recipe_ingredients'")->fetchColumn();
-            if ($hasRecipeIngredients && $recipeIds) {
-                $delIng = $pdo->prepare('DELETE FROM recipe_ingredients WHERE recipe_id = :rid');
-                foreach ($recipeIds as $rid) {
-                    if ($rid > 0) {
-                        $delIng->execute([':rid' => $rid]);
-                    }
-                }
-            }
-            $pdo->prepare('DELETE FROM recipes WHERE menu_item_id = :mid')->execute([':mid' => $id]);
-        }
-    } catch (Throwable $e) {
-        // Recipes may be unavailable.
-    }
-
-    try {
-        $hasInvMenu = (bool)$pdo->query("SHOW COLUMNS FROM inventory_items LIKE 'menu_item_id'")->fetch();
-        if ($hasInvMenu) {
-            $pdo->prepare('UPDATE inventory_items SET menu_item_id = NULL WHERE menu_item_id = :mid')
-                ->execute([':mid' => $id]);
-        }
-    } catch (Throwable $e) {
-        // ignore
-    }
-
-    try {
-        $pdo->beginTransaction();
-        // Clear order lines first — menu_items is referenced by order_items.
-        $pdo->prepare('DELETE FROM order_items WHERE menu_item_id = :id')->execute([':id' => $id]);
-        $pdo->prepare('DELETE FROM menu_items WHERE id = :id')->execute([':id' => $id]);
-        if ($pdo->inTransaction()) {
-            $pdo->commit();
-        }
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        fail('Failed to delete item: ' . $e->getMessage());
-    }
-
     log_system_activity($pdo, [
-        'source_key' => 'delete_menu_item',
-        'source_label' => 'Delete Menu Item',
-        'action' => 'menu item deleted: ' . $deletedName,
+        'source_key' => 'archive_menu_item',
+        'source_label' => 'Archive Menu Item',
+        'action' => 'menu item archived: ' . $archivedName,
         'entity_type' => 'menu_item',
         'entity_id' => $id,
     ]);
 
-    ok(['message' => 'Item deleted.']);
+    ok(['message' => 'Item archived.']);
 }
 
 fail('Method not allowed.', 405);

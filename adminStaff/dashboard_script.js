@@ -2154,7 +2154,7 @@ function apiCall(method, url, body) {
                     '<span class="acts-separator">|</span>' +
                     '<button class="acts-btn" data-recipe-id="' + item.id + '">Recipe</button>' +
                     '<span class="acts-separator">|</span>' +
-                    '<button class="acts-btn" data-delete-id="' + item.id + '">Delete</button>' +
+                    '<button class="acts-btn" data-archive-id="' + item.id + '">Archive</button>' +
                 '</div>';
 
             tableBody.appendChild(row);
@@ -2162,7 +2162,7 @@ function apiCall(method, url, body) {
 
         bindMenuThumbFallbacks(tableBody);
 
-        // Re-bind edit / delete handlers
+        // Re-bind edit / archive handlers
         tableBody.querySelectorAll('.acts button[data-edit-id]').forEach(function (btn) {
             btn.addEventListener('click', function () { openEditModal(parseInt(btn.getAttribute('data-edit-id'), 10)); });
         });
@@ -2173,8 +2173,10 @@ function apiCall(method, url, body) {
                 window.location.href = 'recipe_builder.html?menu_id=' + encodeURIComponent(id);
             });
         });
-        tableBody.querySelectorAll('.acts button[data-delete-id]').forEach(function (btn) {
-            btn.addEventListener('click', function () { deleteItem(parseInt(btn.getAttribute('data-delete-id'), 10)); });
+        tableBody.querySelectorAll('.acts button[data-archive-id], .acts button[data-delete-id]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                archiveItem(parseInt(btn.getAttribute('data-archive-id') || btn.getAttribute('data-delete-id'), 10));
+            });
         });
         tableBody.querySelectorAll('button[data-toggle-availability]').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -3455,23 +3457,126 @@ function apiCall(method, url, body) {
         }
     }
 
-    // ── Delete item ───────────────────────────────────────────────────────────
-    function deleteItem(id) {
+    // ── Archive item ──────────────────────────────────────────────────────────
+    function archiveItem(id) {
         var item = allItems.find(function (i) { return i.id === id; });
         if (!item) return;
         var label = item.is_addon_card
-            ? ('addon "' + item.name + '" (also removes it from Register Addon)')
+            ? ('addon "' + item.name + '" (also archives it from Register Addon)')
             : ('"' + item.name + '"');
-        if (!confirm('Delete ' + label + '? This cannot be undone.')) return;
+        if (!confirm('Archive ' + label + '? You can restore it later from Archive.')) return;
 
         apiCall('DELETE', 'api/menu.php', { id: id }).then(function (res) {
             if (res.success) {
                 loadItems();
             } else {
-                alert('Error: ' + (res.error || 'Failed to delete item.'));
+                alert('Error: ' + (res.error || 'Failed to archive item.'));
             }
         }).catch(function (err) {
-            alert('Error: ' + ((err && err.message) || 'Failed to delete item.'));
+            alert('Error: ' + ((err && err.message) || 'Failed to archive item.'));
+        });
+    }
+
+    // ── Archived menu items modal ─────────────────────────────────────────────
+    var menuArchiveBackdrop = document.getElementById('menu-archive-backdrop');
+    var menuArchiveList = document.getElementById('menu-archive-list');
+    var menuArchiveError = document.getElementById('menu-archive-error');
+    var menuArchiveBtn = document.getElementById('btn-menu-archive');
+    var menuArchiveClose = document.getElementById('menu-archive-close');
+    var menuArchiveDone = document.getElementById('menu-archive-done');
+
+    function setMenuArchiveError(msg) {
+        if (!menuArchiveError) return;
+        menuArchiveError.textContent = msg || '';
+        menuArchiveError.hidden = !msg;
+    }
+
+    function renderMenuArchiveList(items) {
+        if (!menuArchiveList) return;
+        var rows = Array.isArray(items) ? items : [];
+        if (!rows.length) {
+            menuArchiveList.innerHTML = '<p class="menu-archive-empty">No archived menu items.</p>';
+            return;
+        }
+        menuArchiveList.innerHTML = rows.map(function (item) {
+            var id = parseInt(item.id, 10) || 0;
+            var name = String(item.name || 'Item').trim();
+            var cat = displayCategoryLabelForTable(item.category_name || item.main_category_name || '');
+            return '' +
+                '<article class="menu-archive-card">' +
+                    '<div class="menu-archive-card__copy">' +
+                        '<strong>' + escHtml(name) + '</strong>' +
+                        '<span>' + escHtml(cat || '—') + '</span>' +
+                    '</div>' +
+                    '<button type="button" class="btn btn-muted btn-compact" data-restore-menu-id="' + id + '">Restore</button>' +
+                '</article>';
+        }).join('');
+    }
+
+    function loadArchivedMenuItems() {
+        setMenuArchiveError('');
+        if (menuArchiveList) {
+            menuArchiveList.innerHTML = '<p class="menu-archive-empty">Loading archived items…</p>';
+        }
+        return apiCall('GET', 'api/menu.php?archived=1').then(function (res) {
+            if (!res || !res.success) {
+                setMenuArchiveError((res && res.error) || 'Failed to load archived menu items.');
+                renderMenuArchiveList([]);
+                return;
+            }
+            renderMenuArchiveList(res.items || []);
+        }).catch(function (err) {
+            setMenuArchiveError((err && err.message) || 'Network error while loading archived menu items.');
+            renderMenuArchiveList([]);
+        });
+    }
+
+    function openMenuArchiveModal() {
+        if (!menuArchiveBackdrop) return;
+        openModal(menuArchiveBackdrop);
+        loadArchivedMenuItems();
+    }
+
+    function closeMenuArchiveModal() {
+        if (!menuArchiveBackdrop) return;
+        closeModal(menuArchiveBackdrop);
+    }
+
+    function restoreMenuItem(itemId) {
+        var id = parseInt(itemId, 10) || 0;
+        if (!id) return;
+        if (!confirm('Restore this menu item to the active list?')) return;
+        apiCall('PUT', 'api/menu.php', { id: id, is_active: 1 }).then(function (res) {
+            if (!res || !res.success) {
+                setMenuArchiveError((res && res.error) || 'Failed to restore item.');
+                return;
+            }
+            loadArchivedMenuItems();
+            loadItems();
+        }).catch(function (err) {
+            setMenuArchiveError((err && err.message) || 'Network error while restoring item.');
+        });
+    }
+
+    if (menuArchiveBtn) {
+        menuArchiveBtn.addEventListener('click', openMenuArchiveModal);
+    }
+    if (menuArchiveClose) {
+        menuArchiveClose.addEventListener('click', closeMenuArchiveModal);
+    }
+    if (menuArchiveDone) {
+        menuArchiveDone.addEventListener('click', closeMenuArchiveModal);
+    }
+    if (menuArchiveBackdrop) {
+        menuArchiveBackdrop.addEventListener('click', function (e) {
+            if (e.target === menuArchiveBackdrop) closeMenuArchiveModal();
+        });
+    }
+    if (menuArchiveList) {
+        menuArchiveList.addEventListener('click', function (e) {
+            var restoreBtn = e.target.closest('[data-restore-menu-id]');
+            if (!restoreBtn) return;
+            restoreMenuItem(restoreBtn.getAttribute('data-restore-menu-id'));
         });
     }
 

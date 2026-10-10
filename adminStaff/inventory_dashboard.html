@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261008-notes-autosave">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261010-archive">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="viewport_lock.css?v=20261008-kb-min">
@@ -69,7 +69,10 @@
                     <span class="inv-filter-btn__label">Filters</span>
                     <span class="inv-filter-btn__summary" id="inventory-filter-summary">All Items</span>
                 </button>
-                <button type="button" class="btn inv-edit-history-btn" id="btn-inventory-edit-history">Inventory Edit History</button>
+                <div class="inv-filter-bar__actions">
+                    <button type="button" class="btn inv-edit-history-btn" id="btn-inventory-edit-history">Inventory Edit History</button>
+                    <button type="button" class="btn inv-archive-btn" id="btn-inventory-archive">Archive</button>
+                </div>
             </section>
 
             <div class="inv-filter-backdrop" id="inventory-filter-backdrop" aria-hidden="true">
@@ -373,6 +376,25 @@
                 </div>
                 <footer class="inv-modal__footer">
                     <button type="button" class="btn btn-primary" id="inv-linked-items-done">Close</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="inv-modal-backdrop" id="inv-archive-backdrop" aria-hidden="true">
+            <div class="inv-modal inv-modal--archive" role="dialog" aria-modal="true" aria-labelledby="inv-archive-title">
+                <header class="inv-modal__header">
+                    <h2 id="inv-archive-title">Archived inventory</h2>
+                    <button type="button" class="inv-modal__close" id="inv-archive-close" aria-label="Close archive">×</button>
+                </header>
+                <div class="inv-modal__body">
+                    <p class="app-modal__hint">Archived items stay hidden from stock lists until restored.</p>
+                    <p class="inv-modal__error" id="inv-archive-error" hidden></p>
+                    <div class="inv-archive-list" id="inv-archive-list">
+                        <p class="inv-archive-empty">Loading archived items…</p>
+                    </div>
+                </div>
+                <footer class="inv-modal__footer">
+                    <button type="button" class="btn btn-primary" id="inv-archive-done">Close</button>
                 </footer>
             </div>
         </div>
@@ -3419,11 +3441,14 @@
                 if (linkedId) openLinkedItemsModal(linkedId);
                 return;
             }
-            var delBtn = e.target.closest('[data-delete-id]');
-            if (delBtn) {
+            var archiveBtn = e.target.closest('[data-archive-id], [data-delete-id]');
+            if (archiveBtn) {
                 e.preventDefault();
-                var delId = parseInt(delBtn.getAttribute('data-delete-id'), 10);
-                if (delId) archiveInventoryItem(delId);
+                var archiveId = parseInt(
+                    archiveBtn.getAttribute('data-archive-id') || archiveBtn.getAttribute('data-delete-id'),
+                    10
+                );
+                if (archiveId) archiveInventoryItem(archiveId);
                 return;
             }
             // Fallback for static/sample rows that do not yet carry data-* ids.
@@ -3446,7 +3471,7 @@
                             openLinkedItemsModal(found.id);
                             return;
                         }
-                        if (actionText === 'delete') {
+                        if (actionText === 'delete' || actionText === 'archive') {
                             archiveInventoryItem(found.id);
                             return;
                         }
@@ -3594,7 +3619,7 @@
                 '<span class="inv-action-sep" aria-hidden="true">|</span>' +
                 '<button type="button" class="link-btn link-btn--muted" data-linked-items-id="' + id + '" title="Menu recipes using this item">' + linkedLabel + '</button>' +
                 '<span class="inv-action-sep" aria-hidden="true">|</span>' +
-                '<button type="button" class="link-btn link-btn--danger" title="Archive" data-delete-id="' + id + '">Delete</button>';
+                '<button type="button" class="link-btn link-btn--danger" title="Archive" data-archive-id="' + id + '">Archive</button>';
         }
 
         function formatLinkedMenuLabel(row) {
@@ -3609,8 +3634,8 @@
             if (!item || !linkedItemsBackdrop) return;
             var linked = getLinkedRecipeMenus(item);
             if (linkedItemsHint) {
-                linkedItemsHint.textContent = linked.length
-                    ? ('Warning: “' + (item.name || 'Item') + '” is used in these menu recipes. Review before deleting.')
+                    linkedItemsHint.textContent = linked.length
+                    ? ('Warning: “' + (item.name || 'Item') + '” is used in these menu recipes. Review before archiving.')
                     : ('“' + (item.name || 'Item') + '” is not used in any menu recipe right now.');
             }
             if (linkedItemsList) {
@@ -3618,7 +3643,7 @@
                     linkedItemsList.innerHTML = '<li class="inv-linked-items-empty">No linked menu recipes.</li>';
                 } else {
                     linkedItemsList.innerHTML =
-                        '<li class="inv-linked-items-warn">Deleting this inventory item can break recipe deduction for the menus below.</li>' +
+                        '<li class="inv-linked-items-warn">Archiving this inventory item can break recipe deduction for the menus below until restored.</li>' +
                         linked.map(function (row) {
                             return '<li>' + esc(formatLinkedMenuLabel(row)) +
                                 '<small>Menu ID: ' + esc(String(row.menu_item_id || '')) + '</small></li>';
@@ -3726,6 +3751,121 @@
                   if (!d.success) { alert(d.error || 'Failed to archive item.'); return; }
                   loadInventory();
               });
+        }
+
+        var inventoryArchiveBackdrop = document.getElementById('inv-archive-backdrop');
+        var inventoryArchiveList = document.getElementById('inv-archive-list');
+        var inventoryArchiveError = document.getElementById('inv-archive-error');
+        var inventoryArchiveBtn = document.getElementById('btn-inventory-archive');
+        var inventoryArchiveClose = document.getElementById('inv-archive-close');
+        var inventoryArchiveDone = document.getElementById('inv-archive-done');
+
+        function setInventoryArchiveError(msg) {
+            if (!inventoryArchiveError) return;
+            inventoryArchiveError.textContent = msg || '';
+            inventoryArchiveError.hidden = !msg;
+        }
+
+        function closeInventoryArchiveModal() {
+            if (!inventoryArchiveBackdrop) return;
+            inventoryArchiveBackdrop.classList.remove('is-visible');
+            inventoryArchiveBackdrop.setAttribute('aria-hidden', 'true');
+        }
+
+        function renderInventoryArchiveList(items) {
+            if (!inventoryArchiveList) return;
+            var rows = Array.isArray(items) ? items : [];
+            if (!rows.length) {
+                inventoryArchiveList.innerHTML = '<p class="inv-archive-empty">No archived inventory items.</p>';
+                return;
+            }
+            inventoryArchiveList.innerHTML = rows.map(function (item) {
+                var id = parseInt(item.id, 10) || 0;
+                var name = String(item.name || item.item_name || 'Item').trim();
+                var cat = String(item.category_name || '').trim();
+                var typeLabel = formatCategoryTypeLabel(item.category_type || 'main');
+                return '' +
+                    '<article class="inv-archive-card">' +
+                        '<div class="inv-archive-card__copy">' +
+                            '<strong>' + esc(name) + '</strong>' +
+                            '<span>' + esc(cat || '—') + (typeLabel ? (' · ' + esc(typeLabel)) : '') + '</span>' +
+                        '</div>' +
+                        '<button type="button" class="btn btn-muted btn-compact" data-restore-inventory-id="' + id + '">Restore</button>' +
+                    '</article>';
+            }).join('');
+        }
+
+        function loadArchivedInventory() {
+            setInventoryArchiveError('');
+            if (inventoryArchiveList) {
+                inventoryArchiveList.innerHTML = '<p class="inv-archive-empty">Loading archived items…</p>';
+            }
+            return fetch('api/inventory.php?archived=1', { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setInventoryArchiveError((d && d.error) || 'Failed to load archived inventory.');
+                        renderInventoryArchiveList([]);
+                        return;
+                    }
+                    renderInventoryArchiveList(d.items || []);
+                })
+                .catch(function () {
+                    setInventoryArchiveError('Network error while loading archived inventory.');
+                    renderInventoryArchiveList([]);
+                });
+        }
+
+        function openInventoryArchiveModal() {
+            if (!inventoryArchiveBackdrop) return;
+            inventoryArchiveBackdrop.classList.add('is-visible');
+            inventoryArchiveBackdrop.setAttribute('aria-hidden', 'false');
+            loadArchivedInventory();
+        }
+
+        function restoreInventoryItem(itemId) {
+            var id = parseInt(itemId, 10) || 0;
+            if (!id) return;
+            if (!window.confirm('Restore this inventory item to the active list?')) return;
+            fetch('api/inventory.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, is_active: 1 })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) {
+                        setInventoryArchiveError((d && d.error) || 'Failed to restore item.');
+                        return;
+                    }
+                    loadArchivedInventory();
+                    loadInventory();
+                })
+                .catch(function () {
+                    setInventoryArchiveError('Network error while restoring item.');
+                });
+        }
+
+        if (inventoryArchiveBtn) {
+            inventoryArchiveBtn.addEventListener('click', openInventoryArchiveModal);
+        }
+        if (inventoryArchiveClose) {
+            inventoryArchiveClose.addEventListener('click', closeInventoryArchiveModal);
+        }
+        if (inventoryArchiveDone) {
+            inventoryArchiveDone.addEventListener('click', closeInventoryArchiveModal);
+        }
+        if (inventoryArchiveBackdrop) {
+            inventoryArchiveBackdrop.addEventListener('click', function (e) {
+                if (e.target === inventoryArchiveBackdrop) closeInventoryArchiveModal();
+            });
+        }
+        if (inventoryArchiveList) {
+            inventoryArchiveList.addEventListener('click', function (e) {
+                var restoreBtn = e.target.closest('[data-restore-inventory-id]');
+                if (!restoreBtn) return;
+                restoreInventoryItem(restoreBtn.getAttribute('data-restore-inventory-id'));
+            });
         }
 
         function renderRows() {

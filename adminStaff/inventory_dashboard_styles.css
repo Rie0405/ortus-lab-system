@@ -373,8 +373,14 @@ body {
     margin-bottom: 14px;
     gap: 12px;
 }
-.inv-edit-history-btn {
+.inv-filter-bar__actions {
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.inv-edit-history-btn,
+.inv-archive-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -391,7 +397,8 @@ body {
     transition: background 0.15s ease, border-color 0.15s ease;
     white-space: nowrap;
 }
-.inv-edit-history-btn:hover {
+.inv-edit-history-btn:hover,
+.inv-archive-btn:hover {
     background: rgba(244, 140, 37, 0.18);
     border-color: rgba(244, 140, 37, 0.55);
 }
@@ -1417,6 +1424,51 @@ body {
 }
 .inv-modal--wide {
     width: min(920px, 100%);
+}
+.inv-modal--archive {
+    width: min(560px, 100%);
+}
+.inv-archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: min(52vh, 420px);
+    overflow: auto;
+    margin-top: 10px;
+}
+.inv-archive-empty {
+    margin: 0;
+    padding: 18px 14px;
+    border: 1px dashed #3d3025;
+    border-radius: 10px;
+    color: #94a3b8;
+    font-size: 13px;
+    text-align: center;
+}
+.inv-archive-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #3d3025;
+    border-radius: 10px;
+    background: #221a14;
+}
+.inv-archive-card__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.inv-archive-card__copy strong {
+    color: #f8fafc;
+    font-size: 14px;
+    font-weight: 700;
+}
+.inv-archive-card__copy span {
+    color: #94a3b8;
+    font-size: 12px;
 }
 .inv-edit-history__eyebrow {
     margin: 0 0 4px;

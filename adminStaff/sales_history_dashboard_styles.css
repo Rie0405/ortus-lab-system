@@ -27,6 +27,10 @@ body {
     display: flex;
     flex-direction: column;
     background: #120e0a;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .top-nav {
@@ -101,6 +105,11 @@ body {
 .sales-main {
     padding: 28px 76px 20px;
     flex: 1;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    min-width: 0;
 }
 
 .heading-row {
@@ -1076,6 +1085,11 @@ body {
     background: rgba(45, 36, 27, 0.55);
     border-radius: 10px;
     padding: 14px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    min-width: 0;
 }
 
 .sales-report-discount-btn {
@@ -1200,23 +1214,37 @@ body {
     align-items: flex-end;
     justify-content: space-between;
     gap: 12px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .sales-report-block__actions {
     display: flex;
     align-items: flex-end;
-    gap: 14px;
+    gap: 10px;
     flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+.sales-report-block__actions > * {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .sales-report-filter {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-width: 160px;
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 140px;
 }
 .sales-report-filter--search {
-    min-width: 200px;
-    flex: 1 1 200px;
-    max-width: 280px;
+    min-width: 0;
+    flex: 1 1 180px;
+    max-width: 100%;
 }
 .sales-report-filter--search input {
     border: 1px solid #3d3025;
@@ -1255,6 +1283,10 @@ body {
     color: #fff;
     padding: 8px 10px;
     font: inherit;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 .sales-report-date-toggle {
     border: 1px solid #3d3025;
@@ -1410,7 +1442,11 @@ body {
     margin-top: 10px;
     border: 1px solid #3d3025;
     border-radius: 8px;
-    overflow: auto;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     background: #1a140f;
 }
 .sales-report-table {
@@ -1452,8 +1488,12 @@ body {
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     margin-top: 12px;
+    width: 100%;
+    max-width: 100%;
+    padding: 15px 0;
+    box-sizing: border-box;
 }
 
 .sales-report-pagination[hidden] {
@@ -1461,17 +1501,19 @@ body {
 }
 
 .sales-report-page-btn {
-    min-width: 34px;
-    height: 34px;
-    padding: 0 10px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 6px;
     border: 1px solid #3d3025;
     border-radius: 8px;
     background: #2a2118;
     color: #cbd5e1;
     font: inherit;
-    font-size: 12px;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
+    box-sizing: border-box;
+    flex: 0 0 auto;
 }
 
 .sales-report-page-btn:hover:not(:disabled) {
@@ -1818,8 +1860,12 @@ body {
     .staff-brief-expenses-readout .brief-readout__list,
     .staff-brief-box--starting .brief-readout__list { max-height: 240px; }
     .staff-brief-activity__controls { grid-template-columns: 1fr; }
-    .sales-report-block__head { flex-direction: column; align-items: flex-start; }
-    .sales-report-filter { width: 100%; }
+    .sales-report-block__head { flex-direction: column; align-items: flex-start; width: 100%; }
+    .sales-report-block__actions { width: 100%; }
+    .sales-report-filter,
+    .sales-report-filter--search { width: 100%; max-width: 100%; flex: 1 1 100%; }
+    .sales-report-pagination { justify-content: center; gap: 6px; }
+    .sales-report-page-btn { min-width: 34px; height: 34px; font-size: 0.8rem; }
     .sh-modal {
         width: min(100%, calc(100vw - 24px));
         max-width: calc(100vw - 24px);
@@ -1834,8 +1880,10 @@ body {
 
 @media (max-width: 640px) {
     .metrics-grid { grid-template-columns: 1fr; }
-    .sales-main { padding: 12px; }
+    .sales-main { padding: 12px; max-width: 100vw; overflow-x: hidden; }
     .top-nav { padding: 12px; }
     .heading-row h1 { font-size: clamp(26px, 8vw, 36px); }
+    .sales-report-block { padding: 12px; }
+    .sales-report-page-btn { min-width: 32px; height: 32px; padding: 0 4px; font-size: 0.78rem; }
     img { max-width: 100%; height: auto; }
 }

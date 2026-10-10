@@ -2909,6 +2909,189 @@ body {
     }
 }
 
+/*
+ * Inventory card view — Portrait / narrow (≤900px).
+ * Markup is div-grid (.table-head / .table-row), not <table class="inventory-table">.
+ * Labels via nth-child ::before (no JS / data-label required).
+ */
+@media (max-width: 900px), (orientation: portrait) {
+    #inventory-table-wrap,
+    #inventory-secondary-table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    /* Hide column headers */
+    #inventory-table-wrap > .table-head,
+    #inventory-secondary-table-wrap > .table-head {
+        display: none !important;
+    }
+
+    #inventory-table-wrap .table-row,
+    #inventory-secondary-table-wrap .table-row {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        margin-bottom: 15px !important;
+        background: #1e1e1e !important;
+        border: 1px solid #333 !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+        gap: 0 !important;
+        grid-template-columns: none !important;
+    }
+
+    #inventory-table-wrap .table-row--out-of-stock {
+        background: rgba(244, 140, 37, 0.14) !important;
+        border-color: rgba(244, 140, 37, 0.45) !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 4px 0 0 #f48c25 !important;
+    }
+
+    #inventory-table-wrap .table-row > *,
+    #inventory-secondary-table-wrap .table-row > * {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #2a2a2a !important;
+        text-align: right !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        grid-column: auto !important;
+    }
+
+    #inventory-table-wrap .table-row > *:last-child,
+    #inventory-secondary-table-wrap .table-row > *:last-child {
+        border-bottom: none !important;
+    }
+
+    /* Field labels (left) — mirrors former column headers */
+    #inventory-table-wrap .table-row > *::before,
+    #inventory-secondary-table-wrap .table-row > *::before {
+        font-weight: 700 !important;
+        color: #888 !important;
+        font-size: 0.85rem !important;
+        text-transform: uppercase !important;
+        text-align: left !important;
+        padding-right: 10px !important;
+        flex: 0 0 auto;
+        max-width: 46%;
+        line-height: 1.25;
+    }
+
+    /* Automatic inventory columns */
+    #inventory-table-wrap .table-row > *:nth-child(1)::before { content: "Item Details"; }
+    #inventory-table-wrap .table-row > *:nth-child(2)::before { content: "Category"; }
+    #inventory-table-wrap .table-row > *:nth-child(3)::before { content: "Stock Used"; }
+    #inventory-table-wrap .table-row > *:nth-child(4)::before { content: "Stock Level"; }
+    #inventory-table-wrap .table-row > *:nth-child(5)::before { content: "Batch Capacity"; }
+    #inventory-table-wrap .table-row > *:nth-child(6)::before { content: "Per Piece"; }
+    #inventory-table-wrap .table-row > *:nth-child(7)::before { content: "Status"; }
+    #inventory-table-wrap .table-row > *:nth-child(8)::before { content: "Actions"; }
+
+    /* Manual inventory columns */
+    #inventory-secondary-table-wrap .table-row > *:nth-child(1)::before { content: "Item Details"; }
+    #inventory-secondary-table-wrap .table-row > *:nth-child(2)::before { content: "Category"; }
+    #inventory-secondary-table-wrap .table-row > *:nth-child(3)::before { content: "Stock Status"; }
+    #inventory-secondary-table-wrap .table-row > *:nth-child(4)::before { content: "Status"; }
+    #inventory-secondary-table-wrap .table-row > *:nth-child(5)::before { content: "Notes"; }
+    #inventory-secondary-table-wrap .table-row > *:nth-child(6)::before { content: "Actions"; }
+
+    #inventory-table-wrap .table-row > .actions,
+    #inventory-table-wrap .table-row > *:nth-child(8),
+    #inventory-secondary-table-wrap .table-row > .actions,
+    #inventory-secondary-table-wrap .table-row > .inv-manual-actions,
+    #inventory-secondary-table-wrap .table-row > *:nth-child(6) {
+        justify-content: flex-end !important;
+        gap: 15px !important;
+        padding-top: 12px !important;
+        flex-wrap: wrap;
+    }
+
+    #inventory-table-wrap .table-row > .actions,
+    #inventory-secondary-table-wrap .table-row > .actions,
+    #inventory-secondary-table-wrap .table-row > .inv-manual-actions {
+        flex-direction: row !important;
+        align-items: center !important;
+    }
+
+    #inventory-table-wrap .item-col,
+    #inventory-secondary-table-wrap .item-col {
+        justify-content: flex-end !important;
+        text-align: right !important;
+        gap: 10px;
+    }
+
+    #inventory-table-wrap .item-col > div,
+    #inventory-secondary-table-wrap .item-col > div {
+        text-align: right;
+    }
+
+    #inventory-table-wrap .table-row > .inv-col-category,
+    #inventory-table-wrap .table-row > .category-cell,
+    #inventory-secondary-table-wrap .table-row > .inv-col-category,
+    #inventory-secondary-table-wrap .table-row > .category-cell {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+    }
+
+    #inventory-table-wrap .category-badges-wrapper,
+    #inventory-secondary-table-wrap .category-badges-wrapper {
+        align-items: flex-end !important;
+    }
+
+    .item-col__tablet-meta {
+        display: none !important;
+    }
+
+    /* Category section labels / empty rows — keep as simple full-width bars */
+    #inventory-table-wrap .table-row--category-label,
+    #inventory-table-wrap .table-row--category-empty,
+    #inventory-secondary-table-wrap .table-row--category-label,
+    #inventory-secondary-table-wrap .table-row--category-empty {
+        padding: 0 !important;
+        box-shadow: none !important;
+        background: rgba(148, 163, 184, 0.1) !important;
+        border-color: rgba(61, 48, 37, 0.65) !important;
+    }
+
+    #inventory-table-wrap .table-row--category-label > *,
+    #inventory-table-wrap .table-row--category-empty > *,
+    #inventory-secondary-table-wrap .table-row--category-label > *,
+    #inventory-secondary-table-wrap .table-row--category-empty > * {
+        display: block !important;
+        border-bottom: none !important;
+        padding: 10px 16px !important;
+        text-align: center !important;
+        justify-content: center !important;
+    }
+
+    #inventory-table-wrap .table-row--category-label > *::before,
+    #inventory-table-wrap .table-row--category-empty > *::before,
+    #inventory-secondary-table-wrap .table-row--category-label > *::before,
+    #inventory-secondary-table-wrap .table-row--category-empty > *::before {
+        content: none !important;
+    }
+
+    .inv-manual-notes-input {
+        width: min(100%, 220px);
+        max-width: 58%;
+        text-align: left;
+    }
+}
+
 @media (max-width: 640px) {
     .alert-grid { grid-template-columns: 1fr; }
     .title-row h1 { font-size: 28px; }

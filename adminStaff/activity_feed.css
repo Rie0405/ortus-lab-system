@@ -64,11 +64,12 @@
     display: none !important;
 }
 
-/* 1. Completely remove dark backdrop / overlay tint */
+/* 1. Backdrop layer (transparent) — stay below the card */
 body:has(.activity-feed-panel.is-open)::before,
 body:has(#activity-feed-panel.is-open)::before,
 .notification-modal-overlay,
-.notification-popover-backdrop {
+.notification-popover-backdrop,
+[class*="notification-backdrop"] {
     content: none !important;
     display: none !important;
     background: transparent !important;
@@ -78,33 +79,49 @@ body:has(#activity-feed-panel.is-open)::before,
     opacity: 0 !important;
     width: 0 !important;
     height: 0 !important;
+    z-index: 99998 !important;
 }
 
-/* 2. Pure dropdown pop-up card */
+/* Elevate header stacking context while panel is open so card can clear page chrome */
+.top-nav:has(.activity-feed-panel.is-open),
+.top-navbar:has(.activity-feed-panel.is-open),
+.top-actions:has(.activity-feed-panel.is-open),
+.activity-bell-wrap:has(.activity-feed-panel.is-open) {
+    z-index: 99999 !important;
+    position: relative !important;
+}
+
+.top-nav:has(.activity-feed-panel.is-open),
+.top-navbar:has(.activity-feed-panel.is-open) {
+    position: sticky !important;
+}
+
+/* 2. System Updates popover — topmost layer over nav, cards, modals chrome */
 .activity-feed-panel,
 .notification-popover,
 .system-updates-card,
-[class*="notification-card"] {
+[class*="notification-card"],
+[class*="popover-content"] {
     pointer-events: auto !important;
     position: absolute !important;
-    top: 100% !important;
-    right: 0 !important;
+    top: 60px !important;
+    right: 20px !important;
     left: auto !important;
     bottom: auto !important;
-    margin-top: 8px !important;
+    margin-top: 0 !important;
     transform: none !important;
     width: 360px !important;
-    max-width: 90vw !important;
+    max-width: min(360px, calc(100vw - 24px)) !important;
     max-height: min(70vh, 480px) !important;
     display: none;
     flex-direction: column !important;
     background: #141414 !important;
     border: 1px solid #2a2a2a !important;
     border-radius: 12px !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.9) !important;
     padding: 14px !important;
     box-sizing: border-box !important;
-    z-index: 3000 !important;
+    z-index: 99999 !important;
     overflow: hidden !important;
     animation: none !important;
 }
@@ -149,24 +166,24 @@ body:has(#activity-feed-panel.is-open)::before,
     background: rgba(255, 255, 255, 0.06);
 }
 
-/* 3. Sleek custom scrollbar inside updates list */
+/* 3. Internal body scrollbar styling */
 .activity-feed-panel__list,
 .notification-popover-body,
 .updates-list,
 [class*="updates-list"] {
-    max-height: 320px !important;
+    max-height: 360px !important;
     overflow-y: auto !important;
     padding: 8px 4px 8px 0 !important;
     flex: 1 1 auto;
     min-height: 0;
     scrollbar-width: thin !important;
-    scrollbar-color: #333 #141414 !important;
+    scrollbar-color: #555 #141414 !important;
 }
 
 .activity-feed-panel__list::-webkit-scrollbar,
 .notification-popover-body::-webkit-scrollbar,
 [class*="updates-list"]::-webkit-scrollbar {
-    width: 5px !important;
+    width: 6px !important;
 }
 
 .activity-feed-panel__list::-webkit-scrollbar-track,
@@ -178,7 +195,7 @@ body:has(#activity-feed-panel.is-open)::before,
 .activity-feed-panel__list::-webkit-scrollbar-thumb,
 .notification-popover-body::-webkit-scrollbar-thumb,
 [class*="updates-list"]::-webkit-scrollbar-thumb {
-    background: #333 !important;
+    background: #555 !important;
     border-radius: 4px !important;
 }
 
@@ -269,6 +286,7 @@ body:has(#activity-feed-panel.is-open)::before,
     .notification-popover {
         width: min(360px, calc(100vw - 24px)) !important;
         max-width: calc(100vw - 24px) !important;
-        right: 0 !important;
+        top: 56px !important;
+        right: 12px !important;
     }
 }

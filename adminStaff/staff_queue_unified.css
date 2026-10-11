@@ -182,6 +182,50 @@
 }
 
 /* ==========================================================================
+   1b. TABLET ONLY (850px–1199px): narrower Served Orders so cards breathe
+       Phone (<850 stacked) + Desktop (≥1200 / 320px sidebar) unchanged.
+   ========================================================================== */
+@media (min-width: 850px) and (max-width: 1199px) {
+    .kitchen-layout,
+    .bar-area-container,
+    .kitchen-area-container,
+    .pastries-area-container,
+    [class="queue-main-wrapper"] {
+        grid-template-columns: minmax(0, 1fr) 200px !important;
+        gap: 12px !important;
+        padding: 12px !important;
+    }
+
+    .kitchen-layout > .opq-grid.opq-queue-partitions,
+    .staff-main-panel--kitchen .opq-queue-partitions {
+        gap: 12px !important;
+    }
+
+    .staff-main-panel--kitchen .opq-queue-partition:not(:last-child) {
+        padding-right: 8px !important;
+    }
+
+    .kitchen-layout > .kitchen-serving-panel,
+    .staff-main-panel--kitchen .kitchen-serving-panel,
+    .served-orders-sidebar,
+    [class*="orders-right-panel"] {
+        width: 200px !important;
+        min-width: 200px !important;
+        max-width: 200px !important;
+        padding: 10px !important;
+    }
+
+    .kitchen-serving-title {
+        font-size: 9px !important;
+    }
+
+    .kitchen-serving-head .opq-done-all-btn {
+        font-size: 9px !important;
+        padding: 4px 6px !important;
+    }
+}
+
+/* ==========================================================================
    2. NARROW SCREENS (< 850px): STACKED VERTICAL FLOW
    ========================================================================== */
 @media (max-width: 849px) {

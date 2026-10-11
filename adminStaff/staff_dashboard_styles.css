@@ -3966,6 +3966,39 @@ img {
     overflow-y: auto;
 }
 
+/* Tablet only: taller Order History list (phone + desktop unchanged) */
+@media (min-width: 850px) and (max-width: 1199px) {
+    .staff-main-panel--waste-tab.is-active {
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .staff-main-panel--waste-tab .waste-tab-layout {
+        min-height: calc(100vh - 110px);
+        min-height: calc(100svh - 110px);
+        align-items: stretch;
+    }
+
+    .staff-main-panel--waste-tab .waste-tab-history {
+        min-height: min(72vh, 820px);
+        flex: 1 1 auto;
+    }
+
+    .staff-main-panel--waste-tab .waste-order-history-list {
+        flex: 1 1 auto !important;
+        min-height: min(52vh, 560px) !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .staff-main-panel--waste-tab .order-history-pagination {
+        flex-shrink: 0;
+    }
+}
+
 .waste-history-item {
     border: 1px solid #3d3025;
     border-radius: 10px;

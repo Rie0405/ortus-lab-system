@@ -7423,40 +7423,8 @@ img {
         min-height: 0;
     }
 
-    .pos-main {
-        flex-direction: row;
-        flex-wrap: nowrap;
-        align-items: stretch;
-        overflow: hidden;
-        min-height: 0;
-        height: 100%;
-    }
-
-    .pos-left {
-        flex: 1 1 auto;
-        min-width: 0;
-        width: auto;
-        max-width: none;
-        height: 100%;
-        padding: 1.25rem;
-        overflow-x: hidden;
-        overflow-y: auto;
-    }
-
-    .pos-right {
-        flex: 0 0 320px;
-        flex-shrink: 0;
-        width: 320px;
-        min-width: 320px;
-        max-width: 320px;
-        height: 100%;
-        padding: 1.25rem;
-        border-left: 1px solid rgba(244, 140, 37, 0.2);
-        border-top: 0;
-        overflow-x: hidden;
-        overflow-y: auto;
-    }
-
+    /* POS side-by-side starts at 1024px — see staff_pos_responsive.css
+       (768–1023 keeps stacked menu + full-width order sheet). */
     .pos-nav-toggle {
         display: none;
     }
@@ -7676,7 +7644,7 @@ img {
     }
 }
 
-/* Desktop: roomier header + wider cart; side-by-side already from 768px */
+/* Desktop: roomier header + wider cart (side-by-side from 1024px via staff_pos_responsive.css) */
 @media (min-width: 1025px) {
     .pos-header {
         height: auto;

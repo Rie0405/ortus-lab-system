@@ -1,0 +1,116 @@
+/*
+ * Modal overlay layering — keep sticky top nav below open modals.
+ * Shared by inventory / ordering / sales history. CSS only.
+ */
+
+/* 1. Sticky header stays at layer 1000 */
+.top-nav,
+.top-navbar,
+header.top-nav,
+header.top-navbar,
+[class*="main-header"] {
+    z-index: 1000 !important;
+    position: sticky !important;
+}
+
+/* 2. Modal backdrops sit ABOVE the sticky header */
+.modal,
+.modal-overlay,
+.modal-backdrop,
+.product-modal-backdrop,
+.inv-modal-backdrop,
+.app-modal-backdrop,
+.receipt-modal-backdrop,
+.receipt-summary-backdrop,
+.receipt-detail-backdrop,
+.gcash-config-backdrop,
+.menu-filter-backdrop,
+.inv-filter-backdrop,
+.sh-modal-backdrop,
+.open-stock-used-backdrop,
+[class*="modal-backdrop"],
+[class*="modal-overlay"],
+[class*="modal-bg"] {
+    z-index: 2000 !important;
+    box-sizing: border-box !important;
+}
+
+/* Visible / always-flex backdrops: center with clearance below 64px header */
+.product-modal-backdrop.is-visible,
+.gcash-config-backdrop.is-visible,
+.menu-filter-backdrop.is-visible,
+.inv-filter-backdrop.is-visible,
+.sh-modal-backdrop.is-visible,
+.inv-modal-backdrop,
+.app-modal-backdrop,
+.receipt-modal-backdrop,
+.receipt-summary-backdrop,
+.receipt-detail-backdrop,
+[class*="modal-backdrop"].is-visible {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 70px 16px 16px !important; /* safety clearance below sticky nav */
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+/* Nested / stacked modals keep relative order above the base overlay layer */
+.receipt-modal-backdrop { z-index: 2010 !important; }
+.receipt-summary-backdrop { z-index: 2020 !important; }
+.receipt-detail-backdrop { z-index: 2030 !important; }
+.gcash-config-backdrop { z-index: 2010 !important; }
+.sh-modal-backdrop { z-index: 2010 !important; }
+
+/* 3. Modal boxes stay within viewport below the nav band */
+.product-modal,
+.inv-modal,
+.app-modal,
+.receipt-modal,
+.receipt-summary-modal,
+.receipt-detail-modal,
+.gcash-config-modal,
+.sh-modal,
+.open-stock-used-modal,
+.modal-content,
+.modal-card,
+.modal-dialog,
+[class*="modal-card"],
+[class*="create-product-dialog"] {
+    margin-top: 10px !important;
+    max-height: calc(100vh - 90px) !important;
+    max-height: calc(100dvh - 90px) !important;
+    box-sizing: border-box !important;
+}
+
+/* Scroll inside the modal body when present; otherwise the shell can scroll */
+.product-modal__body,
+.inv-modal__body,
+.app-modal__body,
+.receipt-modal__body,
+.receipt-summary-modal__body,
+.receipt-detail-modal__body,
+.gcash-config-modal__body,
+.sh-modal__body,
+.create-product-body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Close (×) controls must paint above modal chrome */
+.product-modal__close,
+.inv-modal__close,
+.app-modal__close,
+.receipt-modal__close,
+.receipt-summary-modal__close,
+.receipt-detail-modal__close,
+.gcash-config-modal__close,
+.sh-modal__close,
+[class*="modal__close"],
+[class*="-modal__close"] {
+    position: relative !important;
+    z-index: 5 !important;
+}

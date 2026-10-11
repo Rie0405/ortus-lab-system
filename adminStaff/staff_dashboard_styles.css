@@ -3966,7 +3966,8 @@ img {
     overflow-y: auto;
 }
 
-/* Tablet only: taller Order History list (phone + desktop unchanged) */
+/* Tablet only: taller Order History + fully visible page switcher
+   (phone + desktop unchanged) */
 @media (min-width: 850px) and (max-width: 1199px) {
     .staff-main-panel--waste-tab.is-active {
         min-height: 0;
@@ -3978,24 +3979,80 @@ img {
     .staff-main-panel--waste-tab .waste-tab-layout {
         min-height: calc(100vh - 110px);
         min-height: calc(100svh - 110px);
+        max-height: calc(100svh - 110px);
         align-items: stretch;
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .staff-main-panel--waste-tab .waste-tab-history {
-        min-height: min(72vh, 820px);
+        display: flex !important;
+        flex-direction: column !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        min-height: min(70vh, 780px);
         flex: 1 1 auto;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
     }
 
+    .staff-main-panel--waste-tab .waste-tab-head,
+    .staff-main-panel--waste-tab .order-history-tabs {
+        flex-shrink: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* List scrolls; never steal space from the pagination row */
     .staff-main-panel--waste-tab .waste-order-history-list {
         flex: 1 1 auto !important;
-        min-height: min(52vh, 560px) !important;
+        min-height: 0 !important;
         max-height: none !important;
+        overflow-x: hidden !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
+    /* Page switcher always fully on-screen / in-bounds */
     .staff-main-panel--waste-tab .order-history-pagination {
-        flex-shrink: 0;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 10px 12px 14px !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
+        overflow: visible !important;
+        position: relative !important;
+        z-index: 2 !important;
+    }
+
+    .staff-main-panel--waste-tab .order-history-page-btn {
+        flex: 0 1 auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
+    }
+
+    .staff-main-panel--waste-tab .order-history-page-info {
+        flex: 0 1 auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        white-space: nowrap !important;
+        font-size: 12px !important;
     }
 }
 

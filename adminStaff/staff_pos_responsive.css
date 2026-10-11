@@ -278,6 +278,7 @@
         box-sizing: border-box !important;
     }
 
+    /* Brand + staff/logout on ONE top row; nav tabs on second row */
     .pos-header {
         position: relative !important;
         top: auto !important;
@@ -292,29 +293,35 @@
         background: #0d0d0d !important;
         border-bottom: 1px solid #222 !important;
         margin: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 6px !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        grid-template-areas: "brand meta" "nav nav" !important;
+        align-items: start !important;
+        column-gap: 8px !important;
+        row-gap: 6px !important;
         padding: 10px 14px !important;
         box-sizing: border-box !important;
     }
 
+    /* Lift bar + tabs into the header grid (no HTML move) */
     .pos-header__primary {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        gap: 6px !important;
-        flex: 0 0 auto !important;
+        display: contents !important;
     }
 
     .pos-header__bar {
-        width: 100% !important;
-        flex: 0 0 auto !important;
+        grid-area: brand !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
         display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+    }
+
+    .pos-header .brand-block {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
     }
 
     .pos-header .brand-block,
@@ -326,14 +333,20 @@
         line-height: 1.25 !important;
     }
 
+    /* Tighten brand so it lines up with staff/logout */
+    .pos-header .brand-block p {
+        display: none !important;
+    }
+
     .pos-header .header-main-tabs,
     .pos-header .header-main-tabs.is-open {
+        grid-area: nav !important;
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         width: 100% !important;
         max-width: 100% !important;
-        margin: 4px 0 0 0 !important;
+        margin: 0 !important;
         padding-top: 6px !important;
         border-top: 1px solid #1a1a1a !important;
         overflow-x: auto !important;
@@ -341,10 +354,50 @@
         -webkit-overflow-scrolling: touch !important;
     }
 
+    /* Staff name + logout — far right, same row as ORTUS LAB */
     .pos-header .header-meta {
-        width: 100% !important;
+        grid-area: meta !important;
+        width: auto !important;
+        max-width: 48vw !important;
+        margin: 0 !important;
+        padding: 0 !important;
         justify-content: flex-end !important;
+        align-items: center !important;
+        align-self: start !important;
         flex-shrink: 0 !important;
+        gap: 6px !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+    }
+
+    .pos-header .meta-cell--staff {
+        min-width: 0 !important;
+        text-align: right !important;
+    }
+
+    .pos-header .meta-cell--staff span {
+        font-size: 0.6rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .pos-header .meta-cell--staff strong {
+        font-size: 0.75rem !important;
+        line-height: 1.2 !important;
+        max-width: 7.5rem !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        display: block !important;
+    }
+
+    .pos-header .meta-cell--logout {
+        flex-shrink: 0 !important;
+    }
+
+    /* Free vertical space so the red returned-orders tab is fully visible */
+    .queue-drawer-tab,
+    .queue-drawer-shell .queue-drawer-tab {
+        z-index: 1050 !important;
     }
 
     /* POS body sits strictly BELOW the header — never overlays it */

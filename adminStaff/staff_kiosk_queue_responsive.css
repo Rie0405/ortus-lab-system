@@ -1,7 +1,8 @@
 /*
- * KIOSK Processing Queue — adaptive layout (Dine In / Take Out / Pick Up).
- * Desktop: 3 equal columns. ≤900px: vertical stack + full-width cards.
- * CSS only — no HTML / JS / CONFIRM·DELETE·DISCOUNT·EDIT logic changes.
+ * Kiosk Processing Queue — adaptive layout (CSS only).
+ * Desktop: 3 equal Dine In / Take Out / Pick Up columns.
+ * ≤900px: vertical stack, full-width cards, 2×2 action grid.
+ * No HTML / JS / polling / button handler changes.
  */
 
 /* 1. Desktop base (> 900px) */
@@ -17,21 +18,17 @@
         align-items: start !important;
     }
 
-    .staff-main-panel--queue .opq-queue-partition,
-    .kiosk-column,
-    [class="queue-col"] {
+    .staff-main-panel--queue .opq-queue-partition {
         min-width: 0 !important;
         max-width: 100% !important;
-        width: auto !important;
         box-sizing: border-box !important;
     }
 
     .staff-main-panel--queue .opq-queue-partition-body.opq-grid {
         display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 12px !important;
+        grid-template-columns: minmax(0, 1fr) !important;
         width: 100% !important;
-        min-width: 0 !important;
+        gap: 12px !important;
     }
 
     .staff-main-panel--queue .opq-card {
@@ -42,8 +39,9 @@
     }
 }
 
-/* 2. Mobile & tablet (< 900px) — stack columns */
+/* 2. Mobile & tablet (< 900px) */
 @media (max-width: 900px) {
+    /* Unlock scroll when kiosk queue is active */
     html:has(.staff-main-panel--queue.is-active),
     body:has(.staff-main-panel--queue.is-active) {
         position: static !important;
@@ -58,15 +56,13 @@
 
     .pos-page:has(> .staff-main-panel--queue.is-active),
     .staff-main-panel--queue.is-active,
-    .staff-main-panel--queue.is-active .opq-main,
-    .staff-main-panel--queue .opq-layout {
+    .staff-main-panel--queue.is-active .opq-layout,
+    .staff-main-panel--queue.is-active .opq-main {
         height: auto !important;
         max-height: none !important;
         min-height: 0 !important;
         overflow-x: hidden !important;
         overflow-y: visible !important;
-        display: flex !important;
-        flex-direction: column !important;
         box-sizing: border-box !important;
     }
 
@@ -76,6 +72,7 @@
         -webkit-overflow-scrolling: touch !important;
     }
 
+    /* Reflow 3 columns → vertical stack */
     .staff-main-panel--queue .opq-queue-partitions,
     .kiosk-queue-container,
     [class="processing-queue-wrapper"] {
@@ -89,18 +86,17 @@
         overflow-x: hidden !important;
         overflow-y: visible !important;
         box-sizing: border-box !important;
-        align-items: stretch !important;
     }
 
+    /* Section wrappers (Dine In / Take Out / Pick Up) */
     .staff-main-panel--queue .opq-queue-partition,
     .kiosk-column,
     [class="queue-col"] {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
-        padding: 0 !important;
-        overflow: visible !important;
         border-right: 0 !important;
+        padding: 0 !important;
         box-sizing: border-box !important;
     }
 
@@ -111,6 +107,7 @@
         margin-bottom: 4px !important;
     }
 
+    /* Section headers */
     .staff-main-panel--queue .opq-queue-partition-head,
     .kiosk-column-title,
     [class="queue-col"] h3 {
@@ -127,10 +124,11 @@
     .staff-main-panel--queue .opq-queue-partition-body.opq-grid {
         display: grid !important;
         grid-template-columns: minmax(0, 1fr) !important;
-        gap: 12px !important;
         width: 100% !important;
+        gap: 12px !important;
     }
 
+    /* Order cards — full width */
     .staff-main-panel--queue .opq-card,
     .kiosk-order-card,
     [class="processing-card"] {
@@ -140,9 +138,11 @@
         height: auto !important;
         padding: 16px !important;
         box-sizing: border-box !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
     }
 
-    /* CONFIRM / DELETE / DISCOUNT / EDIT — 2×2 touch grid */
+    /* CONFIRM / DELETE / DISCOUNT / EDIT — 2×2 grid */
     .staff-main-panel--queue .staff-opq-actions,
     .kiosk-card-actions,
     [class="card-actions-grid"] {
@@ -165,6 +165,5 @@
         align-items: center !important;
         justify-content: center !important;
         box-sizing: border-box !important;
-        padding: 8px 6px !important;
     }
 }

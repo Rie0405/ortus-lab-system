@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="viewport_lock.css?v=20261010-fluid">
     <link rel="stylesheet" href="fluid_adaptive.css?v=20261011-pos">
     <link rel="stylesheet" href="unified_top_nav.css?v=20261010-nav-scroll">
-    <link rel="stylesheet" href="staff_pos_responsive.css?v=20261011-sheet-scroll">
+    <link rel="stylesheet" href="staff_pos_responsive.css?v=20261011-phone-meta">
     <link rel="stylesheet" href="staff_queue_unified.css?v=20261011-tablet-served">
     <link rel="stylesheet" href="staff_kiosk_queue_responsive.css?v=20261011-850">
     <script src="viewport_lock.js?v=20261008" defer></script>
@@ -185,7 +185,6 @@
                 </div>
 
                 <div class="right-view right-view--order is-active" data-view-panel="order">
-                    <div class="pos-order-sheet-scroll">
                     <label class="pos-customer-name" for="pos-customer-name">
                         <span class="pos-customer-name__label">Customer Name <span class="pos-customer-name__required" aria-hidden="true">*</span></span>
                         <input type="text" class="pos-customer-name__input" id="pos-customer-name" maxlength="160" placeholder="Name for this receipt" autocomplete="name" required aria-required="true">
@@ -216,7 +215,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
                     </div>
 
                     <div class="totals">
@@ -5504,7 +5502,7 @@
                                     lines.push("  → " + servingCount + " in Served Orders panel — click SERVED / SERVED ALL");
                                 }
                                 if (!kitchenCount && !servingCount) {
-                                    lines.push("  → Open any capsule tab; stuck orders are force-shown there.");
+                                    lines.push("  → Open the matching capsule tab and finish remaining DONE / SERVED work.");
                                 }
                             }
                             lines.push("");
@@ -6117,6 +6115,19 @@
         function isKioskOrder(order) {
             return String(order && order.order_source || '').toLowerCase() === 'kiosk';
         }
+        function stationKeyFromExactName(rawName) {
+            var mcRaw = String(rawName || '').trim();
+            if (!mcRaw) return '';
+            var want = normKitchenCategoryName(mcRaw);
+            var bySlug = findStationByKey(slugStationName(mcRaw));
+            if (bySlug) return bySlug.key;
+            for (var i = 0; i < staffMainStations.length; i++) {
+                if (normKitchenCategoryName(staffMainStations[i].name) === want) {
+                    return staffMainStations[i].key;
+                }
+            }
+            return '';
+        }
         function stationKeyForItem(item) {
             // Strict ID routing — one main_category_id → one capsule (mc_{id}).
             // No keyword / partial-name guesses (those merged distinct categories onto one tab).
@@ -6124,19 +6135,8 @@
             if (mid > 0) {
                 return stationKeyFromId(mid);
             }
-            // Exact registered name match only (adaptive to any main category name).
-            var mcRaw = String(item && item.main_category_name || '').trim();
-            if (mcRaw) {
-                var want = normKitchenCategoryName(mcRaw);
-                var bySlug = findStationByKey(slugStationName(mcRaw));
-                if (bySlug) return bySlug.key;
-                for (var i = 0; i < staffMainStations.length; i++) {
-                    if (normKitchenCategoryName(staffMainStations[i].name) === want) {
-                        return staffMainStations[i].key;
-                    }
-                }
-            }
-            return '';
+            return stationKeyFromExactName(item && item.main_category_name)
+                || stationKeyFromExactName(item && item.category_name);
         }
         function itemMatchesKitchenStation(item, group) {
             var want = String(group || '').toLowerCase();
@@ -6144,7 +6144,9 @@
             if (!want || !key) return false;
             if (key === want) return true;
             var st = findStationByKey(want);
-            return !!(st && (st.key === key || st.slug === want));
+            // Match this item's station key only. `st.slug === want` would be true
+            // for every line whenever the active tab is a slug (e.g. "pastries").
+            return !!(st && st.key === key);
         }
         function filterItemsForKitchenStation(items, group) {
             return (items || []).filter(function (it) {
@@ -6330,14 +6332,12 @@
         function getFilteredKitchenOrders(list, opts) {
             opts = opts || {};
             refreshKitchenCatButtons();
-            // After payment confirmation, kiosk lines (drinks + bread/pastry/dessert)
-            // must appear on matching capsule/station tabs. Do NOT drop the whole
-            // order when it contains a pastry/bread line.
-            if (!kitchenCatButtons.length || !activeKitchenCategory) {
+            var group = String(activeKitchenCategory || firstStationKey() || '').toLowerCase();
+            if (!group) {
                 return (list || []).slice();
             }
             return (list || []).filter(function (order) {
-                return orderMatchesKitchenCategory(order, activeKitchenCategory, opts);
+                return orderMatchesKitchenCategory(order, group, opts);
             });
         }
         function syncKitchenCategoryButtons() {
@@ -9484,10 +9484,11 @@
             var orderId = parseInt(order && order.id, 10) || 0;
             var isPriority = isKitchenOrderPrioritized(orderId);
             var stationGroup = opts.stationGroup || activeKitchenCategory || '';
-            var displayItems = opts.showAllItems
-                ? ((order.items || []).slice())
-                : filterItemsForKitchenStation(order.items || [], stationGroup);
-            if (!displayItems.length) displayItems = (order.items || []).slice();
+            var displayItems = filterItemsForKitchenStation(order.items || [], stationGroup);
+            // Unrouted orders (no known station) stay visible on the first capsule.
+            if (!displayItems.length && !orderKnownStationKeys(order).length) {
+                displayItems = (order.items || []).slice();
+            }
             var itemsHtml = displayItems.length
                 ? displayItems.map(function (item) {
                     return (
@@ -9559,14 +9560,6 @@
 
             // Live kitchen queue must ignore shift-clear localStorage (device-specific).
             var filtered = getFilteredKitchenOrders(kitchenOrders);
-            var showingStuckFallback = false;
-            // If this capsule is empty but confirmed kitchen work still exists,
-            // force-show those orders so Finalize is not blocked by invisible rows.
-            if (!filtered.length && (kitchenOrders || []).length) {
-                filtered = (kitchenOrders || []).slice();
-                showingStuckFallback = true;
-                (kitchenOrders || []).forEach(function (o) { clearKitchenStationDone(o && o.id); });
-            }
             pruneKitchenPriorityMap(kitchenOrders);
             var orderedKitchen = sortKitchenOrdersForDisplay(filtered);
 
@@ -9585,23 +9578,24 @@
                     function (order, idx) {
                         return buildKitchenOrderCardElement(order, idx, {
                             hideOrderTypeLine: true,
-                            stationGroup: activeKitchenCategory,
-                            showAllItems: !!showingStuckFallback
+                            stationGroup: activeKitchenCategory
                         });
                     },
                     'No orders',
                     {
                         // Partition after station filter so take-out lines on this capsule
                         // never appear under the Dine In column.
-                        // Stuck fallback: show full order lines so nothing stays invisible.
-                        itemFilter: showingStuckFallback
-                            ? null
-                            : function (order) {
-                                return filterItemsForKitchenStation(
-                                    (order && order.items) || [],
-                                    activeKitchenCategory
-                                );
+                        itemFilter: function (order) {
+                            var stationLines = filterItemsForKitchenStation(
+                                (order && order.items) || [],
+                                activeKitchenCategory
+                            );
+                            if (stationLines.length) return stationLines;
+                            if (!orderKnownStationKeys(order).length) {
+                                return (order && order.items) || [];
                             }
+                            return [];
+                        }
                     }
                 );
             }
@@ -9617,20 +9611,16 @@
                 .sort(function (a, b) {
                     return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
                 });
-            // Same as kitchen: never hide open serving work behind station filters.
-            if (!ordered.length && (servingOrdersQueue || []).length) {
-                ordered = (servingOrdersQueue || []).slice().sort(function (a, b) {
-                    return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
-                });
-            }
             ordered.forEach(function (order) {
                 var row = document.createElement('article');
                 row.className = 'kitchen-serving-item';
                 var sourceLabel = String(order.order_source || '').toUpperCase();
                 var typeLine = getOrderTypeDisplayFromOrder(order) || 'N/A';
                 var friendlyTitle = friendlyKitchenOrderTitle(order);
-                var stationItems = filterItemsForKitchenStation(order.items || [], activeKitchenCategory || 'bar');
-                if (!stationItems.length) stationItems = order.items || [];
+                var stationItems = filterItemsForKitchenStation(order.items || [], activeKitchenCategory);
+                if (!stationItems.length && !orderKnownStationKeys(order).length) {
+                    stationItems = order.items || [];
+                }
                 var itemsLine = stationItems
                     .map(function (it) {
                         var q = parseInt(it && it.quantity, 10) || 0;

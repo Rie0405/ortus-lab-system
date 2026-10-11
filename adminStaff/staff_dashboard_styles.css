@@ -7699,16 +7699,16 @@ img {
     }
 
     .pos-right {
-        flex: 0 0 380px;
+        flex: 0 0 32%;
         flex-shrink: 0;
-        width: 380px;
-        min-width: 380px;
-        max-width: 380px;
+        width: 32%;
+        min-width: 320px;
+        max-width: 400px;
         padding: 1.5rem;
     }
 
     .menu-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: 1rem;
     }
 

@@ -3646,7 +3646,7 @@ function apiCall(method, url, body) {
         var css = document.createElement('link');
         css.id = 'activity-feed-css';
         css.rel = 'stylesheet';
-        css.href = 'activity_feed.css?v=20261007-responsive';
+        css.href = 'activity_feed.css?v=20261011-glass-sheet';
         document.head.appendChild(css);
     }
 

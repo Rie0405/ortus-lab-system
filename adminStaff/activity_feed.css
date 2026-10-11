@@ -1,4 +1,7 @@
-/* Admin system activity notification feed (near logout) */
+/* Admin system activity notification feed (near logout)
+ * Desktop: glassmorphism backdrop + sleek card
+ * Mobile: bottom sheet. CSS only — no JS changes.
+ */
 
 .top-actions {
     position: relative;
@@ -24,6 +27,7 @@
     align-items: center;
     justify-content: center;
     padding: 0;
+    z-index: 2601;
 }
 
 .activity-bell-btn img {
@@ -61,7 +65,29 @@
     display: none !important;
 }
 
-.activity-feed-panel {
+/* 1. Desktop backdrop blur (> 768px) — CSS-only via :has(), no JS */
+@media (min-width: 768px) {
+    body:has(.activity-feed-panel.is-open)::before,
+    body:has(#activity-feed-panel.is-open)::before {
+        content: "" !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: rgba(0, 0, 0, 0.45) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        z-index: 2500 !important;
+        pointer-events: auto !important;
+    }
+}
+
+/* Modern dark container card */
+.activity-feed-panel,
+.notification-popover,
+.system-updates-card,
+[class*="notification-card"] {
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
@@ -71,16 +97,16 @@
     max-height: min(70vh, 520px);
     display: none;
     flex-direction: column;
-    background: #1b140f;
-    border: 1px solid #3d3025;
-    border-radius: 12px;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
-    z-index: 1200;
-    overflow: hidden;
+    background: #141414 !important;
+    border: 1px solid #2a2a2a !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6) !important;
+    z-index: 2600 !important;
+    overflow: hidden !important;
 }
 
 .activity-feed-panel.is-open {
-    display: flex;
+    display: flex !important;
 }
 
 .activity-feed-panel__head {
@@ -89,7 +115,8 @@
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
-    border-bottom: 1px solid #33261c;
+    border-bottom: 1px solid #2a2a2a;
+    flex-shrink: 0;
 }
 
 .activity-feed-panel__head h3 {
@@ -118,10 +145,42 @@
     background: rgba(255, 255, 255, 0.06);
 }
 
-.activity-feed-panel__list {
-    overflow-y: auto;
-    padding: 8px;
+/* Custom sleek scrollbar */
+.activity-feed-panel__list,
+.notification-popover-body,
+.updates-list,
+[class*="updates-list"] {
+    overflow-y: auto !important;
+    max-height: 380px !important;
+    padding: 8px !important;
+    padding-right: 4px !important;
     flex: 1;
+    scrollbar-width: thin !important;
+    scrollbar-color: #333 #141414 !important;
+}
+
+.activity-feed-panel__list::-webkit-scrollbar,
+.notification-popover-body::-webkit-scrollbar,
+[class*="updates-list"]::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+.activity-feed-panel__list::-webkit-scrollbar-track,
+.notification-popover-body::-webkit-scrollbar-track,
+[class*="updates-list"]::-webkit-scrollbar-track {
+    background: #141414 !important;
+}
+
+.activity-feed-panel__list::-webkit-scrollbar-thumb,
+.notification-popover-body::-webkit-scrollbar-thumb,
+[class*="updates-list"]::-webkit-scrollbar-thumb {
+    background: #333 !important;
+    border-radius: 4px !important;
+}
+
+.activity-feed-panel__list::-webkit-scrollbar-thumb:hover,
+.notification-popover-body::-webkit-scrollbar-thumb:hover {
+    background: #f59e0b !important;
 }
 
 .activity-feed-empty {
@@ -146,6 +205,7 @@
     font-size: 13px;
     line-height: 1.35;
     cursor: default;
+    box-sizing: border-box;
 }
 
 .activity-feed-row.is-unread {
@@ -167,7 +227,8 @@
 
 .activity-feed-panel__foot {
     padding: 10px 12px 12px;
-    border-top: 1px solid #33261c;
+    border-top: 1px solid #2a2a2a;
+    flex-shrink: 0;
 }
 
 .activity-feed-more {
@@ -198,15 +259,77 @@
     display: none !important;
 }
 
-@media (max-width: 640px) {
-    .activity-feed-panel {
-        position: fixed;
-        top: auto;
-        bottom: 12px;
-        left: 12px;
-        right: 12px;
-        width: auto;
-        max-width: none;
-        max-height: min(70vh, 480px);
+/* 2. Mobile phone bottom sheet (< 768px) */
+@media (max-width: 767px) {
+    body:has(.activity-feed-panel.is-open)::before,
+    body:has(#activity-feed-panel.is-open)::before {
+        content: "" !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(6px) !important;
+        -webkit-backdrop-filter: blur(6px) !important;
+        z-index: 2500 !important;
+        pointer-events: auto !important;
     }
+
+    .activity-feed-panel,
+    .activity-feed-panel.is-open,
+    .notification-popover,
+    .system-updates-card,
+    [class*="notification-card"] {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        max-height: min(85vh, 640px) !important;
+        border-radius: 20px 20px 0 0 !important;
+        border-bottom: none !important;
+        padding: 16px 20px 24px 20px !important;
+        transform: translateY(0) !important;
+        animation: slideUpBottomSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.8) !important;
+        z-index: 2600 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Drag handle */
+    .activity-feed-panel.is-open::before,
+    .notification-popover::before {
+        content: "" !important;
+        display: block !important;
+        width: 38px !important;
+        height: 4px !important;
+        background: #444 !important;
+        border-radius: 2px !important;
+        margin: 0 auto 12px auto !important;
+        flex-shrink: 0;
+    }
+
+    .activity-feed-panel__head {
+        padding: 0 0 12px 0 !important;
+        border-bottom-color: #2a2a2a !important;
+    }
+
+    .activity-feed-panel__list,
+    .notification-popover-body,
+    [class*="updates-list"] {
+        max-height: 55vh !important;
+        padding: 8px 0 !important;
+    }
+
+    .activity-feed-panel__foot {
+        padding: 12px 0 0 0 !important;
+    }
+}
+
+@keyframes slideUpBottomSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
 }

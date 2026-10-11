@@ -1,0 +1,170 @@
+/*
+ * KIOSK Processing Queue — adaptive layout (Dine In / Take Out / Pick Up).
+ * Desktop: 3 equal columns. ≤900px: vertical stack + full-width cards.
+ * CSS only — no HTML / JS / CONFIRM·DELETE·DISCOUNT·EDIT logic changes.
+ */
+
+/* 1. Desktop base (> 900px) */
+@media (min-width: 901px) {
+    .staff-main-panel--queue .opq-queue-partitions,
+    .kiosk-queue-container,
+    [class*="processing-queue-wrapper"] {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        align-items: start !important;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition,
+    .kiosk-column,
+    [class="queue-col"] {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition-body.opq-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .staff-main-panel--queue .opq-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* 2. Mobile & tablet (< 900px) — stack columns */
+@media (max-width: 900px) {
+    html:has(.staff-main-panel--queue.is-active),
+    body:has(.staff-main-panel--queue.is-active) {
+        position: static !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 100vh !important;
+        min-height: 100svh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .pos-page:has(> .staff-main-panel--queue.is-active),
+    .staff-main-panel--queue.is-active,
+    .staff-main-panel--queue.is-active .opq-main,
+    .staff-main-panel--queue .opq-layout {
+        height: auto !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        overflow-x: hidden !important;
+        overflow-y: visible !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-page:has(> .staff-main-panel--queue.is-active) {
+        min-height: 100vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .staff-main-panel--queue .opq-queue-partitions,
+    .kiosk-queue-container,
+    [class="processing-queue-wrapper"] {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 20px !important;
+        padding: 12px !important;
+        overflow-x: hidden !important;
+        overflow-y: visible !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition,
+    .kiosk-column,
+    [class="queue-col"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        border-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition:not(:last-child) {
+        border-right: 0 !important;
+        border-bottom: 1px solid #333 !important;
+        padding-bottom: 16px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition-head,
+    .kiosk-column-title,
+    [class="queue-col"] h3 {
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        padding-bottom: 6px !important;
+        border-bottom: 1px solid #333 !important;
+        margin: 0 0 12px 0 !important;
+        letter-spacing: 0.06em !important;
+        color: #aaa !important;
+    }
+
+    .staff-main-panel--queue .opq-queue-partition-body.opq-grid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+
+    .staff-main-panel--queue .opq-card,
+    .kiosk-order-card,
+    [class="processing-card"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: auto !important;
+        padding: 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* CONFIRM / DELETE / DISCOUNT / EDIT — 2×2 touch grid */
+    .staff-main-panel--queue .staff-opq-actions,
+    .kiosk-card-actions,
+    [class="card-actions-grid"] {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        width: 100% !important;
+        margin-top: 12px !important;
+    }
+
+    .staff-main-panel--queue .staff-opq-actions .opq-action-btn,
+    .staff-main-panel--queue .opq-action-btn,
+    .kiosk-card-actions button {
+        width: 100% !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+        padding: 8px 6px !important;
+    }
+}

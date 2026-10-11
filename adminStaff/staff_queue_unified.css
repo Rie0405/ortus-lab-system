@@ -64,14 +64,6 @@
         flex-direction: unset !important;
     }
 
-    /* Stuck-order banner spans all three columns */
-    .staff-main-panel--kitchen .opq-queue-partitions > .kitchen-stuck-banner {
-        grid-column: 1 / -1 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 0 0 4px !important;
-    }
-
     .staff-main-panel--kitchen .opq-queue-partition {
         min-width: 0 !important;
         max-width: 100% !important;

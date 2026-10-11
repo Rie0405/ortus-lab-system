@@ -1,19 +1,57 @@
 /*
- * Bar Area / Kitchen Queue — mobile reflow (< 900px).
- * Active orders (PREPARING / NEXT IN LINE) first; served + waste below.
- * CSS only — no order/timer/polling JS changes.
+ * Bar Area / Kitchen Area capsule queues — mobile scroll unlock (< 900px).
+ * Natural vertical page scroll through Dine In / Take Out / Pick Up / Served.
+ * CSS only — no order timers, polling, or action-button JS.
  */
 
 @media (max-width: 900px) {
-    /* 1. Main queue wrapper — vertical stack */
-    .kitchen-layout,
-    .opq-layout,
-    .staff-main-panel--kitchen .kitchen-layout,
-    .staff-main-panel--queue .opq-layout,
+    /* 1. Unlock viewport lock when capsule queue panels are active */
+    html:has(.staff-main-panel--kitchen.is-active),
+    html:has(.staff-main-panel--queue.is-active),
+    body:has(.staff-main-panel--kitchen.is-active),
+    body:has(.staff-main-panel--queue.is-active) {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 100vh !important;
+        min-height: 100svh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-page:has(> .staff-main-panel--kitchen.is-active),
+    .pos-page:has(> .staff-main-panel--queue.is-active),
+    .staff-dashboard-container,
+    .main-content,
     .bar-area-container,
     .kitchen-area-container,
     [class*="queue-main-wrapper"],
     [class*="orders-board"] {
+        height: auto !important;
+        max-height: none !important;
+        min-height: 100vh !important;
+        min-height: 100svh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Kill nested overflow/height traps inside kitchen & queue */
+    .staff-main-panel--kitchen.is-active,
+    .staff-main-panel--queue.is-active,
+    .staff-main-panel--kitchen.is-active > .opq-main,
+    .staff-main-panel--queue.is-active .opq-main,
+    .kitchen-layout,
+    .opq-layout,
+    .staff-main-panel--kitchen .kitchen-layout,
+    .staff-main-panel--queue .opq-layout {
         display: flex !important;
         flex-direction: column !important;
         flex-wrap: nowrap !important;
@@ -22,46 +60,62 @@
         height: auto !important;
         max-height: none !important;
         min-height: 0 !important;
+        flex: 1 1 auto !important;
         gap: 16px !important;
         padding: 12px !important;
+        overflow: visible !important;
         overflow-x: hidden !important;
         overflow-y: visible !important;
         box-sizing: border-box !important;
         align-items: stretch !important;
     }
 
-    .staff-main-panel--kitchen,
-    .staff-main-panel--kitchen > .opq-main,
-    .staff-main-panel--queue,
-    .staff-main-panel--queue .opq-main {
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
+    .staff-main-panel--kitchen.is-active,
+    .staff-main-panel--queue.is-active {
+        padding: 0 !important;
+        gap: 0 !important;
+    }
+
+    .kitchen-layout > .opq-grid,
+    .kitchen-layout > .opq-grid.opq-queue-partitions,
+    .kitchen-layout > .kitchen-serving-panel,
+    .opq-queue-partition,
+    .opq-queue-partition-body,
+    .opq-queue-partition-body.opq-grid {
         height: auto !important;
         max-height: none !important;
         min-height: 0 !important;
+        overflow: visible !important;
+        overflow-y: visible !important;
     }
 
-    /* 2. Active orders (PREPARING / NEXT IN LINE) — first */
+    /* Active orders first */
     .kitchen-layout > .opq-grid,
-    .kitchen-layout > .opq-grid.opq-queue-partitions,
-    .staff-main-panel--kitchen .opq-queue-partitions,
-    .active-orders-section,
-    [class="orders-left-panel"],
-    [class*="preparing-container"] {
+    .kitchen-layout > .opq-grid.opq-queue-partitions {
         order: 1 !important;
         width: 100% !important;
         max-width: 100% !important;
+        flex: 0 0 auto !important;
+    }
+
+    /* 2. Dine In / Take Out / Pick Up sections */
+    .opq-queue-partition,
+    .order-category-group,
+    [class="section-dine-in"],
+    [class*="section-take-out"],
+    [class*="section-pick-up"] {
+        width: 100% !important;
+        max-width: 100% !important;
         min-width: 0 !important;
-        flex: 1 1 auto !important;
-        height: auto !important;
-        max-height: none !important;
+        margin-bottom: 20px !important;
         display: flex !important;
         flex-direction: column !important;
         gap: 12px !important;
+        border-right: 0 !important;
+        padding: 0 !important;
         box-sizing: border-box !important;
     }
 
-    /* Stack destination / queue partitions vertically on phones */
     .kitchen-layout > .opq-grid.opq-queue-partitions,
     .staff-main-panel--kitchen .opq-queue-partitions,
     .staff-main-panel--queue .opq-queue-partitions {
@@ -72,32 +126,35 @@
         width: 100% !important;
     }
 
-    .staff-main-panel--kitchen .opq-queue-partition,
-    .staff-main-panel--queue .opq-queue-partition,
-    .opq-queue-partition {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        border-right: 0 !important;
-        padding: 0 !important;
-    }
-
     .opq-queue-partition:not(:last-child) {
-        border-bottom: 1px solid #333 !important;
+        border-bottom: 1px solid #2a2a2a !important;
         padding-bottom: 12px !important;
-        margin-bottom: 4px !important;
     }
 
+    .opq-queue-partition-head,
+    .order-category-group h3,
+    [class="queue-section-title"] {
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 1px !important;
+        text-transform: uppercase !important;
+        color: #aaa !important;
+        padding-bottom: 4px !important;
+        border-bottom: 1px solid #2a2a2a !important;
+        margin: 0 0 8px 0 !important;
+    }
+
+    .opq-queue-partition-body.opq-grid,
     .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid,
-    .staff-main-panel--queue .opq-queue-partition-body.opq-grid,
-    .opq-queue-partition-body.opq-grid {
+    .staff-main-panel--queue .opq-queue-partition-body.opq-grid {
         display: grid !important;
         grid-template-columns: 1fr !important;
         width: 100% !important;
         gap: 12px !important;
+        flex: none !important;
     }
 
-    /* Full-width order cards */
+    /* 3. Order cards — natural height */
     .kitchen-layout .opq-card,
     .kitchen-layout .kitchen-card,
     .staff-main-panel--kitchen .opq-card.kitchen-card,
@@ -105,36 +162,76 @@
     .order-card,
     [class="preparing-card"],
     [class*="next-in-line-card"] {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
         width: 100% !important;
         max-width: 100% !important;
-        min-width: 0 !important;
+        padding: 14px !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+    }
+
+    /* Action buttons — stacked full-width */
+    .kitchen-card-actions,
+    .staff-opq-actions,
+    .order-card-actions,
+    [class="card-buttons-row"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        grid-template-columns: none !important;
+    }
+
+    .kitchen-card-actions .opq-confirm-btn,
+    .kitchen-card-actions button,
+    .staff-opq-actions .opq-action-btn,
+    .order-card-actions button {
+        width: 100% !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
         box-sizing: border-box !important;
     }
 
-    /* 3. Served orders & waste sidebar — below active orders */
+    .kitchen-priority-btn {
+        width: 100% !important;
+        min-height: 42px !important;
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+    }
+
+    /* 4. Served orders panel at bottom — no inner height trap */
     .kitchen-layout > .kitchen-serving-panel,
     .kitchen-serving-panel,
     .served-orders-sidebar,
-    [class="orders-right-panel"],
-    [class*="served-panel"] {
+    [class="served-panel"],
+    [class*="orders-right-panel"] {
         order: 2 !important;
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
-        flex: 0 0 auto !important;
-        flex-shrink: 1 !important;
         height: auto !important;
         max-height: none !important;
-        margin-top: 10px !important;
+        flex: 0 0 auto !important;
+        margin-top: 24px !important;
+        margin-bottom: 40px !important;
+        padding: 14px !important;
         border-top: 2px dashed #333 !important;
-        padding-top: 14px !important;
+        background: #121212 !important;
+        border-radius: 10px !important;
+        overflow: visible !important;
         box-sizing: border-box !important;
         align-self: stretch !important;
     }
 
     .kitchen-serving-list {
-        max-height: min(40vh, 320px) !important;
-        overflow-y: auto !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
         width: 100% !important;
     }
 
@@ -147,53 +244,45 @@
     .kitchen-serving-head .opq-done-all-btn {
         margin-left: 0 !important;
     }
-
-    /* Action buttons — touch-friendly RETURN / DONE */
-    .kitchen-card-actions,
-    .staff-opq-actions,
-    .order-card-actions,
-    [class="card-buttons-row"] {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
-        width: 100% !important;
-    }
-
-    .kitchen-card-actions .opq-confirm-btn,
-    .kitchen-card-actions button,
-    .staff-opq-actions .opq-action-btn,
-    .order-card-actions button {
-        height: 44px !important;
-        min-height: 44px !important;
-        font-size: 0.9rem !important;
-        font-weight: 700 !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-
-    .kitchen-priority-btn {
-        min-height: 44px !important;
-        font-size: 0.9rem !important;
-        font-weight: 700 !important;
-    }
 }
 
-/* Portrait phones above 900px width still stack kitchen board */
+/* Portrait tablets: same scroll unlock for capsule queues */
 @media (orientation: portrait) and (max-width: 1024px) {
+    html:has(.staff-main-panel--kitchen.is-active),
+    html:has(.staff-main-panel--queue.is-active),
+    body:has(.staff-main-panel--kitchen.is-active),
+    body:has(.staff-main-panel--queue.is-active) {
+        position: static !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 100vh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .pos-page:has(> .staff-main-panel--kitchen.is-active),
+    .pos-page:has(> .staff-main-panel--queue.is-active),
     .kitchen-layout,
-    .staff-main-panel--kitchen .kitchen-layout {
-        display: flex !important;
-        flex-direction: column !important;
+    .staff-main-panel--kitchen.is-active,
+    .staff-main-panel--kitchen.is-active > .opq-main {
         height: auto !important;
         max-height: none !important;
         overflow: visible !important;
+    }
+
+    .kitchen-layout {
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     .kitchen-layout > .opq-grid,
     .kitchen-layout > .opq-grid.opq-queue-partitions {
         order: 1 !important;
         width: 100% !important;
-        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
     }
 
     .kitchen-layout > .kitchen-serving-panel,
@@ -202,5 +291,8 @@
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
     }
 }

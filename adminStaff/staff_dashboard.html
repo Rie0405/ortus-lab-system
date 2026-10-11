@@ -225,8 +225,8 @@
                     </div>
 
                     <div class="actions">
-                        <button class="cancel-btn" id="pos-cancel-btn">Cancel</button>
-                        <button class="confirm-btn" id="pos-confirm-btn">Confirm Payment</button>
+                        <button type="button" class="cancel-btn" id="pos-cancel-btn">Cancel</button>
+                        <button type="button" class="confirm-btn" id="pos-confirm-btn">Confirm Payment</button>
                     </div>
                 </div>
 
@@ -1717,12 +1717,10 @@
             }
 
             function getPosActiveCartArray() {
-                if (posEditingOrder) return posCarts.dine_in;
                 return posCarts[posActiveFulfillment === "take_out" ? "take_out" : "dine_in"];
             }
 
             function getAllPosCartLines() {
-                if (posEditingOrder) return posCarts.dine_in.slice();
                 return posCarts.dine_in.concat(posCarts.take_out);
             }
 
@@ -1737,9 +1735,8 @@
             }
 
             function syncPosFulfillmentUi() {
-                var editing = !!posEditingOrder;
-                var isTakeOut = !editing && posActiveFulfillment === "take_out";
-                if (posFulfillmentPanel) posFulfillmentPanel.hidden = editing;
+                var isTakeOut = posActiveFulfillment === "take_out";
+                if (posFulfillmentPanel) posFulfillmentPanel.hidden = false;
                 if (posFulfillmentPanel) {
                     posFulfillmentPanel.querySelectorAll(".pos-fulfill-seg__btn[data-fulfillment]").forEach(function (btn) {
                         var key = btn.getAttribute("data-fulfillment");
@@ -1749,9 +1746,28 @@
                     });
                 }
                 if (posCartSlider) {
-                    posCartSlider.classList.toggle("pos-cart-slider--take-out", isTakeOut);
-                    posCartSlider.classList.toggle("pos-cart-slider--editing", editing);
+                    // Keep a single full-width pane. The 200% slide track was
+                    // sitting over the Confirm button and taking the click.
+                    posCartSlider.classList.remove("pos-cart-slider--take-out");
+                    posCartSlider.classList.remove("pos-cart-slider--editing");
                     posCartSlider.setAttribute("data-active", isTakeOut ? "take_out" : "dine_in");
+                }
+                var track = document.getElementById("pos-cart-slider-track");
+                if (track) {
+                    track.style.width = "100%";
+                    track.style.transform = "none";
+                }
+                var dinePane = posCartSlider ? posCartSlider.querySelector('.pos-cart-slider__pane[data-pane="dine_in"]') : null;
+                var takePane = posCartSlider ? posCartSlider.querySelector('.pos-cart-slider__pane[data-pane="take_out"]') : null;
+                if (dinePane) {
+                    dinePane.style.width = "100%";
+                    dinePane.style.flexBasis = "100%";
+                    dinePane.style.display = isTakeOut ? "none" : "";
+                }
+                if (takePane) {
+                    takePane.style.width = "100%";
+                    takePane.style.flexBasis = "100%";
+                    takePane.style.display = isTakeOut ? "" : "none";
                 }
                 if (posCartLabelDineIn) posCartLabelDineIn.hidden = false;
                 if (posCartLabelTakeOut) posCartLabelTakeOut.hidden = false;
@@ -1760,7 +1776,6 @@
             }
 
             function setPosFulfillment(bucket) {
-                if (posEditingOrder) return;
                 posActiveFulfillment = bucket === "take_out" ? "take_out" : "dine_in";
                 syncPosFulfillmentUi();
                 renderOrderList();
@@ -2125,7 +2140,20 @@
                 var takeLines = (posCarts.take_out || []).map(function (x) {
                     return Object.assign({}, x, { fulfillment: "take_out" });
                 });
-                var items = mapPosCartLinesForSubmit(dineLines.concat(takeLines)).filter(function (x) {
+                var items = dineLines.concat(takeLines).map(function (x) {
+                    var fulfillment = "";
+                    var raw = x && x.fulfillment != null ? String(x.fulfillment).trim().toLowerCase().replace(/[\s-]+/g, "_") : "";
+                    if (raw === "take_out" || raw === "takeout") fulfillment = "take_out";
+                    else if (raw === "dine_in" || raw === "dinein") fulfillment = "dine_in";
+                    var row = {
+                        menu_item_id: x.menu_item_id,
+                        quantity: x.quantity,
+                        notes: x.notes || "",
+                        unit_price: x.price
+                    };
+                    if (fulfillment) row.fulfillment = fulfillment;
+                    return row;
+                }).filter(function (x) {
                     return (parseInt(x.menu_item_id, 10) || 0) > 0;
                 });
                 if (!items.length) {
@@ -3409,34 +3437,73 @@
                 }
             });
 
-            if (confirmBtn) confirmBtn.addEventListener("click", function () {
+            function handlePosConfirmClick() {
+                if (!confirmBtn) return;
+                if (confirmBtn.disabled && String(confirmBtn.textContent || "").trim() === "Confirm") {
+                    confirmBtn.disabled = false;
+                }
+                if (confirmBtn.disabled) return;
                 if (posCartIsEmpty()) return;
                 if (!requirePosCustomerName()) return;
-                if (posEditingOrder) {
-                    confirmPendingOrderFromPos().catch(function (err) {
-                        alert(err.message || "Failed to save order.");
-                    });
-                    return;
-                }
-                var subtotal = getAllPosCartLines().reduce(function (s, i) { return s + i.price * i.quantity; }, 0);
-                var discount = getPosDiscountPayload();
-                var pricing = calculatePosCartPricing();
-                window.dispatchEvent(new CustomEvent("pos-request-payment", {
-                    detail: {
-                        total: pricing.total,
-                        subtotal: pricing.gross,
-                        pricing: pricing,
-                        discount: discount,
-                        discountLabel: getDiscountLabel(discount),
-                        customer_name: getPosCustomerName(),
-                        cart: getAllPosCartLines(),
-                        cartBuckets: {
-                            dine_in: posCarts.dine_in.slice(),
-                            take_out: posCarts.take_out.slice()
-                        }
+                try {
+                    if (posEditingOrder) {
+                        confirmPendingOrderFromPos().catch(function (err) {
+                            alert(err.message || "Failed to save order.");
+                        });
+                        return;
                     }
-                }));
+                    var discount = getPosDiscountPayload();
+                    var pricing = calculatePosCartPricing();
+                    window.dispatchEvent(new CustomEvent("pos-request-payment", {
+                        detail: {
+                            total: pricing.total,
+                            subtotal: pricing.gross,
+                            pricing: pricing,
+                            discount: discount,
+                            discountLabel: getDiscountLabel(discount),
+                            customer_name: getPosCustomerName(),
+                            cart: getAllPosCartLines(),
+                            cartBuckets: {
+                                dine_in: posCarts.dine_in.slice(),
+                                take_out: posCarts.take_out.slice()
+                            }
+                        }
+                    }));
+                } catch (err) {
+                    alert((err && err.message) || "Failed to confirm order.");
+                }
+            }
+
+            function pointerIsOnPosConfirm(e) {
+                if (!confirmBtn || !e) return false;
+                var posPanel = document.querySelector('[data-main-panel="pos"]');
+                if (posPanel && !posPanel.classList.contains("is-active")) return false;
+                var x = e.clientX;
+                var y = e.clientY;
+                var rect = confirmBtn.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return true;
+                var stack = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+                for (var i = 0; i < stack.length; i++) {
+                    if (stack[i] === confirmBtn) return true;
+                }
+                return false;
+            }
+
+            if (confirmBtn) confirmBtn.addEventListener("click", function (e) {
+                e.preventDefault();
+                handlePosConfirmClick();
             });
+
+            // Something above the cart (returned-orders drawer, sliding take-out
+            // pane) can be the event target. If the pointer is on Confirm, run it.
+            document.addEventListener("pointerup", function (e) {
+                if (e.button != null && e.button !== 0) return;
+                if (!pointerIsOnPosConfirm(e)) return;
+                if (e.target === confirmBtn || (confirmBtn.contains && confirmBtn.contains(e.target))) return;
+                e.preventDefault();
+                e.stopPropagation();
+                handlePosConfirmClick();
+            }, true);
 
             if (posFulfillmentPanel) {
                 posFulfillmentPanel.addEventListener("click", function (e) {
@@ -8578,6 +8645,8 @@
 
         function editQueueOrderInPos(order) {
             if (!order || typeof window.loadPendingOrderIntoPos !== 'function') return;
+            queueDrawerOpenReturnedPending = false;
+            if (typeof window.closeQueueDrawer === 'function') window.closeQueueDrawer();
             window.loadPendingOrderIntoPos(order);
             if (typeof window.staffActivateMainTab === 'function') {
                 window.staffActivateMainTab('pos');
@@ -8893,11 +8962,35 @@
             var drawerAnimating = false;
             var drawerAnimTimer = null;
 
+            function setDrawerHitTesting(open) {
+                // Inline, not stylesheet: a closed panel was still the click target
+                // over the POS Confirm button.
+                if (panel) panel.style.pointerEvents = open ? "auto" : "none";
+                drawer.style.pointerEvents = open ? "auto" : "none";
+                if (tabBtn) tabBtn.style.pointerEvents = "auto";
+            }
+
             function setDrawerOpen(open) {
                 open = !!open;
                 var isOpen = drawer.classList.contains('open') || drawer.classList.contains('is-open');
+                // Close must always win, even mid-slide. A dropped close left this
+                // panel over the POS cart so Confirm could not be clicked.
+                if (!open) {
+                    setDrawerHitTesting(false);
+                    if (drawerAnimTimer) clearTimeout(drawerAnimTimer);
+                    drawerAnimTimer = null;
+                    drawerAnimating = false;
+                    if (!isOpen) return;
+                    drawer.classList.remove('open');
+                    drawer.classList.remove('is-open');
+                    drawer.setAttribute('aria-hidden', 'true');
+                    tabBtn.setAttribute('aria-expanded', 'false');
+                    tabBtn.setAttribute('aria-label', 'Open returned orders panel');
+                    return;
+                }
                 if (open === isOpen) return;
                 if (drawerAnimating) return;
+                setDrawerHitTesting(true);
                 drawerAnimating = true;
                 // Toggle class only — CSS transform handles the slide (no display/width changes).
                 drawer.classList.toggle('open', open);
@@ -8915,6 +9008,10 @@
             window.openQueueDrawer = function () {
                 setDrawerOpen(true);
             };
+            window.closeQueueDrawer = function () {
+                queueDrawerOpenReturnedPending = false;
+                setDrawerOpen(false);
+            };
 
             tabBtn.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -8929,11 +9026,14 @@
                 }
             });
 
+            setDrawerHitTesting(false);
+
             panel.addEventListener('click', function (e) {
                 var editBtn = e.target.closest('[data-drawer-edit-order]');
                 if (editBtn) {
                     var editOrder = findQueueOrder(editBtn.getAttribute('data-drawer-edit-order'));
                     if (editOrder) {
+                        queueDrawerOpenReturnedPending = false;
                         editQueueOrderInPos(editOrder);
                         setDrawerOpen(false);
                     }

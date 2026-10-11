@@ -281,12 +281,46 @@ body:has(#activity-feed-panel.is-open)::before,
     display: none !important;
 }
 
-@media (max-width: 480px) {
+/* Mobile: centered modal + blurred backdrop */
+@media (max-width: 768px) {
+    body:has(.activity-feed-panel.is-open)::before,
+    body:has(#activity-feed-panel.is-open)::before {
+        content: "" !important;
+        display: block !important;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: rgba(0, 0, 0, 0.45) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        pointer-events: auto !important;
+        opacity: 1 !important;
+        z-index: 99998 !important;
+    }
+
     .activity-feed-panel,
-    .notification-popover {
-        width: min(360px, calc(100vw - 24px)) !important;
-        max-width: calc(100vw - 24px) !important;
-        top: 56px !important;
-        right: 12px !important;
+    .activity-feed-panel.is-open,
+    .notification-popover,
+    .system-updates-card {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(360px, calc(100vw - 32px)) !important;
+        max-width: calc(100vw - 32px) !important;
+        max-height: min(72vh, 520px) !important;
+        z-index: 99999 !important;
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.75) !important;
+    }
+
+    .activity-feed-panel__list,
+    .notification-popover-body,
+    .updates-list {
+        max-height: min(48vh, 360px) !important;
     }
 }

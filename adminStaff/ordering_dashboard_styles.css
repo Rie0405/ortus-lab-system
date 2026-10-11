@@ -1286,15 +1286,18 @@ body.modal-open {
 }
 
 .product-modal {
-    width: min(1040px, 100%);
-    max-height: min(92vh, 720px);
+    width: min(880px, 90%);
+    max-width: 880px;
+    max-height: 88vh;
     background: #15110d;
-    border-radius: 16px;
+    border-radius: 14px;
     border: 1px solid rgba(61, 48, 37, 0.9);
     box-shadow: 0 40px 80px rgba(0, 0, 0, 0.85);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    box-sizing: border-box;
+    margin: auto;
 }
 
 .product-modal__header {
@@ -1347,16 +1350,21 @@ body.modal-open {
 }
 
 .product-modal__body {
-    padding: 18px 24px 16px;
+    padding: 20px;
     overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
+    max-height: 70vh;
+    box-sizing: border-box;
 }
 
 .product-modal__grid {
     display: grid;
-    grid-template-columns: 2fr 1.1fr;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr);
     gap: 24px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .product-modal__left,
@@ -1364,6 +1372,10 @@ body.modal-open {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .product-field-group {
@@ -2593,4 +2605,217 @@ body.modal-open {
     .order-main { padding: 12px; }
     .top-nav { padding: 12px; }
     img { max-width: 100%; height: auto; }
+}
+
+/*
+ * Create New Product / Edit Product modal — desktop spacious + mobile stack.
+ * CSS only: do not touch upload/DnD JS or save handlers.
+ */
+
+/* 1. Desktop / laptop (> 850px) */
+@media (min-width: 851px) {
+    .product-modal,
+    .create-product-modal,
+    [class*="create-product-dialog"] {
+        width: 90% !important;
+        max-width: 880px !important;
+        max-height: 88vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        border-radius: 14px !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    .product-modal__body,
+    .create-product-body {
+        max-height: 70vh !important;
+        overflow-y: auto !important;
+        padding: 20px !important;
+        box-sizing: border-box !important;
+    }
+
+    .product-modal__grid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr) !important;
+        gap: 24px !important;
+    }
+}
+
+/* 2. Mobile & tablet portrait (< 850px) */
+@media (max-width: 850px) {
+    .product-modal-backdrop {
+        align-items: flex-start !important;
+        justify-content: center !important;
+        padding: 10px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    .product-modal,
+    .create-product-modal,
+    [class*="create-product-dialog"] {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        margin: auto !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+    }
+
+    .product-modal__header,
+    .product-modal__body,
+    .product-modal__footer {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .product-modal__header {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        padding-top: 14px !important;
+        padding-bottom: 10px !important;
+    }
+
+    .product-modal__header-divider {
+        display: none !important;
+    }
+
+    .product-modal__header h2 {
+        font-size: 1.05rem !important;
+        letter-spacing: 0.08em !important;
+    }
+
+    .product-modal__body {
+        max-height: none !important;
+        padding-top: 14px !important;
+        padding-bottom: 14px !important;
+        overflow-y: auto !important;
+    }
+
+    /* Stack form + image upload columns */
+    .product-modal__grid,
+    .create-product-grid,
+    .modal-two-column,
+    [class*="product-form-layout"] {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    .product-modal__left,
+    .product-modal__right,
+    .product-form-left,
+    .product-form-right,
+    .form-section,
+    [class*="upload-section"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+    }
+
+    /* Category & subcategory — 2-col on mobile */
+    .product-catalog-row,
+    .category-row,
+    .category-group {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .product-catalog-row > .product-field-group {
+        min-width: 0 !important;
+    }
+
+    .product-new-category-row,
+    .product-new-category-row--sub {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    .product-input,
+    .product-select,
+    .product-select-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Category icon uploads stay side-by-side */
+    .product-icon-uploads,
+    .icons-upload-group,
+    .category-icons-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .product-upload-dropzone {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        min-height: 160px !important;
+    }
+
+    .product-upload-dropzone--icon {
+        min-height: 110px !important;
+    }
+
+    .product-modal__lower {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Footer — Save on top */
+    .product-modal__footer,
+    .modal-actions,
+    .modal-footer {
+        display: flex !important;
+        flex-direction: column-reverse !important;
+        gap: 10px !important;
+        width: 100% !important;
+        margin-top: 0 !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+        justify-content: stretch !important;
+        padding-top: 12px !important;
+        padding-bottom: 14px !important;
+    }
+
+    .product-modal__footer .product-btn--ghost {
+        margin-right: 0 !important;
+    }
+
+    .product-modal__footer .product-btn,
+    .product-modal__footer button,
+    .modal-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        box-sizing: border-box !important;
+        text-align: center !important;
+    }
+}
+
+/* Very narrow phones: stack category/subcategory if cramped */
+@media (max-width: 420px) {
+    .product-catalog-row,
+    .category-row {
+        grid-template-columns: 1fr !important;
+    }
 }

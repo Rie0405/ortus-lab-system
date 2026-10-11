@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261010-mobile-header">
+    <link rel="stylesheet" href="inventory_dashboard_styles.css?v=20261011-stock-sort">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="viewport_lock.css?v=20261010-fluid">
@@ -72,6 +72,9 @@
                     <span class="inv-filter-btn__summary" id="inventory-filter-summary">All Items</span>
                 </button>
                 <div class="inv-filter-bar__actions">
+                    <button type="button" class="btn inv-stock-sort-btn" id="btn-inventory-stock-sort" aria-pressed="false" title="Sort items by stock within each category (categories stay in place)">
+                        Sort Stock
+                    </button>
                     <button type="button" class="btn inv-edit-history-btn" id="btn-inventory-edit-history">Inventory Edit History</button>
                     <button type="button" class="btn inv-archive-btn" id="btn-inventory-archive">Archive</button>
                 </div>
@@ -658,6 +661,8 @@
     (function () {
         var alertGrid = document.getElementById('inventory-alert-grid');
         var filterBtn = document.getElementById('btn-inventory-filter');
+        var stockSortBtn = document.getElementById('btn-inventory-stock-sort');
+        var inventoryStockSortDir = 'none'; // none | asc | desc — sorts items inside each category only
         var editHistoryBtn = document.getElementById('btn-inventory-edit-history');
         var editHistoryBackdrop = document.getElementById('inventory-edit-history-backdrop');
         var editHistoryCloseBtn = document.getElementById('inventory-edit-history-close');
@@ -1398,6 +1403,57 @@
             return key;
         }
 
+        function getItemStockSortValue(item) {
+            if (getEntryMode(item) === 'manual') {
+                var status = getManualStockStatus(item);
+                if (status === 'critical') return 0;
+                if (status === 'low') return 1;
+                return 2;
+            }
+            var n = parseFloat(item && item.stock_units);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function sortItemsByStockWithinCategory(items) {
+            var list = (items || []).slice();
+            if (inventoryStockSortDir !== 'asc' && inventoryStockSortDir !== 'desc') return list;
+            var dir = inventoryStockSortDir === 'asc' ? 1 : -1;
+            list.sort(function (a, b) {
+                var diff = getItemStockSortValue(a) - getItemStockSortValue(b);
+                if (diff !== 0) return diff * dir;
+                return String(a && a.name || '').localeCompare(String(b && b.name || ''), undefined, { sensitivity: 'base' });
+            });
+            return list;
+        }
+
+        function updateStockSortButton() {
+            if (!stockSortBtn) return;
+            if (inventoryStockSortDir === 'asc') {
+                stockSortBtn.textContent = 'Stock: Low → High';
+                stockSortBtn.setAttribute('aria-pressed', 'true');
+                stockSortBtn.classList.add('is-active');
+                stockSortBtn.title = 'Sorted low to high within each category. Click for high to low.';
+            } else if (inventoryStockSortDir === 'desc') {
+                stockSortBtn.textContent = 'Stock: High → Low';
+                stockSortBtn.setAttribute('aria-pressed', 'true');
+                stockSortBtn.classList.add('is-active');
+                stockSortBtn.title = 'Sorted high to low within each category. Click to clear sort.';
+            } else {
+                stockSortBtn.textContent = 'Sort Stock';
+                stockSortBtn.setAttribute('aria-pressed', 'false');
+                stockSortBtn.classList.remove('is-active');
+                stockSortBtn.title = 'Sort items by stock within each category (categories stay in place)';
+            }
+        }
+
+        function cycleInventoryStockSort() {
+            if (inventoryStockSortDir === 'none') inventoryStockSortDir = 'asc';
+            else if (inventoryStockSortDir === 'asc') inventoryStockSortDir = 'desc';
+            else inventoryStockSortDir = 'none';
+            updateStockSortButton();
+            renderRows();
+        }
+
         function groupItemsByCategoryType(items, modeFilter) {
             var mode = normalizeEntryModeValue(modeFilter || 'automatic');
             var groups = [];
@@ -1410,7 +1466,8 @@
                 });
                 seen[opt.value] = true;
                 // Always show matching category types, even with zero items under them.
-                groups.push({ type: opt.value, label: opt.label, items: matches });
+                // Sort items inside the category only — category order stays fixed.
+                groups.push({ type: opt.value, label: opt.label, items: sortItemsByStockWithinCategory(matches) });
             });
             // Orphan item category types (legacy / unknown) still appear if they have items here.
             (items || []).forEach(function (item) {
@@ -1421,7 +1478,7 @@
                     return normalizeCategoryType(it) === key;
                 });
                 if (matches.length) {
-                    groups.push({ type: key, label: formatCategoryTypeLabel(key), items: matches });
+                    groups.push({ type: key, label: formatCategoryTypeLabel(key), items: sortItemsByStockWithinCategory(matches) });
                 }
             });
             return groups;
@@ -3848,6 +3905,10 @@
                 });
         }
 
+        if (stockSortBtn) {
+            stockSortBtn.addEventListener('click', cycleInventoryStockSort);
+            updateStockSortButton();
+        }
         if (inventoryArchiveBtn) {
             inventoryArchiveBtn.addEventListener('click', openInventoryArchiveModal);
         }

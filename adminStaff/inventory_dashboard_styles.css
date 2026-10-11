@@ -379,6 +379,7 @@ body {
     align-items: center;
     gap: 10px;
 }
+.inv-stock-sort-btn,
 .inv-edit-history-btn,
 .inv-archive-btn {
     display: inline-flex;
@@ -397,10 +398,16 @@ body {
     transition: background 0.15s ease, border-color 0.15s ease;
     white-space: nowrap;
 }
+.inv-stock-sort-btn:hover,
 .inv-edit-history-btn:hover,
 .inv-archive-btn:hover {
     background: rgba(244, 140, 37, 0.18);
     border-color: rgba(244, 140, 37, 0.55);
+}
+.inv-stock-sort-btn.is-active {
+    background: rgba(244, 140, 37, 0.22);
+    border-color: rgba(244, 140, 37, 0.7);
+    color: #ffb06a;
 }
 .inv-filter-btn {
     display: inline-flex;
@@ -3173,11 +3180,16 @@ body {
     }
 
     .inv-filter-btn,
+    .inv-stock-sort-btn,
     .inv-edit-history-btn,
     .inv-archive-btn {
         width: 100% !important;
         justify-content: center !important;
         box-sizing: border-box !important;
+    }
+
+    .inv-stock-sort-btn {
+        grid-column: 1 / -1 !important;
     }
 
     .inv-view-tabs {

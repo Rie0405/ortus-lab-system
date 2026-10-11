@@ -27,6 +27,10 @@ body {
     display: flex;
     flex-direction: column;
     background: #120e0a;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .top-nav {
@@ -151,6 +155,25 @@ body {
 .dash-main {
     flex: 1;
     padding: 26px 32px 40px;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    min-width: 0;
+}
+
+/* Dashboard layout containers — lock to viewport width */
+.dashboard-container,
+.dashboard-grid,
+.dash-page,
+.dash-main,
+.grid-main,
+.grid-bottom,
+.kpi-grid,
+[class*="dashboard-content"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .is-hidden {
@@ -332,26 +355,39 @@ body {
 
 .grid-main {
     display: grid;
-    grid-template-columns: 1.5fr 1.2fr;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
     gap: 20px;
     margin-bottom: 20px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .panel {
     border: 1px solid #3d3025;
     border-radius: 12px;
     background: rgba(34, 25, 16, 0.4);
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .chart-panel {
     padding: 24px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .panel-head__title-row {
     display: flex;
     align-items: flex-start;
+    justify-content: space-between;
     gap: 14px;
     flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
 }
 
 .dash-date-filter {
@@ -536,6 +572,10 @@ body {
     align-items: flex-start;
     gap: 12px;
     margin-bottom: 14px;
+    flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .panel-head h2,
@@ -573,8 +613,31 @@ body {
     color: #120e0a;
 }
 
-.chart-plot img {
+.chart-plot,
+.chart-container,
+.sales-chart-wrapper,
+.sales-analytics,
+.sales-analytics-line-wrap {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.chart-plot img,
+.chart-plot canvas,
+.chart-container canvas,
+.sales-chart-wrapper canvas,
+.sales-analytics-line,
+.sales-analytics svg {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    display: block;
+}
+
+.chart-plot img {
     border-radius: 8px;
     object-fit: cover;
 }
@@ -594,8 +657,12 @@ body {
 }
 
 .sales-analytics-head--inline {
-    width: min(520px, 60%);
+    width: min(520px, 100%);
+    max-width: 100%;
     margin-bottom: 0;
+    flex: 1 1 220px;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .sales-analytics-item {
@@ -698,6 +765,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .diag-head {
@@ -725,7 +796,9 @@ body {
     line-height: 1.2;
     letter-spacing: -0.02em;
     text-transform: uppercase;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .diag-subtitle {
@@ -891,8 +964,11 @@ body {
 
 .grid-bottom {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 20px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .panel-line-head {
@@ -1119,6 +1195,97 @@ body {
     .grid-main,
     .grid-bottom {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Tablet portrait & phone — stack sales chart + stock monitoring */
+@media (max-width: 960px), (orientation: portrait) {
+    .dashboard-grid,
+    .grid-main,
+    .grid-bottom,
+    .sales-stock-row,
+    [class*="dashboard-row"] {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 20px !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .sales-card,
+    .stock-monitoring-card,
+    .sales-section,
+    .stock-section,
+    .chart-panel,
+    .diag-column,
+    .panel.chart-panel,
+    .panel.stocks-panel,
+    .panel.idle-panel,
+    .diag-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+    }
+
+    .panel-head,
+    .panel-head__title-row,
+    .sales-card-header,
+    .sales-header {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .sales-analytics-head,
+    .sales-analytics-head--inline {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        margin-top: 4px;
+    }
+
+    .chart-plot,
+    .chart-container,
+    .sales-chart-wrapper,
+    .sales-analytics,
+    .sales-analytics-line-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .chart-plot canvas,
+    .chart-container canvas,
+    .sales-chart-wrapper canvas,
+    .sales-analytics-line,
+    .sales-analytics svg {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    .diag-column .diag-title {
+        white-space: normal !important;
+        font-size: clamp(16px, 4.2vw, 20px) !important;
+    }
+
+    .dash-date-filter {
+        min-width: 0 !important;
+        flex: 1 1 140px;
+        max-width: 100%;
+    }
+
+    .dash-date-toggle {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 }
 

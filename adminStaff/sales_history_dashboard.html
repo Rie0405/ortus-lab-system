@@ -419,7 +419,8 @@
         var salesReportCalGrid = document.getElementById('sales-report-cal-grid');
         var salesReportCalHint = document.getElementById('sales-report-cal-hint');
         var salesReportCalClear = document.getElementById('sales-report-cal-clear');
-        var SALES_REPORT_PAGE_SIZE = 10;
+        var SALES_REPORT_PAGE_SIZE = 5;
+        var SALES_REPORT_MAX_PAGE_BUTTONS = 5;
         var salesReportCurrentPage = 1;
         var salesReportCategories = [];
         var salesReportSelectedDates = {};
@@ -1082,6 +1083,24 @@
             return salesReportCategory ? (salesReportCategory.value || 'all') : 'all';
         }
 
+        function getSalesReportVisiblePages(totalPages, currentPage) {
+            var maxButtons = SALES_REPORT_MAX_PAGE_BUTTONS;
+            var pages = [];
+            if (totalPages <= maxButtons) {
+                for (var i = 1; i <= totalPages; i++) pages.push(i);
+                return pages;
+            }
+            var half = Math.floor(maxButtons / 2);
+            var start = Math.max(1, currentPage - half);
+            var end = start + maxButtons - 1;
+            if (end > totalPages) {
+                end = totalPages;
+                start = Math.max(1, end - maxButtons + 1);
+            }
+            for (var p = start; p <= end; p++) pages.push(p);
+            return pages;
+        }
+
         function renderSalesReportPagination(totalRows, totalPages) {
             if (!salesReportPagination) return;
             if (!totalRows || totalPages <= 1) {
@@ -1092,16 +1111,17 @@
 
             salesReportPagination.hidden = false;
             var html = '';
+            var visiblePages = getSalesReportVisiblePages(totalPages, salesReportCurrentPage);
 
             html += '<button type="button" class="sales-report-page-btn" data-page="prev"' +
                 (salesReportCurrentPage <= 1 ? ' disabled' : '') + ' aria-label="Previous page">&lsaquo;</button>';
 
-            for (var p = 1; p <= totalPages; p++) {
+            visiblePages.forEach(function (p) {
                 html += '<button type="button" class="sales-report-page-btn' +
                     (p === salesReportCurrentPage ? ' sales-report-page-btn--active' : '') +
                     '" data-page="' + p + '" aria-label="Page ' + p + '"' +
                     (p === salesReportCurrentPage ? ' aria-current="page"' : '') + '>' + p + '</button>';
-            }
+            });
 
             html += '<button type="button" class="sales-report-page-btn" data-page="next"' +
                 (salesReportCurrentPage >= totalPages ? ' disabled' : '') + ' aria-label="Next page">&rsaquo;</button>';

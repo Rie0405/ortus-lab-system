@@ -5,6 +5,11 @@
  * CSS only — no cart / payment JS.
  */
 
+/* Desktop/tablet split: wrapper is transparent so layout is unchanged */
+.pos-right .pos-order-sheet-scroll {
+    display: contents;
+}
+
 .pos-page > .staff-main-panel--pos.is-active,
 .staff-pos-container,
 [class*="pos-main-wrapper"],
@@ -217,15 +222,34 @@
     }
 
     .pos-right .right-view.is-active {
+        display: flex !important;
+        flex-direction: column !important;
         height: auto !important;
-        overflow: visible !important;
+        overflow: hidden !important;
+        min-height: 0 !important;
     }
 
-    .pos-right .order-list,
-    .pos-right .pos-cart-slider {
-        flex: none !important;
-        max-height: min(42vh, 360px) !important;
+    /* Screenshot block only: name + dine/take-out + cart scroll together.
+       Totals divider + Cancel/Confirm stay outside this scroller. */
+    .pos-right .pos-order-sheet-scroll {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: min(52vh, 440px) !important;
+        overflow-x: hidden !important;
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-right: 4px !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-right .pos-order-sheet-scroll .order-list,
+    .pos-right .pos-order-sheet-scroll .pos-cart-slider {
+        flex: none !important;
+        max-height: none !important;
+        overflow: visible !important;
+        margin: 12px 0 0 !important;
     }
 
     .pos-right .order-item {
@@ -245,6 +269,13 @@
         flex-direction: column-reverse !important;
         gap: 10px !important;
         grid-template-columns: none !important;
+    }
+
+    .pos-right .totals {
+        flex-shrink: 0 !important;
+        margin-top: 0 !important;
+        padding-top: 12px !important;
+        border-top: 1px solid #222 !important;
     }
 
     .pos-right .actions button {

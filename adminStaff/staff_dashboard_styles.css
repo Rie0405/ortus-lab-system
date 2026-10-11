@@ -2238,8 +2238,8 @@ img {
     }
 }
 
-/* Queue: tighten card density on mid widths; ≤900 stack via staff_kiosk_queue_responsive.css */
-@media (min-width: 901px) and (max-width: 980px) {
+/* Queue: tighten card density on mid widths; ≤849 stack via staff_queue_unified.css */
+@media (min-width: 850px) and (max-width: 980px) {
     .staff-main-panel--queue .opq-queue-partitions {
         display: grid !important;
         grid-template-columns: repeat(3, minmax(0, 1fr)) !important;

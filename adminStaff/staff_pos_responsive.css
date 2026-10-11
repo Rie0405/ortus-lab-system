@@ -1,10 +1,10 @@
 /*
- * Staff POS — balanced flex layout (menu ~68% / order sheet ~32%).
- * Order sheet never overlaps or squeezes the menu on desktop.
- * <1024px: stacked split. CSS only — no cart/payment JS.
+ * Staff POS — adaptive split vs stacked by horizontal space.
+ * ≥850px: side-by-side (menu left, order sheet right).
+ * <850px: full-width vertical stack.
+ * CSS only — no cart / payment JS.
  */
 
-/* 1. Main wrapper — prevent overlap & out-of-bounds scrolling */
 .pos-page > .staff-main-panel--pos.is-active,
 .staff-pos-container,
 [class*="pos-main-wrapper"],
@@ -14,146 +14,153 @@
     width: 100% !important;
     max-width: 100vw !important;
     min-height: 0 !important;
-    overflow: hidden !important;
     box-sizing: border-box !important;
 }
 
-.pos-main {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: stretch !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    height: calc(100vh - 64px) !important;
-    height: calc(100svh - 64px) !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-}
-
-/* 2. Left: menu catalog (~68%) */
-.pos-left,
-.menu-catalog-section,
-[class="pos-left-panel"],
-[class*="catalog-container"] {
-    flex: 1 1 68% !important;
-    min-width: 0 !important;
-    width: auto !important;
-    max-width: none !important;
-    height: 100% !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    padding: 16px !important;
-    box-sizing: border-box !important;
-}
-
-.pos-page .menu-grid,
-.staff-main-panel--pos .menu-grid,
-.pos-left .menu-grid,
-.products-grid,
-[class="menu-items-grid"] {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
-    gap: 14px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-}
-
-/* 3. Right: current order sheet (~32%, max 400px) */
-.pos-right,
-.order-sheet-section,
-[class="current-order-panel"],
-[class*="pos-right-panel"] {
-    flex: 0 0 32% !important;
-    width: 32% !important;
-    min-width: 320px !important;
-    max-width: 400px !important;
-    height: 100% !important;
-    background: #121212 !important;
-    border-left: 1px solid #242424 !important;
-    border-top: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    padding: 16px !important;
-    box-sizing: border-box !important;
-    z-index: 10 !important;
-    overflow: hidden !important;
-    min-height: 0 !important;
-}
-
-.pos-right .right-view.is-active {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    height: 100% !important;
-    overflow: hidden !important;
-}
-
-/* Cart items list — scrolls internally */
-.pos-right .order-list,
-.pos-right .pos-cart-slider,
-.order-items-list,
-[class="cart-items-container"] {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    margin: 12px 0 !important;
-    padding-right: 4px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    -webkit-overflow-scrolling: touch;
-}
-
-.pos-right .pos-cart-slider__track,
-.pos-right .pos-cart-slider__pane {
-    min-height: 0 !important;
-    max-width: 100% !important;
-}
-
-/* Locked bottom checkout summary & confirm */
-.pos-right .totals,
-.order-summary-footer,
-[class="cart-footer"] {
-    flex-shrink: 0 !important;
-    margin-top: auto !important;
-    padding-top: 12px !important;
-    border-top: 1px solid #222 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-}
-
-.pos-right .actions {
-    flex-shrink: 0 !important;
-    margin-top: 0 !important;
-    padding-top: 12px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-}
-
-/* 4. Tablets & narrow screens (< 1024px) — stacked split */
-@media (max-width: 1023px) {
+/* -------------------------------------------------------------------------- */
+/* 1. Side-by-side (≥ 850px)                                                  */
+/* -------------------------------------------------------------------------- */
+@media (min-width: 850px) {
     .pos-page > .staff-main-panel--pos.is-active,
     .staff-pos-container,
     [class*="pos-main-wrapper"] {
+        overflow: hidden !important;
+    }
+
+    .pos-main {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        height: calc(100vh - 64px) !important;
+        height: calc(100svh - 64px) !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-left,
+    .menu-catalog-section,
+    [class="pos-left-panel"] {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        width: auto !important;
+        max-width: none !important;
+        height: 100% !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        padding: 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-page .menu-grid,
+    .staff-main-panel--pos .menu-grid,
+    .pos-left .menu-grid,
+    .products-grid,
+    [class="menu-items-grid"] {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+        gap: 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-right,
+    .order-sheet-section,
+    [class="current-order-panel"],
+    [class*="pos-right-panel"] {
+        flex: 0 0 340px !important;
+        width: 340px !important;
+        min-width: 300px !important;
+        max-width: 380px !important;
+        height: 100% !important;
+        background: #121212 !important;
+        border-left: 1px solid #242424 !important;
+        border-top: 0 !important;
+        display: flex !important;
         flex-direction: column !important;
+        justify-content: flex-start !important;
+        padding: 16px !important;
+        box-sizing: border-box !important;
+        z-index: 10 !important;
+        overflow: hidden !important;
+        min-height: 0 !important;
+    }
+
+    .pos-right .right-view.is-active {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .pos-right .order-list,
+    .pos-right .pos-cart-slider,
+    .order-items-list,
+    [class="cart-items-container"] {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        margin: 12px 0 !important;
+        padding-right: 4px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pos-right .totals,
+    .order-summary-footer,
+    [class="cart-footer"] {
+        flex-shrink: 0 !important;
+        margin-top: auto !important;
+        padding-top: 12px !important;
+        border-top: 1px solid #222 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-right .actions {
+        flex-shrink: 0 !important;
+        margin-top: 0 !important;
+        padding-top: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2. Stacked (< 850px)                                                       */
+/* -------------------------------------------------------------------------- */
+@media (max-width: 849px) {
+    .pos-page > .staff-main-panel--pos.is-active,
+    .staff-pos-container,
+    [class*="pos-main-wrapper"] {
         height: auto !important;
         max-height: none !important;
+        min-height: calc(100vh - 64px) !important;
         overflow-x: hidden !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
 
     .pos-main {
+        display: flex !important;
         flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
         height: auto !important;
         max-height: none !important;
-        overflow: visible !important;
+        min-height: calc(100vh - 64px) !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
     }
 
     .pos-left,
@@ -166,36 +173,47 @@
         min-width: 0 !important;
         overflow: visible !important;
         padding: 12px !important;
+        box-sizing: border-box !important;
     }
 
     .pos-page .menu-grid,
     .staff-main-panel--pos .menu-grid,
     .pos-left .menu-grid,
-    .products-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 12px !important;
+    .products-grid,
+    [class*="menu-items-grid"] {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+        gap: 10px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .pos-left .category-grid {
         display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
         gap: 10px !important;
         width: 100% !important;
     }
 
     .pos-right,
     .order-sheet-section,
-    [class*="current-order-panel"] {
+    [class*="current-order-panel"],
+    [class*="pos-right-panel"] {
         width: 100% !important;
+        min-width: 100% !important;
         max-width: 100% !important;
-        min-width: 0 !important;
         flex: none !important;
         height: auto !important;
         border-left: none !important;
         border-top: 2px solid #f59e0b !important;
-        box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.5) !important;
+        margin-top: 16px !important;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.7) !important;
         overflow: visible !important;
         justify-content: flex-start !important;
+        box-sizing: border-box !important;
+        padding: 16px !important;
+        background: #121212 !important;
     }
 
     .pos-right .right-view.is-active {

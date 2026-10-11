@@ -70,11 +70,7 @@ iframe {
 /* -------------------------------------------------------------------------- */
 @media (orientation: portrait), (max-width: 900px) {
 
-    /* --- A. Stack crowded horizontal headers / toolbars --- */
-    .top-nav,
-    .pos-header,
-    .pos-header__primary,
-    .pos-header__bar,
+    /* --- A. Stack crowded page toolbars (NOT global top-nav — see unified_top_nav.css) --- */
     .heading-row,
     .title-row,
     .title-actions,
@@ -98,20 +94,6 @@ iframe {
         gap: 12px !important;
         box-sizing: border-box !important;
         min-width: 0 !important;
-    }
-
-    .top-actions,
-    .top-links,
-    .header-main-tabs,
-    .header-meta,
-    .brand-block {
-        max-width: 100% !important;
-        min-width: 0 !important;
-        flex-wrap: wrap !important;
-    }
-
-    .top-actions {
-        margin-left: 0 !important;
     }
 
     /* --- B. Grids → single-column (or compact) full-width blocks --- */

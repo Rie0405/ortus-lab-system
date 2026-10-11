@@ -1,0 +1,438 @@
+/*
+ * Unified top navigation — shared by inventory / ordering / sales history / staff.
+ * Locks header height, padding, gaps, and alignment so tabs do not jump.
+ * CSS only — does not touch notification badges, logout handlers, or routing.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* Admin pages: .top-nav (inventory, ordering, sales history)                 */
+/* -------------------------------------------------------------------------- */
+.top-nav,
+.top-navbar,
+header.top-nav {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    padding: 0 24px !important;
+    gap: 0 !important;
+    background-color: #0d0d0d !important;
+    background: #0d0d0d !important;
+    border-bottom: 1px solid #222 !important;
+    box-sizing: border-box !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+/* Left: brand + role badge */
+.top-nav .brand-block,
+.top-navbar .brand-block,
+.navbar-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 200px !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+}
+
+.top-nav .brand-name-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+}
+
+.top-nav .brand-name {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    color: #fff !important;
+}
+
+/* Center: navigation links */
+.top-nav .top-links,
+.top-navbar .top-links,
+.navbar-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 28px !important;
+    flex-wrap: nowrap !important;
+    margin: 0 auto 0 40px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+.top-nav .top-link,
+.navbar-nav a {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: #aaa !important;
+    text-decoration: none !important;
+    padding: 0 !important;
+    padding-bottom: 0 !important;
+    height: 64px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    border-bottom: 2px solid transparent !important;
+    box-sizing: border-box !important;
+    transition: color 0.2s ease, border-color 0.2s ease !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+}
+
+.top-nav .top-link:hover {
+    color: #fff !important;
+}
+
+.top-nav .top-link.top-link--active,
+.top-nav .top-link.active,
+.navbar-nav a.active {
+    color: #fff !important;
+    border-bottom-color: #f59e0b !important;
+}
+
+/* Right: notification + logout */
+.top-nav .top-actions,
+.top-navbar .top-actions,
+.navbar-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+}
+
+.top-nav .icon-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    border-radius: 8px !important;
+    border: 1px solid #333 !important;
+    background: #1a1a1a !important;
+    display: grid !important;
+    place-items: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}
+
+.top-nav .icon-btn img {
+    width: 16px !important;
+    height: 16px !important;
+    display: block !important;
+}
+
+.top-nav .icon-btn--logout img,
+.top-nav #btn-logout img {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Staff POS header — same chrome metrics; keep internal tab/meta structure   */
+/* -------------------------------------------------------------------------- */
+.pos-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-height: 64px !important;
+    padding: 0 24px !important;
+    background-color: #0d0d0d !important;
+    background: #0d0d0d !important;
+    border-bottom: 1px solid #222 !important;
+    box-sizing: border-box !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    gap: 12px !important;
+}
+
+.pos-header .brand-block {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+}
+
+.pos-header .brand-block h1 {
+    font-size: 1.25rem !important;
+    line-height: 1.2 !important;
+}
+
+.pos-header .header-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+}
+
+.pos-header .header-main-tabs {
+    gap: 12px !important;
+}
+
+.pos-header .header-main-tab {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    color: #aaa !important;
+    border-bottom: 2px solid transparent !important;
+}
+
+.pos-header .header-main-tab--active {
+    color: #fff !important;
+    border-bottom-color: #f59e0b !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* SINGLE-LINE MINIMAL HORIZONTAL NAV FOR MOBILE (< 768px)                    */
+/* Links locked to one row; touch-swipe scroll when narrow                    */
+/* -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+    /* Header main container */
+    .top-nav,
+    .top-navbar,
+    header.top-nav {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-areas:
+            "brand actions"
+            "nav nav" !important;
+        align-items: center !important;
+        justify-content: stretch !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        padding: 10px 14px !important;
+        gap: 0 !important;
+        background-color: #0d0d0d !important;
+        background: #0d0d0d !important;
+        border-bottom: 1px solid #222 !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Row 1: Brand (left) + notification/logout (right) */
+    .top-nav .brand-block,
+    .top-navbar .brand-block,
+    .top-nav .navbar-brand,
+    .navbar-row-top,
+    .header-top {
+        grid-area: brand !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        padding-bottom: 6px !important;
+        margin: 0 !important;
+        order: unset !important;
+        flex: unset !important;
+    }
+
+    .top-nav .top-actions,
+    .top-navbar .top-actions,
+    .top-nav .navbar-actions {
+        grid-area: actions !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: auto !important;
+        margin: 0 !important;
+        padding-bottom: 6px !important;
+        order: unset !important;
+        flex: unset !important;
+    }
+
+    /* Soften action icons — no heavy boxes */
+    .top-nav .icon-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        border: none !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .top-nav .icon-btn:hover,
+    .top-nav .icon-btn--logout:hover,
+    .top-nav #btn-logout:hover {
+        background: transparent !important;
+        border: none !important;
+        opacity: 0.85 !important;
+    }
+
+    /* Row 2: nav links LOCKED to a single line + touch horizontal scroll */
+    .top-nav .top-links,
+    .top-navbar .top-links,
+    .top-nav .navbar-nav,
+    .navbar-nav {
+        grid-area: nav !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 18px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 4px 0 0 0 !important;
+        padding-top: 6px !important;
+        padding-bottom: 4px !important;
+        border-top: 1px solid #1a1a1a !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: contain !important;
+        scrollbar-width: none !important;
+        order: unset !important;
+        flex: unset !important;
+        touch-action: pan-x !important;
+    }
+
+    .top-nav .top-links::-webkit-scrollbar,
+    .top-navbar .top-links::-webkit-scrollbar,
+    .top-nav .navbar-nav::-webkit-scrollbar,
+    .navbar-nav::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    /* Plain-text nav link items — never wrap or shrink */
+    .top-nav .top-link,
+    .top-navbar .top-link,
+    .navbar-nav a,
+    .top-nav .nav-link {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        background: none !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        outline: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        padding: 6px 2px !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: #888 !important;
+        text-decoration: none !important;
+        transition: color 0.2s ease-in-out, border-color 0.2s ease-in-out !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    .top-nav .top-link:hover,
+    .navbar-nav a:hover {
+        color: #fff !important;
+        background: none !important;
+    }
+
+    /* Active state — orange underline */
+    .top-nav .top-link.top-link--active,
+    .top-nav .top-link.active,
+    .navbar-nav a.active,
+    .navbar-nav a.top-link--active {
+        color: #fff !important;
+        border-bottom-color: #f59e0b !important;
+        font-weight: 700 !important;
+        background: none !important;
+    }
+
+    /* Staff header — single-line scrollable tabs */
+    .pos-header {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 0 !important;
+        padding: 10px 14px !important;
+        background-color: #0d0d0d !important;
+        background: #0d0d0d !important;
+        border-bottom: 1px solid #222 !important;
+        gap: 6px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    .pos-header .header-main-tabs,
+    .pos-header .header-main-tabs.is-open {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 18px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 4px 0 0 0 !important;
+        padding-top: 6px !important;
+        padding-bottom: 4px !important;
+        border-top: 1px solid #1a1a1a !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        touch-action: pan-x !important;
+    }
+
+    .pos-header .header-main-tabs::-webkit-scrollbar {
+        display: none !important;
+        height: 0 !important;
+    }
+
+    .pos-header .header-main-tab {
+        background: none !important;
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        border-radius: 0 !important;
+        padding: 6px 2px !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        color: #888 !important;
+        width: auto !important;
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+    }
+
+    .pos-header .header-main-tab--active {
+        color: #fff !important;
+        border-bottom-color: #f59e0b !important;
+        font-weight: 700 !important;
+    }
+
+    .pos-header .header-station-filter {
+        flex-shrink: 0 !important;
+    }
+}

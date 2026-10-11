@@ -13,26 +13,27 @@
     <link rel="stylesheet" href="image_crop.css?v=20261006">
     <link rel="stylesheet" href="viewport_lock.css?v=20261010-fluid">
     <link rel="stylesheet" href="fluid_adaptive.css?v=20261010">
+    <link rel="stylesheet" href="unified_top_nav.css?v=20261010-nav-scroll">
     <script src="viewport_lock.js?v=20261008" defer></script>
 </head>
 <body>
     <div class="order-page">
-        <header class="top-nav">
-            <div class="brand-block">
+        <header class="top-nav top-navbar" role="banner">
+            <div class="brand-block navbar-brand">
                 <div class="brand-name-group">
                     <span class="brand-name">ORTUS LAB</span>
                     <span class="brand-role brand-role--admin">Admin</span>
                 </div>
             </div>
 
-            <nav class="top-links">
+            <nav class="top-links navbar-nav" aria-label="Primary">
                 <a href="admin_dashboard.html" class="top-link">Dashboard</a>
                 <a href="inventory_dashboard.html" class="top-link">Inventory</a>
                 <a href="ordering_dashboard.html" class="top-link top-link--active">Ordering System</a>
                 <a href="sales_history_dashboard.html" class="top-link">Sales History</a>
             </nav>
 
-            <div class="top-actions">
+            <div class="top-actions navbar-actions">
                 <button type="button" class="icon-btn" title="Notifications" aria-label="Notifications"><img src="icons_admin/bell_icon.svg" alt=""></button>
                 <button type="button" class="icon-btn icon-btn--logout" id="btn-logout" title="Logout" aria-label="Logout"><img src="icons_admin/logout-svgrepo-com.svg" alt=""></button>
             </div>

@@ -262,3 +262,129 @@
         grid-template-columns: 1fr !important;
     }
 }
+
+/* -------------------------------------------------------------------------- */
+/* 3. PHONE ONLY (≤640px) — keep header fully visible above POS               */
+/*    Tablet (641–849 stacked / ≥850 split) and desktop left unchanged.       */
+/* -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+    .pos-page {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-header {
+        position: relative !important;
+        top: auto !important;
+        flex: 0 0 auto !important;
+        flex-shrink: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        z-index: 1200 !important;
+        background: #0d0d0d !important;
+        border-bottom: 1px solid #222 !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        padding: 10px 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-header__primary {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        gap: 6px !important;
+        flex: 0 0 auto !important;
+    }
+
+    .pos-header__bar {
+        width: 100% !important;
+        flex: 0 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+    }
+
+    .pos-header .brand-block,
+    .pos-header .brand-block h1,
+    .pos-header .brand-title-row {
+        overflow: visible !important;
+        max-height: none !important;
+        white-space: normal !important;
+        line-height: 1.25 !important;
+    }
+
+    .pos-header .header-main-tabs,
+    .pos-header .header-main-tabs.is-open {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 4px 0 0 0 !important;
+        padding-top: 6px !important;
+        border-top: 1px solid #1a1a1a !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .pos-header .header-meta {
+        width: 100% !important;
+        justify-content: flex-end !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* POS body sits strictly BELOW the header — never overlays it */
+    .pos-page > .staff-main-panel--pos.is-active {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        z-index: 1 !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        transform: none !important;
+    }
+
+    .pos-main {
+        position: relative !important;
+        z-index: 1 !important;
+        margin-top: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        transform: none !important;
+    }
+
+    .pos-left,
+    .pos-right {
+        position: relative !important;
+        z-index: 1 !important;
+        margin-top: 0 !important;
+    }
+
+    .pos-left {
+        padding-top: 12px !important;
+    }
+}

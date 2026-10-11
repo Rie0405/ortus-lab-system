@@ -7742,28 +7742,7 @@ img {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    /* Kitchen: keep 3 destination columns + ultra-compact served sidebar */
-    .kitchen-layout {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        overflow: hidden !important;
-    }
-
-    .kitchen-layout > .kitchen-serving-panel,
-    .kitchen-serving-panel {
-        width: 190px !important;
-        min-width: 190px !important;
-        max-width: 190px !important;
-        flex-shrink: 0 !important;
-    }
-
-    .kitchen-layout > .opq-grid.opq-queue-partitions {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 16px !important;
-    }
-
+    /* Kitchen stations (Bar / Kitchen / Pastries): layout owned by staff_queue_unified.css */
     .staff-main-panel--kitchen .opq-queue-partition-body.opq-grid {
         grid-template-columns: minmax(0, 1fr);
     }

@@ -1662,14 +1662,18 @@ body {
     pointer-events: auto;
 }
 .receipt-modal {
-    width: min(980px, 100%);
-    max-height: 90vh;
+    width: min(800px, 100%);
+    max-width: 800px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
     background: #1a1410;
     border: 1px solid #3d3025;
-    border-radius: 12px;
+    border-radius: 14px;
     box-shadow: 0 32px 72px rgba(0, 0, 0, 0.7);
+    box-sizing: border-box;
+    margin: auto;
+    overflow: hidden;
 }
 .receipt-modal__header,
 .receipt-modal__footer {
@@ -2225,14 +2229,18 @@ body {
     pointer-events: auto;
 }
 .receipt-summary-modal {
-    width: min(760px, 100%);
-    max-height: 88vh;
+    width: min(800px, 100%);
+    max-width: 800px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
     background: #1a1410;
     border: 1px solid #3d3025;
-    border-radius: 12px;
+    border-radius: 14px;
     box-shadow: 0 32px 72px rgba(0, 0, 0, 0.7);
+    box-sizing: border-box;
+    overflow: hidden;
+    margin: auto;
 }
 .receipt-summary-modal__header,
 .receipt-summary-modal__footer {
@@ -2436,9 +2444,16 @@ body {
     font-size: 16px;
     color: #f8fafc;
 }
-.receipt-summary-list {
+.receipt-summary-list,
+.stock-log-body,
+.stock-entries-list {
     display: grid;
     gap: 10px;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 6px;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
 }
 .receipt-summary-item {
     border: 1px solid rgba(61, 48, 37, 0.8);
@@ -2554,14 +2569,18 @@ body {
     pointer-events: auto;
 }
 .receipt-detail-modal {
-    width: min(820px, 100%);
-    max-height: 88vh;
+    width: min(800px, 100%);
+    max-width: 800px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
     background: #1a1410;
     border: 1px solid #3d3025;
-    border-radius: 12px;
+    border-radius: 14px;
     box-shadow: 0 32px 72px rgba(0, 0, 0, 0.7);
+    box-sizing: border-box;
+    overflow: hidden;
+    margin: auto;
 }
 .receipt-detail-modal__header,
 .receipt-detail-modal__footer {
@@ -3318,4 +3337,434 @@ body {
     margin-top: 2px;
     font-size: 12px;
     color: rgba(255, 247, 237, 0.5);
+}
+
+/*
+ * Register Inventory Item modal — phone & tablet (< 768px).
+ * CSS only: stack form fields; keep modal inside viewport. No JS changes.
+ */
+@media (max-width: 768px) {
+    .receipt-modal-backdrop {
+        align-items: flex-start !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 1. Lock modal within viewport */
+    .receipt-modal,
+    .modal-content,
+    [class*="modal-card"],
+    [class*="register-modal"] {
+        width: 92% !important;
+        max-width: 600px !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
+        margin: auto !important;
+        padding: 0 !important;
+    }
+
+    .receipt-modal__header,
+    .receipt-modal__body,
+    .receipt-modal__footer {
+        padding: 16px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .receipt-modal__header {
+        align-items: flex-start !important;
+        gap: 12px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .receipt-modal__header h2 {
+        font-size: 1rem !important;
+        letter-spacing: 0.06em !important;
+        line-height: 1.3 !important;
+    }
+
+    .receipt-modal__body {
+        overflow-y: visible !important;
+        min-width: 0 !important;
+    }
+
+    /* Date / supplier groups */
+    .receipt-modal__grid,
+    .form-row,
+    .register-inventory-inputs,
+    [class*="input-group"] {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-modal__supplier,
+    .receipt-supplier-row {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+    }
+
+    .receipt-supplier-row {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        gap: 8px !important;
+    }
+
+    .receipt-supplier-row input,
+    .receipt-modal__grid input,
+    .receipt-modal__grid select,
+    .receipt-modal .inv-field input,
+    .receipt-modal .inv-field select {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        font-size: 0.85rem !important;
+        min-width: 0 !important;
+    }
+
+    .receipt-lines {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+    }
+
+    .receipt-lines__head {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
+
+    .receipt-lines__table {
+        padding: 10px 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 2. 5-column line row → 2-column responsive grid */
+    .receipt-lines__row {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+        margin-bottom: 14px !important;
+    }
+
+    .receipt-lines__row--head {
+        display: none !important;
+    }
+
+    /* ITEM field spans full width */
+    .receipt-lines__row .receipt-item-name,
+    .receipt-lines__row input[type="text"].receipt-item-name,
+    .receipt-lines__row select.receipt-item-name,
+    .form-row .field-item-name {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-lines__row input,
+    .receipt-lines__row select,
+    .receipt-line-category,
+    .receipt-lines__row > * {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        font-size: 0.85rem !important;
+    }
+
+    .receipt-line-remove {
+        width: 100% !important;
+        height: 38px !important;
+        justify-self: stretch !important;
+    }
+
+    .receipt-cat-type-fields {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+
+    .receipt-cat-type-new-row {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    /* 3. Footer actions — full width, Save on top */
+    .receipt-modal__footer,
+    .modal-actions,
+    .modal-footer {
+        display: flex !important;
+        flex-direction: column-reverse !important;
+        gap: 10px !important;
+        width: 100% !important;
+        margin-top: 0 !important;
+        box-sizing: border-box !important;
+        justify-content: stretch !important;
+        align-items: stretch !important;
+    }
+
+    .receipt-modal__footer .btn,
+    .receipt-modal__footer button,
+    .modal-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/*
+ * Stock Log (.receipt-summary-modal) & Add Stock Entry (.receipt-modal)
+ * Desktop spacious shell + mobile/tablet fit. CSS only — no JS changes.
+ */
+
+/* 1. Desktop / laptop enhancements (> 768px) */
+@media (min-width: 769px) {
+    .receipt-summary-modal,
+    .receipt-modal,
+    .receipt-detail-modal,
+    .stock-log-modal,
+    .add-stock-entry-modal,
+    [class*="stock-modal"] {
+        width: 100% !important;
+        max-width: 800px !important;
+        max-height: 85vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        border-radius: 14px !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    .receipt-summary-modal__body,
+    .receipt-summary-list,
+    .stock-log-body,
+    .stock-entries-list {
+        max-height: 55vh !important;
+        overflow-y: auto !important;
+        padding-right: 6px !important;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* 2. Mobile & tablet portrait (< 768px) */
+@media (max-width: 768px) {
+    .receipt-summary-backdrop,
+    .receipt-detail-backdrop {
+        align-items: flex-start !important;
+        justify-content: center !important;
+        padding: 10px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-summary-modal,
+    .receipt-detail-modal,
+    .stock-log-modal,
+    .add-stock-entry-modal,
+    [class*="stock-modal"] {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
+        margin: auto !important;
+        border-radius: 12px !important;
+    }
+
+    .receipt-modal {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh !important;
+    }
+
+    .receipt-summary-modal__header,
+    .receipt-summary-modal__body,
+    .receipt-summary-modal__footer,
+    .receipt-detail-modal__header,
+    .receipt-detail-modal__body,
+    .receipt-detail-modal__footer {
+        padding: 14px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .receipt-summary-modal__header {
+        align-items: flex-start !important;
+        gap: 10px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .receipt-summary-modal__header h2 {
+        font-size: 1rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .receipt-summary-toolbar {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .receipt-summary-tabs {
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+
+    .receipt-summary-tab,
+    #receipt-summary-date-toggle {
+        width: 100% !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-summary-list,
+    .stock-log-body,
+    .stock-entries-list {
+        max-height: none !important;
+        width: 100% !important;
+    }
+
+    .receipt-summary-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-summary-item__meta {
+        text-align: left !important;
+        width: 100% !important;
+    }
+
+    /* Add Stock Entry — date fields */
+    .receipt-modal__grid,
+    .entry-date-group,
+    .date-inputs {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Add Stock Entry — supplier bar */
+    .receipt-modal__supplier,
+    .supplier-input-group {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    .receipt-supplier-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    .receipt-supplier-row input,
+    .receipt-supplier-row button,
+    .supplier-input-group input,
+    .supplier-input-group button {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Line items — card-like 2-col grid */
+    .receipt-lines__row:not(.receipt-lines__row--head),
+    .line-item-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+        padding: 12px !important;
+        background: #181818 !important;
+        border: 1px solid #2e2e2e !important;
+        border-radius: 8px !important;
+        margin-bottom: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Main Category & Item full width */
+    .receipt-lines__row .receipt-line-type,
+    .receipt-lines__row .receipt-line-category,
+    .receipt-lines__row .receipt-item-name,
+    .receipt-lines__row select.receipt-item-name,
+    .receipt-lines__row input.receipt-item-name {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-lines__row .receipt-stocks,
+    .receipt-lines__row .receipt-unit-label,
+    .receipt-lines__row input[type="number"],
+    .receipt-lines__row select.receipt-unit-label {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-lines__row .receipt-line-remove,
+    .line-item-row button[class*="delete"],
+    .line-item-row button[class*="remove"] {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        margin-top: 4px !important;
+        height: 38px !important;
+    }
+
+    /* Stock Log / Add Entry footers */
+    .receipt-summary-modal__footer,
+    .receipt-detail-modal__footer,
+    .modal-footer-actions {
+        display: flex !important;
+        flex-direction: column-reverse !important;
+        gap: 10px !important;
+        width: 100% !important;
+        margin-top: 14px !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+        justify-content: stretch !important;
+    }
+
+    .receipt-summary-modal__footer .btn,
+    .receipt-summary-modal__footer button,
+    .receipt-detail-modal__footer .btn,
+    .receipt-detail-modal__footer button,
+    .modal-footer-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        box-sizing: border-box !important;
+    }
 }

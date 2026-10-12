@@ -54,6 +54,14 @@ if ($datesRaw !== '') {
     }
 }
 
+$todayOnly = isset($_GET['today']) && (string)$_GET['today'] !== '' && (string)$_GET['today'] !== '0';
+if ($todayOnly) {
+    // Calendar day on the server. Shift finalize does not clear these rows.
+    $fromDate = date('Y-m-d');
+    $toDate = $fromDate;
+    $selectedDates = [];
+}
+
 $limit = min(max((int)($_GET['limit'] ?? 300), 1), 1000);
 $records = fetch_confirmed_discount_records($pdo, $fromDate, $toDate, $selectedDates, $limit);
 

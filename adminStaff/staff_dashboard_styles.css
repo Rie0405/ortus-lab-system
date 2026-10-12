@@ -1444,6 +1444,234 @@ img {
     margin-bottom: 24px;
 }
 
+.pos-order-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-right: 52px;
+    box-sizing: border-box;
+}
+
+.pos-order-head .tab {
+    flex: 0 1 auto;
+    text-align: left;
+}
+
+.pos-discount-record-btn {
+    flex: 0 0 auto;
+    margin: 0 0 0.45rem;
+    border: 0;
+    border-radius: 8px;
+    background: #f48c25;
+    color: #120e0a;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 7px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(244, 140, 37, 0.35);
+}
+
+.pos-discount-record-btn:hover {
+    background: #ff9b3d;
+}
+
+.pos-discount-record-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.55);
+    box-sizing: border-box;
+}
+
+.pos-discount-record-layer.is-visible {
+    display: flex;
+}
+
+.pos-discount-record-dialog {
+    width: min(520px, calc(100vw - 28px));
+    max-height: min(80vh, 640px);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(244, 140, 37, 0.25);
+    border-radius: 12px;
+    background: #1a140f;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+.pos-discount-record-dialog__header,
+.pos-discount-record-dialog__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+}
+
+.pos-discount-record-dialog__header {
+    border-bottom: 1px solid #3d3025;
+}
+
+.pos-discount-record-dialog__footer {
+    border-top: 1px solid #3d3025;
+    justify-content: flex-end;
+}
+
+.pos-discount-record-dialog__header h2 {
+    margin: 0;
+    font-size: 15px;
+    color: #f8fafc;
+}
+
+.pos-discount-record-dialog__close {
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pos-discount-record-dialog__body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+}
+
+.pos-discount-record-dialog__hint {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.pos-discount-record-dialog__field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pos-discount-record-dialog__field input {
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: #12100d;
+    color: #f8fafc;
+    padding: 9px 10px;
+    font: inherit;
+}
+
+.pos-discount-record-dialog__btn {
+    border: 1px solid #3d3025;
+    border-radius: 8px;
+    background: transparent;
+    color: #cbd5e1;
+    padding: 8px 12px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pos-discount-record-list-wrap {
+    border: 1px solid #3d3025;
+    border-radius: 10px;
+    background: rgba(12, 9, 7, 0.45);
+    overflow: hidden;
+}
+
+.pos-discount-record-list-head,
+.pos-discount-record-row {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+}
+
+.pos-discount-record-list-head {
+    border-bottom: 1px solid #33261c;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.pos-discount-record-list {
+    max-height: min(48vh, 380px);
+    overflow-y: auto;
+}
+
+.pos-discount-record-row + .pos-discount-record-row {
+    border-top: 1px solid rgba(51, 38, 28, 0.85);
+}
+
+.pos-discount-record-name {
+    color: #fff7ed;
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pos-discount-record-empty {
+    margin: 0;
+    padding: 28px 16px;
+    text-align: center;
+    color: rgba(255, 247, 237, 0.45);
+    font-size: 13px;
+}
+
+.pos-discount-record-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 54px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.pos-discount-record-type--pwd {
+    background: rgba(96, 165, 250, 0.16);
+    color: #93c5fd;
+}
+
+.pos-discount-record-type--senior {
+    background: rgba(244, 140, 37, 0.16);
+    color: #fdba74;
+}
+
+.pos-discount-record-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0.02em;
+    color: #e2e8f0;
+    font-weight: 700;
+    font-size: 12px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .tab {
     border: 0;
     border-bottom: 2px solid transparent;

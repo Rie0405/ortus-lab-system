@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261012-kiosk-tag">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261012-discount-record">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -180,8 +180,9 @@
             </section>
 
             <aside class="pos-right">
-                <div class="tabs">
+                <div class="tabs pos-order-head">
                     <button class="tab tab--active" data-view-tab="order">CURRENT ORDER</button>
+                    <button type="button" class="pos-discount-record-btn" id="pos-discount-record-btn">Discount Record</button>
                 </div>
 
                 <div class="right-view right-view--order is-active" data-view-panel="order">
@@ -11490,6 +11491,35 @@
         })();
     </script>
 
+    <div class="pos-discount-record-layer" id="pos-discount-record-modal" aria-hidden="true">
+        <div class="pos-discount-record-dialog" role="dialog" aria-modal="true" aria-labelledby="pos-discount-record-title">
+            <header class="pos-discount-record-dialog__header">
+                <h2 id="pos-discount-record-title">Discount Record</h2>
+                <button type="button" class="pos-discount-record-dialog__close" id="pos-discount-record-close" aria-label="Close">×</button>
+            </header>
+            <div class="pos-discount-record-dialog__body">
+                <p class="pos-discount-record-dialog__hint">Confirmed PWD / Senior Citizen IDs used today. This list stays for the calendar day. Finalize and close shift leave it in place.</p>
+                <label class="pos-discount-record-dialog__field">
+                    <span>Search</span>
+                    <input type="search" id="pos-discount-records-search" placeholder="Name or ID no.…" autocomplete="off">
+                </label>
+                <div class="pos-discount-record-list-wrap">
+                    <div class="pos-discount-record-list-head" aria-hidden="true">
+                        <span>Type</span>
+                        <span>Name</span>
+                        <span>ID No.</span>
+                    </div>
+                    <div class="pos-discount-record-list" id="pos-discount-records-list">
+                        <p class="pos-discount-record-empty">No discount records yet.</p>
+                    </div>
+                </div>
+            </div>
+            <footer class="pos-discount-record-dialog__footer">
+                <button type="button" class="pos-discount-record-dialog__btn" id="pos-discount-record-cancel">Close</button>
+            </footer>
+        </div>
+    </div>
+
     <div class="payment-success-toast toast-container" id="payment-success-toast" aria-hidden="true" hidden>
         <div class="payment-success-toast__card">
             <div class="payment-success-toast__bar" aria-hidden="true">
@@ -11651,6 +11681,90 @@
                     }, FADE_MS);
                 }, DURATION_MS);
             };
+        })();
+    </script>
+    <script>
+        (function () {
+            var cache = [];
+            var btn = document.getElementById('pos-discount-record-btn');
+            var modal = document.getElementById('pos-discount-record-modal');
+            var closeBtn = document.getElementById('pos-discount-record-close');
+            var cancelBtn = document.getElementById('pos-discount-record-cancel');
+            var search = document.getElementById('pos-discount-records-search');
+            var list = document.getElementById('pos-discount-records-list');
+            if (!btn || !modal || !list) return;
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function renderList() {
+                var q = String((search && search.value) || '').trim().toLowerCase();
+                var rows = cache.filter(function (rec) {
+                    if (!q) return true;
+                    var hay = [rec.customer_name, rec.id_number, rec.discount_label, rec.discount_type].join(' ').toLowerCase();
+                    return hay.indexOf(q) !== -1;
+                });
+                if (!rows.length) {
+                    list.innerHTML = '<p class="pos-discount-record-empty">No confirmed discount IDs today.</p>';
+                    return;
+                }
+                list.innerHTML = rows.map(function (rec) {
+                    var type = String(rec.discount_type || 'senior').toLowerCase();
+                    var typeClass = type === 'pwd' ? 'pwd' : 'senior';
+                    var typeLabel = type === 'pwd' ? 'PWD' : 'Senior';
+                    return (
+                        '<div class="pos-discount-record-row">' +
+                            '<span class="pos-discount-record-type pos-discount-record-type--' + typeClass + '">' + esc(typeLabel) + '</span>' +
+                            '<span class="pos-discount-record-name">' + esc(rec.customer_name || '—') + '</span>' +
+                            '<span class="pos-discount-record-id">' + esc(rec.id_number || '—') + '</span>' +
+                        '</div>'
+                    );
+                }).join('');
+            }
+
+            function loadToday() {
+                list.innerHTML = '<p class="pos-discount-record-empty">Loading…</p>';
+                return fetch('api/discount_records.php?today=1&limit=500', { cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        cache = (d && d.success && Array.isArray(d.records)) ? d.records : [];
+                        renderList();
+                    })
+                    .catch(function () {
+                        cache = [];
+                        list.innerHTML = '<p class="pos-discount-record-empty">Could not load today’s discount records.</p>';
+                    });
+            }
+
+            function openModal() {
+                if (search) search.value = '';
+                modal.classList.add('is-visible');
+                modal.setAttribute('aria-hidden', 'false');
+                loadToday().finally(function () {
+                    if (search) search.focus();
+                });
+            }
+
+            function closeModal() {
+                modal.classList.remove('is-visible');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            btn.addEventListener('click', openModal);
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) closeModal();
+            });
+            if (search) search.addEventListener('input', renderList);
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && modal.classList.contains('is-visible')) closeModal();
+            });
         })();
     </script>
 </body>

@@ -400,7 +400,9 @@
         z-index: 1050 !important;
     }
 
-    /* POS body sits strictly BELOW the header — never overlays it */
+    /* POS body sits strictly BELOW the header — never overlays it.
+       height:0 + flex-basis 0% gives this panel a real scrollport.
+       height:auto let it grow with the order sheet, then the locked page clipped it. */
     .pos-page > .staff-main-panel--pos.is-active {
         position: relative !important;
         top: auto !important;
@@ -408,15 +410,17 @@
         right: auto !important;
         bottom: auto !important;
         z-index: 1 !important;
-        flex: 1 1 auto !important;
+        flex: 1 1 0% !important;
         min-height: 0 !important;
-        height: auto !important;
-        max-height: none !important;
+        height: 0 !important;
+        max-height: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow-x: hidden !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain;
+        touch-action: pan-y !important;
         transform: none !important;
     }
 
@@ -427,7 +431,25 @@
         min-height: 0 !important;
         height: auto !important;
         max-height: none !important;
+        overflow: visible !important;
         transform: none !important;
+    }
+
+    /* One scroller (the panel above). A nested cart scroller swallows the
+       touch on some phones, so the order sheet never moves. */
+    .pos-right,
+    .order-sheet-section,
+    [class*="current-order-panel"],
+    [class*="pos-right-panel"],
+    .pos-right .right-view.is-active,
+    .pos-right .pos-cart-slider,
+    .pos-right .order-list,
+    .pos-right .order-list--take-out {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        -webkit-overflow-scrolling: auto !important;
+        touch-action: pan-y !important;
     }
 
     .pos-left,

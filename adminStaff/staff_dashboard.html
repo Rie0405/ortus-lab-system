@@ -6288,12 +6288,7 @@
                 });
                 if (allKnownDone) {
                     if (orderId && kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
-                    clearKitchenStationDone(orderId);
-                    if (orderId && !servingOrdersQueue.some(function (s) {
-                        return parseInt(s && s.id, 10) === orderId;
-                    })) {
-                        servingOrdersQueue.push(o);
-                    }
+                    rememberServingOrder(o);
                 } else {
                     stillActive.push(o);
                 }
@@ -6334,6 +6329,37 @@
                 return (parseInt(o && o.id, 10) || 0) === id;
             });
         };
+        function rememberServingOrder(order) {
+            var orderId = parseInt(order && order.id, 10) || 0;
+            if (!orderId) return;
+            if (!servingOrdersQueue.some(function (s) {
+                return (parseInt(s && s.id, 10) || 0) === orderId;
+            })) {
+                servingOrdersQueue.push(order);
+            }
+        }
+        /** Keep a confirmed order on kitchen while another capsule still needs DONE. */
+        function orderStillNeedsKitchen(order, servingIds) {
+            var id = parseInt(order && order.id, 10) || 0;
+            if (!id || !servingIds || !servingIds[id]) return true;
+            var known = orderKnownStationKeys(order);
+            if (!known.length) return false;
+            return known.some(function (k) {
+                return !isStationDoneForOrder(id, k);
+            });
+        }
+        function orderVisibleInServing(order) {
+            var group = String(activeKitchenCategory || firstStationKey() || '').toLowerCase();
+            if (group && !orderMatchesKitchenCategory(order, group, { ignoreStationDone: true })) {
+                return false;
+            }
+            var id = parseInt(order && order.id, 10) || 0;
+            var stillKitchen = (kitchenOrders || []).some(function (o) {
+                return (parseInt(o && o.id, 10) || 0) === id;
+            });
+            if (!stillKitchen) return true;
+            return isStationDoneForOrder(id, group);
+        }
         function orderMatchesKitchenCategory(order, group, opts) {
             opts = opts || {};
             var items = (order && order.items) || [];
@@ -8219,9 +8245,9 @@
                     if (sid) servingSet[sid] = true;
                 });
 
-                // Any confirmed order not already in the local serving panel stays in kitchen.
+                // Confirmed orders stay on kitchen until every capsule that has their items is DONE.
                 kitchenOrders = confirmedList.filter(function (o) {
-                    return !servingSet[parseInt(o && o.id, 10) || 0];
+                    return orderStillNeedsKitchen(o, servingSet);
                 });
 
                 // Unstick orders whose only remaining "stations" are deleted/unknown,
@@ -9707,7 +9733,7 @@
         function renderServingOrders() {
             if (!kitchenServingList) return;
             kitchenServingList.innerHTML = '';
-            var ordered = getFilteredKitchenOrders(servingOrdersQueue, { ignoreStationDone: true })
+            var ordered = (servingOrdersQueue || []).filter(orderVisibleInServing)
                 .slice()
                 .sort(function (a, b) {
                     return (parseInt(a && a.id, 10) || 0) - (parseInt(b && b.id, 10) || 0);
@@ -10150,9 +10176,13 @@
                         var cid = parseInt(o && o.id, 10) || 0;
                         return confirmedById[cid] || o;
                     });
-                    var servingSet = new Set(servingOrdersQueue.map(function (o) { return parseInt(o.id, 10) || 0; }));
+                    var servingSet = {};
+                    servingOrdersQueue.forEach(function (o) {
+                        var sid = parseInt(o && o.id, 10) || 0;
+                        if (sid) servingSet[sid] = true;
+                    });
                     kitchenOrders = confirmedKitchen.filter(function (o) {
-                        return !servingSet.has(parseInt(o.id, 10) || 0);
+                        return orderStillNeedsKitchen(o, servingSet);
                     });
                     reconcileKitchenOrdersToServing();
                 }
@@ -10444,17 +10474,15 @@
                     doneBtn.disabled = false;
                     return;
                 }
-                var stationResult = markKitchenStationDone(moved, activeKitchenCategory || 'bar');
+                var stationKey = activeKitchenCategory || firstStationKey();
+                var stationResult = markKitchenStationDone(moved, stationKey);
+                rememberServingOrder(moved);
                 if (stationResult.fullyDone) {
                     kitchenOrders = kitchenOrders.filter(function (o) {
                         return (parseInt(o && o.id, 10) || 0) !== orderId;
                     });
                     pendingOrders = pendingOrders.filter(function (o) { return parseInt(o && o.id, 10) !== orderId; });
                     if (kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
-                    clearKitchenStationDone(orderId);
-                    if (!servingOrdersQueue.some(function (o) { return parseInt(o && o.id, 10) === orderId; })) {
-                        servingOrdersQueue.push(moved);
-                    }
                 }
                 renderKitchenOrders();
                 renderPendingOrders();
@@ -10484,13 +10512,10 @@
                         stillActive.push(o);
                         return;
                     }
-                    var stationResult = markKitchenStationDone(o, activeKitchenCategory || 'bar');
+                    var stationResult = markKitchenStationDone(o, activeKitchenCategory || firstStationKey());
+                    rememberServingOrder(o);
                     if (stationResult.fullyDone) {
                         if (kitchenPriorityById[orderId]) delete kitchenPriorityById[orderId];
-                        clearKitchenStationDone(orderId);
-                        if (!servingOrdersQueue.some(function (s) { return parseInt(s && s.id, 10) === orderId; })) {
-                            servingOrdersQueue.push(o);
-                        }
                     } else {
                         stillActive.push(o);
                     }
@@ -10505,7 +10530,7 @@
         var servedAllBtn = document.getElementById('served-all-orders-btn');
         if (servedAllBtn) {
             servedAllBtn.addEventListener('click', function () {
-                var visibleServing = getFilteredKitchenOrders(servingOrdersQueue, { ignoreStationDone: true });
+                var visibleServing = (servingOrdersQueue || []).filter(orderVisibleInServing);
                 if (!visibleServing.length) return;
                 var stationMeta = activeStationMeta();
                 var stationLabel = stationMeta

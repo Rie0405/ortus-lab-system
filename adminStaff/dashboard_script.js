@@ -3646,7 +3646,7 @@ function apiCall(method, url, body) {
         var css = document.createElement('link');
         css.id = 'activity-feed-css';
         css.rel = 'stylesheet';
-        css.href = 'activity_feed.css?v=20261011-center-blur';
+        css.href = 'activity_feed.css?v=20261012-feed-visible';
         document.head.appendChild(css);
     }
 
@@ -3680,6 +3680,11 @@ function apiCall(method, url, body) {
     } else {
         actions.appendChild(wrap);
     }
+
+    // Inventory, ordering, and sales clip the header (overflow hidden).
+    // Keep the dropdown on document.body so it paints below the bell.
+    var panelNode = wrap.querySelector('#activity-feed-panel');
+    if (panelNode) document.body.appendChild(panelNode);
 
     var bellBtn = document.getElementById('btn-activity-feed');
     var badgeEl = document.getElementById('activity-feed-badge');
@@ -3867,6 +3872,7 @@ function apiCall(method, url, body) {
     document.addEventListener('click', function (e) {
         if (!isOpen()) return;
         if (wrap.contains(e.target)) return;
+        if (panelEl && panelEl.contains(e.target)) return;
         closePanel();
     });
     document.addEventListener('keydown', function (e) {

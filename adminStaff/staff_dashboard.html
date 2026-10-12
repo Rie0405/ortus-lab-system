@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261011-tablet-pager">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261012-kiosk-tag">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -8799,8 +8799,8 @@
                         '<div class="opq-card-head-status-row">' +
                             '<span class="opq-fcfs-label' + queueLabelClass + '">' + queueLabel + '</span>' +
                             '<span class="opq-pending-badge" style="display:inline-block">PENDING</span>' +
-                            '<span class="opq-pending-badge" style="display:inline-block;margin-left:6px;background:' +
-                                (isKioskOrder ? '#0369a1' : '#b45309') + '">' + sourceBadge + '</span>' +
+                            '<span class="opq-pending-badge' + (isKioskOrder ? ' opq-source-badge--kiosk' : '') + '" style="display:inline-block;margin-left:6px;' +
+                                (isKioskOrder ? '' : 'background:#b45309') + '">' + sourceBadge + '</span>' +
                         '</div>' +
                         cardTitleHtml +
                         customerPaymentRow +

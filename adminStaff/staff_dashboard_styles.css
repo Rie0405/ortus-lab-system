@@ -5246,6 +5246,12 @@ img {
     white-space: nowrap;
 }
 
+.opq-source-badge--kiosk {
+    background: #f48c25;
+    border-color: #c46e1a;
+    color: #121212;
+}
+
 /* SERVED badge — hidden by default */
 .opq-served-badge {
     display: none;

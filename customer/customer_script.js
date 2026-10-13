@@ -3691,3 +3691,64 @@ refreshPickupServerTime();
 setInterval(refreshPickupServerTime, 60000);
 loadMenuData();
 setInterval(refreshFastMovingBadges, 90000);
+
+(function initPhoneOrderSheet() {
+    var phoneQuery = window.matchMedia('(max-width: 560px)');
+
+    function setSheetOpen(sidebar, handle, open) {
+        sidebar.classList.toggle('is-order-open', open);
+        handle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    document.querySelectorAll('.menu-sidebar').forEach(function (sidebar) {
+        var handle = sidebar.querySelector('.order-sheet-handle');
+        if (!handle) return;
+
+        var startY = 0;
+        var dragged = false;
+
+        handle.addEventListener('pointerdown', function (event) {
+            if (!phoneQuery.matches) return;
+            startY = event.clientY;
+            dragged = false;
+            if (handle.setPointerCapture) handle.setPointerCapture(event.pointerId);
+        });
+
+        handle.addEventListener('pointermove', function (event) {
+            if (!phoneQuery.matches) return;
+            if (Math.abs(event.clientY - startY) > 8) dragged = true;
+        });
+
+        handle.addEventListener('pointerup', function (event) {
+            if (!phoneQuery.matches) return;
+            var delta = event.clientY - startY;
+            if (delta <= -24) {
+                setSheetOpen(sidebar, handle, true);
+                return;
+            }
+            if (delta >= 24) {
+                setSheetOpen(sidebar, handle, false);
+            }
+        });
+
+        handle.addEventListener('click', function () {
+            if (!phoneQuery.matches || dragged) return;
+            setSheetOpen(sidebar, handle, !sidebar.classList.contains('is-order-open'));
+        });
+    });
+
+    function closeSheetsOffPhone() {
+        if (phoneQuery.matches) return;
+        document.querySelectorAll('.menu-sidebar.is-order-open').forEach(function (sidebar) {
+            sidebar.classList.remove('is-order-open');
+            var handle = sidebar.querySelector('.order-sheet-handle');
+            if (handle) handle.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    if (phoneQuery.addEventListener) {
+        phoneQuery.addEventListener('change', closeSheetsOffPhone);
+    } else if (phoneQuery.addListener) {
+        phoneQuery.addListener(closeSheetsOffPhone);
+    }
+})();

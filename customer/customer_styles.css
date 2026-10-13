@@ -917,6 +917,10 @@ body {
 }
 
 /* â”€â”€ Order Sidebar â”€â”€ */
+.order-sheet-handle {
+    display: none;
+}
+
 .menu-sidebar {
     width: 400px;
     flex-shrink: 0;
@@ -3535,6 +3539,54 @@ body {
     img {
         max-width: 100%;
         height: auto;
+    }
+
+    /* Phone only: Your Order slides from the bottom grip to the top of the screen. */
+    .menu-sidebar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        height: 100dvh;
+        max-height: none;
+        z-index: 40;
+        transform: translateY(calc(100% - 44px));
+        transition: transform 0.28s ease;
+    }
+
+    .menu-sidebar.is-order-open {
+        transform: translateY(0);
+    }
+
+    .order-sheet-handle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        width: 100%;
+        height: 44px;
+        flex-shrink: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-bottom: 1px solid #3d3025;
+        background: #15110d;
+        cursor: pointer;
+    }
+
+    .order-sheet-handle span {
+        display: block;
+        width: 28px;
+        height: 2px;
+        border-radius: 2px;
+        background: #d6c7b4;
+    }
+
+    .menu-grid-area {
+        padding-bottom: 60px;
     }
 }
 

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="customer_styles.css?v=20261013-phone-order-sheet">
+    <link rel="stylesheet" href="customer_styles.css?v=20261013-qr-enlarge">
 </head>
 <body>
 
@@ -68,8 +68,7 @@
         <!-- Footer -->
         <footer class="footer">
             <nav class="footer-links">
-                <a href="#" class="footer-link">Help &amp; Support</a>
-                <a href="#" class="footer-link">Language: English</a>
+                
                 <a href="#" class="footer-link">Terms of Service</a>
             </nav>
             <div class="footer-brand">
@@ -810,7 +809,7 @@
                     </p>
                 </div>
                 <div class="gcash-qr-wrap" aria-label="GCash QR code">
-                    <img id="gcash-qr-img" class="gcash-qr-img" src="" alt="GCash QR Code" />
+                    <img id="gcash-qr-img" class="gcash-qr-img" src="" alt="GCash QR Code. Tap to enlarge." />
                 </div>
                 <p class="cash-modal-info cash-modal-message--pickup-only">Your order is ready within 15–20 mins.</p>
                 <p class="cash-modal-field-hint cash-modal-message--pickup-only">If much later, set your pickup time</p>
@@ -859,6 +858,10 @@
                 <button id="gcash-modal-confirm" class="cash-modal-confirm-btn" type="button">Confirm</button>
             </div>
         </div>
+    </div>
+
+    <div id="gcash-qr-lightbox" class="gcash-qr-lightbox" hidden aria-hidden="true">
+        <img id="gcash-qr-lightbox-img" class="gcash-qr-lightbox__img" alt="Enlarged GCash QR Code" />
     </div>
 
     <!-- ── Order receipt QR (after checkout) ── -->
@@ -939,7 +942,7 @@
     }
     </script>
     <script src="../shared/gcash_ref_digits.js"></script>
-    <script src="customer_script.js?v=20261013-phone-order-sheet"></script>
+    <script src="customer_script.js?v=20261013-qr-enlarge"></script>
 
 </body>
 </html>

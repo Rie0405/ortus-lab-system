@@ -3002,6 +3002,30 @@ body {
     border: 1px solid #3d3025;
     background: #120e0a;
     display: none;
+    cursor: zoom-in;
+}
+
+.gcash-qr-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 13000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.86);
+    cursor: zoom-out;
+}
+
+.gcash-qr-lightbox.is-open {
+    display: flex;
+}
+
+.gcash-qr-lightbox__img {
+    width: min(92vw, 92dvh, 520px);
+    height: auto;
+    background: #ffffff;
+    border-radius: 12px;
 }
 
 @media (max-width: 980px) {

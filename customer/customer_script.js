@@ -2543,6 +2543,8 @@ function resetPickupAlarmPicker() {
 var gcashNumberDisplay = document.getElementById('gcash-number-display');
 var gcashNameDisplay = document.getElementById('gcash-name-display');
 var gcashQrImg = document.getElementById('gcash-qr-img');
+var gcashQrLightbox = document.getElementById('gcash-qr-lightbox');
+var gcashQrLightboxImg = document.getElementById('gcash-qr-lightbox-img');
 var gcashCopyNumberBtn = document.getElementById('gcash-copy-number-btn');
 var ingredientModal = document.getElementById('ingredient-modal');
 var ingredientModalCancelBtn = document.getElementById('ingredient-modal-cancel');
@@ -2812,6 +2814,33 @@ function closeOrderReceiptModal() {
     resetReceiptQrDisplay();
 }
 
+function closeGcashQrLightbox() {
+    if (!gcashQrLightbox) return;
+    gcashQrLightbox.classList.remove('is-open');
+    gcashQrLightbox.hidden = true;
+    gcashQrLightbox.setAttribute('aria-hidden', 'true');
+    if (gcashQrLightboxImg) gcashQrLightboxImg.removeAttribute('src');
+}
+
+function openGcashQrLightbox() {
+    if (!gcashQrImg || !gcashQrLightbox || !gcashQrLightboxImg) return;
+    if (!gcashQrImg.getAttribute('src') || gcashQrImg.style.display === 'none') return;
+    gcashQrLightboxImg.src = gcashQrImg.src;
+    gcashQrLightbox.hidden = false;
+    gcashQrLightbox.classList.add('is-open');
+    gcashQrLightbox.setAttribute('aria-hidden', 'false');
+}
+
+if (gcashQrImg) {
+    gcashQrImg.addEventListener('click', openGcashQrLightbox);
+}
+if (gcashQrLightbox) {
+    gcashQrLightbox.addEventListener('click', closeGcashQrLightbox);
+}
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeGcashQrLightbox();
+});
+
 function applyGcashKioskConfig(cfg) {
     if (!cfg) return;
     if (gcashNumberDisplay) gcashNumberDisplay.textContent = String(cfg.gcash_number || '09XXXXXXXXXX');
@@ -3037,6 +3066,7 @@ function openGcashModal() {
 }
 
 function closeGcashModal() {
+    closeGcashQrLightbox();
     if (!gcashCheckoutModal) return;
     gcashCheckoutModal.classList.remove('cash-modal-overlay--open');
     gcashCheckoutModal.setAttribute('aria-hidden', 'true');

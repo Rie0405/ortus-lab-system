@@ -727,6 +727,87 @@ if ($m === 'PUT') {
         }
     }
 
+    if ($action === 'switch_to_take_out' || $action === 'switch_to_dine_in') {
+        $target = $action === 'switch_to_dine_in' ? 'dine_in' : 'take_out';
+        $targetLabel = $target === 'dine_in' ? 'dine in' : 'take out';
+        ensure_order_type_schema($pdo);
+        ensure_order_item_fulfillment_schema($pdo);
+        $pdo->beginTransaction();
+        try {
+            $prevStmt = $pdo->prepare(
+                'SELECT id, status, order_type, order_source FROM orders WHERE id = :id FOR UPDATE'
+            );
+            $prevStmt->execute([':id' => $id]);
+            $prev = $prevStmt->fetch();
+            if (!$prev) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                fail('Order not found.', 404);
+            }
+            $prevStatus = strtolower(trim((string)($prev['status'] ?? '')));
+            if (!in_array($prevStatus, ['pending', 'confirmed'], true)) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                fail('Only open orders can be switched to ' . $targetLabel . '.');
+            }
+
+            $itemStmt = $pdo->prepare(
+                'SELECT id, notes, fulfillment FROM order_items WHERE order_id = :id ORDER BY id ASC'
+            );
+            $itemStmt->execute([':id' => $id]);
+            $itemRows = $itemStmt->fetchAll() ?: [];
+
+            $upd = $pdo->prepare(
+                'UPDATE order_items SET notes = :notes, fulfillment = :fulfillment WHERE id = :id'
+            );
+            $lineFulfillments = [];
+            $switched = 0;
+            foreach ($itemRows as $item) {
+                $current = normalize_item_fulfillment($item['fulfillment'] ?? null);
+                if ($current === null) {
+                    $current = fulfillment_from_notes($item['notes'] ?? null);
+                }
+                if ($current === 'pickup') {
+                    $lineFulfillments[] = 'pickup';
+                    continue;
+                }
+                $notes = notes_with_fulfillment($item['notes'] ?? '', $target);
+                $upd->execute([
+                    ':notes' => $notes !== '' ? $notes : null,
+                    ':fulfillment' => $target,
+                    ':id' => (int)$item['id'],
+                ]);
+                $lineFulfillments[] = $target;
+                if ($current !== $target) {
+                    $switched++;
+                }
+            }
+
+            $nextOrderType = $target;
+            if (in_array('pickup', $lineFulfillments, true) && count(array_unique($lineFulfillments)) > 1) {
+                $nextOrderType = resolve_order_type_from_fulfillments($lineFulfillments, $target);
+            }
+            $pdo->prepare('UPDATE orders SET order_type = :otype WHERE id = :id')
+                ->execute([
+                    ':otype' => substr($nextOrderType, 0, 60),
+                    ':id' => $id,
+                ]);
+            $pdo->commit();
+            publish_realtime_event('order_updated', [
+                'order_id' => $id,
+                'action' => $action,
+                'order_source' => strtolower((string)($prev['order_source'] ?? '')),
+                'status' => $prevStatus,
+            ]);
+            ok([
+                'message' => 'Order switched to ' . $targetLabel . '.',
+                'order_type' => $nextOrderType,
+                'switched_lines' => $switched,
+            ]);
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            fail('Failed to switch order: ' . $e->getMessage(), 500);
+        }
+    }
+
     if ($action === 'discount' || $action === 'edit' || $action === 'update_cart') {
         // Run schema ensures BEFORE the transaction — MySQL DDL auto-commits
         // and would otherwise leave commit() with "no active transaction".

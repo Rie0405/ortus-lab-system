@@ -599,8 +599,17 @@ function openIngredientModal(menuItem, initial, openOpts) {
             '</div></div>';
     }
 
+    var options = getAddonOptionsForItem(
+        itemName,
+        menuItem.category_name || '',
+        menuItem.main_category_id,
+        menuItem.main_category_name
+    );
+
     if (sub) {
-        if (!variants.length) {
+        if (!variants.length && !options.length) {
+            sub.textContent = 'Add an optional note, or continue.';
+        } else if (!variants.length) {
             sub.textContent = 'Tap add-ons to include them. Tap again to remove. Extra charges may apply at pickup.';
         } else if (variants.length === 1) {
             sub.textContent = 'Option is set. Add optional add-ons, or continue.';
@@ -609,12 +618,6 @@ function openIngredientModal(menuItem, initial, openOpts) {
         }
     }
 
-    var options = getAddonOptionsForItem(
-        itemName,
-        menuItem.category_name || '',
-        menuItem.main_category_id,
-        menuItem.main_category_name
-    );
     var pillsHtml = options
         .map(function (opt) {
             var isActive = selectedSet.has(String(opt.name).toLowerCase());
@@ -646,10 +649,12 @@ function openIngredientModal(menuItem, initial, openOpts) {
     checklist.className = 'ingredient-checklist ingredient-checklist--addons';
     checklist.innerHTML =
         tempSectionHtml +
-        '<p class="ingredient-modal-section-label">Add-ons</p>' +
-        '<div class="kiosk-addon-grid">' +
-        pillsHtml +
-        '</div>';
+        (options.length
+            ? '<p class="ingredient-modal-section-label">Add-ons</p>' +
+              '<div class="kiosk-addon-grid">' +
+              pillsHtml +
+              '</div>'
+            : '');
 
     // If only one temperature exists, force it selected in the DOM (covers cache/edge cases).
     if (variants.length === 1) {
@@ -1516,25 +1521,6 @@ function attachAddHandlers(scopeEl, opts) {
                 return;
             }
             var quickVariants = getKioskTemperatureVariants(it, !!opts.temperatureFallback);
-            var quickAddons = getAddonOptionsForItem(
-                it.name,
-                it.category_name || '',
-                it.main_category_id,
-                it.main_category_name
-            );
-            if (!quickVariants.length && !quickAddons.length) {
-                addItemToCart({
-                    menu_item_id: it.id,
-                    name: it.name,
-                    price: it.price,
-                    addons: [],
-                    temperature: null,
-                    note: '',
-                    removed: []
-                });
-                renderAllSidebars();
-                return;
-            }
             openIngredientModal(
                 it,
                 { addons: [], temperature: null, note: '' },

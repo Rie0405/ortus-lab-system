@@ -3202,6 +3202,48 @@ img {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.staff-opq-actions .opq-action-btn {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.opq-action-btn--takeout {
+    grid-column: 1 / -1;
+    background: #1e293b;
+    border: 1px solid #64748b;
+    color: #e2e8f0;
+    font-weight: 700;
+}
+
+.opq-action-btn--takeout:hover {
+    background: #334155;
+    border-color: #94a3b8;
+}
+
+.kitchen-card-foot .kitchen-switch-takeout-btn {
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid #64748b;
+    background: #1e293b;
+    box-shadow: none;
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+}
+
+.kitchen-card-foot .kitchen-switch-takeout-btn:hover {
+    background: #334155;
+    border-color: #94a3b8;
 }
 
 .opq-action-btn {

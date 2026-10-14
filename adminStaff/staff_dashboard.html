@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261012-discount-record">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261014-queue-switch-slate">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -2515,13 +2515,6 @@
                             addToCart(id, name, price, formatStandaloneAddonNotes(name));
                             return;
                         }
-                        var isBeverageItem = categoryNameMergesIntoBeverages(categoryName);
-                        var hasAddons = itemHasPosAddons(item);
-                        // Food items with station addons must open the modal too (not only drinks).
-                        if (!isBeverageItem && !hasAddons) {
-                            addToCart(id, name, price, "");
-                            return;
-                        }
                         openProductModal({
                             id: id,
                             name: item.name || name,
@@ -3086,7 +3079,8 @@
                         "</button>"
                     );
                 }).join("");
-                if (posAddonEmpty) posAddonEmpty.hidden = list.length > 0;
+                if (posAddonsSection) posAddonsSection.style.display = list.length ? "" : "none";
+                if (posAddonEmpty) posAddonEmpty.hidden = true;
             }
 
             function openProductModal(item) {
@@ -8643,7 +8637,8 @@
             document.body.classList.remove('pos-modal-open');
         }
 
-        function buildOpqActionsFooter(order) {
+        function buildOpqActionsFooter(order, opts) {
+            opts = opts || {};
             var orderId = order && order.id != null ? order.id : order;
             var isKioskPickup = String(order && order.order_source || '').toLowerCase() === 'kiosk'
                 && normalizeQueueOrderPartition(order) === 'pickup';
@@ -8659,14 +8654,51 @@
                     discountBtn = '<button type="button" class="opq-action-btn opq-action-btn--discount" data-discount-order="' + orderId + '">' + esc(discountActionButtonLabel()) + '</button>';
                 }
             }
+            var switchBtn = '';
+            if (opts.partition === 'dine_in') {
+                switchBtn = '<button type="button" class="opq-action-btn opq-action-btn--takeout" data-switch-lane="take_out" data-switch-order="' + orderId + '">Switch to Take Out</button>';
+            } else if (opts.partition === 'take_out') {
+                switchBtn = '<button type="button" class="opq-action-btn opq-action-btn--takeout" data-switch-lane="dine_in" data-switch-order="' + orderId + '">Switch to Dine In</button>';
+            }
             return (
                 '<footer class="opq-card-foot staff-opq-actions">' +
+                    switchBtn +
                     '<button type="button" class="opq-action-btn opq-action-btn--confirm" data-confirm-order="' + orderId + '">Confirm</button>' +
                     '<button type="button" class="opq-action-btn opq-action-btn--void" data-void-order="' + orderId + '">Delete</button>' +
                     discountBtn +
                     '<button type="button" class="opq-action-btn opq-action-btn--edit" data-edit-order="' + orderId + '">Edit</button>' +
                 '</footer>'
             );
+        }
+
+        function switchQueueOrderLane(orderId, lane, btn) {
+            var id = parseInt(orderId, 10);
+            var target = lane === 'dine_in' ? 'dine_in' : 'take_out';
+            if (!id) return;
+            var label = target === 'dine_in' ? 'Dine In' : 'Take Out';
+            if (!window.confirm('Move this order to ' + label + '?')) return;
+            if (btn) btn.disabled = true;
+            fetch('api/orders.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    id: id,
+                    action: target === 'dine_in' ? 'switch_to_dine_in' : 'switch_to_take_out'
+                })
+            }).then(function (r) { return r.json(); })
+              .then(function (d) {
+                  if (!d || !d.success) {
+                      alert((d && d.error) || ('Could not switch this order to ' + label + '.'));
+                      if (btn) btn.disabled = false;
+                      return;
+                  }
+                  loadStaffData();
+              })
+              .catch(function () {
+                  alert('Could not switch this order to ' + label + '.');
+                  if (btn) btn.disabled = false;
+              });
         }
 
         function findQueueOrder(orderId) {
@@ -8742,17 +8774,26 @@
             return 'dine_in';
         }
 
+        function orderTypeLabelFromNotes(notes) {
+            var raw = String(notes || '');
+            var re = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/gi;
+            var last = '';
+            var match;
+            while ((match = re.exec(raw))) {
+                last = String(match[1] || '').trim();
+            }
+            return normalizeItemFulfillmentKey(last);
+        }
+
         /** Per-line partition from registered fulfillment / notes — never keyword-guess. */
         function getOrderLinePartitionKey(item, order) {
             var orderBucket = normalizeQueueOrderPartition(order);
             if (orderBucket === 'pickup') return 'pickup';
+            if (orderBucket === 'take_out') return 'take_out';
+            if (orderBucket === 'dine_in') return 'dine_in';
 
             var direct = normalizeItemFulfillmentKey(item && item.fulfillment);
-            if (!direct) {
-                var notes = String((item && item.notes) || '');
-                var m = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/i.exec(notes);
-                if (m && m[1]) direct = normalizeItemFulfillmentKey(m[1]);
-            }
+            if (!direct) direct = orderTypeLabelFromNotes(item && item.notes);
             if (direct === 'take_out' || direct === 'dine_in' || direct === 'pickup') {
                 return direct;
             }
@@ -8852,7 +8893,7 @@
                     contactDetailsHtml +
                     '<div class="opq-card-total"><span>TOTAL AMOUNT</span><strong class="opq-total-val">' + peso(order.total_amount) + '</strong></div>' +
                 '</div>' +
-                buildOpqActionsFooter(order);
+                buildOpqActionsFooter(order, opts);
             return card;
         }
 
@@ -8874,8 +8915,8 @@
             renderPartitionedOrderGrid(
                 opqGrid,
                 orderedPending,
-                function (order, idx) {
-                    return buildPendingOrderCardElement(order, idx, { hideOrderTypeLine: true });
+                function (order, idx, partition) {
+                    return buildPendingOrderCardElement(order, idx, { hideOrderTypeLine: true, partition: partition });
                 },
                 'No orders'
             );
@@ -9106,16 +9147,14 @@
         }
 
         function getItemFulfillmentKey(item, order) {
+            var orderBucket = order ? normalizeQueueOrderPartition(order) : '';
+            if (orderBucket === 'take_out') return 'take_out';
+            if (orderBucket === 'dine_in') return 'dine_in';
+            if (orderBucket === 'pickup') return 'pickup';
             var direct = normalizeItemFulfillmentKey(item && item.fulfillment);
             if (direct) return direct;
-            var notes = String((item && item.notes) || '');
-            var m = /(?:^|\|)\s*Order type\s*:\s*([^|]+)/i.exec(notes);
-            if (m && m[1]) {
-                var fromNotes = normalizeItemFulfillmentKey(m[1]);
-                if (fromNotes) return fromNotes;
-            }
-            // Whole-order pickup (common for kiosk) — show Pick up when line has no dine/take badge.
-            if (order && normalizeQueueOrderPartition(order) === 'pickup') return 'pickup';
+            var fromNotes = orderTypeLabelFromNotes(item && item.notes);
+            if (fromNotes) return fromNotes;
             return '';
         }
 
@@ -9575,7 +9614,7 @@
                     body.innerHTML = '<p class="opq-queue-partition-empty">' + esc(emptyMessage || 'No orders') + '</p>';
                 } else {
                     ordersInPart.forEach(function (order, idx) {
-                        body.appendChild(buildCardFn(order, idx));
+                        body.appendChild(buildCardFn(order, idx, part.key));
                     });
                 }
                 section.appendChild(head);
@@ -9708,6 +9747,11 @@
                 '</header>' +
                 '<div class="opq-card-items">' + itemsHtml + '</div>' +
                 '<footer class="opq-card-foot kitchen-card-foot">' +
+                    (opts.partition === 'dine_in'
+                        ? '<button type="button" class="opq-confirm-btn kitchen-switch-takeout-btn" data-switch-lane="take_out" data-switch-order="' + orderId + '">Switch to Take Out</button>'
+                        : (opts.partition === 'take_out'
+                            ? '<button type="button" class="opq-confirm-btn kitchen-switch-takeout-btn" data-switch-lane="dine_in" data-switch-order="' + orderId + '">Switch to Dine In</button>'
+                            : '')) +
                     '<div class="kitchen-card-actions">' +
                         '<button type="button" class="opq-confirm-btn kitchen-return-btn" data-kitchen-return="' + orderId + '">RETURN</button>' +
                         '<button type="button" class="opq-confirm-btn kitchen-done-btn" data-kitchen-done="' + orderId + '">DONE</button>' +
@@ -9739,10 +9783,11 @@
                 renderPartitionedOrderGrid(
                     kitchenGrid,
                     orderedKitchen,
-                    function (order, idx) {
+                    function (order, idx, partition) {
                         return buildKitchenOrderCardElement(order, idx, {
                             hideOrderTypeLine: true,
-                            stationGroup: activeKitchenCategory
+                            stationGroup: activeKitchenCategory,
+                            partition: partition
                         });
                     },
                     'No orders',
@@ -10475,12 +10520,30 @@
                 if (editBtn) {
                     var editOrder = findQueueOrder(editBtn.getAttribute('data-edit-order'));
                     if (editOrder) editQueueOrderInPos(editOrder);
+                    return;
+                }
+                var switchBtn = e.target.closest('[data-switch-order]');
+                if (switchBtn) {
+                    switchQueueOrderLane(
+                        switchBtn.getAttribute('data-switch-order'),
+                        switchBtn.getAttribute('data-switch-lane'),
+                        switchBtn
+                    );
                 }
             });
         }
 
         if (kitchenGrid) {
             kitchenGrid.addEventListener('click', function (e) {
+                var switchBtn = e.target.closest('[data-switch-order]');
+                if (switchBtn) {
+                    switchQueueOrderLane(
+                        switchBtn.getAttribute('data-switch-order'),
+                        switchBtn.getAttribute('data-switch-lane'),
+                        switchBtn
+                    );
+                    return;
+                }
                 var priorityBtn = e.target.closest('[data-kitchen-priority]');
                 if (priorityBtn) {
                     var priorityOrderId = parseInt(priorityBtn.getAttribute('data-kitchen-priority'), 10);

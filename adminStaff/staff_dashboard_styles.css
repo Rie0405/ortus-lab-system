@@ -7407,6 +7407,31 @@ img {
     font-weight: 600;
 }
 
+.pos-modal__note-input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 52px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 2px solid #f48c25;
+    background: #1a1814;
+    color: #ffffff;
+    font: inherit;
+    font-size: 16px;
+    outline: none;
+    box-shadow: inset 0 0 0 1px rgba(244, 140, 37, 0.25);
+}
+
+.pos-modal__note-input::placeholder {
+    color: #d1d5db;
+}
+
+.pos-modal__note-input:focus {
+    background: #221c16;
+    border-color: #fb923c;
+    box-shadow: 0 0 0 3px rgba(244, 140, 37, 0.28);
+}
+
 .pos-modal__pill-row {
     display: flex;
     gap: 10px;

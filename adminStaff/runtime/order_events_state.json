@@ -1,1 +1,1 @@
-{"id":1791853747743,"type":"order_created","ts":"2026-10-13T01:09:07+00:00","payload":{"order_id":360,"order_number":"KIO-101326-009","order_source":"kiosk","status":"pending"}}
+{"id":1791962047419,"type":"order_created","ts":"2026-10-14T07:14:07+00:00","payload":{"order_id":361,"order_number":"POS-101426-013","order_source":"pos","status":"confirmed","main_category_ids":[1]}}

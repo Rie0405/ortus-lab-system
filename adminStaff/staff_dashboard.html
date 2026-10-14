@@ -1299,6 +1299,11 @@
                         </div>
                         <p class="pos-muted pos-addon-empty" id="pos-addon-empty" hidden>No addons registered for this station.</p>
                     </section>
+
+                    <section class="pos-modal__section" data-pos-section="staff-note">
+                        <h3 class="pos-modal__label">NOTES</h3>
+                        <input type="text" id="pos-item-note" class="pos-modal__note-input" maxlength="160" placeholder="e.g. less ice, no sugar" autocomplete="off">
+                    </section>
                 </div>
 
                 <footer class="pos-modal__footer">
@@ -1353,6 +1358,7 @@
             var posAddonsSection = productModal ? productModal.querySelector('[data-pos-section="addons"]') : null;
             var posAddonPillRow = document.getElementById("pos-addon-pill-row");
             var posAddonEmpty = document.getElementById("pos-addon-empty");
+            var posItemNoteInput = document.getElementById("pos-item-note");
             var posCatalogAddons = [];
 
             var menuData = { categories: [], items: [], subcategories: [] };
@@ -3103,6 +3109,7 @@
                         posAddonsSection.style.display = "";
                         renderPosAddonPills(item);
                     }
+                    if (posItemNoteInput) posItemNoteInput.value = "";
                     updateProductModalTotal();
                 }
                 if (productModal) {
@@ -3144,7 +3151,12 @@
                         }
                     });
                 }
-                return parts.join(", ");
+                var joined = parts.join(", ");
+                var staffNote = posItemNoteInput
+                    ? String(posItemNoteInput.value || "").replace(/\|/g, " ").replace(/\s+/g, " ").trim()
+                    : "";
+                if (!staffNote) return joined;
+                return (joined ? joined + " | " : "| ") + "Note: " + staffNote;
             }
 
             function addToCart(menuItemId, name, price, notes, categoryName) {
@@ -9293,9 +9305,33 @@
             return lines;
         }
 
+        /**
+         * POS customize notes are "Iced 16oz, Oatmilk | Note: less ice".
+         * A kiosk line already uses labeled pipes, so leave those alone.
+         */
+        function splitPosStaffNote(raw) {
+            var s = String(raw || '').trim();
+            var m = /^(.*?)\s*\|\s*Note\s*:\s*([^|]*)/i.exec(s);
+            if (!m) return null;
+            var body = String(m[1] || '').trim();
+            var note = String(m[2] || '').trim();
+            if (!note) return null;
+            if (/\|/.test(body)) return null;
+            if (/^(Customer|Service|Order type|Pickup time|Add-ons|Removed|Temperature|Note)\s*:/i.test(body)) {
+                return null;
+            }
+            return { body: body, note: note };
+        }
+
         function kitchenNotesToDisplayLines(raw) {
             if (raw == null || String(raw).trim() === '') return [];
             var s = String(raw).trim();
+            var staffNote = splitPosStaffNote(s);
+            if (staffNote) {
+                var lines = staffNote.body ? posCommaNotesToKitchenLines(staffNote.body) : [];
+                lines.push('Note: ' + staffNote.note);
+                return lines;
+            }
             var isKioskStyle =
                 /\|/.test(s) &&
                 /(?:^|\|)\s*(?:Customer|Service|Order type|Pickup time|Add-ons|Removed|Temperature|Note)\s*:/i.test(s);
@@ -9378,29 +9414,30 @@
         }
 
         /**
-         * Consistent under-item description lines:
-         * - Drinks: Temperature, Size, Note (if any)
-         * - Food: Note (if any)
-         * Pickup time is shown once on the order card (not per line item).
+         * Capsule item lines:
+         * - Temperature and size on one line
+         * - Order type on its own line
+         * - Note on its own line, only when a note was entered
          */
         function collectKitchenLineItemDetailLines(item, order) {
             var parts = extractKitchenDetailParts(item && item.notes);
             var lines = [];
-            var orderTypeLabel = getOrderTypeDisplayFromOrder(order);
-            var isMixed = /dine in \+ take out/i.test(orderTypeLabel)
-                || String(order && order.order_type || '').toLowerCase() === 'mixed';
-            var lineFulfillment = formatItemFulfillmentLabel(item);
-            if (isMixed && lineFulfillment) {
-                lines.push('Order type: ' + lineFulfillment);
+            var variantBits = [];
+            if (parts.temp) variantBits.push('Temperature: ' + parts.temp);
+            if (parts.size) variantBits.push('Size: ' + parts.size);
+            if (variantBits.length) lines.push(variantBits.join(' · '));
+
+            var lineFulfillment = formatItemFulfillmentLabel(item, order);
+            if (!lineFulfillment) {
+                var orderTypeLabel = getOrderTypeDisplayFromOrder(order);
+                if (orderTypeLabel && !/dine in \+ take out/i.test(orderTypeLabel)) {
+                    lineFulfillment = orderTypeLabel;
+                }
             }
-            var treatAsDrink = isKitchenDrinkItem(item) || !!(parts.temp || parts.size);
-            if (treatAsDrink) {
-                if (parts.temp) lines.push('Temperature: ' + parts.temp);
-                if (parts.size) lines.push('Size: ' + parts.size);
-                if (parts.note) lines.push('Note: ' + parts.note);
-            } else if (parts.note) {
-                lines.push('Note: ' + parts.note);
-            }
+            if (lineFulfillment) lines.push('Order type: ' + lineFulfillment);
+
+            var note = String(parts.note || '').replace(/\s*\|\s*Order type\s*:.*$/i, '').trim();
+            if (note) lines.push('Note: ' + note);
             return lines;
         }
 

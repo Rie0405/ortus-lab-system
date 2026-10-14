@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261014-queue-switch-slate">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261014-order-clear">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -181,7 +181,10 @@
 
             <aside class="pos-right">
                 <div class="tabs pos-order-head">
-                    <button class="tab tab--active" data-view-tab="order">CURRENT ORDER</button>
+                    <div class="pos-order-head__title">
+                        <button class="tab tab--active" data-view-tab="order">CURRENT ORDER</button>
+                        <button type="button" class="pos-order-clear" id="pos-order-clear" aria-label="Clear current order" title="Clear order">×</button>
+                    </div>
                     <button type="button" class="pos-discount-record-btn" id="pos-discount-record-btn">Discount Record</button>
                 </div>
 
@@ -1342,6 +1345,7 @@
             var discountAmountEl = document.getElementById("pos-discount-amount");
             var totalEl = document.getElementById("pos-total");
             var cancelBtn = document.getElementById("pos-cancel-btn");
+            var posOrderClearBtn = document.getElementById("pos-order-clear");
             var confirmBtn = document.getElementById("pos-confirm-btn");
             var posCustomerNameInput = document.getElementById("pos-customer-name");
             var posEditingBanner = document.getElementById("pos-editing-banner");
@@ -3417,6 +3421,7 @@
             }
 
             if (cancelBtn) cancelBtn.addEventListener("click", clearCart);
+            if (posOrderClearBtn) posOrderClearBtn.addEventListener("click", clearCart);
 
             if (posDiscountModalType) {
                 posDiscountModalType.addEventListener("change", syncPosDiscountModalIdFields);

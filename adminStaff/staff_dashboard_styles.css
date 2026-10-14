@@ -1453,9 +1453,32 @@ img {
     box-sizing: border-box;
 }
 
-.pos-order-head .tab {
-    flex: 0 1 auto;
-    text-align: left;
+.pos-order-head__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.pos-order-clear {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    margin: 0 0 0.35rem;
+    padding: 0;
+    border: 1px solid rgba(248, 113, 113, 0.55);
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pos-order-clear:hover {
+    background: rgba(239, 68, 68, 0.28);
+    color: #ffffff;
 }
 
 .pos-discount-record-btn {
@@ -2529,15 +2552,15 @@ img {
 .drawer-toggle-btn,
 .sidebar-trigger-btn {
     position: absolute !important;
-    left: -45px !important;
+    left: -30px !important;
     top: 100px !important;
     right: auto !important;
-    width: 40px;
-    height: 96px;
+    width: 26px;
+    height: 52px;
     margin: 0;
     padding: 0;
     border: none;
-    border-radius: 12px 0 0 12px;
+    border-radius: 8px 0 0 8px;
     background: #dc2626;
     color: #ffffff;
     cursor: pointer;
@@ -2545,7 +2568,7 @@ img {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 0 0 #991b1b, -6px 0 20px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 2px 0 0 #991b1b, -3px 0 10px rgba(0, 0, 0, 0.28);
     transition: background 0.2s ease, box-shadow 0.2s ease;
     z-index: 999 !important;
     -webkit-tap-highlight-color: transparent;
@@ -2559,20 +2582,20 @@ img {
 
 .queue-drawer-tab__badge {
     position: absolute;
-    top: 8px;
+    top: 4px;
     left: 50%;
     transform: translateX(-50%);
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
     border-radius: 999px;
     background: #ffffff;
     color: #dc2626;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 800;
-    line-height: 18px;
+    line-height: 14px;
     text-align: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     pointer-events: none;
 }
 
@@ -2581,8 +2604,8 @@ img {
 }
 
 @keyframes queue-drawer-tab-pulse {
-    0%, 100% { box-shadow: 0 4px 0 0 #991b1b, -6px 0 20px rgba(0, 0, 0, 0.35); }
-    50% { box-shadow: 0 4px 0 0 #991b1b, -6px 0 24px rgba(239, 68, 68, 0.55); }
+    0%, 100% { box-shadow: 0 2px 0 0 #991b1b, -3px 0 10px rgba(0, 0, 0, 0.28); }
+    50% { box-shadow: 0 2px 0 0 #991b1b, -3px 0 12px rgba(239, 68, 68, 0.45); }
 }
 
 .queue-drawer-tab:hover {
@@ -2590,17 +2613,18 @@ img {
 }
 
 .queue-drawer-tab:active {
-    box-shadow: 0 2px 0 0 #991b1b, -4px 0 16px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 0 0 #991b1b, -2px 0 8px rgba(0, 0, 0, 0.25);
     filter: brightness(0.95);
 }
 
 .queue-drawer-tab__chev {
     display: block;
-    width: 10px;
-    height: 10px;
-    border-left: 3px solid currentColor;
-    border-bottom: 3px solid currentColor;
-    transform: rotate(45deg) translateX(2px);
+    width: 7px;
+    height: 7px;
+    margin-top: 10px;
+    border-left: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261014-order-clear">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261015-capsule-inv-overlay">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -420,6 +420,29 @@
                         </section>
                     </aside>
                 </div>
+                <footer class="capsule-inv-footer" id="capsule-inv-footer">
+                    <button type="button" class="capsule-inv-toggle" id="capsule-inv-toggle" aria-expanded="false" aria-controls="capsule-inv-panel">
+                        <span class="capsule-inv-toggle__grip" aria-hidden="true"><span></span><span></span><span></span></span>
+                        <span class="capsule-inv-toggle__label" id="capsule-inv-label">Inventory</span>
+                    </button>
+                    <div class="capsule-inv-panel" id="capsule-inv-panel">
+                        <div class="capsule-inv-panel__scroll">
+                            <table class="capsule-inv-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th class="capsule-inv-table__num">Stock left</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="capsule-inv-list"></tbody>
+                            </table>
+                        </div>
+                        <div class="capsule-inv-actions">
+                            <button type="button" class="capsule-inv-btn capsule-inv-btn--edit" id="capsule-inv-edit">EDIT</button>
+                            <button type="button" class="capsule-inv-btn capsule-inv-btn--confirm" id="capsule-inv-confirm" disabled>CONFIRM</button>
+                        </div>
+                    </div>
+                </footer>
             </div>
         </div><!-- end staff-main-panel--kitchen -->
 
@@ -4998,6 +5021,17 @@
                 openSesDialog(sesInventoryEditModal);
             }
 
+            var externalInventoryEditDone = null;
+
+            function clearExternalInventoryEdit() {
+                externalInventoryEditDone = null;
+            }
+
+            window.ortusBeginInventoryEdit = function (done) {
+                externalInventoryEditDone = typeof done === 'function' ? done : null;
+                openSesInventoryEditModal();
+            };
+
             function closeSesInventoryEditModal() {
                 closeSesDialog(sesInventoryEditModal);
             }
@@ -5247,11 +5281,13 @@
             if (sesInventoryEditBtn) {
                 sesInventoryEditBtn.addEventListener('click', function () {
                     if (!sesInventoryStockItems.length) return;
+                    clearExternalInventoryEdit();
                     openSesInventoryEditModal();
                 });
             }
             if (sesInventoryEditCancelBtn) {
                 sesInventoryEditCancelBtn.addEventListener('click', function () {
+                    clearExternalInventoryEdit();
                     closeSesInventoryEditModal();
                 });
             }
@@ -5263,6 +5299,7 @@
             }
             if (sesInventoryStaffCancelBtn) {
                 sesInventoryStaffCancelBtn.addEventListener('click', function () {
+                    clearExternalInventoryEdit();
                     closeSesInventoryStaffModal();
                 });
             }
@@ -5279,6 +5316,17 @@
                     }
                     if (sesInventoryStaffErrorEl) sesInventoryStaffErrorEl.hidden = true;
                     closeSesInventoryStaffModal();
+                    if (typeof externalInventoryEditDone === 'function') {
+                        var done = externalInventoryEditDone;
+                        externalInventoryEditDone = null;
+                        done({
+                            id: sesInventoryEditingStaffId,
+                            name: sesInventoryEditingStaffName || 'Unknown Staff'
+                        });
+                        sesInventoryEditingStaffId = null;
+                        sesInventoryEditingStaffName = '';
+                        return;
+                    }
                     setSesInventoryEditMode(true);
                 });
             }
@@ -5287,6 +5335,7 @@
                 var backdrop = modalEl.querySelector('[data-ses-dialog-close]');
                 if (backdrop) {
                     backdrop.addEventListener('click', function () {
+                        clearExternalInventoryEdit();
                         closeSesDialog(modalEl);
                     });
                 }
@@ -6467,6 +6516,9 @@
                 var meta = activeStationMeta();
                 var label = meta ? String(meta.name || '').toUpperCase() : 'STATION';
                 titleEl.textContent = label + ' ORDERS';
+            }
+            if (typeof window.refreshCapsuleInventory === 'function') {
+                window.refreshCapsuleInventory({ leaveEdit: true, reload: true });
             }
         }
         function toMoney(v) {
@@ -10778,6 +10830,190 @@
                 toggle.setAttribute('title', next ? 'Hide waste input' : 'Show waste input');
                 body.setAttribute('aria-hidden', next ? 'false' : 'true');
             });
+        })();
+
+        (function initCapsuleInventoryFooter() {
+            var footer = document.getElementById('capsule-inv-footer');
+            var toggle = document.getElementById('capsule-inv-toggle');
+            var labelEl = document.getElementById('capsule-inv-label');
+            var panel = document.getElementById('capsule-inv-panel');
+            var listEl = document.getElementById('capsule-inv-list');
+            var editBtn = document.getElementById('capsule-inv-edit');
+            var confirmBtn = document.getElementById('capsule-inv-confirm');
+            if (!footer || !toggle || !panel || !listEl) return;
+
+            var allItems = [];
+            var baselineById = {};
+            var editMode = false;
+            var editor = null;
+
+            function escCell(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function stationName() {
+                var meta = typeof activeStationMeta === 'function' ? activeStationMeta() : null;
+                return meta ? String(meta.name || '').trim() : '';
+            }
+
+            function visibleRows() {
+                var want = stationName().toLowerCase();
+                if (!want) return [];
+                return allItems.filter(function (it) {
+                    return String(it.category_name || '').trim().toLowerCase() === want;
+                });
+            }
+
+            function setEditMode(on) {
+                editMode = !!on;
+                if (!editMode) editor = null;
+                render();
+            }
+
+            function render() {
+                var name = stationName() || 'Station';
+                if (labelEl) labelEl.textContent = name + ' inventory';
+                var rows = visibleRows();
+                if (editBtn) editBtn.disabled = editMode || !rows.length;
+                if (confirmBtn) confirmBtn.disabled = !editMode || !rows.length;
+                if (!allItems.length) {
+                    listEl.innerHTML = '<tr><td colspan="2" class="capsule-inv-empty">No inventory items found.</td></tr>';
+                    return;
+                }
+                if (!rows.length) {
+                    listEl.innerHTML = '<tr><td colspan="2" class="capsule-inv-empty">No items in this category.</td></tr>';
+                    return;
+                }
+                listEl.innerHTML = rows.map(function (it) {
+                    var stock = Math.max(0, parseInt(it.stock_units, 10) || 0);
+                    var stockCell = editMode
+                        ? '<input type="number" min="0" step="1" class="capsule-inv-stock" data-capsule-stock-id="' + it.id + '" value="' + stock + '">'
+                        : escCell(stock);
+                    return '<tr><td>' + escCell(it.name) + '</td><td class="capsule-inv-table__num">' + stockCell + '</td></tr>';
+                }).join('');
+            }
+
+            function applyItems(items) {
+                allItems = (items || []).map(function (it) {
+                    return {
+                        id: parseInt(it && it.id, 10) || 0,
+                        name: String(it && (it.item_name || it.name) ? (it.item_name || it.name) : '').trim() || 'Unknown Item',
+                        category_name: String(it && it.category_name ? it.category_name : '').trim(),
+                        stock_units: Math.max(0, parseInt(it && it.stock_units, 10) || 0)
+                    };
+                }).filter(function (it) { return it.id > 0; })
+                  .sort(function (a, b) {
+                      return String(a.name || '').localeCompare(String(b.name || ''));
+                  });
+                baselineById = {};
+                allItems.forEach(function (it) {
+                    baselineById[it.id] = it.stock_units;
+                });
+                render();
+            }
+
+            function loadInventory() {
+                return fetch('api/inventory.php?_=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        applyItems(d && d.success && Array.isArray(d.items) ? d.items : []);
+                    })
+                    .catch(function () {
+                        applyItems([]);
+                    });
+            }
+
+            window.refreshCapsuleInventory = function (opts) {
+                opts = opts || {};
+                if (opts.leaveEdit && editMode) setEditMode(false);
+                if (opts.reload) return loadInventory();
+                render();
+                return Promise.resolve();
+            };
+
+            toggle.addEventListener('click', function () {
+                var open = !footer.classList.contains('is-open');
+                footer.classList.toggle('is-open', open);
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) loadInventory();
+            });
+
+            listEl.addEventListener('input', function (e) {
+                if (!editMode) return;
+                var input = e.target.closest('.capsule-inv-stock');
+                if (!input) return;
+                var id = parseInt(input.getAttribute('data-capsule-stock-id'), 10) || 0;
+                if (id <= 0) return;
+                var nextValue = Math.max(0, parseInt(input.value, 10) || 0);
+                input.value = String(nextValue);
+                for (var i = 0; i < allItems.length; i += 1) {
+                    if (allItems[i].id === id) {
+                        allItems[i].stock_units = nextValue;
+                        break;
+                    }
+                }
+            });
+
+            if (editBtn) {
+                editBtn.addEventListener('click', function () {
+                    if (!visibleRows().length || editMode) return;
+                    if (typeof window.ortusBeginInventoryEdit !== 'function') return;
+                    window.ortusBeginInventoryEdit(function (staff) {
+                        editor = staff || null;
+                        setEditMode(true);
+                    });
+                });
+            }
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function () {
+                    if (!editMode) return;
+                    var changed = visibleRows().filter(function (it) {
+                        return it.id > 0 && baselineById[it.id] !== it.stock_units;
+                    });
+                    if (!changed.length) {
+                        setEditMode(false);
+                        return;
+                    }
+                    confirmBtn.disabled = true;
+                    if (editBtn) editBtn.disabled = true;
+                    confirmBtn.textContent = 'SAVING...';
+                    Promise.all(changed.map(function (it) {
+                        return fetch('api/inventory.php', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                id: it.id,
+                                stock_units: it.stock_units,
+                                old_stock_units: baselineById[it.id],
+                                edit_source: 'shift_end_summary',
+                                staff_id: editor && editor.id,
+                                staff_name: (editor && editor.name) || 'Unknown Staff'
+                            })
+                        }).then(function (r) { return r.json(); })
+                          .then(function (d) { return { ok: !!(d && d.success) }; })
+                          .catch(function () { return { ok: false }; });
+                    })).then(function (results) {
+                        if (results.some(function (r) { return !r.ok; })) {
+                            alert('Some inventory updates failed. Please try again.');
+                            setEditMode(true);
+                            return;
+                        }
+                        setEditMode(false);
+                        return loadInventory();
+                    }).finally(function () {
+                        confirmBtn.textContent = 'CONFIRM';
+                        render();
+                    });
+                });
+            }
+
+            render();
         })();
 
         if (wasteTabSubmit) {

@@ -3449,6 +3449,147 @@ img {
     box-sizing: border-box;
 }
 
+.capsule-inv-footer {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: flex;
+    flex-direction: column;
+    background: #120e0a;
+    transform: translateY(calc(100% - 46px));
+    transition: transform 280ms ease;
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.capsule-inv-footer.is-open {
+    transform: translateY(0);
+}
+
+.capsule-inv-toggle {
+    flex: 0 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px 6px;
+    border: 0;
+    border-bottom: 1px solid #3a3228;
+    background: #1c1712;
+    color: #e7d7c3;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.capsule-inv-toggle__grip {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 28px;
+}
+
+.capsule-inv-toggle__grip span {
+    display: block;
+    height: 2px;
+    border-radius: 2px;
+    background: #a89880;
+}
+
+.capsule-inv-toggle__label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.capsule-inv-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #120e0a;
+}
+
+.capsule-inv-panel__scroll {
+    flex: 1 1 auto;
+    overflow: auto;
+    min-height: 0;
+}
+
+.capsule-inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    color: #f3efe8;
+}
+
+.capsule-inv-table th,
+.capsule-inv-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.capsule-inv-table th {
+    position: sticky;
+    top: 0;
+    background: #1c1712;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #a89880;
+}
+
+.capsule-inv-table__num {
+    width: 120px;
+    text-align: right;
+}
+
+.capsule-inv-stock {
+    width: 88px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid #64748b;
+    background: #120e0a;
+    color: #f8fafc;
+    text-align: right;
+}
+
+.capsule-inv-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 8px 12px 10px;
+}
+
+.capsule-inv-btn {
+    min-width: 96px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+}
+
+.capsule-inv-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.capsule-inv-btn--edit,
+.capsule-inv-btn--confirm {
+    background: #1e293b;
+    border: 1px solid #64748b;
+    color: #e2e8f0;
+}
+
+.capsule-inv-empty {
+    padding: 16px 12px;
+    text-align: center;
+    color: #a89880;
+}
+
 .kitchen-layout > .opq-grid,
 .kitchen-layout > .kitchen-serving-panel {
     min-height: 0;

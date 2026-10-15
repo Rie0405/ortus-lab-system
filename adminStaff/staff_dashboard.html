@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261015-capsule-inv-overlay">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261015-tab-access">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -3635,6 +3635,33 @@
                 return document.querySelectorAll("[data-main-tab]");
             }
 
+            function staffTabAccessKey(tab) {
+                if (!tab) return "";
+                var station = tab.getAttribute("data-kitchen-cat");
+                if (station) return String(station).toLowerCase();
+                return String(tab.getAttribute("data-main-tab") || "").toLowerCase();
+            }
+
+            function staffTabIsAllowed(key) {
+                var list = window.staffTabAccess;
+                if (list == null) return true;
+                return list.indexOf(String(key || "").toLowerCase()) !== -1;
+            }
+
+            window.applyStaffTabBlocks = function () {
+                var firstAllowed = null;
+                allHeaderTabs().forEach(function (btn) {
+                    var allowed = staffTabIsAllowed(staffTabAccessKey(btn));
+                    btn.classList.toggle("header-main-tab--blocked", !allowed);
+                    btn.setAttribute("aria-disabled", allowed ? "false" : "true");
+                    if (allowed && !firstAllowed) firstAllowed = btn;
+                });
+                if (window.staffTabAccess == null) return;
+                var current = document.querySelector("[data-main-tab].header-main-tab--active, .header-station-btn.is-active");
+                var currentAllowed = current && !current.classList.contains("header-main-tab--blocked");
+                if (!currentAllowed && firstAllowed) firstAllowed.click();
+            };
+
             function activatePanel(panelName) {
                 var normalized = panelName;
                 if (panelName === "queue-kiosk" || panelName === "queue-pos") {
@@ -3702,6 +3729,7 @@
                     if (tab.getAttribute("data-header-bound") === "1") return;
                     tab.setAttribute("data-header-bound", "1");
                     tab.addEventListener("click", function () {
+                        if (tab.classList.contains("header-main-tab--blocked")) return;
                         var target = tab.getAttribute("data-main-tab");
                         var queueSource = tab.getAttribute("data-queue-source");
                         var kitchenCat = tab.getAttribute("data-kitchen-cat");
@@ -3739,6 +3767,17 @@
             window.staffSetStationHeaderActive = setStationHeaderActive;
 
             window.staffActivateMainTab = function (panelName) {
+                var gateBtn = null;
+                if (panelName === "kitchen") {
+                    gateBtn = document.querySelector(
+                        '[data-main-tab="kitchen"][data-kitchen-cat="' +
+                        String(window.staffKitchenCategory || "").toLowerCase() + '"]'
+                    );
+                } else {
+                    var gateKey = panelName === "queue" ? "queue-kiosk" : panelName;
+                    gateBtn = document.querySelector('[data-main-tab="' + gateKey + '"]:not([data-kitchen-cat])');
+                }
+                if (gateBtn && gateBtn.classList.contains("header-main-tab--blocked")) return;
                 var targetTab = null;
                 if (panelName === "kitchen") {
                     setStationHeaderActive(window.staffKitchenCategory || "");
@@ -5763,8 +5802,15 @@
                     role: d.user.role,
                     name: d.user.name || d.user.full_name || ''
                 };
-
                 var role = String(currentUser.role || '').toLowerCase();
+                window.staffTabAccess = (role === 'admin' || d.user.tab_access == null)
+                    ? null
+                    : (d.user.tab_access || []).map(function (key) {
+                        return String(key || '').toLowerCase();
+                    });
+                if (typeof window.applyStaffTabBlocks === 'function') {
+                    window.applyStaffTabBlocks();
+                }
                 if (role === 'staff') {
                     showStaffName(currentUser.name);
                     if (typeof hydrateStaffDrawerFromServer === 'function') {
@@ -6178,6 +6224,9 @@
             if (typeof window.staffSetStationHeaderActive === 'function'
                 && document.querySelector('[data-main-panel="kitchen"].is-active')) {
                 window.staffSetStationHeaderActive(preferred);
+            }
+            if (typeof window.applyStaffTabBlocks === 'function') {
+                window.applyStaffTabBlocks();
             }
         }
         function normKitchenCategoryName(n) {

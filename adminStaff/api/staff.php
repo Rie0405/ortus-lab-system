@@ -1,13 +1,17 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/staff_tab_access_helpers.php';
 require_auth();
 
 $m = method();
+$pdo = db();
+$hasTabAccess = ensure_user_tab_access_column($pdo);
 
 // ─── GET  →  list staff accounts ─────────────────────────────────────────────
 if ($m === 'GET') {
-    $stmt = db()->query(
-        'SELECT id, full_name, username, email, role, is_active, created_at
+    $tabCol = $hasTabAccess ? ', tab_access' : '';
+    $stmt = $pdo->query(
+        'SELECT id, full_name, username, email, role, is_active, created_at' . $tabCol . '
            FROM users
           ORDER BY role DESC, full_name'
     );
@@ -15,6 +19,9 @@ if ($m === 'GET') {
     foreach ($users as &$u) {
         $u['id']        = (int)$u['id'];
         $u['is_active'] = (bool)$u['is_active'];
+        $u['tab_access'] = $hasTabAccess
+            ? decode_user_tab_access($u['tab_access'] ?? null)
+            : null;
         unset($u['password']);
     }
     unset($u);
@@ -121,6 +128,11 @@ if ($m === 'PUT') {
     if (isset($b['is_active']))  { $fields[] = 'is_active = :act'; $params[':act']  = (int)(bool)$b['is_active']; }
     if (isset($b['role']) && in_array($b['role'], ['admin','staff'])) {
                                    $fields[] = 'role = :role';     $params[':role'] = $b['role']; }
+    if ($hasTabAccess && array_key_exists('tab_access', $b)) {
+        $encoded = normalize_tab_access_input($b['tab_access']);
+        $fields[] = 'tab_access = :tab_access';
+        $params[':tab_access'] = $encoded;
+    }
 
     if (!$fields) fail('No fields to update.');
 

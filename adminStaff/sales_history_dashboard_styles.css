@@ -446,6 +446,50 @@ body {
     width: 100%;
 }
 
+.sh-tab-access {
+    margin: 14px 0 0;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+}
+
+.sh-tab-access legend {
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #e7d7c3;
+}
+
+.sh-tab-access__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 240px;
+    overflow: auto;
+}
+
+.sh-tab-access__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #f1f5f9;
+    font-size: 13px;
+}
+
+.sh-tab-access__row input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.sh-tab-access__hint {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
 .sh-modal--archive {
     width: min(920px, 100%);
 }

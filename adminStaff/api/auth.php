@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/staff_shifts_helpers.php';
+require_once __DIR__ . '/staff_tab_access_helpers.php';
 
 $m = method();
 
@@ -82,8 +83,11 @@ if ($m === 'POST') {
         fail('Username/email and password are required.');
     }
 
-    $stmt = db()->prepare(
-        'SELECT id, full_name, username, email, password, role, is_active
+    $authPdo = db();
+    $authHasTabAccess = ensure_user_tab_access_column($authPdo);
+    $authTabCol = $authHasTabAccess ? ', tab_access' : '';
+    $stmt = $authPdo->prepare(
+        'SELECT id, full_name, username, email, password, role, is_active' . $authTabCol . '
            FROM users
           WHERE (username = :u1 OR email = :u2)
           LIMIT 1'
@@ -123,6 +127,7 @@ if ($m === 'POST') {
             'username'  => $user['username'],
             'email'     => $user['email'],
             'role'      => $roleNorm,
+            'tab_access' => user_tab_access_for_client($roleNorm, $authHasTabAccess ? ($user['tab_access'] ?? null) : null),
         ],
         'shift' => $shift,
         'redirect' => $roleNorm === 'admin' ? 'admin_dashboard.html' : 'staff_dashboard.html',
@@ -155,9 +160,14 @@ if ($m === 'GET') {
     $uid = (int)$_SESSION['user_id'];
     $username = trim((string)($_SESSION['username'] ?? ''));
     $fullName = (string)($_SESSION['user_name'] ?? '');
-    if ($username === '' && $uid > 0) {
+    $role = strtolower(trim((string)($_SESSION['user_role'] ?? 'staff')));
+    $tabAccess = null;
+    if ($uid > 0) {
         try {
-            $stmt = db()->prepare('SELECT username, full_name FROM users WHERE id = :id LIMIT 1');
+            $sessionPdo = db();
+            $sessionHasTab = ensure_user_tab_access_column($sessionPdo);
+            $sessionTabCol = $sessionHasTab ? ', tab_access' : '';
+            $stmt = $sessionPdo->prepare('SELECT username, full_name, role, is_active' . $sessionTabCol . ' FROM users WHERE id = :id LIMIT 1');
             $stmt->execute([':id' => $uid]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row) {
@@ -169,6 +179,10 @@ if ($m === 'GET') {
                     $fullName = (string)$row['full_name'];
                     $_SESSION['user_name'] = $fullName;
                 }
+                if (!empty($row['role'])) {
+                    $role = strtolower(trim((string)$row['role']));
+                }
+                $tabAccess = user_tab_access_for_client($role, $sessionHasTab ? ($row['tab_access'] ?? null) : null);
             }
         } catch (Throwable $e) {
             // Session check should still succeed.
@@ -177,10 +191,11 @@ if ($m === 'GET') {
     ok([
         'user' => [
             'id'        => $uid,
-            'role'      => $_SESSION['user_role'],
+            'role'      => $role,
             'name'      => $fullName,
             'full_name' => $fullName,
             'username'  => $username,
+            'tab_access' => $tabAccess,
         ],
     ]);
 }

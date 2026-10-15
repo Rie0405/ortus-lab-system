@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261010-viewport-fit">
+    <link rel="stylesheet" href="sales_history_dashboard_styles.css?v=20261015-tab-access">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -1897,6 +1897,10 @@
                         <span id="sh-manage-password-label">Password</span>
                         <input type="password" id="sh-manage-password" placeholder="Min. 6 characters" autocomplete="new-password">
                     </label>
+                    <fieldset class="sh-tab-access" id="sh-manage-tab-access" hidden>
+                        <legend>Tab access</legend>
+                        <div class="sh-tab-access__list" id="sh-manage-tab-access-list"></div>
+                    </fieldset>
                 </div>
             </div>
             <footer class="sh-modal__footer" id="sh-manage-footer-list">
@@ -2291,8 +2295,12 @@
         var manageFooterForm = document.getElementById('sh-manage-footer-form');
         var manageFormHint = document.getElementById('sh-manage-form-hint');
         var managePasswordLabel = document.getElementById('sh-manage-password-label');
+        var manageTabAccess = document.getElementById('sh-manage-tab-access');
+        var manageTabAccessList = document.getElementById('sh-manage-tab-access-list');
         var manageMode = 'list'; // list | add | edit
         var manageCashiersCache = [];
+        var manageTabCatalogReady = false;
+        var manageTabLoadToken = 0;
 
         var drawerEls = {
             starting: document.getElementById('sh-drawer-starting'),
@@ -2714,6 +2722,7 @@
             if (manageSave) {
                 manageSave.textContent = manageMode === 'edit' ? 'Save Changes' : 'Save Cashier';
             }
+            if (manageTabAccess) manageTabAccess.hidden = manageMode !== 'edit';
         }
         function renderManageList(rows) {
             if (!manageList) return;
@@ -2757,6 +2766,85 @@
                     showManageError('Network error loading cashiers.');
                 });
         }
+        function renderTabAccessChecks(tabs, saved) {
+            if (!manageTabAccessList) return;
+            manageTabCatalogReady = Array.isArray(tabs) && tabs.length > 0;
+            if (!manageTabCatalogReady) {
+                manageTabAccessList.innerHTML = '<p class="sh-tab-access__hint">Could not load tabs.</p>';
+                return;
+            }
+            var unrestricted = saved == null;
+            var allowed = {};
+            if (Array.isArray(saved)) {
+                saved.forEach(function (key) {
+                    allowed[String(key || '').toLowerCase()] = true;
+                });
+            }
+            manageTabAccessList.innerHTML = tabs.map(function (tab) {
+                var key = String(tab.key || '').toLowerCase();
+                var checked = unrestricted || !!allowed[key];
+                return (
+                    '<label class="sh-tab-access__row">' +
+                        '<input type="checkbox" data-tab-key="' + escManage(key) + '"' + (checked ? ' checked' : '') + '>' +
+                        '<span>' + escManage(tab.label || key) + '</span>' +
+                    '</label>'
+                );
+            }).join('');
+        }
+        function loadTabAccessChecks(user) {
+            var token = ++manageTabLoadToken;
+            manageTabCatalogReady = false;
+            if (manageTabAccessList) {
+                manageTabAccessList.innerHTML = '<p class="sh-tab-access__hint">Loading tabs…</p>';
+            }
+            var saved = user && Object.prototype.hasOwnProperty.call(user, 'tab_access')
+                ? user.tab_access
+                : null;
+            return Promise.all([
+                fetch('staff_dashboard.html', { cache: 'no-store' }).then(function (r) { return r.text(); }),
+                fetch('api/main_categories.php', { cache: 'no-store' }).then(function (r) { return r.json(); })
+            ]).then(function (parts) {
+                if (token !== manageTabLoadToken) return;
+                var doc = new DOMParser().parseFromString(parts[0] || '', 'text/html');
+                var nav = doc.getElementById('header-main-tabs');
+                var stations = (((parts[1] || {}).main_categories) || []).map(function (cat) {
+                    var id = parseInt(cat && cat.id, 10) || 0;
+                    return {
+                        key: 'mc_' + id,
+                        label: String(cat && cat.name ? cat.name : ('Station ' + id)).trim()
+                    };
+                }).filter(function (cat) { return cat.key !== 'mc_0'; });
+                var tabs = [];
+                if (nav) {
+                    Array.prototype.forEach.call(nav.children, function (el) {
+                        if (el.id === 'header-station-filter') {
+                            stations.forEach(function (station) { tabs.push(station); });
+                            return;
+                        }
+                        if (el.getAttribute && el.getAttribute('data-main-tab')) {
+                            tabs.push({
+                                key: el.getAttribute('data-main-tab'),
+                                label: String(el.textContent || '').replace(/\s+/g, ' ').trim()
+                            });
+                        }
+                    });
+                }
+                renderTabAccessChecks(tabs, saved);
+            }).catch(function () {
+                if (token !== manageTabLoadToken) return;
+                renderTabAccessChecks([], saved);
+            });
+        }
+        function selectedTabAccessKeys() {
+            var boxes = manageTabAccessList
+                ? manageTabAccessList.querySelectorAll('input[data-tab-key]')
+                : [];
+            var keys = [];
+            Array.prototype.forEach.call(boxes, function (box) {
+                if (box.checked) keys.push(String(box.getAttribute('data-tab-key') || '').toLowerCase());
+            });
+            return keys;
+        }
         function openManageForm(mode, user) {
             showManageError('');
             if (manageEditId) manageEditId.value = user && user.id ? String(user.id) : '';
@@ -2764,6 +2852,7 @@
             if (manageUsername) manageUsername.value = user && user.username ? user.username : '';
             if (managePassword) managePassword.value = '';
             setManageView(mode);
+            if (mode === 'edit') loadTabAccessChecks(user);
             if (manageName) manageName.focus();
         }
         function openManageModal() {
@@ -2895,6 +2984,10 @@
                     showManageError('New password must be at least 6 characters.');
                     return;
                 }
+                if (isEdit && !manageTabCatalogReady) {
+                    showManageError('Tab access is still loading.');
+                    return;
+                }
                 manageSave.disabled = true;
                 var oldLabel = manageSave.textContent;
                 manageSave.textContent = 'Saving…';
@@ -2907,6 +3000,7 @@
                         username: username
                     };
                     if (password) payload.password = password;
+                    payload.tab_access = selectedTabAccessKeys();
                     req = fetch('api/staff.php', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },

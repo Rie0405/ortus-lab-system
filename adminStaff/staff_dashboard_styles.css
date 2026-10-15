@@ -257,6 +257,22 @@ img {
     color: #120e0a;
 }
 
+.header-main-tab.header-main-tab--blocked,
+.header-station-btn.header-main-tab--blocked,
+.header-station-btn.is-active.header-main-tab--blocked {
+    opacity: 0.38;
+    color: rgba(255, 255, 255, 0.38);
+    background: transparent;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.header-main-tab.header-main-tab--blocked:hover,
+.header-station-btn.header-main-tab--blocked:hover {
+    color: rgba(255, 255, 255, 0.38);
+    background: transparent;
+}
+
 .header-station-filter.is-station-active {
     border-color: rgba(244, 140, 37, 0.55);
 }

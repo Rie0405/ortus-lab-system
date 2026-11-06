@@ -7,6 +7,7 @@ require_once __DIR__ . '/recipe_helpers.php';
 require_once __DIR__ . '/cashflow_helpers.php';
 require_once __DIR__ . '/kitchen_ticket_helpers.php';
 require_once __DIR__ . '/order_number_helpers.php';
+require_once __DIR__ . '/gcash_receipt_helpers.php';
 require_auth();   // admin or staff
 
 $m = method();
@@ -294,6 +295,7 @@ if ($m === 'GET') {
     ensure_kitchen_returned_schema(db());
     ensure_kitchen_return_reason_schema(db());
     ensure_order_items_cost_schema(db());
+    ensure_gcash_receipt_schema(db());
     $type = $_GET['type'] ?? 'list';
     $date = $_GET['date'] ?? date('Y-m-d');
 
@@ -302,10 +304,21 @@ if ($m === 'GET') {
         $saleCond = sql_order_counts_as_sale();
         $filterStaffId = (int)($_GET['staff_id'] ?? 0);
         $staffSql = $filterStaffId > 0 ? ' AND staff_id = :sid' : '';
-        $params = [':d' => $date];
+        $from = trim((string)($_GET['from'] ?? ''));
+        $to = trim((string)($_GET['to'] ?? ''));
+        $hasRange = preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to);
+        if ($hasRange && $from > $to) {
+            $swap = $from;
+            $from = $to;
+            $to = $swap;
+        }
+        $params = $hasRange
+            ? [':from_d' => $from, ':to_d' => $to]
+            : [':d' => $date];
         if ($filterStaffId > 0) {
             $params[':sid'] = $filterStaffId;
         }
+        $dateSql = $hasRange ? 'DATE(created_at) BETWEEN :from_d AND :to_d' : 'DATE(created_at) = :d';
         $stmt = db()->prepare(
             'SELECT
                 COUNT(CASE WHEN (status IN ("confirmed","served","voided") OR (status = "pending" AND COALESCE(kitchen_returned, 0) = 1)) THEN 1 END) AS total_orders,
@@ -317,12 +330,24 @@ if ($m === 'GET') {
                 COUNT(CASE WHEN ' . $saleCond . ' THEN 1 END) AS confirmed_count,
                 COUNT(CASE WHEN status = "voided" THEN 1 END) AS voided_count
              FROM orders
-            WHERE DATE(created_at) = :d' . $staffSql
+            WHERE ' . $dateSql . $staffSql
         );
         $stmt->execute($params);
         $summary = $stmt->fetch();
         // Receipt expenses are store-wide; omit when viewing a single cashier.
-        $receiptExpense = $filterStaffId > 0 ? 0.0 : receipt_expense_for_day(db(), $date);
+        $receiptExpense = 0.0;
+        if ($filterStaffId <= 0) {
+            if ($hasRange) {
+                $cursor = strtotime($from);
+                $end = strtotime($to);
+                while ($cursor !== false && $end !== false && $cursor <= $end) {
+                    $receiptExpense += receipt_expense_for_day(db(), date('Y-m-d', $cursor));
+                    $cursor = strtotime('+1 day', $cursor);
+                }
+            } else {
+                $receiptExpense = receipt_expense_for_day(db(), $date);
+            }
+        }
         $rawRevenue = (float)($summary['total_revenue'] ?? 0);
         $summary['receipt_expense_total'] = $receiptExpense;
         $summary['raw_total_revenue'] = $rawRevenue;
@@ -333,7 +358,7 @@ if ($m === 'GET') {
         $hourly = db()->prepare(
             'SELECT HOUR(created_at) AS hour, COALESCE(SUM(total_amount),0) AS revenue
                FROM orders
-              WHERE DATE(created_at) = :d
+              WHERE ' . $dateSql . '
                AND ' . $saleCond . $staffSql . '
               GROUP BY HOUR(created_at)
               ORDER BY hour'
@@ -352,6 +377,7 @@ if ($m === 'GET') {
     $sql    = 'SELECT o.id, o.order_number, o.kitchen_ticket_number, o.bar_ticket_number, o.order_source, o.status, o.kitchen_returned, o.kitchen_return_reason, o.payment_method, o.order_type,
                       o.staff_id,
                       o.customer_name, o.contact_details, o.refund_reason, o.gcash_ref,
+                      o.gcash_receipt_url, o.gcash_receipt_seen_at,
                       o.discount_type, o.discount_customer_name, o.discount_id_number,
                       o.discount_requested, o.discount_request_type, o.discount_rate,
                       o.gross_amount, o.vat_exempt_amount, o.discount_amount, o.total_amount, o.created_at,
@@ -366,7 +392,19 @@ if ($m === 'GET') {
         $params[':st'] = $status;
     }
     $filterDate = trim($_GET['date'] ?? '');
-    if ($filterDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDate)) {
+    $filterFrom = trim($_GET['from'] ?? '');
+    $filterTo = trim($_GET['to'] ?? '');
+    $hasRange = preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterFrom) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterTo);
+    if ($hasRange) {
+        if ($filterFrom > $filterTo) {
+            $swap = $filterFrom;
+            $filterFrom = $filterTo;
+            $filterTo = $swap;
+        }
+        $where[] = 'DATE(o.created_at) BETWEEN :from_d AND :to_d';
+        $params[':from_d'] = $filterFrom;
+        $params[':to_d'] = $filterTo;
+    } elseif ($filterDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDate)) {
         $where[] = 'DATE(o.created_at) = :fd';
         $params[':fd'] = $filterDate;
     }
@@ -449,6 +487,7 @@ if ($m === 'GET') {
             $order['total_amount'] = (float)$order['total_amount'];
             $order['discount_requested'] = !empty($order['discount_requested']) ? 1 : 0;
             $order['kitchen_returned'] = !empty($order['kitchen_returned']) ? 1 : 0;
+            $order['gcash_receipt_seen'] = !empty($order['gcash_receipt_seen_at']) ? 1 : 0;
             $order['items'] = $itemMap[$order['id']] ?? [];
         }
         unset($order);

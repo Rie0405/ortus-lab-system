@@ -24,28 +24,41 @@ function register_staff_shift_login(PDO $pdo, int $staffId): array
         return [];
     }
 
-    $shiftDate = date('Y-m-d');
-    $loggedInAt = date('Y-m-d H:i:s');
-
-    $stmt = $pdo->prepare(
-        'INSERT INTO staff_shifts (staff_id, shift_date, logged_in_at)
-         VALUES (:sid, :d, :t)
-         ON DUPLICATE KEY UPDATE logged_in_at = VALUES(logged_in_at)'
-    );
-    $stmt->execute([
-        ':sid' => $staffId,
-        ':d'   => $shiftDate,
-        ':t'   => $loggedInAt,
-    ]);
-
-    $fetch = $pdo->prepare(
+    $open = $pdo->prepare(
         'SELECT id, staff_id, shift_date, logged_in_at, logged_out_at
            FROM staff_shifts
-          WHERE staff_id = :sid AND shift_date = :d
+          WHERE staff_id = :sid AND logged_out_at IS NULL
+          ORDER BY logged_in_at DESC, id DESC
           LIMIT 1'
     );
-    $fetch->execute([':sid' => $staffId, ':d' => $shiftDate]);
-    $row = $fetch->fetch();
+    $open->execute([':sid' => $staffId]);
+    $row = $open->fetch();
+
+    if (!$row) {
+        $shiftDate = date('Y-m-d');
+        $loggedInAt = date('Y-m-d H:i:s');
+        $stmt = $pdo->prepare(
+            'INSERT INTO staff_shifts (staff_id, shift_date, logged_in_at)
+             VALUES (:sid, :d, :t)
+             ON DUPLICATE KEY UPDATE
+                logged_in_at = IF(logged_out_at IS NULL, logged_in_at, VALUES(logged_in_at)),
+                logged_out_at = NULL'
+        );
+        $stmt->execute([
+            ':sid' => $staffId,
+            ':d'   => $shiftDate,
+            ':t'   => $loggedInAt,
+        ]);
+
+        $fetch = $pdo->prepare(
+            'SELECT id, staff_id, shift_date, logged_in_at, logged_out_at
+               FROM staff_shifts
+              WHERE staff_id = :sid AND shift_date = :d
+              LIMIT 1'
+        );
+        $fetch->execute([':sid' => $staffId, ':d' => $shiftDate]);
+        $row = $fetch->fetch();
+    }
     if (!$row) {
         return [];
     }
@@ -57,4 +70,19 @@ function register_staff_shift_login(PDO $pdo, int $staffId): array
         'logged_in_at' => (string)$row['logged_in_at'],
         'logged_out_at' => $row['logged_out_at'] ? (string)$row['logged_out_at'] : null,
     ];
+}
+
+function close_open_staff_shift(PDO $pdo, int $staffId): void
+{
+    ensure_staff_shifts_schema($pdo);
+    if ($staffId <= 0) {
+        return;
+    }
+    $stmt = $pdo->prepare(
+        'UPDATE staff_shifts
+            SET logged_out_at = NOW()
+          WHERE staff_id = :sid
+            AND logged_out_at IS NULL'
+    );
+    $stmt->execute([':sid' => $staffId]);
 }

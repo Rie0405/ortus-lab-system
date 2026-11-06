@@ -4,6 +4,8 @@ const screenOnsite = document.getElementById('screen-onsite');
 const screenCategory = document.getElementById('screen-category');
 const screenBeverages = document.getElementById('screen-beverages');
 const screenMeals = document.getElementById('screen-meals');
+const screenOrderStatus = document.getElementById('screen-order-status');
+const screenNowServing = document.getElementById('screen-now-serving');
 
 const menuPages = [screenBeverages, screenMeals];
 
@@ -42,6 +44,11 @@ let orderDiscount = { type: 'none', customer_name: '', id_number: '' };
 /** Customer-flagged PWD/SC request for staff verification (not applied until staff enters ID). */
 let discountRequest = { active: false, type: 'senior' };
 let orderCustomerName = '';
+
+function isPickupOrderType(value) {
+    var t = String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ');
+    return t === 'pickup' || t === 'pick up';
+}
 
 function isPickupOrderSelected() {
     var orderTypeNorm = String(selectedOrderType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -216,11 +223,39 @@ function syncPickupAvailabilityUI() {
     pickupCard.setAttribute('aria-disabled', 'false');
 }
 
+var screenPointerUnlockTimer = null;
+
+function isMenuScreenVisible() {
+    return (screenBeverages && !screenBeverages.classList.contains('page--hidden'))
+        || (screenMeals && !screenMeals.classList.contains('page--hidden'));
+}
+
 function showScreen(show) {
-    [screenService, screenRemote, screenOnsite, screenCategory, screenBeverages, screenMeals].forEach(function (s) {
+    [screenService, screenRemote, screenOnsite, screenCategory, screenBeverages, screenMeals, screenOrderStatus, screenNowServing].forEach(function (s) {
+        if (!s) return;
         s.classList.add('page--hidden');
+        s.classList.remove('page--nav-lock');
     });
-    show.classList.remove('page--hidden');
+    if (show) {
+        show.classList.remove('page--hidden');
+        // Block leftover tap/click from the previous screen (kiosk/tablet ghost click).
+        show.classList.add('page--nav-lock');
+        if (screenPointerUnlockTimer) clearTimeout(screenPointerUnlockTimer);
+        screenPointerUnlockTimer = setTimeout(function () {
+            screenPointerUnlockTimer = null;
+            if (show) show.classList.remove('page--nav-lock');
+        }, 450);
+    }
+    if (show === screenOrderStatus) {
+        startOrderStatusPolling();
+    } else {
+        stopOrderStatusPolling();
+    }
+    if (show === screenNowServing) {
+        startNowServingPolling();
+    } else {
+        stopNowServingPolling();
+    }
 }
 
 function formatCurrency(value) {
@@ -783,12 +818,20 @@ function addItemToCart(item) {
     });
 }
 
+function syncMenuNowServingButtons() {
+    var hide = isPickupOrderSelected();
+    document.querySelectorAll('.menu-now-serving-btn').forEach(function (btn) {
+        btn.hidden = hide;
+    });
+}
+
 function updateOrderTypeLabels() {
     menuPages.forEach(function (page) {
         var target = page.querySelector('.order-type-value');
         if (target) target.textContent = selectedOrderType;
     });
     syncOrderTypeToggleButtons();
+    syncMenuNowServingButtons();
 }
 
 function applyPaymentRules() {
@@ -1968,7 +2011,7 @@ function wireMealCategoryCircles() {
     });
 }
 
-function showMenuForGroup(group) {
+function showMenuForGroup(group, navigate) {
     var tabs = rebuildMenuGroupTabs(group);
     var tabKey = group;
     if (tabKey === 'meals') {
@@ -2010,7 +2053,9 @@ function showMenuForGroup(group) {
         btn.classList.toggle('menu-group-btn--active', g === tabKey);
     });
 
-    showScreen(page);
+    if (navigate !== false) {
+        showScreen(page);
+    }
     renderAllSidebars();
 }
 
@@ -2083,12 +2128,9 @@ function loadMenuData() {
             } else {
                 applyFastMovingIds(res.fast_moving_item_ids || []);
             }
-            rebuildMenuGroupTabs(selectedMenuGroup || BEVERAGES_MERGED_KEY);
             wireSearch();
-            if (selectedMenuGroup) {
-                showMenuForGroup(selectedMenuGroup);
-            } else if (screenBeverages && !screenBeverages.classList.contains('page--hidden')) {
-                showMenuForGroup(BEVERAGES_MERGED_KEY);
+            if (isMenuScreenVisible()) {
+                showMenuForGroup(selectedMenuGroup || BEVERAGES_MERGED_KEY, false);
             }
         })
         .catch(function () {
@@ -2096,8 +2138,8 @@ function loadMenuData() {
             beverageCategoryIds = [];
             fastMovingItemIds = [];
             bestSellerMenuItemId = 0;
-            if (selectedMenuGroup) {
-                showMenuForGroup(selectedMenuGroup);
+            if (isMenuScreenVisible() && selectedMenuGroup) {
+                showMenuForGroup(selectedMenuGroup, false);
             }
         });
 }
@@ -2158,9 +2200,11 @@ if (categoryBackBtn) {
 
 // Menu screens Back → previous selection screen
 document.getElementById('btn-beverages-back').addEventListener('click', function () {
+    clearSessionOrders();
     showScreen(previousScreen || screenService);
 });
 document.getElementById('btn-meals-back').addEventListener('click', function () {
+    clearSessionOrders();
     showScreen(previousScreen || screenService);
 });
 
@@ -2295,6 +2339,19 @@ var pickupOnlyModalMessages = document.querySelectorAll('.cash-modal-message--pi
 var pickupAlarmPickerEl = document.getElementById('pickup-alarm-picker');
 var cashContactDetailsInput = document.getElementById('cash-contact-details-input');
 var gcashContactDetailsInput = document.getElementById('gcash-contact-details-input');
+var gcashReceiptCameraBtn = document.getElementById('gcash-receipt-camera-btn');
+var gcashReceiptUploadBtn = document.getElementById('gcash-receipt-upload-btn');
+var gcashReceiptFileInput = document.getElementById('gcash-receipt-file');
+var gcashReceiptPreview = document.getElementById('gcash-receipt-preview');
+var gcashReceiptPreviewImg = document.getElementById('gcash-receipt-preview-img');
+var gcashCameraOverlay = document.getElementById('gcash-camera-overlay');
+var gcashCameraVideo = document.getElementById('gcash-camera-video');
+var gcashCameraCanvas = document.getElementById('gcash-camera-canvas');
+var gcashCameraCancelBtn = document.getElementById('gcash-camera-cancel');
+var gcashCameraSnapBtn = document.getElementById('gcash-camera-snap');
+var gcashReceiptBlob = null;
+var gcashReceiptPreviewUrl = '';
+var gcashCameraStream = null;
 var pickupAlarmState = { hour: 6, minute: 30, ampm: 'PM', wheelsBuilt: false, snapTimer: null };
 
 function getPickupContactDetails() {
@@ -2545,10 +2602,26 @@ var orderReceiptQrImg = document.getElementById('order-receipt-qr-img');
 var orderReceiptQrStatus = document.getElementById('order-receipt-qr-status');
 var orderReceiptViewBtn = document.getElementById('order-receipt-view-btn');
 var orderReceiptDoneBtn = document.getElementById('order-receipt-done');
+var orderReceiptStatusBtn = document.getElementById('order-receipt-status-btn');
+var orderReceiptBoardBtn = document.getElementById('order-receipt-board-btn');
+var orderStatusList = document.getElementById('order-status-list');
+var orderStatusBackBtn = document.getElementById('btn-order-status-back');
+var nowServingPendingEl = document.getElementById('now-serving-pending');
+var nowServingPreparingEl = document.getElementById('now-serving-preparing');
+var nowServingReadyEl = document.getElementById('now-serving-ready');
+var nowServingBackBtn = document.getElementById('btn-now-serving-back');
 var receiptViewModal = document.getElementById('receipt-view-modal');
 var receiptViewFrame = document.getElementById('receipt-view-frame');
 var receiptViewCloseBtn = document.getElementById('receipt-view-close');
 var lastReceiptUrl = '';
+var sessionOrders = [];
+var orderStatusReturnScreen = null;
+var nowServingReturnScreen = null;
+var orderStatusPollTimer = null;
+var nowServingPollTimer = null;
+var nowServingBoard = { pending: [], preparing: [], ready: [] };
+var ORDER_STATUS_POLL_MS = 5000;
+var ORDER_STATUS_STEPS = ['pending', 'confirmed', 'served'];
 
 function openReceiptViewModal(url) {
     if (!receiptViewModal || !url) return;
@@ -2783,6 +2856,7 @@ function openOrderReceiptModal(res) {
     if (orderReceiptNumber) {
         orderReceiptNumber.textContent = 'Order #' + (res.order_number || '');
     }
+    syncReceiptFollowupButtons();
     renderReceiptQr(lastReceiptUrl);
     if (orderReceiptModal) {
         orderReceiptModal.classList.add('cash-modal-overlay--open');
@@ -2798,6 +2872,310 @@ function closeOrderReceiptModal() {
     }
     lastReceiptUrl = '';
     resetReceiptQrDisplay();
+}
+
+function customerStatusLabel(status) {
+    var key = String(status || '').toLowerCase();
+    if (key === 'confirmed') return 'Preparing';
+    if (key === 'served') return 'Done';
+    if (key === 'cancelled' || key === 'voided') return 'Cancelled';
+    return 'Pending';
+}
+
+function mapReceiptStatus(raw) {
+    var key = String(raw || '').toLowerCase();
+    if (key === 'confirmed' || key === 'served') return key;
+    if (key === 'voided' || key === 'cancelled') return 'cancelled';
+    return 'pending';
+}
+
+function isTerminalSessionStatus(status) {
+    var key = String(status || '').toLowerCase();
+    return key === 'served' || key === 'cancelled' || key === 'voided';
+}
+
+function getVisibleMenuScreen() {
+    if (screenMeals && !screenMeals.classList.contains('page--hidden')) return screenMeals;
+    if (screenBeverages && !screenBeverages.classList.contains('page--hidden')) return screenBeverages;
+    return screenBeverages || screenService;
+}
+
+function getVisibleKioskScreen() {
+    var screens = [screenService, screenRemote, screenOnsite, screenCategory, screenBeverages, screenMeals, screenOrderStatus];
+    for (var i = 0; i < screens.length; i++) {
+        if (screens[i] && !screens[i].classList.contains('page--hidden')) return screens[i];
+    }
+    return screenService;
+}
+
+function getPickupSessionOrders() {
+    return sessionOrders.filter(function (row) {
+        return isPickupOrderType(row.order_type);
+    });
+}
+
+function getOnsiteSessionOrders() {
+    return sessionOrders.filter(function (row) {
+        return !isPickupOrderType(row.order_type);
+    });
+}
+
+function syncReceiptFollowupButtons() {
+    var hasPickup = getPickupSessionOrders().length > 0;
+    var hasOnsite = getOnsiteSessionOrders().length > 0;
+    if (orderReceiptStatusBtn) orderReceiptStatusBtn.hidden = !hasPickup;
+    if (orderReceiptBoardBtn) orderReceiptBoardBtn.hidden = !hasOnsite;
+}
+
+function syncMenuOrderStatusButtons() {
+    var hasPickup = getPickupSessionOrders().length > 0;
+    document.querySelectorAll('.js-open-order-status').forEach(function (btn) {
+        btn.hidden = !hasPickup;
+    });
+    syncReceiptFollowupButtons();
+}
+
+function rememberSessionOrders(recorded) {
+    sessionOrders = (recorded || []).filter(isOrderFullyRecorded).map(function (res) {
+        return {
+            order_id: parseInt(res.order_id, 10) || 0,
+            order_number: String(res.order_number || '').trim(),
+            receipt_token: String(res.receipt_token || '').trim(),
+            order_type: String(res.session_order_type || res.order_type || selectedOrderType || '').trim(),
+            status: 'pending'
+        };
+    }).filter(function (row) {
+        return row.order_id > 0 && row.receipt_token;
+    });
+    syncMenuOrderStatusButtons();
+    renderOrderStatusScreen();
+    renderNowServingBoard();
+}
+
+function clearSessionOrders() {
+    stopOrderStatusPolling();
+    sessionOrders = [];
+    syncMenuOrderStatusButtons();
+    if (orderStatusList) orderStatusList.innerHTML = '';
+    renderNowServingBoard();
+}
+
+function sessionHasActivePickupOrders() {
+    return getPickupSessionOrders().some(function (row) {
+        return !isTerminalSessionStatus(row.status);
+    });
+}
+
+function renderOrderStatusScreen() {
+    if (!orderStatusList) return;
+    var pickupOrders = getPickupSessionOrders();
+    if (!pickupOrders.length) {
+        orderStatusList.innerHTML = '<p class="order-status-empty">No pickup order to track on this kiosk yet.</p>';
+        return;
+    }
+    orderStatusList.innerHTML = pickupOrders.map(function (row) {
+        var status = mapReceiptStatus(row.status);
+        var cancelled = status === 'cancelled';
+        var currentIndex = cancelled ? -1 : ORDER_STATUS_STEPS.indexOf(status);
+        if (currentIndex < 0 && !cancelled) currentIndex = 0;
+        var steps = [
+            { key: 'pending', label: 'Pending' },
+            { key: 'confirmed', label: 'Preparing' },
+            { key: 'served', label: 'Done' }
+        ].map(function (step, idx) {
+            var cls = 'order-status-step';
+            if (!cancelled && idx < currentIndex) cls += ' is-done';
+            if (!cancelled && idx === currentIndex) cls += ' is-current';
+            return '<li class="' + cls + '">' +
+                '<span class="order-status-step-dot" aria-hidden="true"></span>' +
+                '<span class="order-status-step-label">' + step.label + '</span>' +
+                '</li>';
+        }).join('');
+        return '<article class="order-status-card' + (cancelled ? ' is-cancelled' : '') + '" data-order-id="' + row.order_id + '">' +
+            (row.order_type ? '<p class="order-status-type">' + escapeHtml(row.order_type) + '</p>' : '') +
+            '<p class="order-status-number">Order #' + escapeHtml(row.order_number) + '</p>' +
+            '<p class="order-status-current">' + escapeHtml(customerStatusLabel(status)) + '</p>' +
+            '<ol class="order-status-steps">' + steps + '</ol>' +
+            '</article>';
+    }).join('');
+}
+
+function applySessionOrderStatus(orderId, nextStatus) {
+    var changed = false;
+    sessionOrders.forEach(function (row) {
+        if (row.order_id !== orderId) return;
+        var mapped = mapReceiptStatus(nextStatus);
+        if (row.status !== mapped) {
+            row.status = mapped;
+            changed = true;
+        }
+    });
+    if (changed) renderOrderStatusScreen();
+    if (!sessionHasActivePickupOrders()) stopOrderStatusPolling();
+    return changed;
+}
+
+function fetchSessionOrderStatus(row) {
+    if (!row || !row.receipt_token) {
+        return Promise.resolve(row);
+    }
+    return fetch('api/receipt_public.php?t=' + encodeURIComponent(row.receipt_token), { cache: 'no-store' })
+        .then(function (r) {
+            return r.text().then(function (text) {
+                var body = {};
+                try { body = text ? JSON.parse(text) : {}; } catch (err) { body = {}; }
+                return { http: r.status, body: body };
+            });
+        })
+        .then(function (res) {
+            var body = res && res.body;
+            if (res.http === 410 || (body && body.success === false)) {
+                applySessionOrderStatus(row.order_id, 'cancelled');
+                return row;
+            }
+            var receipt = body && body.receipt;
+            if (receipt && receipt.status) {
+                if (receipt.order_type && !row.order_type) {
+                    row.order_type = String(receipt.order_type);
+                }
+                applySessionOrderStatus(row.order_id, receipt.status);
+            }
+            return row;
+        })
+        .catch(function () { return row; });
+}
+
+function refreshSessionOrderStatuses() {
+    var pickupOrders = getPickupSessionOrders();
+    if (!pickupOrders.length) return Promise.resolve();
+    return Promise.all(pickupOrders.map(fetchSessionOrderStatus));
+}
+
+function stopOrderStatusPolling() {
+    if (orderStatusPollTimer) {
+        clearInterval(orderStatusPollTimer);
+        orderStatusPollTimer = null;
+    }
+}
+
+function startOrderStatusPolling() {
+    stopOrderStatusPolling();
+    if (!sessionHasActivePickupOrders()) return;
+    refreshSessionOrderStatuses();
+    orderStatusPollTimer = setInterval(function () {
+        if (!sessionHasActivePickupOrders()) {
+            stopOrderStatusPolling();
+            return;
+        }
+        refreshSessionOrderStatuses();
+    }, ORDER_STATUS_POLL_MS);
+}
+
+function openOrderStatusScreen() {
+    if (!getPickupSessionOrders().length) return;
+    closeOrderReceiptModal();
+    orderStatusReturnScreen = getVisibleMenuScreen();
+    renderOrderStatusScreen();
+    showScreen(screenOrderStatus);
+}
+
+function closeOrderStatusScreen() {
+    showScreen(orderStatusReturnScreen || getVisibleMenuScreen());
+}
+
+function handleSessionOrderEvent(payload) {
+    if (!payload || !sessionOrders.length) return false;
+    var orderId = parseInt(payload.order_id, 10) || 0;
+    if (!orderId) return false;
+    var match = sessionOrders.filter(function (row) { return row.order_id === orderId; })[0];
+    if (!match) return false;
+    if (payload.status) applySessionOrderStatus(orderId, payload.status);
+    fetchSessionOrderStatus(match);
+    return true;
+}
+
+function sessionOnsiteNumbers() {
+    var map = {};
+    getOnsiteSessionOrders().forEach(function (row) {
+        var num = String(row.order_number || '').trim();
+        if (num) map[num] = true;
+    });
+    return map;
+}
+
+function renderNowServingColumn(el, tickets, mineMap, emptyText) {
+    if (!el) return;
+    var list = Array.isArray(tickets) ? tickets : [];
+    if (!list.length) {
+        el.innerHTML = '<p class="now-serving-empty">' + emptyText + '</p>';
+        return;
+    }
+    el.innerHTML = list.map(function (ticket) {
+        var number = String((ticket && ticket.order_number) || '').trim();
+        if (!number) return '';
+        var name = String((ticket && ticket.customer_name) || '').trim() || 'Guest';
+        var mine = !!mineMap[number];
+        return '<article class="now-serving-ticket' + (mine ? ' is-mine' : '') + '"' +
+            ' aria-label="' + escapeHtmlAttr(name) + ', #' + escapeHtmlAttr(number) + '">' +
+            '<span class="now-serving-ticket-name">' + escapeHtml(name) + '</span>' +
+            '<span class="now-serving-ticket-code">#' + escapeHtml(number) + '</span>' +
+            '</article>';
+    }).join('');
+}
+
+function renderNowServingBoard() {
+    var mineMap = sessionOnsiteNumbers();
+    renderNowServingColumn(nowServingPendingEl, nowServingBoard.pending, mineMap, 'No tickets pending.');
+    renderNowServingColumn(nowServingPreparingEl, nowServingBoard.preparing, mineMap, 'No tickets preparing.');
+    renderNowServingColumn(nowServingReadyEl, nowServingBoard.ready, mineMap, 'No tickets ready yet.');
+}
+
+function refreshNowServingBoard() {
+    return fetch('api/queue_board_public.php', { cache: 'no-store' })
+        .then(function (r) {
+            return r.text().then(function (text) {
+                var body = {};
+                try { body = text ? JSON.parse(text) : {}; } catch (err) { body = {}; }
+                return body;
+            });
+        })
+        .then(function (body) {
+            if (!body || body.success === false) return;
+            nowServingBoard.pending = Array.isArray(body.pending) ? body.pending : [];
+            nowServingBoard.preparing = Array.isArray(body.preparing) ? body.preparing : [];
+            nowServingBoard.ready = Array.isArray(body.ready) ? body.ready : [];
+            renderNowServingBoard();
+        })
+        .catch(function () {});
+}
+
+function stopNowServingPolling() {
+    if (nowServingPollTimer) {
+        clearInterval(nowServingPollTimer);
+        nowServingPollTimer = null;
+    }
+}
+
+function startNowServingPolling() {
+    stopNowServingPolling();
+    refreshNowServingBoard();
+    nowServingPollTimer = setInterval(refreshNowServingBoard, ORDER_STATUS_POLL_MS);
+}
+
+function openNowServingScreen() {
+    closeOrderReceiptModal();
+    nowServingReturnScreen = getVisibleKioskScreen();
+    if (nowServingReturnScreen === screenNowServing) {
+        nowServingReturnScreen = screenService;
+    }
+    renderNowServingBoard();
+    showScreen(screenNowServing);
+}
+
+function closeNowServingScreen() {
+    var target = nowServingReturnScreen || screenService;
+    if (target === screenNowServing) target = screenService;
+    showScreen(target);
 }
 
 function closeGcashQrLightbox() {
@@ -3026,6 +3404,114 @@ function closeCashModal() {
     cashCheckoutModal.setAttribute('aria-hidden', 'true');
 }
 
+function setGcashConfirmEnabled(on) {
+    if (!gcashModalConfirmBtn) return;
+    gcashModalConfirmBtn.disabled = !on;
+}
+
+function clearGcashReceiptPreview() {
+    gcashReceiptBlob = null;
+    if (gcashReceiptPreviewUrl) {
+        try { URL.revokeObjectURL(gcashReceiptPreviewUrl); } catch (e) {}
+        gcashReceiptPreviewUrl = '';
+    }
+    if (gcashReceiptPreviewImg) gcashReceiptPreviewImg.removeAttribute('src');
+    if (gcashReceiptPreview) gcashReceiptPreview.hidden = true;
+    if (gcashReceiptFileInput) gcashReceiptFileInput.value = '';
+    setGcashConfirmEnabled(false);
+}
+
+function setGcashReceiptFromBlob(blob) {
+    if (!blob) return;
+    gcashReceiptBlob = blob;
+    if (gcashReceiptPreviewUrl) {
+        try { URL.revokeObjectURL(gcashReceiptPreviewUrl); } catch (e) {}
+    }
+    gcashReceiptPreviewUrl = URL.createObjectURL(blob);
+    if (gcashReceiptPreviewImg) gcashReceiptPreviewImg.src = gcashReceiptPreviewUrl;
+    if (gcashReceiptPreview) gcashReceiptPreview.hidden = false;
+    setGcashConfirmEnabled(true);
+}
+
+function stopGcashCameraStream() {
+    if (!gcashCameraStream) return;
+    gcashCameraStream.getTracks().forEach(function (track) {
+        try { track.stop(); } catch (e) {}
+    });
+    gcashCameraStream = null;
+    if (gcashCameraVideo) gcashCameraVideo.srcObject = null;
+}
+
+function closeGcashCamera() {
+    stopGcashCameraStream();
+    if (!gcashCameraOverlay) return;
+    gcashCameraOverlay.classList.remove('is-open');
+    gcashCameraOverlay.hidden = true;
+    gcashCameraOverlay.setAttribute('aria-hidden', 'true');
+}
+
+function openGcashCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        window.alert('Camera is not available on this device. Please upload a screenshot instead.');
+        return;
+    }
+    var start = function (constraints) {
+        return navigator.mediaDevices.getUserMedia(constraints);
+    };
+    start({ video: { facingMode: { ideal: 'environment' } }, audio: false }).catch(function () {
+        return start({ video: true, audio: false });
+    }).then(function (stream) {
+        gcashCameraStream = stream;
+        if (gcashCameraVideo) gcashCameraVideo.srcObject = stream;
+        if (gcashCameraOverlay) {
+            gcashCameraOverlay.hidden = false;
+            gcashCameraOverlay.classList.add('is-open');
+            gcashCameraOverlay.setAttribute('aria-hidden', 'false');
+        }
+    }).catch(function () {
+        window.alert('Could not open the camera. Please upload a screenshot instead.');
+    });
+}
+
+function captureGcashCamera() {
+    if (!gcashCameraVideo || !gcashCameraCanvas) return;
+    var w = gcashCameraVideo.videoWidth || 720;
+    var h = gcashCameraVideo.videoHeight || 960;
+    var maxEdge = 1600;
+    var scale = Math.min(1, maxEdge / Math.max(w, h));
+    gcashCameraCanvas.width = Math.max(1, Math.round(w * scale));
+    gcashCameraCanvas.height = Math.max(1, Math.round(h * scale));
+    var ctx = gcashCameraCanvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(gcashCameraVideo, 0, 0, gcashCameraCanvas.width, gcashCameraCanvas.height);
+    gcashCameraCanvas.toBlob(function (blob) {
+        if (!blob) {
+            window.alert('Could not capture the photo. Please try again.');
+            return;
+        }
+        setGcashReceiptFromBlob(blob);
+        closeGcashCamera();
+    }, 'image/jpeg', 0.85);
+}
+
+function uploadGcashReceipt(blob) {
+    if (!blob) {
+        return Promise.reject(new Error('Please capture or upload your GCash transfer screenshot.'));
+    }
+    var fd = new FormData();
+    fd.append('image', blob, 'gcash-receipt.jpg');
+    return fetch('api/gcash_receipt_upload.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: fd
+    }).then(function (r) { return r.json(); }).then(function (res) {
+        if (!res || !res.success || !res.url) {
+            throw new Error((res && res.error) || 'Could not upload the receipt image.');
+        }
+        return res.url;
+    });
+}
+
 function openGcashModal() {
     if (!gcashCheckoutModal) return;
     loadGcashKioskConfig(true);
@@ -3049,10 +3535,13 @@ function openGcashModal() {
         gcashRefInput.value = '';
         setTimeout(function () { gcashRefInput.focus(); }, 50);
     }
+    clearGcashReceiptPreview();
 }
 
 function closeGcashModal() {
     closeGcashQrLightbox();
+    closeGcashCamera();
+    clearGcashReceiptPreview();
     if (!gcashCheckoutModal) return;
     gcashCheckoutModal.classList.remove('cash-modal-overlay--open');
     gcashCheckoutModal.setAttribute('aria-hidden', 'true');
@@ -3275,7 +3764,7 @@ function mapCartItemsForSubmit(items) {
     });
 }
 
-function submitOnePublicOrder(paymentMethod, gcashRef, orderTypeLabel, items, applyDiscount) {
+function submitOnePublicOrder(paymentMethod, gcashRef, orderTypeLabel, items, applyDiscount, gcashReceiptUrl) {
     var pickupLaterTime = pickupLaterTimeInput ? String(pickupLaterTimeInput.value || '').trim() : '';
     var cashNameInput = document.getElementById('cash-order-name-input');
     var gcashNameInput = document.getElementById('gcash-order-name-input');
@@ -3304,6 +3793,7 @@ function submitOnePublicOrder(paymentMethod, gcashRef, orderTypeLabel, items, ap
         order_type: orderTypeLabel || selectedOrderType || 'Not selected',
         payment_method: paymentMethod,
         gcash_ref: gcashRef || '',
+        gcash_receipt_url: paymentMethod === 'gcash' ? (gcashReceiptUrl || '') : '',
         discount: discount,
         discount_requested: applyDiscount && !!(discountRequest && discountRequest.active),
         discount_request_type: (applyDiscount && discountRequest && discountRequest.active) ? discountRequest.type : '',
@@ -3341,7 +3831,7 @@ function submitOnePublicOrder(paymentMethod, gcashRef, orderTypeLabel, items, ap
     });
 }
 
-function submitPublicOrder(paymentMethod, gcashRef) {
+function submitPublicOrder(paymentMethod, gcashRef, gcashReceiptUrl) {
     var jobs = [];
     if (!isDineTakeOrderSelected()) {
         if (cartByFulfillment.dine_in.length) {
@@ -3362,8 +3852,9 @@ function submitPublicOrder(paymentMethod, gcashRef) {
     var recorded = [];
     return jobs.reduce(function (chain, job, idx) {
         return chain.then(function () {
-            return submitOnePublicOrder(paymentMethod, gcashRef, job.type, job.items, idx === 0);
+            return submitOnePublicOrder(paymentMethod, gcashRef, job.type, job.items, idx === 0, gcashReceiptUrl);
         }).then(function (res) {
+            if (res) res.session_order_type = job.type;
             recorded.push(res);
             return res;
         });
@@ -3375,6 +3866,7 @@ function submitPublicOrder(paymentMethod, gcashRef) {
             err.recordedOk = false;
             throw err;
         }
+        rememberSessionOrders(recorded);
         return recorded[recorded.length - 1];
     });
 }
@@ -3394,6 +3886,24 @@ if (receiptViewModal) {
 }
 if (orderReceiptDoneBtn) {
     orderReceiptDoneBtn.addEventListener('click', closeOrderReceiptModal);
+}
+if (orderReceiptStatusBtn) {
+    orderReceiptStatusBtn.addEventListener('click', openOrderStatusScreen);
+}
+if (orderReceiptBoardBtn) {
+    orderReceiptBoardBtn.addEventListener('click', openNowServingScreen);
+}
+document.querySelectorAll('.js-open-order-status').forEach(function (btn) {
+    btn.addEventListener('click', openOrderStatusScreen);
+});
+document.querySelectorAll('.js-open-now-serving').forEach(function (btn) {
+    btn.addEventListener('click', openNowServingScreen);
+});
+if (orderStatusBackBtn) {
+    orderStatusBackBtn.addEventListener('click', closeOrderStatusScreen);
+}
+if (nowServingBackBtn) {
+    nowServingBackBtn.addEventListener('click', closeNowServingScreen);
 }
 if (orderReceiptModal) {
     orderReceiptModal.addEventListener('click', function (e) {
@@ -3492,7 +4002,14 @@ if (gcashModalConfirmBtn) {
             if (gcashRefInput) gcashRefInput.focus();
             return;
         }
-        submitPublicOrder('gcash', ref).then(function (res) {
+        if (!gcashReceiptBlob) {
+            window.alert('Please capture or upload your GCash transfer screenshot.');
+            return;
+        }
+        setGcashConfirmEnabled(false);
+        uploadGcashReceipt(gcashReceiptBlob).then(function (receiptUrl) {
+            return submitPublicOrder('gcash', ref, receiptUrl);
+        }).then(function (res) {
             closeGcashModal();
             clearAllCarts();
             orderDiscount = { type: 'none', customer_name: '', id_number: '' };
@@ -3504,9 +4021,37 @@ if (gcashModalConfirmBtn) {
                 openOrderReceiptModal(res);
             });
         }).catch(function (err) {
+            setGcashConfirmEnabled(!!gcashReceiptBlob);
             showPaymentSuccessToast({ ok: false });
             window.alert(err && err.message ? err.message : 'Failed to submit order.');
         });
+    });
+}
+if (gcashReceiptCameraBtn) {
+    gcashReceiptCameraBtn.addEventListener('click', openGcashCamera);
+}
+if (gcashReceiptUploadBtn) {
+    gcashReceiptUploadBtn.addEventListener('click', function () {
+        if (gcashReceiptFileInput) gcashReceiptFileInput.click();
+    });
+}
+if (gcashReceiptFileInput) {
+    gcashReceiptFileInput.addEventListener('change', function () {
+        var file = gcashReceiptFileInput.files && gcashReceiptFileInput.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            window.alert('Image must be PNG/JPG up to 5MB.');
+            gcashReceiptFileInput.value = '';
+            return;
+        }
+        setGcashReceiptFromBlob(file);
+    });
+}
+if (gcashCameraCancelBtn) gcashCameraCancelBtn.addEventListener('click', closeGcashCamera);
+if (gcashCameraSnapBtn) gcashCameraSnapBtn.addEventListener('click', captureGcashCamera);
+if (gcashCameraOverlay) {
+    gcashCameraOverlay.addEventListener('click', function (e) {
+        if (e.target === gcashCameraOverlay) closeGcashCamera();
     });
 }
 if (gcashModalCancelBtn) {
@@ -3665,9 +4210,9 @@ function connectKioskRealtimeStream() {
                 return;
             }
             var payload = (evt && evt.payload) || {};
-            var source = String(payload.order_source || '').toLowerCase();
-            if (source === 'kiosk' || !source) {
-                scheduleKioskRealtimeRefresh();
+            handleSessionOrderEvent(payload);
+            if (screenNowServing && !screenNowServing.classList.contains('page--hidden')) {
+                refreshNowServingBoard();
             }
         } catch (err) {}
     }
@@ -3688,6 +4233,8 @@ function connectKioskRealtimeStream() {
 }
 
 window.addEventListener('beforeunload', function () {
+    stopOrderStatusPolling();
+    stopNowServingPolling();
     if (kioskRealtimeRetryTimer) {
         clearTimeout(kioskRealtimeRetryTimer);
         kioskRealtimeRetryTimer = null;
@@ -3702,6 +4249,7 @@ window.addEventListener('beforeunload', function () {
     }
 });
 
+syncMenuOrderStatusButtons();
 connectKioskRealtimeStream();
 refreshPickupServerTime();
 setInterval(refreshPickupServerTime, 60000);

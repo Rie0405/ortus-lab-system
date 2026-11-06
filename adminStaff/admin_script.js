@@ -80,14 +80,18 @@
         return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
     }
 
+    function shiftDateKey() {
+        return window.ortusOpenShiftDate || localYmd(new Date());
+    }
+
     function getStartingMoneyStorageKey() {
         var sid = pendingStaffId || 0;
-        return 'staff_sales_report_starting_money_' + sid + '_' + localYmd(new Date());
+        return 'staff_sales_report_starting_money_' + sid + '_' + shiftDateKey();
     }
 
     function getStartingMoneyLockedKey() {
         var sid = pendingStaffId || 0;
-        return 'staff_sales_report_starting_money_locked_' + sid + '_' + localYmd(new Date());
+        return 'staff_sales_report_starting_money_locked_' + sid + '_' + shiftDateKey();
     }
 
     function applyStartingMoneyLocal(payloadObj, locked) {
@@ -116,20 +120,22 @@
 
     function fetchStartingMoneyFromServer() {
         if (!pendingStaffId) return Promise.resolve(false);
-        var date = localYmd(new Date());
         return fetch(
-            'api/staff_sales_report.php?staff_id=' + encodeURIComponent(pendingStaffId) +
-            '&date=' + encodeURIComponent(date),
+            'api/staff_sales_report.php?staff_id=' + encodeURIComponent(pendingStaffId) + '&open=1',
             { cache: 'no-store', credentials: 'same-origin' }
         )
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (!d || !d.success) return false;
+                if (d.report && d.report.report_date) {
+                    window.ortusOpenShiftDate = String(d.report.report_date);
+                }
                 if (d.has_starting_money && d.report && d.report.starting_money) {
                     applyStartingMoneyLocal(d.report.starting_money, !!d.report.starting_money_locked);
                     return true;
                 }
                 if (d.has_starting_money) return true;
+                window.ortusOpenShiftDate = localYmd(new Date());
                 return false;
             })
             .catch(function () { return false; });
@@ -141,7 +147,7 @@
     }
 
     function getInventoryCheckDoneKey() {
-        return 'staff_inventory_check_done_' + new Date().toISOString().slice(0, 10);
+        return 'staff_inventory_check_done_' + (window.ortusOpenShiftDate || localYmd(new Date()));
     }
 
     function hasInventoryCheckDoneForToday() {
@@ -224,7 +230,7 @@
             credentials: 'same-origin',
             body: JSON.stringify({
                 staff_id: pendingStaffId,
-                report_date: localYmd(new Date()),
+                report_date: window.ortusOpenShiftDate || localYmd(new Date()),
                 starting_money: payloadObj,
                 starting_money_locked: true
             })
@@ -234,6 +240,9 @@
                 if (!pack.ok || !pack.d || !pack.d.success) {
                     showMoneyError((pack.d && pack.d.error) || 'Could not save starting money to server. Try again.');
                     return false;
+                }
+                if (pack.d.report_date) {
+                    window.ortusOpenShiftDate = String(pack.d.report_date);
                 }
                 return true;
             })

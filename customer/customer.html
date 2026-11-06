@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="customer_styles.css?v=20261013-qr-enlarge">
+    <link rel="stylesheet" href="customer_styles.css?v=20261031-pending-col">
 </head>
 <body>
 
@@ -26,6 +26,7 @@
                     <span class="header-title">ORTUS LAB</span>
                 </div>
             </div>
+            <button type="button" class="header-now-serving-btn js-open-now-serving">Now Serving</button>
         </header>
 
         <!-- Main Content -->
@@ -145,6 +146,7 @@
                     <span class="header-title">ORTUS LAB</span>
                 </div>
             </div>
+            <button type="button" class="header-now-serving-btn js-open-now-serving">Now Serving</button>
         </header>
 
         <!-- Main Content -->
@@ -200,6 +202,7 @@
                     <span class="header-title">ORTUS LAB</span>
                 </div>
             </div>
+            <button type="button" class="header-now-serving-btn js-open-now-serving">Now Serving</button>
         </header>
 
         <!-- Main Content -->
@@ -280,6 +283,8 @@
                         <h2 class="menu-grid-heading" hidden>Beverages</h2>
                     </div>
                     <div class="menu-header-actions">
+                        <button type="button" class="menu-now-serving-btn js-open-now-serving">Now Serving</button>
+                        <button type="button" class="menu-order-status-btn js-open-order-status" hidden>Order Status</button>
                         <button class="menu-back-btn" id="btn-beverages-back">Back</button>
                     </div>
                 </div>
@@ -522,6 +527,8 @@
                         <h2 class="menu-grid-heading" hidden>Snacks and Meals</h2>
                     </div>
                     <div class="menu-header-actions">
+                        <button type="button" class="menu-now-serving-btn js-open-now-serving">Now Serving</button>
+                        <button type="button" class="menu-order-status-btn js-open-order-status" hidden>Order Status</button>
                         <button class="menu-back-btn" id="btn-meals-back">Back</button>
                     </div>
                 </div>
@@ -732,6 +739,57 @@
         </div>
     </div>
 
+    <!-- ── Order Status (this kiosk session) ── -->
+    <div id="screen-order-status" class="page page--hidden order-status-page">
+        <header class="header">
+            <div class="header-inner">
+                <div class="header-brand">
+                    <span class="header-title">ORTUS LAB</span>
+                </div>
+            </div>
+        </header>
+        <div class="order-status-wrap">
+            <div class="order-status-hero">
+                <h2 class="order-status-heading">Order Status</h2>
+                <p class="order-status-sub">Your ticket number and live kitchen progress for this order.</p>
+            </div>
+            <div id="order-status-list" class="order-status-list" aria-live="polite"></div>
+            <button type="button" class="ro-back-btn" id="btn-order-status-back">Back</button>
+        </div>
+    </div>
+
+    <!-- ── Now Serving board (dine-in / take-out kiosk tickets) ── -->
+    <div id="screen-now-serving" class="page page--hidden now-serving-page">
+        <header class="header">
+            <div class="header-inner">
+                <div class="header-brand">
+                    <span class="header-title">ORTUS LAB</span>
+                </div>
+            </div>
+        </header>
+        <div class="now-serving-wrap">
+            <div class="now-serving-hero">
+                <h2 class="now-serving-heading">Now Serving</h2>
+                <p class="now-serving-sub">Watch the board for your ticket number.</p>
+            </div>
+            <div class="now-serving-board" aria-live="polite">
+                <section class="now-serving-col now-serving-col--pending" aria-labelledby="now-serving-pending-title">
+                    <h3 class="now-serving-col-title" id="now-serving-pending-title">Pending</h3>
+                    <div class="now-serving-numbers" id="now-serving-pending"></div>
+                </section>
+                <section class="now-serving-col now-serving-col--preparing" aria-labelledby="now-serving-preparing-title">
+                    <h3 class="now-serving-col-title" id="now-serving-preparing-title">Preparing</h3>
+                    <div class="now-serving-numbers" id="now-serving-preparing"></div>
+                </section>
+                <section class="now-serving-col now-serving-col--ready" aria-labelledby="now-serving-ready-title">
+                    <h3 class="now-serving-col-title" id="now-serving-ready-title">Ready</h3>
+                    <div class="now-serving-numbers" id="now-serving-ready"></div>
+                </section>
+            </div>
+            <button type="button" class="ro-back-btn" id="btn-now-serving-back">Back</button>
+        </div>
+    </div>
+
     <!-- ── CASH Checkout Modal ── -->
     <div id="cash-checkout-modal" class="cash-modal-overlay" aria-hidden="true">
         <div class="cash-modal cash-modal--checkout" role="dialog" aria-modal="true" aria-labelledby="cash-modal-title">
@@ -847,6 +905,28 @@
                     <span class="cash-modal-field-label">GCash reference no. <span class="cash-modal-field-required" aria-hidden="true">*</span></span>
                     <input id="gcash-ref-input" class="gcash-ref-input cash-modal-input js-gcash-ref-digits" type="text" placeholder="Enter reference number" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required aria-required="true">
                 </label>
+                <div class="cash-modal-field gcash-receipt-field">
+                    <span class="cash-modal-field-label">Payment receipt <span class="cash-modal-field-required" aria-hidden="true">*</span></span>
+                    <div class="gcash-receipt-row">
+                        <button type="button" class="gcash-receipt-sq-btn" id="gcash-receipt-camera-btn" aria-label="Open camera" title="Open camera">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                                <path d="M4 8.5h3.1l1.2-2.1h7.4l1.2 2.1H20A1.5 1.5 0 0 1 21.5 10v8A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18v-8A1.5 1.5 0 0 1 4 8.5Z" stroke="currentColor" stroke-width="1.7"/>
+                                <circle cx="12" cy="14" r="3.2" stroke="currentColor" stroke-width="1.7"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="gcash-receipt-sq-btn" id="gcash-receipt-upload-btn" aria-label="Upload image" title="Upload image">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                                <path d="M12 16.5V6.5M12 6.5 8.5 10M12 6.5 15.5 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M5 18.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <input type="file" id="gcash-receipt-file" accept="image/jpeg,image/png,image/webp,image/*" hidden>
+                        <div class="gcash-receipt-preview" id="gcash-receipt-preview" hidden>
+                            <img id="gcash-receipt-preview-img" alt="Receipt preview">
+                        </div>
+                    </div>
+                    <span class="cash-modal-field-hint">Take a photo or upload your GCash transfer screenshot.</span>
+                </div>
                 <label class="cash-modal-field cash-modal-message--pickup-only" for="gcash-contact-details-input">
                     <span class="cash-modal-field-label">Send your contact details</span>
                     <input id="gcash-contact-details-input" class="gcash-ref-input cash-modal-input" type="text" maxlength="200" placeholder="e.g. phone / messenger" autocomplete="tel">
@@ -855,13 +935,25 @@
             </div>
             <div class="cash-modal-actions">
                 <button id="gcash-modal-cancel" class="cash-modal-cancel-btn" type="button">Cancel</button>
-                <button id="gcash-modal-confirm" class="cash-modal-confirm-btn" type="button">Confirm</button>
+                <button id="gcash-modal-confirm" class="cash-modal-confirm-btn" type="button" disabled>Confirm</button>
             </div>
         </div>
     </div>
 
     <div id="gcash-qr-lightbox" class="gcash-qr-lightbox" hidden aria-hidden="true">
         <img id="gcash-qr-lightbox-img" class="gcash-qr-lightbox__img" alt="Enlarged GCash QR Code" />
+    </div>
+
+    <div id="gcash-camera-overlay" class="gcash-camera-overlay" hidden aria-hidden="true">
+        <div class="gcash-camera-panel" role="dialog" aria-modal="true" aria-labelledby="gcash-camera-title">
+            <p class="gcash-camera-title" id="gcash-camera-title">Capture payment receipt</p>
+            <video id="gcash-camera-video" class="gcash-camera-video" autoplay playsinline muted></video>
+            <canvas id="gcash-camera-canvas" hidden></canvas>
+            <div class="gcash-camera-actions">
+                <button type="button" class="gcash-camera-cancel" id="gcash-camera-cancel">Cancel</button>
+                <button type="button" class="gcash-camera-snap" id="gcash-camera-snap">Capture</button>
+            </div>
+        </div>
     </div>
 
     <!-- ── Order receipt QR (after checkout) ── -->
@@ -876,7 +968,11 @@
                 <p class="order-receipt-qr-status" id="order-receipt-qr-status">Generating QR…</p>
             </div>
             <p class="order-receipt-hint">QR not working? Use the button below.</p>
-            <button type="button" class="order-receipt-view-btn" id="order-receipt-view-btn">View My Receipt</button>
+            <div class="order-receipt-extra-actions">
+                <button type="button" class="order-receipt-view-btn" id="order-receipt-view-btn">View My Receipt</button>
+                <button type="button" class="order-receipt-status-btn" id="order-receipt-status-btn" hidden>Order Status</button>
+                <button type="button" class="order-receipt-status-btn" id="order-receipt-board-btn" hidden>Now Serving</button>
+            </div>
             <div class="cash-modal-actions">
                 <button id="order-receipt-done" class="cash-modal-confirm-btn" type="button">DONE</button>
             </div>
@@ -942,7 +1038,7 @@
     }
     </script>
     <script src="../shared/gcash_ref_digits.js"></script>
-    <script src="customer_script.js?v=20261013-qr-enlarge"></script>
+    <script src="customer_script.js?v=20261031-pending-col"></script>
 
 </body>
 </html>

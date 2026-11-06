@@ -1879,7 +1879,7 @@
                 <div id="sh-manage-list-view">
                     <p class="sh-modal__hint">Add, edit, or remove POS cashier accounts.</p>
                     <div class="sh-manage-list" id="sh-manage-list" aria-label="Cashier accounts"></div>
-                    <button type="button" class="sh-modal__btn sh-modal__btn--primary sh-manage-add-btn" id="sh-manage-add-btn">+ Add Cashier</button>
+                    <button type="button" class="sh-modal__btn sh-modal__btn--primary sh-manage-add-btn" id="sh-manage-add-btn">+ Add Employee</button>
                 </div>
 
                 <div id="sh-manage-form-view" hidden>
@@ -1908,7 +1908,7 @@
             </footer>
             <footer class="sh-modal__footer" id="sh-manage-footer-form" hidden>
                 <button type="button" class="sh-modal__btn sh-modal__btn--muted" id="sh-manage-form-back">Back</button>
-                <button type="button" class="sh-modal__btn sh-modal__btn--primary" id="sh-manage-modal-save">Save Cashier</button>
+                <button type="button" class="sh-modal__btn sh-modal__btn--primary" id="sh-manage-modal-save">Save Employee</button>
             </footer>
         </div>
     </div>
@@ -2704,7 +2704,7 @@
             if (manageTitle) {
                 manageTitle.textContent = manageMode === 'edit'
                     ? 'Edit Cashier'
-                    : (manageMode === 'add' ? 'Add Cashier' : 'Manage Cashiers');
+                    : (manageMode === 'add' ? 'Add Employee' : 'Manage Cashiers');
             }
             if (manageFormHint) {
                 manageFormHint.textContent = manageMode === 'edit'
@@ -2720,7 +2720,7 @@
                     : 'Min. 6 characters';
             }
             if (manageSave) {
-                manageSave.textContent = manageMode === 'edit' ? 'Save Changes' : 'Save Cashier';
+                manageSave.textContent = manageMode === 'edit' ? 'Save Changes' : 'Save Employee';
             }
             if (manageTabAccess) manageTabAccess.hidden = manageMode !== 'edit';
         }

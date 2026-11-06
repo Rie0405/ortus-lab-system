@@ -1,1 +1,1 @@
-{"id":1791986655733,"type":"order_updated","ts":"2026-10-14T14:04:15+00:00","payload":{"order_id":283,"action":"switch_to_dine_in","order_source":"kiosk","status":"pending"}}
+{"id":1793436351470,"type":"order_created","ts":"2026-10-31T08:45:51+00:00","payload":{"order_id":320,"order_number":"KIO-103126-006","order_source":"kiosk","status":"pending","gcash_receipt_url":"uploads/gcash_receipts/gcash_20261031_094551_5ad92e9a.png"}}

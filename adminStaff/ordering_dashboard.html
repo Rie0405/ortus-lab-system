@@ -588,7 +588,7 @@
                 <header class="gcash-config-modal__header">
                     <div class="gcash-config-modal__title-block">
                         <p class="gcash-config-modal__eyebrow">MENU ADD-ONS</p>
-                        <h2 id="addon-register-title">REGISTER ADDON</h2>
+                        <h2 id="addon-register-title">REGISTER ADD-ON</h2>
                     </div>
                     <button type="button" class="gcash-config-modal__close" id="addon-register-close" aria-label="Close">×</button>
                 </header>
@@ -597,7 +597,7 @@
                     <p id="addon-register-error" class="gcash-config-error" hidden></p>
 
                     <div class="gcash-config-field">
-                        <label for="addon-register-name" class="gcash-config-label">ADDON NAME</label>
+                        <label for="addon-register-name" class="gcash-config-label">ADD-ON NAME</label>
                         <input id="addon-register-name" class="gcash-config-input" type="text" placeholder="e.g. Extra Cheese" maxlength="120" autocomplete="off">
                     </div>
 
@@ -613,19 +613,19 @@
 
                     <div class="gcash-config-field">
                         <span class="gcash-config-label">SHOW IN</span>
-                        <div class="addon-station-toggle" id="addon-station-toggle" role="group" aria-label="Addon main category"></div>
+                        <div class="addon-station-toggle" id="addon-station-toggle" role="group" aria-label="Add-on main category"></div>
                         <p class="addon-station-hint">Registered Add-on items will show in all registered menu items under a destination.</p>
                     </div>
 
                     <div class="addon-register-list-wrap">
-                        <p class="gcash-config-label">REGISTERED ADDONS</p>
+                        <p class="gcash-config-label">REGISTERED ADD-ONS</p>
                         <div id="addon-register-list" class="addon-register-list" aria-live="polite"></div>
                     </div>
                 </div>
 
                 <footer class="gcash-config-modal__footer">
                     <button type="button" class="btn btn-muted" id="addon-register-cancel">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="addon-register-save">Save Addon</button>
+                    <button type="button" class="btn btn-primary" id="addon-register-save">Save Add-on</button>
                 </footer>
             </div>
         </div>
@@ -834,12 +834,12 @@
                 if (costInput) costInput.value = '';
                 ensureSelectedMainCategory();
                 renderStationButtons();
-                if (saveBtn) saveBtn.textContent = 'Save Addon';
+                if (saveBtn) saveBtn.textContent = 'Save Add-on';
             }
 
             function renderList() {
                 if (!addons.length) {
-                    listEl.innerHTML = '<p class="addon-register-empty">No addons registered yet.</p>';
+                    listEl.innerHTML = '<p class="addon-register-empty">No add-ons registered yet.</p>';
                     return;
                 }
                 listEl.innerHTML = addons.map(function (a) {
@@ -868,7 +868,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (!d || !d.success) {
-                            throw new Error((d && d.error) || 'Failed to load addons.');
+                            throw new Error((d && d.error) || 'Failed to load add-ons.');
                         }
                         mainCategories = d.main_categories || [];
                         addons = d.addons || [];
@@ -884,7 +884,7 @@
                 backdrop.classList.add('is-visible');
                 backdrop.setAttribute('aria-hidden', 'false');
                 loadAddons().catch(function (err) {
-                    setErr(err.message || 'Failed to load addons.');
+                    setErr(err.message || 'Failed to load add-ons.');
                     renderStationButtons();
                     renderList();
                 });
@@ -924,7 +924,7 @@
                 var name = String(nameInput.value || '').trim();
                 var price = priceInput ? parseFloat(priceInput.value) : 0;
                 var cost = costInput ? parseFloat(costInput.value) : 0;
-                if (!name) return setErr('Addon name is required.');
+                if (!name) return setErr('Add-on name is required.');
                 if (!Number.isFinite(price) || price < 0) price = 0;
                 if (!Number.isFinite(cost) || cost < 0) cost = 0;
                 ensureSelectedMainCategory();
@@ -954,7 +954,7 @@
                     .then(function (res) {
                         var d = res.d || {};
                         if (!d.success) {
-                            setErr(d.error || 'Failed to save addon.');
+                            setErr(d.error || 'Failed to save add-on.');
                             return;
                         }
                         mainCategories = d.main_categories || mainCategories;
@@ -964,7 +964,7 @@
                         setErr('');
                     })
                     .catch(function (err) {
-                        setErr((err && err.message) || 'Failed to save addon.');
+                        setErr((err && err.message) || 'Failed to save add-on.');
                     })
                     .finally(function () {
                         saveBtn.disabled = false;

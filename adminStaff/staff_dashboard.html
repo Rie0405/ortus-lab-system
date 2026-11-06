@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261015-tab-access">
+    <link rel="stylesheet" href="staff_dashboard_styles.css?v=20261106-cash-btns">
     <link rel="stylesheet" href="brand_role_label.css">
     <link rel="stylesheet" href="number_input.css?v=20261006">
     <link rel="stylesheet" href="password_toggle.css?v=20261006">
@@ -181,10 +181,6 @@
 
             <aside class="pos-right">
                 <div class="tabs pos-order-head">
-                    <div class="pos-order-head__title">
-                        <button class="tab tab--active" data-view-tab="order">CURRENT ORDER</button>
-                        <button type="button" class="pos-order-clear" id="pos-order-clear" aria-label="Clear current order" title="Clear order">×</button>
-                    </div>
                     <button type="button" class="pos-discount-record-btn" id="pos-discount-record-btn">Discount Record</button>
                 </div>
 
@@ -207,13 +203,19 @@
                         <p class="pos-discount-pick-hint" id="pos-discount-pick-hint" hidden>Select an order item to apply a discount. Each PWD/Senior ID can only be used once per day.</p>
                         <div class="pos-cart-slider__track" id="pos-cart-slider-track">
                             <div class="pos-cart-slider__pane" data-pane="dine_in">
-                                <p class="pos-cart-group__label pos-cart-group__label--dine-in" id="pos-cart-label-dine-in">Orders to dine in:</p>
+                                <div class="pos-cart-pane-head">
+                                    <p class="pos-cart-group__label pos-cart-group__label--dine-in" id="pos-cart-label-dine-in">Orders to dine in:</p>
+                                    <button type="button" class="pos-order-clear" id="pos-order-clear" aria-label="Clear ticket" title="Clear ticket">Clear ticket</button>
+                                </div>
                                 <div class="order-list" id="pos-order-list">
                                     <p class="pos-muted pos-empty-cart">Cart is empty</p>
                                 </div>
                             </div>
                             <div class="pos-cart-slider__pane" data-pane="take_out">
-                                <p class="pos-cart-group__label pos-cart-group__label--take-out" id="pos-cart-label-take-out">Orders to take out:</p>
+                                <div class="pos-cart-pane-head">
+                                    <p class="pos-cart-group__label pos-cart-group__label--take-out" id="pos-cart-label-take-out">Orders to take out:</p>
+                                    <button type="button" class="pos-order-clear" id="pos-order-clear-take-out" aria-label="Clear ticket" title="Clear ticket">Clear ticket</button>
+                                </div>
                                 <div class="order-list order-list--take-out" id="pos-order-list-take-out">
                                     <p class="pos-muted pos-empty-cart">No take out items yet.</p>
                                 </div>
@@ -316,6 +318,10 @@
                     <div class="opq-topbar">
                         <div class="opq-topbar-left">
                             <h2 class="opq-title">PROCESSING QUEUE</h2>
+                            <div class="kiosk-queue-pay-switch" id="kiosk-queue-pay-switch" hidden role="group" aria-label="Payment filter">
+                                <button type="button" class="opq-btn kiosk-queue-pay-btn is-active" data-kiosk-pay-view="cash">Cash</button>
+                                <button type="button" class="opq-btn kiosk-queue-pay-btn" data-kiosk-pay-view="gcash">Cashless</button>
+                            </div>
                             <span class="opq-badge" id="staff-pending-count">0 ACTIVE</span>
                         </div>
                 </div>
@@ -1323,7 +1329,7 @@
                         <h3 class="pos-modal__label">ADD-ONS</h3>
                         <div class="pos-modal__pill-row pos-modal__pill-row--wrap pos-modal__pill-row--addons" id="pos-addon-pill-row">
                         </div>
-                        <p class="pos-muted pos-addon-empty" id="pos-addon-empty" hidden>No addons registered for this station.</p>
+                        <p class="pos-muted pos-addon-empty" id="pos-addon-empty" hidden>No add-ons registered for this station.</p>
                     </section>
 
                     <section class="pos-modal__section" data-pos-section="staff-note">
@@ -1368,7 +1374,6 @@
             var discountAmountEl = document.getElementById("pos-discount-amount");
             var totalEl = document.getElementById("pos-total");
             var cancelBtn = document.getElementById("pos-cancel-btn");
-            var posOrderClearBtn = document.getElementById("pos-order-clear");
             var confirmBtn = document.getElementById("pos-confirm-btn");
             var posCustomerNameInput = document.getElementById("pos-customer-name");
             var posEditingBanner = document.getElementById("pos-editing-banner");
@@ -3444,7 +3449,9 @@
             }
 
             if (cancelBtn) cancelBtn.addEventListener("click", clearCart);
-            if (posOrderClearBtn) posOrderClearBtn.addEventListener("click", clearCart);
+            document.querySelectorAll(".pos-order-clear").forEach(function (btn) {
+                btn.addEventListener("click", clearCart);
+            });
 
             if (posDiscountModalType) {
                 posDiscountModalType.addEventListener("change", syncPosDiscountModalIdFields);
@@ -5515,7 +5522,7 @@
                 }
 
                 Promise.all([
-                    fetch('api/orders.php?date=' + encodeURIComponent(today) + '&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/orders.php?from=' + encodeURIComponent(window.ortusOpenShiftDate || today) + '&to=' + encodeURIComponent(today) + '&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                     fetch('api/waste.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                     fetch('api/sales.php?from=' + encodeURIComponent(weekStart) + '&to=' + encodeURIComponent(today) + '&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); })
                 ]).then(function (res) {
@@ -5867,6 +5874,8 @@
     (function () {
         var opqGrid = document.getElementById('staff-opq-grid');
         var pendingBadge = document.getElementById('staff-pending-count');
+        var kioskQueuePaySwitch = document.getElementById('kiosk-queue-pay-switch');
+        var kioskQueuePayView = 'cash';
         var kitchenGrid = document.getElementById('kitchen-orders-grid');
         var kitchenBadge = document.getElementById('kitchen-pending-count');
         var kitchenServingList = document.getElementById('kitchen-serving-list');
@@ -6916,6 +6925,9 @@
                 return;
             }
             scheduleStaffRealtimeRefresh();
+            if (typeof window.refreshPosGcashReceiptInbox === 'function') {
+                window.refreshPosGcashReceiptInbox();
+            }
         }
         function connectStaffRealtimeStream() {
             if (typeof window.EventSource === 'undefined') return;
@@ -6968,8 +6980,13 @@
             }
             return id || 0;
         }
+        function getOpenShiftDate() {
+            var saved = String(window.ortusOpenShiftDate || '').trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
+            return localBusinessYmd(new Date());
+        }
         function staffScopedDayKey(prefix) {
-            return prefix + '_' + getDrawerStaffScopeId() + '_' + localBusinessYmd(new Date());
+            return prefix + '_' + getDrawerStaffScopeId() + '_' + getOpenShiftDate();
         }
         function getStartingMoneyStorageKey() {
             return staffScopedDayKey('staff_sales_report_starting_money');
@@ -6985,7 +7002,7 @@
             if (!staffId) return;
             var payload = {
                 staff_id: staffId,
-                report_date: localBusinessYmd(new Date()),
+                report_date: getOpenShiftDate(),
                 starting_money: localStorage.getItem(getStartingMoneyStorageKey()),
                 starting_money_locked: localStorage.getItem(getStartingMoneyLockedKey()) === '1',
                 accuracy: localStorage.getItem(getAccuracyStorageKey()),
@@ -7002,15 +7019,22 @@
         function hydrateStaffDrawerFromServer() {
             var staffId = getDrawerStaffScopeId();
             if (!staffId) return Promise.resolve();
-            var date = localBusinessYmd(new Date());
             return fetch(
-                'api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) +
-                '&date=' + encodeURIComponent(date),
+                'api/staff_sales_report.php?staff_id=' + encodeURIComponent(staffId) + '&open=1',
                 { cache: 'no-store', credentials: 'same-origin' }
             )
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
-                    if (!d || !d.success || !d.report) return;
+                    if (!d || !d.success) return;
+                    if (d.report && d.report.report_date) {
+                        window.ortusOpenShiftDate = String(d.report.report_date);
+                    } else {
+                        window.ortusOpenShiftDate = localBusinessYmd(new Date());
+                    }
+                    if (!d.report) {
+                        if (typeof loadStaffData === 'function') loadStaffData();
+                        return;
+                    }
                     var report = d.report;
                     if (report.starting_money) {
                         try {
@@ -7043,6 +7067,7 @@
                     if (typeof loadStartingMoney === 'function') {
                         try { loadStartingMoney(); } catch (e4) {}
                     }
+                    if (typeof loadStaffData === 'function') loadStaffData();
                 })
                 .catch(function () {});
         }
@@ -8221,13 +8246,6 @@
             var raw = localStorage.getItem(getShiftHistoryClearKey());
             var n = parseInt(raw || '0', 10);
             if (!Number.isFinite(n) || n <= 0) return 0;
-            // Stale clear markers from a previous calendar day must not hide today's live orders.
-            var clearDay = localYmdFromMs(n);
-            var todayLocal = localYmdFromMs(Date.now());
-            if (clearDay && todayLocal && clearDay !== todayLocal) {
-                try { localStorage.removeItem(getShiftHistoryClearKey()); } catch (e) {}
-                return 0;
-            }
             return n;
         }
         function formatShiftDateLabel(dateObj) {
@@ -8766,9 +8784,15 @@
             } else if (opts.partition === 'take_out') {
                 switchBtn = '<button type="button" class="opq-action-btn opq-action-btn--takeout" data-switch-lane="dine_in" data-switch-order="' + orderId + '">Switch to Dine In</button>';
             }
+            var cashlessBtn = '';
+            if (isGcashOrder(order)) {
+                var receiptUnread = String(order.gcash_receipt_url || '').trim() && !order.gcash_receipt_seen && !order.gcash_receipt_seen_at;
+                cashlessBtn = '<button type="button" class="opq-action-btn opq-action-btn--cashless' + (receiptUnread ? ' is-unread' : '') + '" data-cashless-order="' + orderId + '">Verification</button>';
+            }
             return (
                 '<footer class="opq-card-foot staff-opq-actions">' +
                     switchBtn +
+                    cashlessBtn +
                     '<button type="button" class="opq-action-btn opq-action-btn--confirm" data-confirm-order="' + orderId + '">Confirm</button>' +
                     '<button type="button" class="opq-action-btn opq-action-btn--void" data-void-order="' + orderId + '">Delete</button>' +
                     discountBtn +
@@ -9003,14 +9027,40 @@
             return card;
         }
 
+        function isKioskQueueActive() {
+            return String(window.staffQueueSource || currentQueueSource || '').toLowerCase() === 'kiosk';
+        }
+
+        function syncKioskQueuePaySwitch() {
+            if (!kioskQueuePaySwitch) return;
+            var kiosk = isKioskQueueActive();
+            kioskQueuePaySwitch.hidden = !kiosk;
+            kioskQueuePaySwitch.querySelectorAll('[data-kiosk-pay-view]').forEach(function (btn) {
+                var view = btn.getAttribute('data-kiosk-pay-view');
+                var active = view === kioskQueuePayView;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+        }
+
+        function filterKioskQueuePayView(orders) {
+            var list = orders || [];
+            if (!isKioskQueueActive()) return list;
+            return list.filter(function (order) {
+                var gcash = isGcashOrder(order);
+                return kioskQueuePayView === 'gcash' ? gcash : !gcash;
+            });
+        }
+
         function renderPendingOrders() {
             if (!opqGrid) return;
             opqGrid.innerHTML = '';
             opqGrid.classList.remove('opq-queue-partitions');
+            syncKioskQueuePaySwitch();
 
             // Live queue: never hide by shift-clear localStorage (that marker is device-local and
             // was making POS/kiosk orders disappear on browsers that previously closed a shift).
-            var orderedPending = (pendingOrders || []).slice().sort(function (a, b) {
+            var orderedPending = filterKioskQueuePayView((pendingOrders || []).slice()).sort(function (a, b) {
                 var ta = new Date(a && a.created_at ? a.created_at : 0).getTime();
                 var tb = new Date(b && b.created_at ? b.created_at : 0).getTime();
                 if (ta !== tb) return ta - tb;
@@ -10138,7 +10188,6 @@
         }
 
         function computeTodayCoffeeSold(orders, menuItems) {
-            var today = new Date().toISOString().slice(0, 10);
             var menuCategoryByName = {};
             (menuItems || []).forEach(function (m) {
                 var key = String(m && m.name || '').trim().toLowerCase();
@@ -10151,7 +10200,8 @@
                 if (!order || !order.created_at) return;
                 var status = String(order.status || '').toLowerCase();
                 if (status !== 'confirmed' && status !== 'served') return;
-                if (String(order.created_at).slice(0, 10) !== today) return;
+                if (String(order.created_at).slice(0, 10) < getOpenShiftDate()) return;
+                if (String(order.created_at).slice(0, 10) > localBusinessYmd(new Date())) return;
 
                 (order.items || []).forEach(function (item) {
                     var itemName = String(item && item.name || '').trim().toLowerCase();
@@ -10318,10 +10368,10 @@
                 fetch('api/orders.php?status=' + encodeURIComponent(queueStatus) + '&kitchen_returned=0&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?status=confirmed&limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?status=served&limit=100&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/orders.php?type=daily_summary&date=' + encodeURIComponent(todayYmd) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/orders.php?type=daily_summary&date=' + encodeURIComponent(todayYmd) + '&from=' + encodeURIComponent(getOpenShiftDate()) + '&to=' + encodeURIComponent(todayYmd) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/waste.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/waste.php?type=daily_summary&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
-                fetch('api/revenue_verification.php?opening_float=' + encodeURIComponent(getSavedStartingMoneyTotal()) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/waste.php?type=daily_summary&from=' + encodeURIComponent(getOpenShiftDate()) + '&to=' + encodeURIComponent(todayYmd) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
+                fetch('api/revenue_verification.php?from=' + encodeURIComponent(getOpenShiftDate()) + '&to=' + encodeURIComponent(todayYmd) + '&opening_float=' + encodeURIComponent(getSavedStartingMoneyTotal()) + '&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/menu.php?_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?limit=200&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
                 fetch('api/orders.php?status=pending&kitchen_returned=1&limit=50&_=' + cacheBust, { cache: 'no-store' }).then(function (r) { return r.json(); }),
@@ -10552,8 +10602,25 @@
             var src = e && e.detail && e.detail.source;
             if (!src || (src !== 'pos' && src !== 'kiosk')) return;
             currentQueueSource = src;
+            syncKioskQueuePaySwitch();
             loadStaffData();
         });
+
+        if (kioskQueuePaySwitch) {
+            kioskQueuePaySwitch.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-kiosk-pay-view]');
+                if (!btn || !kioskQueuePaySwitch.contains(btn)) return;
+                var next = btn.getAttribute('data-kiosk-pay-view');
+                if (next !== 'cash' && next !== 'gcash') return;
+                if (kioskQueuePayView === next) return;
+                kioskQueuePayView = next;
+                renderPendingOrders();
+            });
+        }
+        syncKioskQueuePaySwitch();
+        window.renderPendingOrdersAfterGcashRead = function () {
+            if (typeof renderPendingOrders === 'function') renderPendingOrders();
+        };
 
         if (opqGrid) {
             opqGrid.addEventListener('click', function (e) {
@@ -10575,6 +10642,17 @@
                         });
                     } else {
                         window.prompt('Copy contact details:', contactText);
+                    }
+                    return;
+                }
+                var cashlessBtn = e.target.closest('[data-cashless-order]');
+                if (cashlessBtn) {
+                    var cashlessOrder = findQueueOrder(cashlessBtn.getAttribute('data-cashless-order'));
+                    if (!cashlessOrder) return;
+                    if (typeof window.openPosGcashReceiptForOrder === 'function') {
+                        window.openPosGcashReceiptForOrder(cashlessOrder);
+                    } else {
+                        alert('GCash receipt viewer is unavailable. Please refresh and try again.');
                     }
                     return;
                 }
@@ -11451,6 +11529,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         report_date: reportDate,
+                        from: (typeof getOpenShiftDate === 'function' ? getOpenShiftDate() : reportDate),
+                        to: reportDate,
                         cash_declared: cashDeclared,
                         opening_float: getSavedStartingMoneyTotal(),
                         notes: String((sesNotes && sesNotes.value) || '').trim(),
@@ -11487,14 +11567,27 @@
                               alert('Shift closed, but archive save failed: ' + msg);
                           }
                           markShiftHistoryClearedNow();
-                          if (typeof window.resetShiftSessionState === 'function') {
-                              window.resetShiftSessionState();
-                          } else {
-                              clearStartingMoneyForToday();
-                          }
-                          closeSesCloseVerifyModal();
-                          closeSesOverlay();
-                          loadStaffData();
+                          return fetch('api/staff_sales_report.php', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'same-origin',
+                              body: JSON.stringify({
+                                  action: 'close_shift',
+                                  staff_id: actingSid || undefined
+                              })
+                          }).then(function (r) { return r.json(); }).catch(function () { return null; }).then(function () {
+                              if (typeof window.resetShiftSessionState === 'function') {
+                                  window.resetShiftSessionState();
+                              } else {
+                                  clearStartingMoneyForToday();
+                              }
+                              window.ortusOpenShiftDate = typeof localBusinessYmd === 'function'
+                                  ? localBusinessYmd(new Date())
+                                  : reportDate;
+                              closeSesCloseVerifyModal();
+                              closeSesOverlay();
+                              loadStaffData();
+                          });
                       });
                   });
             }
@@ -11723,14 +11816,17 @@
             var popupDone = document.getElementById('inv-check-popup-done');
 
             function getInvCheckDoneKey() {
-                return 'staff_inventory_check_done_' + new Date().toISOString().slice(0, 10);
+                var day = (typeof window.ortusOpenShiftDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(window.ortusOpenShiftDate))
+                    ? window.ortusOpenShiftDate
+                    : new Date().toISOString().slice(0, 10);
+                return 'staff_inventory_check_done_' + day;
             }
 
             function getStartingMoneyStorageKeyLocal() {
                 if (typeof getStartingMoneyStorageKey === 'function') return getStartingMoneyStorageKey();
                 var sid = (typeof getDrawerStaffScopeId === 'function' ? getDrawerStaffScopeId() : 0) || 0;
-                var day = (typeof localBusinessYmd === 'function')
-                    ? localBusinessYmd(new Date())
+                var day = (typeof getOpenShiftDate === 'function')
+                    ? getOpenShiftDate()
                     : new Date().toISOString().slice(0, 10);
                 return 'staff_sales_report_starting_money_' + sid + '_' + day;
             }
@@ -11738,8 +11834,8 @@
             function getStartingMoneyLockedKeyLocal() {
                 if (typeof getStartingMoneyLockedKey === 'function') return getStartingMoneyLockedKey();
                 var sid = (typeof getDrawerStaffScopeId === 'function' ? getDrawerStaffScopeId() : 0) || 0;
-                var day = (typeof localBusinessYmd === 'function')
-                    ? localBusinessYmd(new Date())
+                var day = (typeof getOpenShiftDate === 'function')
+                    ? getOpenShiftDate()
                     : new Date().toISOString().slice(0, 10);
                 return 'staff_sales_report_starting_money_locked_' + sid + '_' + day;
             }
@@ -11933,6 +12029,31 @@
                 <button type="button" class="pos-discount-record-dialog__btn" id="pos-discount-record-cancel">Close</button>
             </footer>
         </div>
+    </div>
+
+    <div class="pos-discount-record-layer" id="pos-gcash-receipt-modal" aria-hidden="true">
+        <div class="pos-discount-record-dialog pos-gcash-receipt-dialog" role="dialog" aria-modal="true" aria-labelledby="pos-gcash-receipt-title">
+            <header class="pos-discount-record-dialog__header">
+                <h2 id="pos-gcash-receipt-title">GCash Receipts</h2>
+                <button type="button" class="pos-discount-record-dialog__close" id="pos-gcash-receipt-close" aria-label="Close">×</button>
+            </header>
+            <div class="pos-discount-record-dialog__body">
+                <p class="pos-discount-record-dialog__hint">Kiosk GCash transfer screenshots for today. Open a receipt to mark it as read. This does not confirm the kitchen order.</p>
+                <div class="pos-discount-record-list-wrap">
+                    <div class="pos-gcash-receipt-list" id="pos-gcash-receipt-list">
+                        <p class="pos-discount-record-empty">No GCash receipts yet.</p>
+                    </div>
+                </div>
+            </div>
+            <footer class="pos-discount-record-dialog__footer">
+                <button type="button" class="pos-discount-record-dialog__btn" id="pos-gcash-receipt-cancel">Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="pos-gcash-receipt-viewer" id="pos-gcash-receipt-viewer" hidden aria-hidden="true">
+        <button type="button" class="pos-gcash-receipt-viewer__close" id="pos-gcash-receipt-viewer-close" aria-label="Close">×</button>
+        <img class="pos-gcash-receipt-viewer__img" id="pos-gcash-receipt-viewer-img" alt="GCash transfer receipt">
     </div>
 
     <div class="payment-success-toast toast-container" id="payment-success-toast" aria-hidden="true" hidden>
@@ -12179,6 +12300,184 @@
             if (search) search.addEventListener('input', renderList);
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape' && modal.classList.contains('is-visible')) closeModal();
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            var cache = [];
+            var modal = document.getElementById('pos-gcash-receipt-modal');
+            var closeBtn = document.getElementById('pos-gcash-receipt-close');
+            var cancelBtn = document.getElementById('pos-gcash-receipt-cancel');
+            var list = document.getElementById('pos-gcash-receipt-list');
+            var viewer = document.getElementById('pos-gcash-receipt-viewer');
+            var viewerImg = document.getElementById('pos-gcash-receipt-viewer-img');
+            var viewerClose = document.getElementById('pos-gcash-receipt-viewer-close');
+            if (!viewer || !viewerImg) return;
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function peso(n) {
+                var v = Number(n);
+                if (!isFinite(v)) v = 0;
+                return '₱' + v.toFixed(2);
+            }
+
+            function timeLabel(iso) {
+                var d = iso ? new Date(String(iso).replace(' ', 'T')) : null;
+                if (!d || isNaN(d.getTime())) return '';
+                var h = d.getHours();
+                var m = d.getMinutes();
+                var ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12;
+                if (!h) h = 12;
+                return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+            }
+
+            function updateBadge() {}
+
+            function renderList() {
+                if (!list) return;
+                if (!cache.length) {
+                    list.innerHTML = '<p class="pos-discount-record-empty">No GCash receipts yet.</p>';
+                    return;
+                }
+                list.innerHTML = cache.map(function (row) {
+                    var unread = !row.seen;
+                    return (
+                        '<button type="button" class="pos-gcash-receipt-row' + (unread ? ' is-unread' : '') + '" data-order-id="' + esc(row.id) + '">' +
+                            '<span class="pos-gcash-receipt-dot" aria-hidden="true"></span>' +
+                            '<img class="pos-gcash-receipt-thumb" src="' + esc(row.gcash_receipt_url) + '" alt="">' +
+                            '<span class="pos-gcash-receipt-meta">' +
+                                '<strong>' + esc(row.order_number || '—') + '</strong>' +
+                                '<span>' + esc(row.customer_name || '—') + ' · ' + peso(row.total_amount) + '</span>' +
+                                '<span>Ref ' + esc(row.gcash_ref || '—') + (timeLabel(row.created_at) ? ' · ' + timeLabel(row.created_at) : '') + '</span>' +
+                            '</span>' +
+                            '<span class="pos-gcash-receipt-state">' + (unread ? 'Unread' : 'Read') + '</span>' +
+                        '</button>'
+                    );
+                }).join('');
+            }
+
+            function loadInbox() {
+                return fetch('api/gcash_receipts.php', { cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        cache = (d && d.success && Array.isArray(d.receipts)) ? d.receipts : [];
+                        updateBadge(d && d.success ? d.unread : 0);
+                        renderList();
+                    })
+                    .catch(function () {
+                        cache = [];
+                        updateBadge(0);
+                        if (list && modal && modal.classList.contains('is-visible')) {
+                            list.innerHTML = '<p class="pos-discount-record-empty">Could not load GCash receipts.</p>';
+                        }
+                    });
+            }
+            window.refreshPosGcashReceiptInbox = loadInbox;
+
+            function closeViewer() {
+                if (!viewer) return;
+                viewer.hidden = true;
+                viewer.classList.remove('is-open');
+                viewer.setAttribute('aria-hidden', 'true');
+                if (viewerImg) viewerImg.removeAttribute('src');
+            }
+
+            function markRead(orderId) {
+                return fetch('api/gcash_receipts.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
+                }).then(function (r) { return r.json(); }).then(function (d) {
+                    if (!d || !d.success) return;
+                    cache.forEach(function (row) {
+                        if (Number(row.id) === Number(orderId)) row.seen = true;
+                    });
+                    var unread = cache.filter(function (row) { return !row.seen; }).length;
+                    updateBadge(unread);
+                    renderList();
+                }).catch(function () {});
+            }
+
+            function openViewer(row) {
+                if (!viewer || !viewerImg || !row) return;
+                viewerImg.src = row.gcash_receipt_url;
+                viewer.hidden = false;
+                viewer.classList.add('is-open');
+                viewer.setAttribute('aria-hidden', 'false');
+                if (!row.seen) markRead(row.id);
+            }
+
+            window.openPosGcashReceiptForOrder = function (order) {
+                if (!order) return;
+                var url = String(order.gcash_receipt_url || '').trim();
+                if (!url) {
+                    window.alert('No GCash receipt was uploaded for this order.');
+                    return;
+                }
+                var seen = !!(order.gcash_receipt_seen || order.gcash_receipt_seen_at);
+                openViewer({
+                    id: order.id,
+                    gcash_receipt_url: url,
+                    seen: seen
+                });
+                if (!seen) {
+                    order.gcash_receipt_seen = 1;
+                    if (typeof window.renderPendingOrdersAfterGcashRead === 'function') {
+                        window.renderPendingOrdersAfterGcashRead();
+                    }
+                }
+            };
+
+            function openModal() {
+                if (!modal || !list) return;
+                modal.classList.add('is-visible');
+                modal.setAttribute('aria-hidden', 'false');
+                list.innerHTML = '<p class="pos-discount-record-empty">Loading…</p>';
+                loadInbox();
+            }
+
+            function closeModal() {
+                closeViewer();
+                if (!modal) return;
+                modal.classList.remove('is-visible');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+            if (modal) modal.addEventListener('click', function (e) {
+                if (e.target === modal) closeModal();
+            });
+            if (list) list.addEventListener('click', function (e) {
+                var rowEl = e.target.closest('[data-order-id]');
+                if (!rowEl) return;
+                var id = Number(rowEl.getAttribute('data-order-id'));
+                var row = cache.filter(function (item) { return Number(item.id) === id; })[0];
+                if (row) openViewer(row);
+            });
+            if (viewerClose) viewerClose.addEventListener('click', closeViewer);
+            if (viewer) {
+                viewer.addEventListener('click', function (e) {
+                    if (e.target === viewer) closeViewer();
+                });
+            }
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                if (viewer && viewer.classList.contains('is-open')) {
+                    closeViewer();
+                    return;
+                }
+                if (modal && modal.classList.contains('is-visible')) closeModal();
             });
         })();
     </script>

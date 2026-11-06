@@ -3462,7 +3462,7 @@ function apiCall(method, url, body) {
         var item = allItems.find(function (i) { return i.id === id; });
         if (!item) return;
         var label = item.is_addon_card
-            ? ('addon "' + item.name + '" (also archives it from Register Addon)')
+            ? ('add-on "' + item.name + '" (also archives it from Register Add-on)')
             : ('"' + item.name + '"');
         if (!confirm('Archive ' + label + '? You can restore it later from Archive.')) return;
 

@@ -1462,33 +1462,27 @@ img {
 
 .pos-order-head {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 12px;
-    padding-right: 52px;
-    box-sizing: border-box;
-}
-
-.pos-order-head__title {
-    display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
-    min-width: 0;
+    padding: 0 8px 12px 0;
+    box-sizing: border-box;
+    overflow: visible;
 }
 
 .pos-order-clear {
     flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
-    margin: 0 0 0.35rem;
-    padding: 0;
+    margin: 0;
+    padding: 5px 10px;
     border: 1px solid rgba(248, 113, 113, 0.55);
     border-radius: 8px;
     background: rgba(239, 68, 68, 0.12);
     color: #fca5a5;
-    font-size: 18px;
+    font: inherit;
+    font-size: 11px;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.2;
+    white-space: nowrap;
     cursor: pointer;
 }
 
@@ -1497,13 +1491,12 @@ img {
     color: #ffffff;
 }
 
-.pos-discount-record-btn {
+.pos-discount-record-btn,
+.pos-gcash-btn {
     flex: 0 0 auto;
-    margin: 0 0 0.45rem;
+    margin: 0;
     border: 0;
     border-radius: 8px;
-    background: #f48c25;
-    color: #120e0a;
     font: inherit;
     font-size: 11px;
     font-weight: 700;
@@ -1511,11 +1504,168 @@ img {
     padding: 7px 10px;
     cursor: pointer;
     white-space: nowrap;
+}
+
+.pos-discount-record-btn {
+    background: #f48c25;
+    color: #120e0a;
     box-shadow: 0 2px 8px rgba(244, 140, 37, 0.35);
 }
 
 .pos-discount-record-btn:hover {
     background: #ff9b3d;
+}
+
+.pos-gcash-btn {
+    background: #1d6fd8;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(29, 111, 216, 0.35);
+}
+
+.pos-gcash-btn:hover {
+    background: #2b7ef0;
+}
+
+.pos-gcash-btn-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    display: inline-flex;
+}
+
+.pos-gcash-btn-badge {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px #1a140f;
+}
+
+.pos-gcash-receipt-list {
+    max-height: min(52vh, 420px);
+    overflow-y: auto;
+}
+
+.pos-gcash-receipt-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 10px 48px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid rgba(51, 38, 28, 0.85);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.pos-gcash-receipt-row:last-child {
+    border-bottom: 0;
+}
+
+.pos-gcash-receipt-row:hover {
+    background: rgba(244, 140, 37, 0.08);
+}
+
+.pos-gcash-receipt-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.pos-gcash-receipt-row.is-unread .pos-gcash-receipt-dot {
+    background: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.pos-gcash-receipt-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #120e0a;
+    border: 1px solid #3d3025;
+}
+
+.pos-gcash-receipt-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.pos-gcash-receipt-meta strong {
+    color: #fff7ed;
+    font-size: 13px;
+}
+
+.pos-gcash-receipt-meta span {
+    color: #94a3b8;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pos-gcash-receipt-state {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.pos-gcash-receipt-row.is-unread .pos-gcash-receipt-state {
+    color: #93c5fd;
+}
+
+.pos-gcash-receipt-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 5100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.78);
+}
+
+.pos-gcash-receipt-viewer.is-open {
+    display: flex;
+}
+
+.pos-gcash-receipt-viewer__img {
+    max-width: min(92vw, 720px);
+    max-height: 86vh;
+    object-fit: contain;
+    border-radius: 12px;
+    background: #0b0b0b;
+}
+
+.pos-gcash-receipt-viewer__close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
 }
 
 .pos-discount-record-layer {
@@ -1915,8 +2065,19 @@ img {
     flex-basis: 100%;
 }
 
-.pos-cart-group__label {
+.pos-cart-pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin: 0 0 8px;
+    min-width: 0;
+}
+
+.pos-cart-group__label {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -2338,6 +2499,41 @@ img {
 
 .opq-btn:hover {
     background: #2d2d2d;
+}
+
+.kiosk-queue-pay-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.kiosk-queue-pay-switch[hidden] {
+    display: none !important;
+}
+
+.kiosk-queue-pay-btn {
+    padding: 7px 12px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid #3d3025;
+    background: #1e1812;
+    color: #94a3b8;
+}
+
+.kiosk-queue-pay-btn:hover {
+    background: #2a2118;
+    color: #fdba74;
+}
+
+.kiosk-queue-pay-btn.is-active {
+    border-color: rgba(244, 140, 37, 0.55);
+    background: rgba(244, 140, 37, 0.18);
+    color: #fdba74;
+}
+
+.kiosk-queue-pay-btn.is-active:hover {
+    background: rgba(244, 140, 37, 0.26);
 }
 
 /* Order cards grid */
@@ -3263,6 +3459,22 @@ img {
 .opq-action-btn--takeout:hover {
     background: #334155;
     border-color: #94a3b8;
+}
+
+.opq-action-btn--cashless {
+    grid-column: 1 / -1;
+    background: #1d6fd8;
+    border: 1px solid #3b82f6;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.opq-action-btn--cashless:hover {
+    background: #2b7ef0;
+}
+
+.opq-action-btn--cashless.is-unread {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45);
 }
 
 .kitchen-card-foot .kitchen-switch-takeout-btn {

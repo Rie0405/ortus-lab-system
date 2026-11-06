@@ -119,13 +119,24 @@ if ($m === 'GET') {
 
     if ($type === 'daily_summary') {
         $filterStaffId = (int)($_GET['staff_id'] ?? 0);
+        $from = trim((string)($_GET['from'] ?? ''));
+        $to = trim((string)($_GET['to'] ?? ''));
+        $hasRange = preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to);
+        if (!$hasRange) {
+            $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? $date : date('Y-m-d');
+            $to = $from;
+        } elseif ($from > $to) {
+            $swap = $from;
+            $from = $to;
+            $to = $swap;
+        }
         $sql = 'SELECT
                 COALESCE(SUM(estimated_value), 0) AS total_estimated_value,
                 COALESCE(SUM(quantity), 0) AS total_quantity,
                 COUNT(*) AS total_logs
              FROM waste_log
-             WHERE DATE(logged_at) = :d';
-        $params = [':d' => $date];
+             WHERE DATE(logged_at) BETWEEN :from_d AND :to_d';
+        $params = [':from_d' => $from, ':to_d' => $to];
         if ($filterStaffId > 0) {
             $sql .= ' AND staff_id = :sid';
             $params[':sid'] = $filterStaffId;

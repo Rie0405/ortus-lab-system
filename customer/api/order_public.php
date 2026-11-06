@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../adminStaff/api/config.php';
 require_once __DIR__ . '/../../adminStaff/api/discounts.php';
+require_once __DIR__ . '/../../adminStaff/api/gcash_receipt_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/receipt_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/recipe_helpers.php';
 require_once __DIR__ . '/../../adminStaff/api/cashflow_helpers.php';
@@ -81,7 +82,21 @@ if ($paymentMethod === 'gcash' && $gcashRef === '') {
     fail('GCash reference number is required (numbers only).');
 }
 
+$gcashReceiptUrl = trim((string)($b['gcash_receipt_url'] ?? ''));
+if ($paymentMethod === 'gcash') {
+    if ($gcashReceiptUrl === '' || !gcash_receipt_url_is_valid($gcashReceiptUrl)) {
+        fail('GCash payment receipt is required.');
+    }
+    $absReceipt = gcash_receipt_absolute_path($gcashReceiptUrl);
+    if (!is_file($absReceipt)) {
+        fail('Receipt image not found. Please capture or upload again.');
+    }
+} else {
+    $gcashReceiptUrl = '';
+}
+
 $pdo = db();
+ensure_gcash_receipt_schema($pdo);
 ensure_order_source_schema($pdo);
 ensure_order_type_schema($pdo);
 ensure_order_contact_details_schema($pdo);
@@ -232,9 +247,9 @@ try {
     $ins = $pdo->prepare(
         'INSERT INTO orders
             (order_number, receipt_token, order_source, staff_id, status, payment_method, order_type, customer_name, contact_details, discount_type, discount_customer_name,
-             discount_id_number, gross_amount, vat_exempt_amount, discount_amount, total_amount, amount_received, change_due, gcash_ref,
+             discount_id_number, gross_amount, vat_exempt_amount, discount_amount, total_amount, amount_received, change_due, gcash_ref, gcash_receipt_url,
              discount_requested, discount_request_type)
-         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :cname, :contact, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref,
+         VALUES (:num, :rtok, :src, NULL, "pending", :pm, :otype, :cname, :contact, :dtype, :dname, :did, :gross, :vat_exempt, :discount_amount, :total, NULL, NULL, :ref, :rurl,
              :dreq, :dreqtype)'
     );
     $ins->execute([
@@ -253,6 +268,7 @@ try {
         ':discount_amount' => $pricing['discount_amount'],
         ':total' => $total,
         ':ref' => ($gcashRef !== '' ? $gcashRef : null),
+        ':rurl' => ($gcashReceiptUrl !== '' ? $gcashReceiptUrl : null),
         // Pending staff ID verification on counter.
         ':dreq' => ($discountRequested && !$discountAlreadyApplied) ? 1 : 0,
         ':dreqtype' => ($discountRequested && !$discountAlreadyApplied && $discountRequestType !== '')
@@ -294,6 +310,7 @@ try {
         'order_number' => $orderNumber,
         'order_source' => 'kiosk',
         'status' => 'pending',
+        'gcash_receipt_url' => $gcashReceiptUrl !== '' ? $gcashReceiptUrl : null,
     ]);
     ok([
         'order_id' => $orderId,

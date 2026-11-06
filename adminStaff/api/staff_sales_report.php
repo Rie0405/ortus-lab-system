@@ -30,6 +30,11 @@ try {
 } catch (Throwable $e) {
     // already exists
 }
+try {
+    $pdo->exec('ALTER TABLE staff_sales_reports ADD COLUMN shift_closed_at DATETIME NULL');
+} catch (Throwable $e) {
+    // already exists
+}
 
 $m = method();
 $session = [
@@ -76,8 +81,29 @@ function normalize_report_row(?array $row): ?array {
         'accuracy' => $accuracy,
         'cash_mgmt' => normalize_list_field($row['cash_mgmt_json'] ?? null),
         'cash_refunds' => normalize_list_field($row['cash_refunds_json'] ?? null),
+        'shift_closed_at' => $row['shift_closed_at'] ?? null,
         'updated_at' => $row['updated_at'] ?? null,
     ];
+}
+
+function find_open_staff_sales_report(PDO $pdo, int $staffId): ?array
+{
+    if ($staffId <= 0) {
+        return null;
+    }
+    $stmt = $pdo->prepare(
+        'SELECT staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json,
+                cash_mgmt_json, cash_refunds_json, shift_closed_at, updated_at
+           FROM staff_sales_reports
+          WHERE staff_id = :sid
+            AND starting_money_locked = 1
+            AND shift_closed_at IS NULL
+          ORDER BY report_date DESC, id DESC
+          LIMIT 1'
+    );
+    $stmt->execute([':sid' => $staffId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
 }
 
 function report_has_starting_money(?array $report): bool {
@@ -98,22 +124,27 @@ function report_has_starting_money(?array $report): bool {
 if ($m === 'GET') {
     $staffId = (int)($_GET['staff_id'] ?? 0);
     $reportDate = trim($_GET['date'] ?? date('Y-m-d'));
+    $openOnly = (string)($_GET['open'] ?? '') === '1';
     if (!$staffId) {
         fail('staff_id is required.');
     }
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $reportDate)) {
+    if (!$openOnly && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $reportDate)) {
         fail('Invalid report date.');
     }
 
-    $stmt = $pdo->prepare(
-        'SELECT staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json,
-                cash_mgmt_json, cash_refunds_json, updated_at
-           FROM staff_sales_reports
-          WHERE staff_id = :sid AND report_date = :d
-          LIMIT 1'
-    );
-    $stmt->execute([':sid' => $staffId, ':d' => $reportDate]);
-    $row = $stmt->fetch();
+    if ($openOnly) {
+        $row = find_open_staff_sales_report($pdo, $staffId);
+    } else {
+        $stmt = $pdo->prepare(
+            'SELECT staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json,
+                    cash_mgmt_json, cash_refunds_json, shift_closed_at, updated_at
+               FROM staff_sales_reports
+              WHERE staff_id = :sid AND report_date = :d
+              LIMIT 1'
+        );
+        $stmt->execute([':sid' => $staffId, ':d' => $reportDate]);
+        $row = $stmt->fetch() ?: null;
+    }
     $report = normalize_report_row($row ?: null);
 
     ok([
@@ -123,9 +154,11 @@ if ($m === 'GET') {
 }
 
 if ($m === 'POST' || $m === 'PUT') {
+    require_once __DIR__ . '/staff_shifts_helpers.php';
     $b = body();
     $staffId = (int)($b['staff_id'] ?? $session['id']);
     $reportDate = trim($b['report_date'] ?? date('Y-m-d'));
+    $action = strtolower(trim((string)($b['action'] ?? '')));
 
     if (!$staffId) {
         fail('staff_id is required.');
@@ -133,8 +166,36 @@ if ($m === 'POST' || $m === 'PUT') {
     if ($session['role'] !== 'admin' && $staffId !== $session['id']) {
         fail('Forbidden', 403);
     }
+
+    if ($action === 'close_shift') {
+        $open = find_open_staff_sales_report($pdo, $staffId);
+        if ($open) {
+            $closeReport = $pdo->prepare(
+                'UPDATE staff_sales_reports
+                    SET shift_closed_at = NOW()
+                  WHERE staff_id = :sid
+                    AND report_date = :d
+                    AND shift_closed_at IS NULL'
+            );
+            $closeReport->execute([
+                ':sid' => $staffId,
+                ':d' => (string)$open['report_date'],
+            ]);
+        }
+        close_open_staff_shift($pdo, $staffId);
+        ok([
+            'message' => 'Shift closed.',
+            'staff_id' => $staffId,
+            'report_date' => $open ? (string)$open['report_date'] : null,
+        ]);
+    }
+
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $reportDate)) {
         fail('Invalid report date.');
+    }
+    $openRow = find_open_staff_sales_report($pdo, $staffId);
+    if ($openRow) {
+        $reportDate = (string)$openRow['report_date'];
     }
 
     $startingMoney = null;
@@ -165,7 +226,7 @@ if ($m === 'POST' || $m === 'PUT') {
     }
 
     $existing = $pdo->prepare(
-        'SELECT starting_money_json, starting_money_locked, accuracy_json, cash_mgmt_json, cash_refunds_json
+        'SELECT starting_money_json, starting_money_locked, accuracy_json, cash_mgmt_json, cash_refunds_json, shift_closed_at
            FROM staff_sales_reports
           WHERE staff_id = :sid AND report_date = :d
           LIMIT 1'
@@ -188,18 +249,20 @@ if ($m === 'POST' || $m === 'PUT') {
     $lockedValue = $locked !== null
         ? $locked
         : (int)($current['starting_money_locked'] ?? 0);
+    $reopenShift = $openRow || $lockedValue === 1;
 
     $upsert = $pdo->prepare(
         'INSERT INTO staff_sales_reports
-            (staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json, cash_mgmt_json, cash_refunds_json)
+            (staff_id, report_date, starting_money_json, starting_money_locked, accuracy_json, cash_mgmt_json, cash_refunds_json, shift_closed_at)
          VALUES
-            (:sid, :d, :sm, :locked, :acc, :cm, :cr)
+            (:sid, :d, :sm, :locked, :acc, :cm, :cr, NULL)
          ON DUPLICATE KEY UPDATE
             starting_money_json = VALUES(starting_money_json),
             starting_money_locked = VALUES(starting_money_locked),
             accuracy_json = VALUES(accuracy_json),
             cash_mgmt_json = VALUES(cash_mgmt_json),
             cash_refunds_json = VALUES(cash_refunds_json),
+            shift_closed_at = ' . ($reopenShift ? 'NULL' : 'shift_closed_at') . ',
             updated_at = CURRENT_TIMESTAMP'
     );
     $upsert->execute([

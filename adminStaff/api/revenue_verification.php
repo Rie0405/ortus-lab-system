@@ -45,17 +45,27 @@ function variance_status_from_difference(float $difference): string
     return 'accurate';
 }
 
-function get_cash_sales_total(PDO $pdo, string $date): float
+function ymd_or(string $value, string $fallback): string
 {
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : $fallback;
+}
+
+function get_cash_sales_total(PDO $pdo, string $from, string $to): float
+{
+    if ($from > $to) {
+        $swap = $from;
+        $from = $to;
+        $to = $swap;
+    }
     $saleCond = sql_order_counts_as_sale();
     $sum = $pdo->prepare(
         'SELECT COALESCE(SUM(total_amount), 0) AS cash_sales
          FROM orders
-         WHERE DATE(created_at) = :d
+         WHERE DATE(created_at) BETWEEN :from_d AND :to_d
            AND payment_method = "cash"
            AND ' . $saleCond
     );
-    $sum->execute([':d' => $date]);
+    $sum->execute([':from_d' => $from, ':to_d' => $to]);
     return (float)$sum->fetchColumn();
 }
 
@@ -67,6 +77,13 @@ function normalize_currency_amount(float $amount): float
 
 if ($m === 'GET') {
     $openingFloat = (float)($_GET['opening_float'] ?? 0);
+    $from = ymd_or(trim((string)($_GET['from'] ?? '')), $date);
+    $to = ymd_or(trim((string)($_GET['to'] ?? '')), $date);
+    if ($from > $to) {
+        $swap = $from;
+        $from = $to;
+        $to = $swap;
+    }
     $saleCond = sql_order_counts_as_sale();
     $sum = $pdo->prepare(
         'SELECT
@@ -75,20 +92,20 @@ if ($m === 'GET') {
             COALESCE(SUM(discount_amount), 0) AS discount_total,
             COUNT(*) AS total_orders
          FROM orders
-         WHERE DATE(created_at) = :d
+         WHERE DATE(created_at) BETWEEN :from_d AND :to_d
            AND ' . $saleCond
     );
-    $sum->execute([':d' => $date]);
+    $sum->execute([':from_d' => $from, ':to_d' => $to]);
     $summary = $sum->fetch();
-    $cashSales = get_cash_sales_total($pdo, $date);
+    $cashSales = get_cash_sales_total($pdo, $from, $to);
     $expectedDrawer = normalize_currency_amount(max(0, $openingFloat) + $cashSales);
 
     $waste = $pdo->prepare(
         'SELECT COALESCE(SUM(estimated_value), 0) AS waste_total
          FROM waste_log
-         WHERE DATE(logged_at) = :d'
+         WHERE DATE(logged_at) BETWEEN :from_d AND :to_d'
     );
-    $waste->execute([':d' => $date]);
+    $waste->execute([':from_d' => $from, ':to_d' => $to]);
     $wasteTotal = (float)$waste->fetchColumn();
 
     $ver = $pdo->prepare(
@@ -132,7 +149,11 @@ if ($m === 'POST') {
     if ($cashDeclared < 0) fail('Cash declared cannot be negative.');
     if ($openingFloat < 0) fail('Opening float cannot be negative.');
 
-    $cashSales = get_cash_sales_total($pdo, $reportDate);
+    $cashSales = get_cash_sales_total(
+        $pdo,
+        ymd_or(trim((string)($b['from'] ?? '')), $reportDate),
+        ymd_or(trim((string)($b['to'] ?? '')), $reportDate)
+    );
     $expected = normalize_currency_amount($openingFloat + $cashSales);
     $diff = normalize_currency_amount($cashDeclared - $expected);
     $status = variance_status_from_difference($diff);

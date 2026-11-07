@@ -409,7 +409,7 @@
         <div class="inv-modal-backdrop" id="inv-edit-name-backdrop" aria-hidden="true">
             <div class="inv-modal" role="dialog" aria-modal="true" aria-labelledby="inv-edit-name-title">
                 <header class="inv-modal__header">
-                    <h2 id="inv-edit-name-title">Edit item name</h2>
+                    <h2 id="inv-edit-name-title">Edit item</h2>
                     <button type="button" class="inv-modal__close" id="inv-edit-name-close" aria-label="Close">×</button>
                 </header>
                 <div class="inv-modal__body">
@@ -417,6 +417,16 @@
                     <label class="inv-field">
                         <span>Inventory item name</span>
                         <input type="text" id="inv-edit-name-input" maxlength="140" placeholder="Item name" autocomplete="off">
+                    </label>
+                    <label class="inv-field">
+                        <span id="inv-edit-stock-used-label">Stock Used</span>
+                        <span class="inv-field-sub" id="inv-edit-stock-used-hint">Open / active batch remaining shown in the table.</span>
+                        <input type="number" id="inv-edit-stock-used-input" min="0" step="1" placeholder="0" inputmode="numeric">
+                    </label>
+                    <label class="inv-field">
+                        <span id="inv-edit-stock-level-label">Stock Level</span>
+                        <span class="inv-field-sub" id="inv-edit-stock-level-hint">Sealed / overall stock count shown in the table.</span>
+                        <input type="number" id="inv-edit-stock-level-input" min="0" step="1" placeholder="0" inputmode="numeric">
                     </label>
                 </div>
                 <footer class="inv-modal__footer">
@@ -861,6 +871,11 @@
         var editNameSaveBtn = document.getElementById('inv-edit-name-save');
         var editNameInput = document.getElementById('inv-edit-name-input');
         var editNameError = document.getElementById('inv-edit-name-error');
+        var editStockUsedInput = document.getElementById('inv-edit-stock-used-input');
+        var editStockLevelInput = document.getElementById('inv-edit-stock-level-input');
+        var editStockUsedLabel = document.getElementById('inv-edit-stock-used-label');
+        var editStockUsedHint = document.getElementById('inv-edit-stock-used-hint');
+        var editStockLevelHint = document.getElementById('inv-edit-stock-level-hint');
         var editNameItemId = null;
         var REGISTER_CATEGORY_TYPES = [
             { id: 0, value: 'main', label: 'Main' },
@@ -3677,7 +3692,7 @@
             var linkedCount = getLinkedRecipeMenus(item).length;
             var linkedLabel = linkedCount > 0 ? ('Linked items (' + linkedCount + ')') : 'Linked items';
             return '' +
-                '<button type="button" class="link-btn" data-edit-name-id="' + id + '" title="Edit item name">Edit</button>' +
+                '<button type="button" class="link-btn" data-edit-name-id="' + id + '" title="Edit name, stock used, and stock level">Edit</button>' +
                 '<span class="inv-action-sep" aria-hidden="true">|</span>' +
                 '<button type="button" class="link-btn link-btn--muted" data-linked-items-id="' + id + '" title="Menu recipes using this item">' + linkedLabel + '</button>' +
                 '<span class="inv-action-sep" aria-hidden="true">|</span>' +
@@ -3722,14 +3737,48 @@
             linkedItemsBackdrop.setAttribute('aria-hidden', 'true');
         }
 
+        function setEditItemError(msg) {
+            if (!editNameError) return;
+            editNameError.textContent = msg || '';
+            editNameError.hidden = !msg;
+        }
+
+        function syncEditStockFieldLabels(item) {
+            var unit = getItemUnit(item);
+            var batch = usesBatchStockDisplay(item);
+            var stockLevelLabel = document.getElementById('inv-edit-stock-level-label');
+            if (editStockUsedLabel) {
+                editStockUsedLabel.textContent = 'Stock Used (' + unit + ')';
+            }
+            if (stockLevelLabel) {
+                stockLevelLabel.textContent = 'Stock Level (' + unit + ')';
+            }
+            if (editStockUsedHint) {
+                editStockUsedHint.textContent = batch
+                    ? 'Active batch remaining shown under Stock Used.'
+                    : 'Open items count shown under Stock Used.';
+            }
+            if (editStockLevelHint) {
+                editStockLevelHint.textContent = batch
+                    ? ('Overall / sealed stock count in ' + unit + '.')
+                    : ('Sealed stock count in ' + unit + '.');
+            }
+        }
+
         function openEditNameModal(itemId) {
             var item = allItems.find(function (it) { return it.id === itemId; });
             if (!item || !editNameBackdrop) return;
             editNameItemId = itemId;
+            setEditItemError('');
+            syncEditStockFieldLabels(item);
             if (editNameInput) editNameInput.value = String(item.name || '');
-            if (editNameError) {
-                editNameError.hidden = true;
-                editNameError.textContent = '';
+            if (editStockUsedInput) {
+                editStockUsedInput.value = String(
+                    usesBatchStockDisplay(item) ? getBatchRemaining(item) : getOpenItemsCount(item)
+                );
+            }
+            if (editStockLevelInput) {
+                editStockLevelInput.value = String(Math.max(0, parseInt(item.stock_units, 10) || 0));
             }
             editNameBackdrop.classList.add('is-visible');
             editNameBackdrop.setAttribute('aria-hidden', 'false');
@@ -3748,38 +3797,60 @@
 
         function saveEditName() {
             var id = parseInt(editNameItemId, 10) || 0;
+            var item = allItems.find(function (it) { return it.id === id; });
             var name = String(editNameInput && editNameInput.value || '').trim();
-            if (!id) return;
+            if (!id || !item) return;
             if (!name) {
-                if (editNameError) {
-                    editNameError.hidden = false;
-                    editNameError.textContent = 'Item name is required.';
-                }
+                setEditItemError('Item name is required.');
                 return;
             }
+            var stockUsed = parseInt(editStockUsedInput && editStockUsedInput.value, 10);
+            var stockLevel = parseInt(editStockLevelInput && editStockLevelInput.value, 10);
+            if (!Number.isFinite(stockUsed) || stockUsed < 0) {
+                setEditItemError('Stock Used must be 0 or higher.');
+                return;
+            }
+            if (!Number.isFinite(stockLevel) || stockLevel < 0) {
+                setEditItemError('Stock Level must be 0 or higher.');
+                return;
+            }
+
+            var payload = {
+                id: id,
+                item_name: name,
+                stock_units: stockLevel
+            };
+            if (usesBatchStockDisplay(item)) {
+                var batchSize = getBatchSize(item);
+                if (stockUsed > batchSize) {
+                    setEditItemError('Stock Used cannot exceed batch size (' + batchSize + ').');
+                    return;
+                }
+                payload.units_in_use = stockUsed;
+            } else {
+                payload.open_items_count = stockUsed;
+                // Keep current orders-left on the open item unless there is no open item left.
+                payload.units_in_use = stockUsed > 0 ? getOrdersLeft(item) : 0;
+            }
+
+            setEditItemError('');
             if (editNameSaveBtn) editNameSaveBtn.disabled = true;
             fetch('api/inventory.php', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, item_name: name })
+                body: JSON.stringify(payload)
             })
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (!d || !d.success) {
-                        if (editNameError) {
-                            editNameError.hidden = false;
-                            editNameError.textContent = (d && d.error) || 'Failed to rename item.';
-                        }
+                        setEditItemError((d && d.error) || 'Failed to update item.');
                         return;
                     }
                     closeEditNameModal();
                     loadInventory();
                 })
                 .catch(function () {
-                    if (editNameError) {
-                        editNameError.hidden = false;
-                        editNameError.textContent = 'Network error while renaming item.';
-                    }
+                    setEditItemError('Network error while updating item.');
                 })
                 .finally(function () {
                     if (editNameSaveBtn) editNameSaveBtn.disabled = false;

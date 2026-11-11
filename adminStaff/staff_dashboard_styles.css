@@ -9307,29 +9307,37 @@ img {
     .ses-confirm-btn { width: 100%; }
 }
 
-/* Payment success toast (POS) — full-screen centered popup (must sit above pay modal) */
+/* Payment success toast (POS) — viewport-pinned GPU overlay (same lock as pay modal).
+   Pin top/right/bottom/left + height:auto so keyboard open/close does not resize/jump it. */
 .payment-success-toast,
 .toast-container {
     position: fixed !important;
-    inset: 0 !important;
     top: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
     left: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 16px !important;
     z-index: 6000 !important;
     display: none;
     align-items: center !important;
     justify-content: center !important;
-    width: auto;
-    max-width: none;
-    margin: 0;
-    padding: 16px;
     background: rgba(8, 6, 4, 0.55);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition: opacity 0.2s ease, visibility 0.2s ease;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    transform: translateZ(0) !important;
+    will-change: opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 .payment-success-toast.is-visible {
     display: flex !important;
@@ -9345,12 +9353,17 @@ img {
 }
 .payment-success-toast__card {
     position: relative;
-    width: min(320px, calc(100vw - 32px));
+    flex-shrink: 0;
+    width: min(320px, 100%);
+    max-width: 100%;
     border-radius: 14px;
     background: #1c1610;
     border: 1px solid rgba(244, 140, 37, 0.35);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
     overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 .payment-success-toast__bar {
     height: 4px;

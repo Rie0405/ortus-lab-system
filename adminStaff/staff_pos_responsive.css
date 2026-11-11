@@ -21,9 +21,27 @@
 /* 1. Side-by-side (≥ 850px)                                                  */
 /* -------------------------------------------------------------------------- */
 @media (min-width: 850px) {
+    /* Fill locked shell under real header height — no hard-coded -64px (tablet landscape glitch). */
+    .pos-page {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .pos-page > .pos-header {
+        flex: 0 0 auto !important;
+    }
+
     .pos-page > .staff-main-panel--pos.is-active,
     .staff-pos-container,
     [class*="pos-main-wrapper"] {
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
         overflow: hidden !important;
     }
 
@@ -34,8 +52,9 @@
         align-items: stretch !important;
         width: 100% !important;
         max-width: 100vw !important;
-        /* Locked --vh (set once on load) — live 100vh/svh reflows the order sheet with the keyboard */
-        height: calc((var(--vh, 1vh) * 100) - 64px) !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        max-height: 100% !important;
         min-height: 0 !important;
         overflow: hidden !important;
         box-sizing: border-box !important;
@@ -86,17 +105,21 @@
         padding: 16px !important;
         box-sizing: border-box !important;
         z-index: 10 !important;
-        overflow: hidden !important;
+        /* Scroll inside the order sheet when keyboard overlays — avoid page/viewport pan glitch */
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
         min-height: 0 !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
     }
 
     .pos-right .right-view.is-active {
         display: flex !important;
         flex-direction: column !important;
         flex: 1 1 auto !important;
-        min-height: 0 !important;
-        height: 100% !important;
-        overflow: hidden !important;
+        height: auto !important;
+        min-height: min-content !important;
+        overflow: visible !important;
     }
 
     .pos-right .order-list,

@@ -8192,13 +8192,10 @@ img {
     }
 
     .pos-page {
-        /* Prefer svh so keyboard open does not shrink/lock-reflow the whole shell */
-        height: 100vh;
-        height: 100svh;
-        min-height: 100vh;
-        min-height: 100svh;
-        max-height: 100vh;
-        max-height: 100svh;
+        /* Locked --vh only — live 100vh/svh fights overlays-content + keyboard */
+        height: calc(var(--vh, 1vh) * 100);
+        min-height: calc(var(--vh, 1vh) * 100);
+        max-height: calc(var(--vh, 1vh) * 100);
         overflow: hidden;
     }
 
